@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+// 标记为动态路由
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const domain = searchParams.get("domain")

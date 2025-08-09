@@ -1,6 +1,9 @@
 import { extractDomain, extractTLD } from "@/lib/domain-extractor"
 import { type NextRequest, NextResponse } from "next/server"
 
+// 标记为动态路由
+export const dynamic = 'force-dynamic'
+
 // Add a simple in-memory cache
 const rdapBaseUrlCache = new Map<string, { url: string | null; timestamp: number }>()
 const CACHE_EXPIRY = 12 * 60 * 60 * 1000 // 12 hours

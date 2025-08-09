@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 
+// 标记为动态路由
+export const dynamic = 'force-dynamic'
+
 // 简单的内存缓存实现
 interface CacheItem {
   data: any
