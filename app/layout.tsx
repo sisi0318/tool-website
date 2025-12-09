@@ -1,16 +1,28 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Roboto } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
+import { M3ThemeProvider } from "@/lib/m3/theme"
 import { I18nProvider } from "@/components/i18n-provider"
 
-const inter = Inter({ subsets: ["latin"] })
+/**
+ * Configure Roboto font family as per M3 specifications
+ * Google Sans is not available via next/font, so we use Roboto as the primary font
+ * with Google Sans loaded via CSS for browsers that support it
+ * 
+ * Requirements: 2.2
+ */
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "700"],
+  variable: "--font-roboto",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "工具站",
   description: "一个实用的在线工具集合",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -23,13 +35,13 @@ export default function RootLayout({
   const locale = params.locale || "zh"
 
   return (
-    <html lang={locale} suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <html lang={locale} suppressHydrationWarning className={roboto.variable}>
+      <body className={roboto.className}>
+        <M3ThemeProvider defaultMode="system">
           <I18nProvider locale={locale}>
             <main>{children}</main>
           </I18nProvider>
-        </ThemeProvider>
+        </M3ThemeProvider>
       </body>
     </html>
   )

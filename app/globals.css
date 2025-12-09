@@ -4,50 +4,302 @@
 
 @layer base {
   :root {
+    /* ============================================
+     * Material You 3 Design Tokens - Light Theme
+     * ============================================ */
+    
+    /* Primary colors */
+    --md-sys-color-primary: #6750A4;
+    --md-sys-color-on-primary: #FFFFFF;
+    --md-sys-color-primary-container: #EADDFF;
+    --md-sys-color-on-primary-container: #21005D;
+    
+    /* Secondary colors */
+    --md-sys-color-secondary: #625B71;
+    --md-sys-color-on-secondary: #FFFFFF;
+    --md-sys-color-secondary-container: #E8DEF8;
+    --md-sys-color-on-secondary-container: #1D192B;
+    
+    /* Tertiary colors */
+    --md-sys-color-tertiary: #7D5260;
+    --md-sys-color-on-tertiary: #FFFFFF;
+    --md-sys-color-tertiary-container: #FFD8E4;
+    --md-sys-color-on-tertiary-container: #31111D;
+    
+    /* Error colors */
+    --md-sys-color-error: #B3261E;
+    --md-sys-color-on-error: #FFFFFF;
+    --md-sys-color-error-container: #F9DEDC;
+    --md-sys-color-on-error-container: #410E0B;
+    
+    /* Surface colors */
+    --md-sys-color-surface: #FEF7FF;
+    --md-sys-color-on-surface: #1D1B20;
+    --md-sys-color-surface-variant: #E7E0EC;
+    --md-sys-color-on-surface-variant: #49454F;
+    --md-sys-color-surface-dim: #DED8E1;
+    --md-sys-color-surface-bright: #FEF7FF;
+    --md-sys-color-surface-container-lowest: #FFFFFF;
+    --md-sys-color-surface-container-low: #F7F2FA;
+    --md-sys-color-surface-container: #F3EDF7;
+    --md-sys-color-surface-container-high: #ECE6F0;
+    --md-sys-color-surface-container-highest: #E6E0E9;
+    
+    /* Outline colors */
+    --md-sys-color-outline: #79747E;
+    --md-sys-color-outline-variant: #CAC4D0;
+    
+    /* Other colors */
+    --md-sys-color-shadow: #000000;
+    --md-sys-color-scrim: #000000;
+    --md-sys-color-inverse-surface: #322F35;
+    --md-sys-color-inverse-on-surface: #F5EFF7;
+    --md-sys-color-inverse-primary: #D0BCFF;
+    
+    /* State layer opacities */
+    --md-sys-state-hover-opacity: 0.08;
+    --md-sys-state-focus-opacity: 0.12;
+    --md-sys-state-pressed-opacity: 0.12;
+    --md-sys-state-dragged-opacity: 0.16;
+
+    /* ============================================
+     * M3 Expressive Shape Tokens
+     * ============================================ */
+    --md-sys-shape-corner-extra-small: 4px;
+    --md-sys-shape-corner-small: 8px;
+    --md-sys-shape-corner-medium: 16px;
+    --md-sys-shape-corner-large: 24px;
+    --md-sys-shape-corner-extra-large: 28px;
+    --md-sys-shape-corner-full: 9999px;
+    
+    /* ============================================
+     * M3 Motion Duration Tokens
+     * ============================================ */
+    --md-sys-motion-duration-short1: 50ms;
+    --md-sys-motion-duration-short2: 100ms;
+    --md-sys-motion-duration-short3: 150ms;
+    --md-sys-motion-duration-short4: 200ms;
+    --md-sys-motion-duration-medium1: 250ms;
+    --md-sys-motion-duration-medium2: 300ms;
+    --md-sys-motion-duration-medium3: 350ms;
+    --md-sys-motion-duration-medium4: 400ms;
+    --md-sys-motion-duration-long1: 450ms;
+    --md-sys-motion-duration-long2: 500ms;
+    --md-sys-motion-duration-long3: 550ms;
+    --md-sys-motion-duration-long4: 600ms;
+    --md-sys-motion-duration-extra-long1: 700ms;
+    --md-sys-motion-duration-extra-long2: 800ms;
+    --md-sys-motion-duration-extra-long3: 900ms;
+    --md-sys-motion-duration-extra-long4: 1000ms;
+    
+    /* ============================================
+     * M3 Motion Easing Tokens
+     * ============================================ */
+    --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+    --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+    --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+    --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+    
+    /* ============================================
+     * M3 Typography Tokens
+     * ============================================ */
+    --md-sys-typescale-display-large-font: 'Google Sans', 'Roboto', sans-serif;
+    --md-sys-typescale-display-large-size: 57px;
+    --md-sys-typescale-display-large-weight: 400;
+    --md-sys-typescale-display-large-line-height: 64px;
+    --md-sys-typescale-display-large-tracking: -0.25px;
+    
+    --md-sys-typescale-display-medium-font: 'Google Sans', 'Roboto', sans-serif;
+    --md-sys-typescale-display-medium-size: 45px;
+    --md-sys-typescale-display-medium-weight: 400;
+    --md-sys-typescale-display-medium-line-height: 52px;
+    --md-sys-typescale-display-medium-tracking: 0px;
+    
+    --md-sys-typescale-display-small-font: 'Google Sans', 'Roboto', sans-serif;
+    --md-sys-typescale-display-small-size: 36px;
+    --md-sys-typescale-display-small-weight: 400;
+    --md-sys-typescale-display-small-line-height: 44px;
+    --md-sys-typescale-display-small-tracking: 0px;
+
+    --md-sys-typescale-headline-large-font: 'Google Sans', 'Roboto', sans-serif;
+    --md-sys-typescale-headline-large-size: 32px;
+    --md-sys-typescale-headline-large-weight: 400;
+    --md-sys-typescale-headline-large-line-height: 40px;
+    --md-sys-typescale-headline-large-tracking: 0px;
+    
+    --md-sys-typescale-headline-medium-font: 'Google Sans', 'Roboto', sans-serif;
+    --md-sys-typescale-headline-medium-size: 28px;
+    --md-sys-typescale-headline-medium-weight: 400;
+    --md-sys-typescale-headline-medium-line-height: 36px;
+    --md-sys-typescale-headline-medium-tracking: 0px;
+    
+    --md-sys-typescale-headline-small-font: 'Google Sans', 'Roboto', sans-serif;
+    --md-sys-typescale-headline-small-size: 24px;
+    --md-sys-typescale-headline-small-weight: 400;
+    --md-sys-typescale-headline-small-line-height: 32px;
+    --md-sys-typescale-headline-small-tracking: 0px;
+    
+    --md-sys-typescale-title-large-font: 'Google Sans', 'Roboto', sans-serif;
+    --md-sys-typescale-title-large-size: 22px;
+    --md-sys-typescale-title-large-weight: 400;
+    --md-sys-typescale-title-large-line-height: 28px;
+    --md-sys-typescale-title-large-tracking: 0px;
+    
+    --md-sys-typescale-title-medium-font: 'Roboto', sans-serif;
+    --md-sys-typescale-title-medium-size: 16px;
+    --md-sys-typescale-title-medium-weight: 500;
+    --md-sys-typescale-title-medium-line-height: 24px;
+    --md-sys-typescale-title-medium-tracking: 0.15px;
+    
+    --md-sys-typescale-title-small-font: 'Roboto', sans-serif;
+    --md-sys-typescale-title-small-size: 14px;
+    --md-sys-typescale-title-small-weight: 500;
+    --md-sys-typescale-title-small-line-height: 20px;
+    --md-sys-typescale-title-small-tracking: 0.1px;
+    
+    --md-sys-typescale-body-large-font: 'Roboto', sans-serif;
+    --md-sys-typescale-body-large-size: 16px;
+    --md-sys-typescale-body-large-weight: 400;
+    --md-sys-typescale-body-large-line-height: 24px;
+    --md-sys-typescale-body-large-tracking: 0.5px;
+    
+    --md-sys-typescale-body-medium-font: 'Roboto', sans-serif;
+    --md-sys-typescale-body-medium-size: 14px;
+    --md-sys-typescale-body-medium-weight: 400;
+    --md-sys-typescale-body-medium-line-height: 20px;
+    --md-sys-typescale-body-medium-tracking: 0.25px;
+    
+    --md-sys-typescale-body-small-font: 'Roboto', sans-serif;
+    --md-sys-typescale-body-small-size: 12px;
+    --md-sys-typescale-body-small-weight: 400;
+    --md-sys-typescale-body-small-line-height: 16px;
+    --md-sys-typescale-body-small-tracking: 0.4px;
+    
+    --md-sys-typescale-label-large-font: 'Roboto', sans-serif;
+    --md-sys-typescale-label-large-size: 14px;
+    --md-sys-typescale-label-large-weight: 500;
+    --md-sys-typescale-label-large-line-height: 20px;
+    --md-sys-typescale-label-large-tracking: 0.1px;
+    
+    --md-sys-typescale-label-medium-font: 'Roboto', sans-serif;
+    --md-sys-typescale-label-medium-size: 12px;
+    --md-sys-typescale-label-medium-weight: 500;
+    --md-sys-typescale-label-medium-line-height: 16px;
+    --md-sys-typescale-label-medium-tracking: 0.5px;
+    
+    --md-sys-typescale-label-small-font: 'Roboto', sans-serif;
+    --md-sys-typescale-label-small-size: 11px;
+    --md-sys-typescale-label-small-weight: 500;
+    --md-sys-typescale-label-small-line-height: 16px;
+    --md-sys-typescale-label-small-tracking: 0.5px;
+
+    /* ============================================
+     * Legacy shadcn/ui compatibility variables
+     * Mapped to M3 tokens for backward compatibility
+     * ============================================ */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --foreground: 270 10% 11%;
+    --card: 270 67% 99%;
+    --card-foreground: 270 10% 11%;
+    --popover: 270 67% 99%;
+    --popover-foreground: 270 10% 11%;
+    --primary: 265 84% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 260 12% 40%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 270 20% 91%;
+    --muted-foreground: 264 7% 31%;
+    --accent: 270 20% 91%;
+    --accent-foreground: 264 7% 31%;
+    --destructive: 4 84% 41%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 270 20% 80%;
+    --input: 270 20% 80%;
+    --ring: 265 84% 48%;
+    --radius: var(--md-sys-shape-corner-medium);
   }
 
+
+  /* ============================================
+   * Material You 3 Design Tokens - Dark Theme
+   * Uses tonal elevation instead of shadow elevation
+   * ============================================ */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Primary colors (inverted tones for dark mode) */
+    --md-sys-color-primary: #D0BCFF;
+    --md-sys-color-on-primary: #381E72;
+    --md-sys-color-primary-container: #4F378B;
+    --md-sys-color-on-primary-container: #EADDFF;
+    
+    /* Secondary colors */
+    --md-sys-color-secondary: #CCC2DC;
+    --md-sys-color-on-secondary: #332D41;
+    --md-sys-color-secondary-container: #4A4458;
+    --md-sys-color-on-secondary-container: #E8DEF8;
+    
+    /* Tertiary colors */
+    --md-sys-color-tertiary: #EFB8C8;
+    --md-sys-color-on-tertiary: #492532;
+    --md-sys-color-tertiary-container: #633B48;
+    --md-sys-color-on-tertiary-container: #FFD8E4;
+    
+    /* Error colors */
+    --md-sys-color-error: #F2B8B5;
+    --md-sys-color-on-error: #601410;
+    --md-sys-color-error-container: #8C1D18;
+    --md-sys-color-on-error-container: #F9DEDC;
+    
+    /* Surface colors - using tonal elevation
+     * In dark mode, higher elevation = lighter surface color
+     * This creates visual hierarchy without shadows */
+    --md-sys-color-surface: #141218;
+    --md-sys-color-on-surface: #E6E0E9;
+    --md-sys-color-surface-variant: #49454F;
+    --md-sys-color-on-surface-variant: #CAC4D0;
+    --md-sys-color-surface-dim: #141218;
+    --md-sys-color-surface-bright: #3B383E;
+    --md-sys-color-surface-container-lowest: #0F0D13;
+    --md-sys-color-surface-container-low: #1D1B20;
+    --md-sys-color-surface-container: #211F26;
+    --md-sys-color-surface-container-high: #2B2930;
+    --md-sys-color-surface-container-highest: #36343B;
+    
+    /* Outline colors */
+    --md-sys-color-outline: #938F99;
+    --md-sys-color-outline-variant: #49454F;
+    
+    /* Other colors */
+    --md-sys-color-shadow: #000000;
+    --md-sys-color-scrim: #000000;
+    --md-sys-color-inverse-surface: #E6E0E9;
+    --md-sys-color-inverse-on-surface: #322F35;
+    --md-sys-color-inverse-primary: #6750A4;
+    
+    /* Legacy shadcn/ui compatibility variables - Dark mode */
+    --background: 270 14% 9%;
+    --foreground: 270 20% 90%;
+    --card: 270 14% 13%;
+    --card-foreground: 270 20% 90%;
+    --popover: 270 14% 13%;
+    --popover-foreground: 270 20% 90%;
+    --primary: 265 100% 87%;
+    --primary-foreground: 265 59% 28%;
+    --secondary: 265 24% 75%;
+    --secondary-foreground: 265 14% 23%;
+    --muted: 265 14% 23%;
+    --muted-foreground: 265 10% 65%;
+    --accent: 265 14% 23%;
+    --accent-foreground: 265 24% 75%;
+    --destructive: 0 63% 82%;
+    --destructive-foreground: 0 63% 16%;
+    --border: 265 14% 23%;
+    --input: 265 14% 23%;
+    --ring: 265 100% 87%;
   }
 }
+
 
 @layer base {
   * {
@@ -55,46 +307,94 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
   }
 }
 
-/* 现代化UI组件样式 */
+/* ============================================
+ * M3 Expressive UI Component Styles
+ * ============================================ */
 @layer components {
-  /* 卡片样式 */
+  /* M3 Card styles with Expressive shape */
   .card-modern {
-    @apply bg-white/90 dark:bg-gray-800/90 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg backdrop-blur-sm hover:shadow-xl transition-all duration-300;
+    background-color: var(--md-sys-color-surface-container);
+    border-radius: var(--md-sys-shape-corner-large);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+                transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+  }
+  
+  .card-modern:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
 
-  /* 输入框样式 */
+  /* M3 Input styles */
   .input-modern {
-    @apply bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 backdrop-blur-sm;
+    background-color: var(--md-sys-color-surface-container-highest);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-extra-small);
+    transition: border-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+                box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  }
+  
+  .input-modern:focus {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.2);
+    outline: none;
   }
 
-  /* 按钮样式 */
+  /* M3 Button styles */
   .button-modern {
-    @apply bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 backdrop-blur-sm hover:shadow-md;
+    background-color: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-medium);
+    transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+                box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  }
+  
+  .button-modern:hover {
+    background-color: var(--md-sys-color-surface-container-high);
   }
 
   .button-modern-active {
-    @apply bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300;
+    background-color: var(--md-sys-color-secondary-container);
+    border-color: var(--md-sys-color-secondary);
+    color: var(--md-sys-color-on-secondary-container);
   }
 
-  /* 图标容器 */
+  /* M3 Icon container */
   .icon-container {
-    @apply bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full p-3 border border-blue-100 dark:border-blue-800;
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-radius: var(--md-sys-shape-corner-full);
+    padding: 12px;
   }
 
-  /* 渐变按钮 */
+  /* M3 Filled button (gradient style) */
   .btn-gradient {
-    @apply bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105;
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-radius: var(--md-sys-shape-corner-full);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    transition: box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
+                transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+  }
+  
+  .btn-gradient:hover {
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+    transform: scale(1.02);
   }
 
-  /* 玻璃态效果 */
+  /* M3 Surface tonal elevation effect */
   .glass-effect {
-    @apply bg-white/10 dark:bg-gray-800/10 backdrop-blur-md border border-white/20 dark:border-gray-700/20;
+    background-color: var(--md-sys-color-surface-container);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--md-sys-color-outline-variant);
   }
 
-  /* 隐藏滚动条但保留功能 */
+  /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -104,39 +404,73 @@
     display: none;
   }
 
-  /* 渐变文本 */
+  /* M3 Gradient text */
   .text-gradient {
-    @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+    background: linear-gradient(135deg, var(--md-sys-color-primary), var(--md-sys-color-tertiary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  /* 悬浮效果 */
+  /* M3 Hover lift effect */
   .hover-lift {
-    @apply hover:transform hover:scale-105 transition-all duration-300;
+    transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+  
+  /* M3 State layer styles */
+  .state-layer-hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: var(--md-sys-color-on-surface);
+    opacity: 0;
+    transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  
+  .state-layer-hover:hover::before {
+    opacity: var(--md-sys-state-hover-opacity);
+  }
+  
+  .state-layer-hover:focus::before {
+    opacity: var(--md-sys-state-focus-opacity);
+  }
+  
+  .state-layer-hover:active::before {
+    opacity: var(--md-sys-state-pressed-opacity);
   }
 }
 
-/* Mobile responsiveness improvements */
+
+/* ============================================
+ * Mobile Responsiveness Improvements
+ * ============================================ */
 @media (max-width: 640px) {
-  /* 确保内容不会溢出 */
+  /* Ensure content doesn't overflow */
   .overflow-fix {
     max-width: 100%;
     overflow-x: auto;
   }
 
-  /* 文本截断 */
+  /* Text truncation */
   .text-truncate {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  /* 移动端标题大小调整 */
+  /* Mobile title size adjustment */
   .hero-title {
     font-size: 2.5rem !important;
     line-height: 1.1 !important;
   }
 
-  /* 移动端间距调整 */
+  /* Mobile spacing adjustments */
   .mobile-px {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
@@ -147,13 +481,13 @@
     padding-bottom: 2rem !important;
   }
 
-  /* 移动端按钮调整 */
+  /* Mobile button adjustments */
   .mobile-btn {
     width: 100% !important;
     padding: 0.75rem 1.5rem !important;
   }
 
-  /* 移动端卡片调整 */
+  /* Mobile card adjustments */
   .mobile-card {
     margin: 0.5rem !important;
     padding: 1rem !important;
@@ -161,35 +495,240 @@
 }
 
 @media (max-width: 768px) {
-  /* 平板端调整 */
+  /* Tablet adjustments */
   .tablet-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
 
-/* 触摸设备优化 */
+/* ============================================
+ * Touch Device Optimizations
+ * ============================================ */
 @media (hover: none) and (pointer: coarse) {
-  /* 移除hover效果在触摸设备上 */
+  /* Remove hover effects on touch devices */
   .touch-friendly:hover {
     transform: none !important;
   }
 
-  /* 增加点击区域 */
+  /* Increase touch target size - M3 minimum 48dp */
   .touch-target {
-    min-height: 44px !important;
-    min-width: 44px !important;
+    min-height: 48px !important;
+    min-width: 48px !important;
   }
 }
 
-/* 暗色模式下的颜色调整 */
+/* ============================================
+ * System Dark Mode Preference
+ * ============================================ */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  :root:not(.light) {
+    /* Primary colors */
+    --md-sys-color-primary: #D0BCFF;
+    --md-sys-color-on-primary: #381E72;
+    --md-sys-color-primary-container: #4F378B;
+    --md-sys-color-on-primary-container: #EADDFF;
+    
+    /* Surface colors with tonal elevation */
+    --md-sys-color-surface: #141218;
+    --md-sys-color-on-surface: #E6E0E9;
+    --md-sys-color-surface-dim: #141218;
+    --md-sys-color-surface-bright: #3B383E;
+    --md-sys-color-surface-container-lowest: #0F0D13;
+    --md-sys-color-surface-container-low: #1D1B20;
+    --md-sys-color-surface-container: #211F26;
+    --md-sys-color-surface-container-high: #2B2930;
+    --md-sys-color-surface-container-highest: #36343B;
+    
+    /* Legacy compatibility */
+    --background: 270 14% 9%;
+    --foreground: 270 20% 90%;
   }
 }
 
-/* 减少动画在用户偏好下 */
+/* ============================================
+ * M3 Progress Indicator Animations
+ * ============================================ */
+
+/* Linear Progress - Indeterminate animation */
+@keyframes m3-linear-progress-indeterminate {
+  0% {
+    left: -35%;
+    width: 35%;
+  }
+  60% {
+    left: 100%;
+    width: 35%;
+  }
+  100% {
+    left: 100%;
+    width: 35%;
+  }
+}
+
+/* Circular Progress - Rotation animation */
+@keyframes m3-circular-progress-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Circular Progress - Dash animation for indeterminate state */
+@keyframes m3-circular-progress-dash {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -124;
+  }
+}
+
+/* Animation utility classes */
+.animate-m3-linear-progress-indeterminate {
+  animation: m3-linear-progress-indeterminate 2s var(--md-sys-motion-easing-emphasized) infinite;
+}
+
+.animate-m3-circular-progress-rotate {
+  animation: m3-circular-progress-rotate 2s linear infinite;
+}
+
+.animate-m3-circular-progress-dash {
+  animation: m3-circular-progress-dash 1.5s var(--md-sys-motion-easing-emphasized) infinite;
+}
+
+/* ============================================
+ * M3 Focus Ring Specifications
+ * Implements Material Design 3 focus indicators
+ * Requirements: 12.2
+ * ============================================ */
+
+/* M3 Focus Ring - Primary style for interactive elements */
+.m3-focus-ring {
+  outline: none;
+}
+
+.m3-focus-ring:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* M3 Focus Ring - Secondary style for less prominent elements */
+.m3-focus-ring-secondary:focus-visible {
+  outline: 2px solid var(--md-sys-color-secondary);
+  outline-offset: 2px;
+}
+
+/* M3 Focus Ring - Inset style for filled containers */
+.m3-focus-ring-inset:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: -3px;
+}
+
+/* M3 Focus Ring - Error state */
+.m3-focus-ring-error:focus-visible {
+  outline: 3px solid var(--md-sys-color-error);
+  outline-offset: 2px;
+}
+
+/* Global focus-visible styles for all interactive elements */
+@layer base {
+  /* Apply M3 focus ring to all focusable elements by default */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+    transition: outline-offset var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  }
+
+  /* Remove default focus outline for mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* High contrast mode support */
+  @media (forced-colors: active) {
+    a:focus-visible,
+    button:focus-visible,
+    [role="button"]:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [tabindex]:not([tabindex="-1"]):focus-visible {
+      outline: 3px solid CanvasText;
+      outline-offset: 2px;
+    }
+  }
+}
+
+/* ============================================
+ * Accessibility Utilities
+ * Requirements: 12.3, 12.4
+ * ============================================ */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Make sr-only content visible on focus (for skip links) */
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Skip link styling */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 1rem 2rem;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-radius: var(--md-sys-shape-corner-medium);
+  text-decoration: none;
+  font-weight: 500;
+  transition: top var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* ============================================
+ * Reduced Motion Preference
+ * Requirements: 12.4
+ * ============================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -198,5 +737,390 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Provide static fallback states for animated elements */
+  .animate-ripple {
+    animation: none !important;
+    opacity: 0.12 !important;
+  }
+
+  .animate-m3-linear-progress-indeterminate {
+    animation: none !important;
+    width: 50% !important;
+    left: 25% !important;
+  }
+
+  .animate-m3-circular-progress-rotate,
+  .animate-m3-circular-progress-dash {
+    animation: none !important;
+  }
+
+  /* Disable hover transforms */
+  .hover-lift:hover {
+    transform: none !important;
+  }
+
+  /* Ensure focus indicators are still visible */
+  :focus-visible {
+    outline: 3px solid var(--md-sys-color-primary) !important;
+    outline-offset: 2px !important;
+  }
+}
+
+
+/* ============================================
+ * Performance Optimization Utilities
+ * Requirements: 16.2, 16.3
+ * 
+ * These utilities ensure 60fps animations by using
+ * only GPU-accelerated properties (transform, opacity)
+ * and avoiding layout-triggering properties.
+ * ============================================ */
+
+/* GPU Acceleration - Force hardware acceleration */
+.gpu-accelerated,
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Will-change hints for animation optimization */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+.will-change-transform-opacity {
+  will-change: transform, opacity;
+}
+
+/* Backface visibility hidden - prevents flickering during 3D transforms */
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* ============================================
+ * Performant Animation Keyframes
+ * Uses only transform and opacity for 60fps
+ * ============================================ */
+
+/* Scale animations (GPU-accelerated) */
+@keyframes m3-scale-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes m3-scale-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* Fade animations (GPU-accelerated) */
+@keyframes m3-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes m3-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Slide animations using transform (GPU-accelerated) */
+@keyframes m3-slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes m3-slide-out-to-bottom {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes m3-slide-in-from-top {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes m3-slide-out-to-top {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes m3-slide-in-from-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes m3-slide-out-to-left {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes m3-slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes m3-slide-out-to-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Hover lift using transform (GPU-accelerated) */
+@keyframes m3-hover-lift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2px);
+  }
+}
+
+/* Press effect using transform (GPU-accelerated) */
+@keyframes m3-press-down {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.98);
+  }
+}
+
+/* ============================================
+ * Performant Animation Utility Classes
+ * ============================================ */
+
+/* Scale animations */
+.animate-m3-scale-in {
+  animation: m3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+}
+
+.animate-m3-scale-out {
+  animation: m3-scale-out var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate) forwards;
+}
+
+/* Fade animations */
+.animate-m3-fade-in {
+  animation: m3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard) forwards;
+}
+
+.animate-m3-fade-out {
+  animation: m3-fade-out var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard) forwards;
+}
+
+/* Slide animations */
+.animate-m3-slide-in-from-bottom {
+  animation: m3-slide-in-from-bottom var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+}
+
+.animate-m3-slide-out-to-bottom {
+  animation: m3-slide-out-to-bottom var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate) forwards;
+}
+
+.animate-m3-slide-in-from-top {
+  animation: m3-slide-in-from-top var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+}
+
+.animate-m3-slide-out-to-top {
+  animation: m3-slide-out-to-top var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate) forwards;
+}
+
+.animate-m3-slide-in-from-left {
+  animation: m3-slide-in-from-left var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+}
+
+.animate-m3-slide-out-to-left {
+  animation: m3-slide-out-to-left var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate) forwards;
+}
+
+.animate-m3-slide-in-from-right {
+  animation: m3-slide-in-from-right var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+}
+
+.animate-m3-slide-out-to-right {
+  animation: m3-slide-out-to-right var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate) forwards;
+}
+
+/* ============================================
+ * Performant Transition Utilities
+ * Only animate transform and opacity for 60fps
+ * ============================================ */
+
+/* Transform-only transitions */
+.transition-transform-gpu {
+  transition-property: transform;
+  transition-duration: var(--md-sys-motion-duration-medium2);
+  transition-timing-function: var(--md-sys-motion-easing-standard);
+  will-change: transform;
+}
+
+/* Opacity-only transitions */
+.transition-opacity-gpu {
+  transition-property: opacity;
+  transition-duration: var(--md-sys-motion-duration-medium2);
+  transition-timing-function: var(--md-sys-motion-easing-standard);
+  will-change: opacity;
+}
+
+/* Combined transform and opacity transitions */
+.transition-gpu {
+  transition-property: transform, opacity;
+  transition-duration: var(--md-sys-motion-duration-medium2);
+  transition-timing-function: var(--md-sys-motion-easing-standard);
+  will-change: transform, opacity;
+}
+
+/* Fast GPU transitions (for hover states) */
+.transition-gpu-fast {
+  transition-property: transform, opacity;
+  transition-duration: var(--md-sys-motion-duration-short2);
+  transition-timing-function: var(--md-sys-motion-easing-standard);
+  will-change: transform, opacity;
+}
+
+/* ============================================
+ * Lazy Loading Utilities
+ * Requirements: 16.3
+ * ============================================ */
+
+/* Image loading skeleton */
+.lazy-image-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--md-sys-color-surface-container) 0%,
+    var(--md-sys-color-surface-container-high) 50%,
+    var(--md-sys-color-surface-container) 100%
+  );
+  background-size: 200% 100%;
+  animation: lazy-image-shimmer 1.5s infinite;
+}
+
+@keyframes lazy-image-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Lazy loaded image fade-in */
+.lazy-image-loaded {
+  animation: m3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard) forwards;
+}
+
+/* Content visibility optimization for off-screen content */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
+/* ============================================
+ * Reduced Motion - Performance Fallbacks
+ * ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all GPU-accelerated animations */
+  .animate-m3-scale-in,
+  .animate-m3-scale-out,
+  .animate-m3-fade-in,
+  .animate-m3-fade-out,
+  .animate-m3-slide-in-from-bottom,
+  .animate-m3-slide-out-to-bottom,
+  .animate-m3-slide-in-from-top,
+  .animate-m3-slide-out-to-top,
+  .animate-m3-slide-in-from-left,
+  .animate-m3-slide-out-to-left,
+  .animate-m3-slide-in-from-right,
+  .animate-m3-slide-out-to-right {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Disable transitions */
+  .transition-transform-gpu,
+  .transition-opacity-gpu,
+  .transition-gpu,
+  .transition-gpu-fast {
+    transition: none !important;
+  }
+
+  /* Disable lazy image shimmer */
+  .lazy-image-skeleton {
+    animation: none !important;
   }
 }
