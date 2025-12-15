@@ -59,6 +59,12 @@ const RegexTool = dynamic(() => import("./regex/page"), { ssr: false })
 const QRCodeDecoder = dynamic(() => import("./qrcode-decode/page"), { ssr: false })
 const HTTPTester = dynamic(() => import("./http-tester/page"), { ssr: false })
 const WhoisPage = dynamic(() => import("./whois/page"), { ssr: false })
+const UUIDGenerator = dynamic(() => import("./uuid/page"), { ssr: false })
+const JWTParser = dynamic(() => import("./jwt/page"), { ssr: false })
+const TextStats = dynamic(() => import("./text-stats/page"), { ssr: false })
+const ImageCompressTool = dynamic(() => import("./image-compress/page"), { ssr: false })
+const CaseConverterTool = dynamic(() => import("./case-converter/page"), { ssr: false })
+const TOTPTool = dynamic(() => import("./totp/page"), { ssr: false })
 
 // 标签页类型
 interface ToolTabType {
@@ -331,6 +337,80 @@ export default function ToolsPage() {
         ),
         getComponent: (params?: Record<string, string>) => <WhoisPage params={params} />,
       },
+      {
+        id: "uuid",
+        title: t("uuid.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+            <path d="M7 7h.01" />
+            <path d="M17 7h.01" />
+            <path d="M7 17h.01" />
+            <path d="M17 17h.01" />
+            <path d="M12 12h.01" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <UUIDGenerator params={params} />,
+      },
+      {
+        id: "jwt",
+        title: t("jwt.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <JWTParser params={params} />,
+      },
+      {
+        id: "text-stats",
+        title: t("textStats.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <TextStats params={params} />,
+      },
+      {
+        id: "image-compress",
+        title: t("imageCompress.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+            <path d="M14 14 8 8" />
+            <path d="m8 11 3-3" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <ImageCompressTool params={params} />,
+      },
+      {
+        id: "case-converter",
+        title: t("caseConverter.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="m3 15 4-8 4 8" />
+            <path d="M4 13h6" />
+            <path d="M15 11h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <CaseConverterTool params={params} />,
+      },
+      {
+        id: "totp",
+        title: t("totp.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            <circle cx="12" cy="16" r="1" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <TOTPTool params={params} />,
+      },
     ],
     [t],
   )
@@ -361,6 +441,9 @@ export default function ToolsPage() {
         bmi: { name: t("bmi.name") },
         regex: { name: t("regex.name") },
         httpTester: { name: t("httpTester.name") },
+        imageCompress: { name: t("imageCompress.name") },
+        caseConverter: { name: t("caseConverter.name") },
+        totp: { name: t("totp.name") },
       }
 
       const validTranslations = Object.entries(translations).reduce(
@@ -621,13 +704,40 @@ export default function ToolsPage() {
     onSwipeRight: goToPrevTab,
   })
 
-  // 工具卡片组件
+  // 工具卡片组件 - M3 Expressive Style
   const ToolCard = useCallback(
     ({ id, name, icon, onClick }: { id: string; name: string; icon: React.ReactNode; onClick: () => void }) => (
-      <Card className="h-full transition-all duration-200 hover:scale-105 card-modern cursor-pointer" onClick={onClick}>
+      <Card 
+        className="
+          h-full card-elevated cursor-pointer group
+          hover:shadow-xl hover:-translate-y-2
+          transition-all duration-[var(--md-sys-motion-duration-medium2)]
+          ease-[var(--md-sys-motion-easing-expressive)]
+          active:scale-[0.98] active:translate-y-0
+        " 
+        onClick={onClick}
+      >
         <CardContent className="flex flex-col items-center justify-center p-6 h-full">
-          <div className="mb-4 p-3 rounded-full icon-container">{icon}</div>
-          <h3 className="font-medium text-center">{name}</h3>
+          <div className="
+            mb-4 p-4
+            bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)]
+            text-[var(--md-sys-color-on-primary-container)]
+            rounded-[var(--md-sys-shape-corner-large)]
+            transition-all duration-[var(--md-sys-motion-duration-medium2)]
+            ease-[var(--md-sys-motion-easing-expressive)]
+            group-hover:scale-110 group-hover:rotate-3
+            shadow-md group-hover:shadow-lg
+          ">
+            {icon}
+          </div>
+          <h3 className="
+            font-semibold text-center
+            text-[var(--md-sys-color-on-surface)]
+            group-hover:text-gradient
+            transition-colors duration-[var(--md-sys-motion-duration-medium2)]
+          ">
+            {name}
+          </h3>
         </CardContent>
       </Card>
     ),
@@ -814,21 +924,24 @@ export default function ToolsPage() {
 
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* M3 Search Bar */}
-      <div className="mb-6">
+    <div className="container mx-auto px-4 py-6 sm:py-8">
+      {/* M3 Expressive Search Bar */}
+      <div className="mb-6 sm:mb-8">
         <div className="relative">
-          <div className="flex items-center gap-2">
-            {/* M3 Search Bar with large corner radius */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* M3 Expressive Search Bar with gradient border on focus */}
             <div 
               className={`
                 relative flex-grow
                 bg-[var(--md-sys-color-surface-container-high)]
-                rounded-[var(--md-sys-shape-corner-extra-large)]
+                rounded-[var(--md-sys-shape-corner-full)]
                 transition-all
                 duration-[var(--md-sys-motion-duration-medium2)]
-                ease-[var(--md-sys-motion-easing-emphasized)]
-                ${isSearchFocused ? 'shadow-lg ring-2 ring-[var(--md-sys-color-primary)]' : 'shadow-sm'}
+                ease-[var(--md-sys-motion-easing-expressive)]
+                ${isSearchFocused 
+                  ? 'shadow-xl ring-2 ring-[var(--md-sys-color-primary)] scale-[1.01]' 
+                  : 'shadow-md hover:shadow-lg hover:scale-[1.005]'
+                }
               `}
             >
               <div className="flex items-center px-4 py-3">
@@ -867,17 +980,18 @@ export default function ToolsPage() {
             <LanguageSwitcher />
           </div>
 
-          {/* M3 Search Results Menu */}
+          {/* M3 Expressive Search Results Menu */}
           {isSearchFocused && searchResults.length > 0 && (
             <div 
               className="
                 search-results
-                absolute z-50 w-full mt-2
+                absolute z-50 w-full mt-3
                 bg-[var(--md-sys-color-surface-container)]
-                rounded-[var(--md-sys-shape-corner-large)]
-                shadow-lg
-                p-2 max-h-80 overflow-y-auto
-                animate-in fade-in-0 slide-in-from-top-2
+                rounded-[var(--md-sys-shape-corner-extra-large)]
+                shadow-xl
+                p-3 max-h-80 overflow-y-auto
+                border border-[var(--md-sys-color-outline-variant)]
+                animate-in fade-in-0 slide-in-from-top-3
                 duration-[var(--md-sys-motion-duration-medium2)]
               "
             >
@@ -923,13 +1037,15 @@ export default function ToolsPage() {
       </div>
 
       {tabs.length > 0 ? (
-        <div className="space-y-4">
-          {/* M3 Tabs with indicator animation */}
+        <div className="space-y-4 sm:space-y-6">
+          {/* M3 Expressive Tabs with indicator animation */}
           <div className="relative flex flex-col">
             <div className="
               flex items-center
               bg-[var(--md-sys-color-surface-container)]
-              rounded-[var(--md-sys-shape-corner-large)]
+              rounded-[var(--md-sys-shape-corner-extra-large)]
+              shadow-sm
+              border border-[var(--md-sys-color-outline-variant)]/50
             ">
               {/* M3 Tabs Component */}
               <div className="flex-1 overflow-hidden">
@@ -988,19 +1104,20 @@ export default function ToolsPage() {
                     <Plus className="h-5 w-5" />
                   </button>
 
-                  {/* M3 Dropdown Menu */}
+                  {/* M3 Expressive Dropdown Menu */}
                   {showDropdown && (
                     <div
                       ref={dropdownRef}
                       className="
-                        absolute right-0 top-full mt-2 z-50
-                        w-56
+                        absolute right-0 top-full mt-3 z-50
+                        w-64
                         bg-[var(--md-sys-color-surface-container)]
-                        rounded-[var(--md-sys-shape-corner-medium)]
-                        shadow-lg
-                        p-2
-                        max-h-80 overflow-y-auto
-                        animate-in fade-in-0 slide-in-from-top-2
+                        rounded-[var(--md-sys-shape-corner-large)]
+                        shadow-xl
+                        p-3
+                        max-h-96 overflow-y-auto
+                        border border-[var(--md-sys-color-outline-variant)]/50
+                        animate-in fade-in-0 slide-in-from-top-3
                         duration-[var(--md-sys-motion-duration-medium2)]
                       "
                     >
@@ -1008,22 +1125,28 @@ export default function ToolsPage() {
                         <button
                           key={tool.id}
                           className="
-                            w-full flex items-center gap-3 px-3 py-2.5
-                            rounded-[var(--md-sys-shape-corner-small)]
+                            w-full flex items-center gap-3 px-4 py-3
+                            rounded-[var(--md-sys-shape-corner-medium)]
                             hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                            active:bg-[var(--md-sys-color-on-surface)]/[0.12]
-                            transition-colors duration-[var(--md-sys-motion-duration-short2)]
-                            text-left
+                            active:bg-[var(--md-sys-color-on-surface)]/[0.16]
+                            active:scale-[0.98]
+                            transition-all duration-[var(--md-sys-motion-duration-short4)]
+                            ease-[var(--md-sys-motion-easing-expressive)]
+                            text-left group
                           "
                           onClick={(e) => {
                             e.stopPropagation()
                             addTab(tool.id)
                           }}
                         >
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">
+                          <span className="
+                            text-[var(--md-sys-color-on-surface-variant)]
+                            group-hover:text-[var(--md-sys-color-primary)]
+                            transition-colors duration-[var(--md-sys-motion-duration-short4)]
+                          ">
                             {tool.icon}
                           </span>
-                          <span className="text-[var(--md-sys-color-on-surface)] text-sm font-medium">
+                          <span className="text-[var(--md-sys-color-on-surface)] text-sm font-semibold">
                             {tool.title}
                           </span>
                         </button>

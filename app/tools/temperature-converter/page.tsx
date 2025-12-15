@@ -14,6 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTranslations } from "@/hooks/use-translations"
 import { Minus, Plus, Copy, Thermometer, Settings, ChevronUp, ChevronDown, Zap, Eye, Check, Snowflake, Sun, RefreshCw, ArrowLeftRight } from "lucide-react"
 
+interface TemperatureConverterProps {
+  params?: Record<string, string>
+}
+
 // Temperature scales and their conversion formulas
 const temperatureScales = [
   {
@@ -128,7 +132,7 @@ const temperaturePresets = [
   { name: "地球核心", nameEn: "Earth Core", kelvin: 6000, icon: "🌍", category: "geology" },
 ]
 
-export default function TemperatureConverterPage({ params }: { params?: Record<string, string> }) {
+export default function TemperatureConverterPage({ params }: TemperatureConverterProps) {
   const t = useTranslations("temperatureConverter")
   const { language } = useTranslations()
 

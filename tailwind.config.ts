@@ -56,7 +56,7 @@ const config = {
         },
 
         // ============================================
-        // Material You 3 Color Tokens
+        // Material You 3 EXPRESSIVE Color Tokens
         // ============================================
         
         // M3 Primary colors
@@ -82,6 +82,18 @@ const config = {
         "md-on-error": "var(--md-sys-color-on-error)",
         "md-error-container": "var(--md-sys-color-error-container)",
         "md-on-error-container": "var(--md-sys-color-on-error-container)",
+
+        // M3 Success colors (Expressive)
+        "md-success": "var(--md-sys-color-success)",
+        "md-on-success": "var(--md-sys-color-on-success)",
+        "md-success-container": "var(--md-sys-color-success-container)",
+        "md-on-success-container": "var(--md-sys-color-on-success-container)",
+
+        // M3 Warning colors (Expressive)
+        "md-warning": "var(--md-sys-color-warning)",
+        "md-on-warning": "var(--md-sys-color-on-warning)",
+        "md-warning-container": "var(--md-sys-color-warning-container)",
+        "md-on-warning-container": "var(--md-sys-color-on-warning-container)",
         
         // M3 Surface colors
         "md-surface": "var(--md-sys-color-surface)",
@@ -114,7 +126,7 @@ const config = {
         sm: "calc(var(--radius) - 4px)",
         
         // ============================================
-        // M3 Expressive Shape Tokens
+        // M3 EXPRESSIVE Shape Tokens (larger radii)
         // ============================================
         "md-xs": "var(--md-sys-shape-corner-extra-small)",
         "md-sm": "var(--md-sys-shape-corner-small)",
@@ -146,7 +158,7 @@ const config = {
       },
       transitionTimingFunction: {
         // ============================================
-        // M3 Motion Easing Tokens
+        // M3 EXPRESSIVE Motion Easing Tokens
         // ============================================
         "md-standard": "var(--md-sys-motion-easing-standard)",
         "md-standard-decelerate": "var(--md-sys-motion-easing-standard-decelerate)",
@@ -154,6 +166,10 @@ const config = {
         "md-emphasized": "var(--md-sys-motion-easing-emphasized)",
         "md-emphasized-decelerate": "var(--md-sys-motion-easing-emphasized-decelerate)",
         "md-emphasized-accelerate": "var(--md-sys-motion-easing-emphasized-accelerate)",
+        // Expressive spring-like easing
+        "md-expressive": "var(--md-sys-motion-easing-expressive)",
+        "md-expressive-decelerate": "var(--md-sys-motion-easing-expressive-decelerate)",
+        "md-bounce": "var(--md-sys-motion-easing-bounce)",
       },
       keyframes: {
         "accordion-down": {
@@ -221,15 +237,18 @@ const config = {
         "accordion-up": "accordion-up 0.2s ease-out",
         // M3 Ripple animation - 600ms with emphasized decelerate easing
         "ripple": "ripple 600ms var(--md-sys-motion-easing-emphasized-decelerate) forwards",
+        // Expressive spring animation
+        "m3-spring": "m3-spring var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive) forwards",
+        "m3-bounce-in": "m3-bounce-in var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-bounce) forwards",
         // GPU-accelerated M3 animations
-        "m3-scale-in": "m3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards",
+        "m3-scale-in": "m3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive) forwards",
         "m3-scale-out": "m3-scale-out var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate) forwards",
         "m3-fade-in": "m3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard) forwards",
         "m3-fade-out": "m3-fade-out var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard) forwards",
-        "m3-slide-up": "m3-slide-up var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards",
-        "m3-slide-down": "m3-slide-down var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards",
-        "m3-slide-left": "m3-slide-left var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards",
-        "m3-slide-right": "m3-slide-right var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards",
+        "m3-slide-up": "m3-slide-up var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive) forwards",
+        "m3-slide-down": "m3-slide-down var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive) forwards",
+        "m3-slide-left": "m3-slide-left var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive) forwards",
+        "m3-slide-right": "m3-slide-right var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive) forwards",
         "lazy-shimmer": "lazy-shimmer 1.5s infinite",
       },
       opacity: {

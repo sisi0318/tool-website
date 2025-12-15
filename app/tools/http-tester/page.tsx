@@ -198,7 +198,11 @@ function getStatusColor(status: number): string {
   return "bg-gray-500"
 }
 
-export default function HTTPTester() {
+interface HTTPTesterProps {
+  params?: Record<string, string>
+}
+
+export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
   const t = useTranslations("httpTester")
   const { toast } = useToast()
 
@@ -206,7 +210,7 @@ export default function HTTPTester() {
   const [url, setUrl] = useState("https://example.com")
   const [method, setMethod] = useState("GET")
   const [headers, setHeaders] = useState<Record<string, string>>({})
-  const [params, setParams] = useState<RequestParam[]>([
+  const [requestParams, setRequestParams] = useState<RequestParam[]>([
     { id: "1", name: "", value: "", type: "String", enabled: true },
   ])
   const [customHeaders, setCustomHeaders] = useState<RequestParam[]>([])
@@ -279,7 +283,7 @@ export default function HTTPTester() {
   const loadFromHistory = useCallback((historyItem: RequestHistory) => {
     setMethod(historyItem.method)
     setUrl(historyItem.url)
-    setParams(historyItem.params)
+    setRequestParams(historyItem.params)
     setCustomHeaders(Object.entries(historyItem.headers).map(([name, value], index) => ({
       id: `header_${index}`,
       name,
@@ -307,7 +311,7 @@ export default function HTTPTester() {
       method,
       url,
       headers: customHeaders,
-      params,
+      params: requestParams,
       body,
       bodyType
     }
@@ -317,13 +321,13 @@ export default function HTTPTester() {
       title: "模板已保存",
       description: templateName
     })
-  }, [method, url, customHeaders, params, body, bodyType, toast])
+  }, [method, url, customHeaders, requestParams, body, bodyType, toast])
 
   // 从模板加载请求
   const loadFromTemplate = useCallback((template: RequestTemplate) => {
     setMethod(template.method)
     setUrl(template.url)
-    setParams(template.params)
+    setRequestParams(template.params)
     setCustomHeaders(template.headers)
     setBody(template.body)
     setBodyType(template.bodyType as any)
@@ -337,7 +341,7 @@ export default function HTTPTester() {
   // 生成 cURL 命令
   const generateCurl = useCallback(() => {
     const processedUrl = replaceEnvironmentVariables(url)
-    const queryParams = params
+    const queryParams = requestParams
       .filter(param => param.enabled && param.name)
       .map(param => `${encodeURIComponent(param.name)}=${encodeURIComponent(param.value || "")}`)
       .join("&")
@@ -361,7 +365,7 @@ export default function HTTPTester() {
     }
     
     return curlCommand
-  }, [method, url, params, customHeaders, body, bodyType, replaceEnvironmentVariables])
+  }, [method, url, requestParams, customHeaders, body, bodyType, replaceEnvironmentVariables])
 
   // 解析 cURL 命令
   const parseCurl = useCallback((curlCommand: string) => {
@@ -446,8 +450,8 @@ export default function HTTPTester() {
   }, [toast])
 
   const addParam = () => {
-    setParams([
-      ...params,
+    setRequestParams([
+      ...requestParams,
       {
         id: nextParamId.current.toString(),
         name: "",
@@ -460,11 +464,11 @@ export default function HTTPTester() {
   }
 
   const removeParam = (id: string) => {
-    setParams(params.filter((param) => param.id !== id))
+    setRequestParams(requestParams.filter((param) => param.id !== id))
   }
 
   const updateParam = (id: string, field: keyof RequestParam, value: string | boolean) => {
-    setParams(params.map((param) => (param.id === id ? { ...param, [field]: value } : param)))
+    setRequestParams(requestParams.map((param) => (param.id === id ? { ...param, [field]: value } : param)))
   }
 
   const addHeader = () => {
@@ -566,13 +570,13 @@ export default function HTTPTester() {
       } else if (bodyType === "binary" && binaryFile) {
         requestBody = binaryFile
       } else if (bodyType === "urlencoded") {
-        requestBody = params
+        requestBody = requestParams
           .filter((param) => param.enabled && param.name && param.value)
           .map((param) => `${encodeURIComponent(param.name)}=${encodeURIComponent(replaceEnvironmentVariables(param.value))}`)
           .join("&")
       }
 
-      const res = await proxyRequest(processedUrl, method, headersObj, params, requestBody, bodyType)
+      const res = await proxyRequest(processedUrl, method, headersObj, requestParams, requestBody, bodyType)
       setResponse(res.text)
       setApiO0(res.apiO0)
 
@@ -633,7 +637,7 @@ export default function HTTPTester() {
         method,
         url: processedUrl,
         headers: headersObj,
-        params,
+        params: requestParams,
         body: typeof requestBody === 'string' ? requestBody : body,
         bodyType,
         response: res.text,
@@ -664,7 +668,7 @@ export default function HTTPTester() {
         method,
         url,
         headers: {},
-        params,
+        params: requestParams,
         body,
         bodyType,
         response: errorMessage,
@@ -722,7 +726,7 @@ export default function HTTPTester() {
 
         // If we have parsed parameters, update the state
         if (parsedParams.length > 0) {
-          setParams(parsedParams)
+          setRequestParams(parsedParams)
         }
       } catch (error) {
         console.error("Error parsing URL parameters:", error)
@@ -736,7 +740,7 @@ export default function HTTPTester() {
   // Update URL when params change (仅在参数表格修改时更新)
   useEffect(() => {
     // Prevent the initial render from triggering this effect
-    if (params.length === 1 && !params[0].name && !params[0].value) {
+    if (requestParams.length === 1 && !requestParams[0].name && !requestParams[0].value) {
       return
     }
 
@@ -747,7 +751,7 @@ export default function HTTPTester() {
     }
 
     // 只有当参数表格有实际内容时才自动更新URL
-    const hasActiveParams = params.some(param => param.enabled && param.name)
+    const hasActiveParams = requestParams.some(param => param.enabled && param.name)
     if (!hasActiveParams) {
       return
     }
@@ -757,7 +761,7 @@ export default function HTTPTester() {
       const baseUrl = url.includes("?") ? url.split("?")[0] : url
 
       // Get all enabled parameters with names
-      const queryParams = params
+      const queryParams = requestParams
         .filter((param) => param.enabled && param.name)
         .map((param) => `${encodeURIComponent(param.name)}=${encodeURIComponent(param.value || "")}`)
         .join("&")
@@ -772,7 +776,7 @@ export default function HTTPTester() {
     } catch (error) {
       console.error("Error updating URL:", error)
     }
-  }, [params, manualUrlChange])
+  }, [requestParams, manualUrlChange])
 
   // 延迟自动解析，避免输入时的干扰
   const debouncedAutoParseRef = useRef<NodeJS.Timeout>()
@@ -831,7 +835,7 @@ export default function HTTPTester() {
       
       // 获取现有参数的映射（name -> param对象）
       const existingParamsMap = new Map<string, RequestParam>()
-      params.forEach(param => {
+      requestParams.forEach(param => {
         if (param.name) {
           existingParamsMap.set(param.name, param)
         }
@@ -884,7 +888,7 @@ export default function HTTPTester() {
 
       // 只有在有实际变化时才更新状态
       if (newParams.length > 0 || hasChanges) {
-        setParams(prevParams => [...prevParams, ...newParams])
+        setRequestParams(prevParams => [...prevParams, ...newParams])
         setAutoParseStatus(`已同步 ${newParams.length} 个新参数`)
       } else {
         setAutoParseStatus("参数已是最新")
@@ -902,7 +906,7 @@ export default function HTTPTester() {
         setAutoParseStatus("")
       }, 2000)
     }
-  }, [params])
+  }, [requestParams])
 
   // 旧的自动解析函数（保留兼容性）
   const autoParseUrlParameters = (inputUrl: string) => {
@@ -931,7 +935,7 @@ export default function HTTPTester() {
 
       // 获取现有参数的映射
       const existingParamsMap = new Map<string, RequestParam>()
-      params.forEach(param => {
+      requestParams.forEach(param => {
         if (param.name) {
           existingParamsMap.set(param.name, param)
         }
@@ -978,7 +982,7 @@ export default function HTTPTester() {
 
       // 更新参数列表
       if (newParams.length > 0 || updatedCount > 0) {
-        setParams([...params, ...newParams])
+        setRequestParams([...requestParams, ...newParams])
         
         // 清理URL，移除查询参数
         const baseUrl = url.split("?")[0]
@@ -1406,7 +1410,7 @@ export default function HTTPTester() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {params.map((param) => (
+                    {requestParams.map((param) => (
                       <TableRow key={param.id}>
                         <TableCell>
                           <Checkbox

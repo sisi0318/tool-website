@@ -9,7 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, Calculator, Info } from "lucide-react"
 
-export default function BMICalculator() {
+interface BMICalculatorProps {
+  params?: Record<string, string>
+}
+
+export default function BMICalculator({ params }: BMICalculatorProps) {
   const [activeTab, setActiveTab] = useState("metric")
 
   // 公制单位

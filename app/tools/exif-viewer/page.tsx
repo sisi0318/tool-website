@@ -52,7 +52,11 @@ interface ExifCategory {
   color: string
 }
 
-export default function ExifViewerPage() {
+interface ExifViewerProps {
+  params?: Record<string, string>
+}
+
+export default function ExifViewerPage({ params }: ExifViewerProps) {
   const { toast } = useToast()
 
   // 状态管理
@@ -100,13 +104,7 @@ export default function ExifViewerPage() {
         iptc: true,
         jfif: true,
         ihdr: true,
-        iptc: true,
-        icc: true,
-        mpf: true,
-        chunked: true,
-        firstChunkSize: 40000,
-        chunkSize: 10000
-      })
+      } as any)
 
       processedImage.exifData = exif || {}
       processedImage.isProcessing = false
@@ -452,7 +450,7 @@ export default function ExifViewerPage() {
         filename += ".csv"
         break
       case "txt":
-        const txtLines = [`EXIF Data for ${selectedImage.file.name}`, "=" * 50, ""]
+        const txtLines = [`EXIF Data for ${selectedImage.file.name}`, "=".repeat(50), ""]
         filteredFields.forEach(field => {
           txtLines.push(`${field.label}: ${field.formattedValue}`)
         })

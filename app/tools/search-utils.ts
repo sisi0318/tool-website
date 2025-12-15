@@ -116,6 +116,54 @@ export function getTools(locale = "en"): Tool[] {
       keywords: ["whois", "domain", "lookup", "registrar", "dns", "domain info", "domain search"],
       path: "/tools/whois",
     },
+    // UUID Generator
+    {
+      id: "uuid",
+      name: t.uuid?.title || "UUID Generator",
+      description: t.uuid?.description || "Generate UUIDs of various versions",
+      keywords: ["uuid", "guid", "unique", "identifier", "random", "v4", "v1", "generate"],
+      path: "/tools/uuid",
+    },
+    // JWT Parser
+    {
+      id: "jwt",
+      name: t.jwt?.title || "JWT Parser",
+      description: t.jwt?.description || "Parse and validate JWT tokens",
+      keywords: ["jwt", "token", "json web token", "parse", "decode", "header", "payload", "signature", "auth"],
+      path: "/tools/jwt",
+    },
+    // Text Statistics
+    {
+      id: "text-stats",
+      name: t.textStats?.title || "Text Statistics",
+      description: t.textStats?.description || "Count characters, words, sentences and more",
+      keywords: ["text", "statistics", "count", "words", "characters", "sentences", "analyze", "chinese", "english"],
+      path: "/tools/text-stats",
+    },
+    // Image Compress
+    {
+      id: "image-compress",
+      name: t.imageCompress?.title || "Image Compress",
+      description: t.imageCompress?.description || "Compress images online with adjustable quality",
+      keywords: ["image", "compress", "optimize", "reduce", "size", "quality", "jpeg", "png", "webp", "batch"],
+      path: "/tools/image-compress",
+    },
+    // Case Converter
+    {
+      id: "case-converter",
+      name: t.caseConverter?.title || "Case Converter",
+      description: t.caseConverter?.description || "Convert text case: uppercase, lowercase, title case, camelCase, etc.",
+      keywords: ["case", "convert", "uppercase", "lowercase", "title", "camel", "pascal", "snake", "kebab", "text"],
+      path: "/tools/case-converter",
+    },
+    // TOTP Authenticator
+    {
+      id: "totp",
+      name: t.totp?.title || "TOTP Authenticator",
+      description: t.totp?.description || "Time-based One-Time Password generator, compatible with Google Authenticator",
+      keywords: ["totp", "otp", "authenticator", "2fa", "two-factor", "google", "security", "password", "token"],
+      path: "/tools/totp",
+    },
   ]
 }
 
@@ -908,6 +956,186 @@ export function createSearchableFeatures(translations: any): SearchResult[] {
         toolName: translations.whois.name,
         featureName: "Domain Expiry",
         featureDescription: "Check when a domain expires",
+      },
+    )
+  }
+
+  // UUID Generator features
+  if (translations?.uuid?.name) {
+    features.push(
+      {
+        toolId: "uuid",
+        toolName: translations.uuid.name,
+        featureName: "UUID",
+        featureDescription: "Generate unique identifiers",
+      },
+      {
+        toolId: "uuid",
+        toolName: translations.uuid.name,
+        featureName: "GUID",
+        featureDescription: "Generate globally unique identifiers",
+      },
+      {
+        toolId: "uuid",
+        toolName: translations.uuid.name,
+        featureName: "UUID v4",
+        featureDescription: "Generate random UUIDs",
+      },
+      {
+        toolId: "uuid",
+        toolName: translations.uuid.name,
+        featureName: "UUID v1",
+        featureDescription: "Generate time-based UUIDs",
+      },
+      {
+        toolId: "uuid",
+        toolName: translations.uuid.name,
+        featureName: "Batch UUID",
+        featureDescription: "Generate multiple UUIDs at once",
+      },
+    )
+  }
+
+  // JWT Parser features
+  if (translations?.jwt?.name) {
+    features.push(
+      {
+        toolId: "jwt",
+        toolName: translations.jwt.name,
+        featureName: "JWT",
+        featureDescription: "Parse JSON Web Tokens",
+      },
+      {
+        toolId: "jwt",
+        toolName: translations.jwt.name,
+        featureName: "Token Decode",
+        featureDescription: "Decode JWT token content",
+      },
+      {
+        toolId: "jwt",
+        toolName: translations.jwt.name,
+        featureName: "JWT Header",
+        featureDescription: "View JWT header information",
+      },
+      {
+        toolId: "jwt",
+        toolName: translations.jwt.name,
+        featureName: "JWT Payload",
+        featureDescription: "View JWT payload claims",
+      },
+      {
+        toolId: "jwt",
+        toolName: translations.jwt.name,
+        featureName: "Token Expiry",
+        featureDescription: "Check JWT expiration status",
+      },
+    )
+  }
+
+  // Text Statistics features
+  if (translations?.textStats?.name) {
+    features.push(
+      {
+        toolId: "text-stats",
+        toolName: translations.textStats.name,
+        featureName: "Text Count",
+        featureDescription: "Count characters, words and sentences",
+      },
+      {
+        toolId: "text-stats",
+        toolName: translations.textStats.name,
+        featureName: "Word Frequency",
+        featureDescription: "Analyze word frequency in text",
+      },
+      {
+        toolId: "text-stats",
+        toolName: translations.textStats.name,
+        featureName: "Reading Time",
+        featureDescription: "Estimate reading time for text",
+      },
+      {
+        toolId: "text-stats",
+        toolName: translations.textStats.name,
+        featureName: "Chinese Analysis",
+        featureDescription: "Analyze Chinese text statistics",
+      },
+      {
+        toolId: "text-stats",
+        toolName: translations.textStats.name,
+        featureName: "English Analysis",
+        featureDescription: "Analyze English text statistics",
+      },
+    )
+  }
+
+  // Image Compress features
+  if (translations?.imageCompress?.name) {
+    features.push(
+      {
+        toolId: "image-compress",
+        toolName: translations.imageCompress.name,
+        featureName: "Image Compress",
+        featureDescription: "Compress images with adjustable quality",
+      },
+      {
+        toolId: "image-compress",
+        toolName: translations.imageCompress.name,
+        featureName: "Batch Compress",
+        featureDescription: "Compress multiple images at once",
+      },
+      {
+        toolId: "image-compress",
+        toolName: translations.imageCompress.name,
+        featureName: "Image Resize",
+        featureDescription: "Resize images while compressing",
+      },
+    )
+  }
+
+  // Case Converter features
+  if (translations?.caseConverter?.name) {
+    features.push(
+      {
+        toolId: "case-converter",
+        toolName: translations.caseConverter.name,
+        featureName: "Uppercase",
+        featureDescription: "Convert text to uppercase",
+      },
+      {
+        toolId: "case-converter",
+        toolName: translations.caseConverter.name,
+        featureName: "Lowercase",
+        featureDescription: "Convert text to lowercase",
+      },
+      {
+        toolId: "case-converter",
+        toolName: translations.caseConverter.name,
+        featureName: "Title Case",
+        featureDescription: "Convert text to title case",
+      },
+      {
+        toolId: "case-converter",
+        toolName: translations.caseConverter.name,
+        featureName: "camelCase",
+        featureDescription: "Convert text to camelCase",
+      },
+    )
+  }
+
+  // TOTP features
+  if (translations?.totp?.name) {
+    features.push(
+      {
+        toolId: "totp",
+        toolName: translations.totp.name,
+        featureName: "TOTP Generator",
+        featureDescription: "Generate time-based one-time passwords",
+      },
+      {
+        toolId: "totp",
+        toolName: translations.totp.name,
+        featureName: "2FA Authenticator",
+        featureDescription: "Two-factor authentication code generator",
       },
     )
   }

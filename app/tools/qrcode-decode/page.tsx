@@ -41,7 +41,11 @@ interface ImageEnhancement {
   grayscale: boolean
 }
 
-export default function QRCodeDecoder() {
+interface QRCodeDecoderProps {
+  params?: Record<string, string>
+}
+
+export default function QRCodeDecoder({ params }: QRCodeDecoderProps) {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 

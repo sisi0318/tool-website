@@ -11,6 +11,10 @@ import { Switch } from "@/components/ui/switch"
 import { Copy, Check, RefreshCw, Globe, Monitor, Cpu, Shield, Fingerprint, Battery, Smartphone, Settings, ChevronUp, ChevronDown, Zap, Eye, Wifi } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
 
+interface DevicePageProps {
+  params?: Record<string, string>
+}
+
 // 在文件顶部添加缓存相关的常量
 const CLIENT_CACHE_DURATION = 3 * 60 * 60 * 1000 // 3小时，单位毫秒
 const IP_CACHE_KEY = "device-info-ip-cache"
@@ -83,7 +87,7 @@ interface DeviceInfo {
   }
 }
 
-export default function DeviceInfoPage() {
+export default function DeviceInfoPage({ params }: DevicePageProps) {
   const t = useTranslations("device")
   
   // 设置状态
@@ -296,7 +300,7 @@ export default function DeviceInfoPage() {
       navigator.doNotTrack === "1" ||
       navigator.doNotTrack === "yes" ||
       (window as any).doNotTrack === "1" ||
-      navigator.msDoNotTrack === "1"
+      navigator.doNotTrack === "1"
         ? true
         : navigator.doNotTrack === "0" || navigator.doNotTrack === "no" || (window as any).doNotTrack === "0"
           ? false
@@ -407,7 +411,7 @@ export default function DeviceInfoPage() {
   const generateWebGLFingerprint = () => {
     try {
       const canvas = document.createElement("canvas")
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
+      const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null
 
       if (!gl) return "WebGL not supported"
 

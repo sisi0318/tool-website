@@ -15,6 +15,10 @@ import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { Copy, Trash2, Clock, Calendar, Play, AlertCircle, Info, Zap, Settings, ChevronDown, ChevronUp, Download, History, Check } from "lucide-react"
 
+interface CrontabToolProps {
+  params?: Record<string, string>
+}
+
 // 辅助函数：解析cron表达式
 function parseCronExpression(expression: string, includeSeconds = false) {
   const parts = expression.trim().split(/\s+/)
@@ -326,7 +330,7 @@ function generateCronDescription(expression: string, includeSeconds = false, t: 
   return parts.join('，') + '执行'
 }
 
-export default function CrontabPage() {
+export default function CrontabPage({ params }: CrontabToolProps) {
   const t = useTranslations("crontab")
   const { toast } = useToast()
 

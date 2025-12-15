@@ -5,59 +5,55 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 /**
- * M3 Card Component
+ * M3 EXPRESSIVE Card Component
  * 
  * Implements Material You 3 Expressive card specifications with:
  * - Three variants: elevated, filled, outlined
- * - M3 Expressive shape (large/extra-large corners)
- * - Hover and pressed state layers with appropriate opacity values
- * - Ripple effect on interaction for interactive cards
- * 
- * Requirements: 4.2, 3.2, 8.1, 8.2, 8.3
+ * - Larger M3 Expressive shape radii
+ * - Enhanced hover states with playful animations
+ * - Gradient backgrounds for visual interest
+ * - Spring-like ripple effect on interaction
  */
 
 /**
- * M3 Card variant styles using CSS custom properties
+ * M3 Expressive Card variant styles
  * Based on Material Design 3 Expressive specifications
  */
 const m3CardVariants = cva(
   // Base styles
   [
     'relative',
-    'overflow-hidden', // Required for ripple effect and state layers
+    'overflow-hidden',
     'transition-all',
     'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-standard)]',
+    'ease-[var(--md-sys-motion-easing-expressive)]',
   ].join(' '),
   {
     variants: {
       /**
-       * M3 Card variants:
-       * - elevated: Surface color with shadow elevation
-       * - filled: Surface container color, no shadow
-       * - outlined: Surface color with outline border
+       * M3 Expressive Card variants:
+       * - elevated: Gradient surface with enhanced shadow
+       * - filled: Surface container with subtle gradient
+       * - outlined: Surface with vibrant border
        */
       variant: {
         elevated: [
-          'bg-[var(--md-sys-color-surface-container-low)]',
+          'bg-gradient-to-br from-[var(--md-sys-color-surface-container-low)] to-[var(--md-sys-color-surface-container)]',
           'text-[var(--md-sys-color-on-surface)]',
-          'shadow-md',
+          'shadow-lg shadow-[var(--md-sys-color-shadow)]/10',
         ].join(' '),
         filled: [
-          'bg-[var(--md-sys-color-surface-container-highest)]',
+          'bg-gradient-to-br from-[var(--md-sys-color-surface-container-highest)] to-[var(--md-sys-color-surface-container-high)]',
           'text-[var(--md-sys-color-on-surface)]',
         ].join(' '),
         outlined: [
           'bg-[var(--md-sys-color-surface)]',
           'text-[var(--md-sys-color-on-surface)]',
-          'border border-[var(--md-sys-color-outline-variant)]',
+          'border-2 border-[var(--md-sys-color-outline-variant)]',
         ].join(' '),
       },
       /**
-       * M3 Expressive shape sizes
-       * - medium: 16px corners (standard)
-       * - large: 24px corners (default for cards)
-       * - extraLarge: 28px corners (expressive)
+       * M3 Expressive shape sizes - larger radii
        */
       shape: {
         medium: 'rounded-[var(--md-sys-shape-corner-medium)]',
@@ -65,7 +61,7 @@ const m3CardVariants = cva(
         extraLarge: 'rounded-[var(--md-sys-shape-corner-extra-large)]',
       },
       /**
-       * Interactive state - enables hover/pressed state layers and ripple
+       * Interactive state - enables expressive hover/pressed states
        */
       interactive: {
         true: [
@@ -75,6 +71,9 @@ const m3CardVariants = cva(
           'focus-visible:ring-2',
           'focus-visible:ring-[var(--md-sys-color-primary)]',
           'focus-visible:ring-offset-2',
+          'hover:-translate-y-1',
+          'active:scale-[0.98]',
+          'active:translate-y-0',
         ].join(' '),
         false: '',
       },
@@ -87,23 +86,23 @@ const m3CardVariants = cva(
       },
     },
     compoundVariants: [
-      // Elevated card hover state - increase shadow
+      // Elevated card hover state - enhanced shadow
       {
         variant: 'elevated',
         interactive: true,
-        className: 'hover:shadow-lg',
+        className: 'hover:shadow-xl hover:shadow-[var(--md-sys-color-primary)]/10',
       },
       // Filled card hover state - add subtle shadow
       {
         variant: 'filled',
         interactive: true,
-        className: 'hover:shadow-sm',
+        className: 'hover:shadow-md',
       },
-      // Outlined card hover state - no shadow change
+      // Outlined card hover state - vibrant border
       {
         variant: 'outlined',
         interactive: true,
-        className: '',
+        className: 'hover:border-[var(--md-sys-color-outline)] hover:shadow-sm',
       },
     ],
     defaultVariants: {
@@ -127,8 +126,7 @@ export interface M3CardProps
 }
 
 /**
- * Ripple effect hook for M3 cards
- * Creates a ripple animation originating from the touch/click point
+ * Enhanced Ripple effect hook for M3 Expressive cards
  */
 function useRipple() {
   const [ripples, setRipples] = React.useState<Array<{
@@ -142,12 +140,11 @@ function useRipple() {
     const element = event.currentTarget;
     const rect = element.getBoundingClientRect();
     
-    // Calculate ripple position relative to element
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     
-    // Calculate ripple size (should cover the entire element)
-    const size = Math.max(rect.width, rect.height) * 2;
+    // Larger ripple for expressive effect
+    const size = Math.max(rect.width, rect.height) * 2.5;
     
     const newRipple = {
       key: Date.now(),
@@ -158,27 +155,28 @@ function useRipple() {
     
     setRipples((prev) => [...prev, newRipple]);
     
-    // Remove ripple after animation completes
     setTimeout(() => {
       setRipples((prev) => prev.filter((r) => r.key !== newRipple.key));
-    }, 600); // M3 ripple duration
+    }, 800);
   }, []);
 
   return { ripples, addRipple };
 }
 
 /**
- * Ripple component for visual feedback
+ * Expressive Ripple component with spring animation
  */
 function Ripple({ x, y, size }: { x: number; y: number; size: number }) {
   return (
     <span
-      className="absolute pointer-events-none animate-ripple rounded-full bg-[var(--md-sys-color-on-surface)] opacity-[0.12]"
+      className="absolute pointer-events-none rounded-full bg-[var(--md-sys-color-on-surface)] opacity-[0.08]"
       style={{
         left: x - size / 2,
         top: y - size / 2,
         width: size,
         height: size,
+        transform: 'scale(0)',
+        animation: 'ripple 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
       }}
     />
   );
@@ -186,15 +184,14 @@ function Ripple({ x, y, size }: { x: number; y: number; size: number }) {
 
 
 /**
- * State layer component for hover/focus/pressed states
- * Provides visual feedback for interactive cards
+ * Expressive State layer component for hover/focus/pressed states
  */
 function StateLayer({ isHovered, isPressed }: { isHovered: boolean; isPressed: boolean }) {
-  const opacity = isPressed ? 0.12 : isHovered ? 0.08 : 0;
+  const opacity = isPressed ? 0.16 : isHovered ? 0.08 : 0;
   
   return (
     <span
-      className="absolute inset-0 pointer-events-none bg-[var(--md-sys-color-on-surface)] transition-opacity duration-[var(--md-sys-motion-duration-short2)]"
+      className="absolute inset-0 pointer-events-none bg-[var(--md-sys-color-on-surface)] transition-opacity duration-[var(--md-sys-motion-duration-short4)] ease-[var(--md-sys-motion-easing-expressive)]"
       style={{ opacity }}
       aria-hidden="true"
     />
@@ -202,12 +199,14 @@ function StateLayer({ isHovered, isPressed }: { isHovered: boolean; isPressed: b
 }
 
 /**
- * M3 Card Component
+ * M3 EXPRESSIVE Card Component
  * 
  * A Material You 3 Expressive card with support for:
  * - Three variants: elevated, filled, outlined
  * - Three shape sizes: medium, large, extraLarge
- * - Interactive mode with hover/pressed state layers and ripple effect
+ * - Interactive mode with expressive hover/pressed states and ripple
+ * - Gradient backgrounds for visual interest
+ * - Playful spring-like animations
  */
 const M3Card = React.forwardRef<HTMLDivElement, M3CardProps>(
   (

@@ -3,27 +3,26 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MoonIcon, SunIcon, HomeIcon, Settings } from "lucide-react"
+import { MoonIcon, SunIcon, HomeIcon, Wrench } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useTranslations } from "@/hooks/use-translations"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { cn } from "@/lib/utils"
 
 /**
- * M3 Top App Bar Header Component
+ * M3 EXPRESSIVE Top App Bar Header Component
  * 
  * Implements Material You 3 Expressive Top App Bar specifications with:
- * - Proper surface color and elevation
- * - Scroll behavior with elevation change and color transition
- * - Animated theme toggle with sun/moon icon transition
+ * - More vibrant surface colors with gradient effects
+ * - Enhanced scroll behavior with smooth color transitions
+ * - Animated theme toggle with playful icon transition
+ * - Expressive hover states and micro-interactions
  * - Minimum 48dp touch targets for accessibility
- * 
- * Requirements: 7.1, 7.2, 7.3, 7.4, 12.1
  */
 
 /**
- * M3 Icon Button Component
- * Provides minimum 48dp touch target with proper M3 styling
+ * M3 Expressive Icon Button Component
+ * Provides minimum 48dp touch target with expressive M3 styling
  */
 interface M3IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode
@@ -43,13 +42,14 @@ const M3IconButton = React.forwardRef<HTMLButtonElement, M3IconButtonProps>(
           // Colors
           "text-[var(--md-sys-color-on-surface-variant)]",
           "bg-transparent",
-          // State layers
+          // State layers with expressive transitions
           "hover:bg-[var(--md-sys-color-on-surface)]/[0.08]",
           "focus-visible:bg-[var(--md-sys-color-on-surface)]/[0.12]",
-          "active:bg-[var(--md-sys-color-on-surface)]/[0.12]",
-          // Transitions
-          "transition-all duration-[var(--md-sys-motion-duration-short2)]",
-          "ease-[var(--md-sys-motion-easing-standard)]",
+          "active:bg-[var(--md-sys-color-on-surface)]/[0.16]",
+          "active:scale-95",
+          // Expressive transitions
+          "transition-all duration-[var(--md-sys-motion-duration-short4)]",
+          "ease-[var(--md-sys-motion-easing-expressive)]",
           // Focus ring
           "focus-visible:outline-none focus-visible:ring-2",
           "focus-visible:ring-[var(--md-sys-color-primary)]",
@@ -68,7 +68,7 @@ const M3IconButton = React.forwardRef<HTMLButtonElement, M3IconButtonProps>(
 M3IconButton.displayName = "M3IconButton"
 
 /**
- * Animated Theme Toggle Component
+ * Animated Theme Toggle Component with Expressive Transitions
  * Provides smooth icon transition between sun and moon states
  */
 function ThemeToggle() {
@@ -76,7 +76,6 @@ function ThemeToggle() {
   const t = useTranslations("common")
   const [mounted, setMounted] = React.useState(false)
 
-  // Avoid hydration mismatch
   React.useEffect(() => {
     setMounted(true)
   }, [])
@@ -104,21 +103,21 @@ function ThemeToggle() {
         <SunIcon
           className={cn(
             "absolute inset-0 h-6 w-6",
-            "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
-            "ease-[var(--md-sys-motion-easing-standard)]",
+            "transition-all duration-[var(--md-sys-motion-duration-medium3)]",
+            "ease-[var(--md-sys-motion-easing-expressive)]",
             theme === "dark"
               ? "rotate-0 scale-100 opacity-100"
-              : "rotate-90 scale-0 opacity-0"
+              : "rotate-180 scale-0 opacity-0"
           )}
         />
         {/* Moon icon - visible in light mode */}
         <MoonIcon
           className={cn(
             "absolute inset-0 h-6 w-6",
-            "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
-            "ease-[var(--md-sys-motion-easing-standard)]",
+            "transition-all duration-[var(--md-sys-motion-duration-medium3)]",
+            "ease-[var(--md-sys-motion-easing-expressive)]",
             theme === "dark"
-              ? "-rotate-90 scale-0 opacity-0"
+              ? "-rotate-180 scale-0 opacity-0"
               : "rotate-0 scale-100 opacity-100"
           )}
         />
@@ -128,8 +127,7 @@ function ThemeToggle() {
 }
 
 /**
- * Custom hook for scroll-based elevation
- * Returns true when page is scrolled past threshold
+ * Custom hook for scroll-based elevation with smooth transitions
  */
 function useScrollElevation(threshold: number = 10) {
   const [isScrolled, setIsScrolled] = React.useState(false)
@@ -139,7 +137,6 @@ function useScrollElevation(threshold: number = 10) {
       setIsScrolled(window.scrollY > threshold)
     }
 
-    // Check initial scroll position
     handleScroll()
 
     window.addEventListener("scroll", handleScroll, { passive: true })
@@ -150,7 +147,7 @@ function useScrollElevation(threshold: number = 10) {
 }
 
 /**
- * M3 Top App Bar Header
+ * M3 Expressive Top App Bar Header
  */
 export default function Header() {
   const pathname = usePathname()
@@ -165,17 +162,20 @@ export default function Header() {
         "w-full",
         // Height: 64dp standard for Top App Bar
         "h-16",
-        // Surface color with tonal elevation
-        "bg-[var(--md-sys-color-surface)]",
+        // Surface color with gradient effect
+        "bg-[var(--md-sys-color-surface)]/95",
+        "backdrop-blur-md",
         // Border
-        "border-b border-[var(--md-sys-color-outline-variant)]",
-        // Transitions for scroll behavior
-        "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
-        "ease-[var(--md-sys-motion-easing-standard)]",
+        "border-b border-[var(--md-sys-color-outline-variant)]/50",
+        // Expressive transitions for scroll behavior
+        "transition-all duration-[var(--md-sys-motion-duration-medium3)]",
+        "ease-[var(--md-sys-motion-easing-expressive)]",
         // Elevated state on scroll
         isScrolled && [
-          "bg-[var(--md-sys-color-surface-container)]",
-          "shadow-md",
+          "bg-[var(--md-sys-color-surface-container)]/98",
+          "backdrop-blur-xl",
+          "shadow-lg shadow-[var(--md-sys-color-shadow)]/10",
+          "border-[var(--md-sys-color-outline-variant)]/30",
         ]
       )}
       data-testid="m3-header"
@@ -186,36 +186,38 @@ export default function Header() {
         <Link
           href="/"
           className={cn(
-            "flex items-center gap-3",
+            "flex items-center gap-3 group",
             // Touch target
             "min-h-[48px] py-2",
-            // Hover state
-            "rounded-[var(--md-sys-shape-corner-medium)]",
-            "hover:bg-[var(--md-sys-color-on-surface)]/[0.08]",
-            "transition-colors duration-[var(--md-sys-motion-duration-short2)]",
-            "ease-[var(--md-sys-motion-easing-standard)]",
-            "px-2 -ml-2"
+            // Hover state with expressive transition
+            "rounded-[var(--md-sys-shape-corner-large)]",
+            "hover:bg-[var(--md-sys-color-on-surface)]/[0.06]",
+            "transition-all duration-[var(--md-sys-motion-duration-short4)]",
+            "ease-[var(--md-sys-motion-easing-expressive)]",
+            "px-3 -ml-3"
           )}
         >
-          {/* Logo icon container */}
+          {/* Logo icon container with gradient */}
           <div
             className={cn(
               "w-10 h-10 flex items-center justify-center",
-              "bg-[var(--md-sys-color-primary)]",
+              "bg-gradient-to-br from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-tertiary)]",
               "rounded-[var(--md-sys-shape-corner-medium)]",
-              "transition-transform duration-[var(--md-sys-motion-duration-medium2)]",
-              "ease-[var(--md-sys-motion-easing-emphasized)]",
-              "group-hover:scale-105"
+              "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
+              "ease-[var(--md-sys-motion-easing-expressive)]",
+              "group-hover:scale-110 group-hover:rotate-3",
+              "shadow-md group-hover:shadow-lg"
             )}
           >
-            <Settings className="h-5 w-5 text-[var(--md-sys-color-on-primary)]" />
+            <Wrench className="h-5 w-5 text-white" />
           </div>
           {/* Brand name - M3 Title Large */}
           <span
             className={cn(
-              "font-medium text-lg",
+              "hidden sm:inline font-semibold text-lg",
               "text-[var(--md-sys-color-on-surface)]",
-              "hidden sm:inline"
+              "group-hover:text-gradient",
+              "transition-colors duration-[var(--md-sys-motion-duration-short4)]"
             )}
           >
             {t("siteName")}
@@ -253,8 +255,7 @@ export default function Header() {
 }
 
 /**
- * Navigation Link Component
- * M3 styled navigation item with proper touch targets
+ * Navigation Link Component with Expressive M3 styling
  */
 interface NavLinkProps {
   href: string
@@ -268,24 +269,27 @@ function NavLink({ href, active, children }: NavLinkProps) {
       href={href}
       className={cn(
         // Base styles with 48dp touch target
-        "inline-flex items-center justify-center",
-        "min-h-[48px] px-4",
+        "relative inline-flex items-center justify-center",
+        "min-h-[48px] px-5",
         "rounded-[var(--md-sys-shape-corner-full)]",
         // Typography - M3 Label Large
-        "text-sm font-medium",
+        "text-sm font-semibold",
         // Colors based on active state
         active
           ? [
               "bg-[var(--md-sys-color-secondary-container)]",
               "text-[var(--md-sys-color-on-secondary-container)]",
+              "shadow-sm",
             ]
           : [
               "text-[var(--md-sys-color-on-surface-variant)]",
               "hover:bg-[var(--md-sys-color-on-surface)]/[0.08]",
+              "hover:text-[var(--md-sys-color-on-surface)]",
             ],
-        // Transitions
-        "transition-all duration-[var(--md-sys-motion-duration-short2)]",
-        "ease-[var(--md-sys-motion-easing-standard)]",
+        // Expressive transitions
+        "transition-all duration-[var(--md-sys-motion-duration-short4)]",
+        "ease-[var(--md-sys-motion-easing-expressive)]",
+        "hover:scale-105 active:scale-95",
         // Focus ring
         "focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-[var(--md-sys-color-primary)]",
@@ -293,6 +297,10 @@ function NavLink({ href, active, children }: NavLinkProps) {
       )}
     >
       {children}
+      {/* Active indicator */}
+      {active && (
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-[var(--md-sys-color-secondary)] rounded-full" />
+      )}
     </Link>
   )
 }

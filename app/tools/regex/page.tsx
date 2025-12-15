@@ -23,6 +23,10 @@ import {
   ChevronDown, ChevronUp, Lightbulb, TestTube2
 } from "lucide-react"
 
+interface RegexToolProps {
+  params?: Record<string, string>
+}
+
 interface RegexMatch {
   index: number
   match: string
@@ -58,7 +62,7 @@ interface RegexHistory {
   matchCount: number
 }
 
-export default function RegexTester() {
+export default function RegexTester({ params }: RegexToolProps) {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 

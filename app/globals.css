@@ -5,95 +5,118 @@
 @layer base {
   :root {
     /* ============================================
-     * Material You 3 Design Tokens - Light Theme
+     * Material You 3 EXPRESSIVE Design Tokens - Light Theme
+     * More vibrant, dynamic, and expressive design language
      * ============================================ */
     
-    /* Primary colors */
-    --md-sys-color-primary: #6750A4;
+    /* Primary colors - More vibrant purple */
+    --md-sys-color-primary: #5B4BB5;
     --md-sys-color-on-primary: #FFFFFF;
-    --md-sys-color-primary-container: #EADDFF;
-    --md-sys-color-on-primary-container: #21005D;
+    --md-sys-color-primary-container: #E8DEFF;
+    --md-sys-color-on-primary-container: #1C0062;
+    --md-sys-color-primary-fixed: #E8DEFF;
+    --md-sys-color-primary-fixed-dim: #CFBDFF;
     
-    /* Secondary colors */
-    --md-sys-color-secondary: #625B71;
+    /* Secondary colors - Warm coral accent */
+    --md-sys-color-secondary: #E8677D;
     --md-sys-color-on-secondary: #FFFFFF;
-    --md-sys-color-secondary-container: #E8DEF8;
-    --md-sys-color-on-secondary-container: #1D192B;
+    --md-sys-color-secondary-container: #FFD9DD;
+    --md-sys-color-on-secondary-container: #3F0016;
     
-    /* Tertiary colors */
-    --md-sys-color-tertiary: #7D5260;
+    /* Tertiary colors - Teal for balance */
+    --md-sys-color-tertiary: #00A896;
     --md-sys-color-on-tertiary: #FFFFFF;
-    --md-sys-color-tertiary-container: #FFD8E4;
-    --md-sys-color-on-tertiary-container: #31111D;
+    --md-sys-color-tertiary-container: #A6F5E6;
+    --md-sys-color-on-tertiary-container: #00382E;
     
     /* Error colors */
-    --md-sys-color-error: #B3261E;
+    --md-sys-color-error: #DC362E;
     --md-sys-color-on-error: #FFFFFF;
-    --md-sys-color-error-container: #F9DEDC;
-    --md-sys-color-on-error-container: #410E0B;
+    --md-sys-color-error-container: #FFDAD6;
+    --md-sys-color-on-error-container: #410002;
     
-    /* Surface colors */
-    --md-sys-color-surface: #FEF7FF;
-    --md-sys-color-on-surface: #1D1B20;
-    --md-sys-color-surface-variant: #E7E0EC;
-    --md-sys-color-on-surface-variant: #49454F;
-    --md-sys-color-surface-dim: #DED8E1;
-    --md-sys-color-surface-bright: #FEF7FF;
+    /* Success colors (Expressive addition) */
+    --md-sys-color-success: #2E7D32;
+    --md-sys-color-on-success: #FFFFFF;
+    --md-sys-color-success-container: #C8E6C9;
+    --md-sys-color-on-success-container: #1B5E20;
+    
+    /* Warning colors (Expressive addition) */
+    --md-sys-color-warning: #F9A825;
+    --md-sys-color-on-warning: #000000;
+    --md-sys-color-warning-container: #FFF3E0;
+    --md-sys-color-on-warning-container: #663C00;
+    
+    /* Surface colors - Warmer, more inviting */
+    --md-sys-color-surface: #FFFBFF;
+    --md-sys-color-on-surface: #1C1B1F;
+    --md-sys-color-surface-variant: #E7E0EB;
+    --md-sys-color-on-surface-variant: #49454E;
+    --md-sys-color-surface-dim: #DED8E0;
+    --md-sys-color-surface-bright: #FFFBFF;
     --md-sys-color-surface-container-lowest: #FFFFFF;
-    --md-sys-color-surface-container-low: #F7F2FA;
-    --md-sys-color-surface-container: #F3EDF7;
-    --md-sys-color-surface-container-high: #ECE6F0;
+    --md-sys-color-surface-container-low: #F8F2FA;
+    --md-sys-color-surface-container: #F2ECF4;
+    --md-sys-color-surface-container-high: #ECE6EE;
     --md-sys-color-surface-container-highest: #E6E0E9;
     
     /* Outline colors */
-    --md-sys-color-outline: #79747E;
-    --md-sys-color-outline-variant: #CAC4D0;
+    --md-sys-color-outline: #7A757F;
+    --md-sys-color-outline-variant: #CBC4CF;
     
     /* Other colors */
     --md-sys-color-shadow: #000000;
     --md-sys-color-scrim: #000000;
-    --md-sys-color-inverse-surface: #322F35;
-    --md-sys-color-inverse-on-surface: #F5EFF7;
-    --md-sys-color-inverse-primary: #D0BCFF;
+    --md-sys-color-inverse-surface: #313033;
+    --md-sys-color-inverse-on-surface: #F4EFF4;
+    --md-sys-color-inverse-primary: #CFBDFF;
     
     /* State layer opacities */
     --md-sys-state-hover-opacity: 0.08;
     --md-sys-state-focus-opacity: 0.12;
-    --md-sys-state-pressed-opacity: 0.12;
+    --md-sys-state-pressed-opacity: 0.16;
     --md-sys-state-dragged-opacity: 0.16;
 
     /* ============================================
-     * M3 Expressive Shape Tokens
+     * M3 EXPRESSIVE Shape Tokens
+     * Organic, more rounded, expressive shapes
      * ============================================ */
-    --md-sys-shape-corner-extra-small: 4px;
-    --md-sys-shape-corner-small: 8px;
-    --md-sys-shape-corner-medium: 16px;
-    --md-sys-shape-corner-large: 24px;
-    --md-sys-shape-corner-extra-large: 28px;
+    --md-sys-shape-corner-extra-small: 8px;
+    --md-sys-shape-corner-small: 12px;
+    --md-sys-shape-corner-medium: 20px;
+    --md-sys-shape-corner-large: 28px;
+    --md-sys-shape-corner-extra-large: 36px;
     --md-sys-shape-corner-full: 9999px;
     
+    /* Expressive asymmetric shapes */
+    --md-sys-shape-organic-1: 60% 40% 55% 45% / 55% 45% 55% 45%;
+    --md-sys-shape-organic-2: 45% 55% 40% 60% / 60% 40% 55% 45%;
+    --md-sys-shape-squircle: 89.4% 10.6% 89.4% 10.6% / 10.6% 89.4% 10.6% 89.4%;
+    
     /* ============================================
-     * M3 Motion Duration Tokens
+     * M3 EXPRESSIVE Motion Duration Tokens
+     * Slightly longer for more expressive feel
      * ============================================ */
     --md-sys-motion-duration-short1: 50ms;
     --md-sys-motion-duration-short2: 100ms;
     --md-sys-motion-duration-short3: 150ms;
     --md-sys-motion-duration-short4: 200ms;
     --md-sys-motion-duration-medium1: 250ms;
-    --md-sys-motion-duration-medium2: 300ms;
-    --md-sys-motion-duration-medium3: 350ms;
-    --md-sys-motion-duration-medium4: 400ms;
-    --md-sys-motion-duration-long1: 450ms;
-    --md-sys-motion-duration-long2: 500ms;
-    --md-sys-motion-duration-long3: 550ms;
-    --md-sys-motion-duration-long4: 600ms;
-    --md-sys-motion-duration-extra-long1: 700ms;
-    --md-sys-motion-duration-extra-long2: 800ms;
-    --md-sys-motion-duration-extra-long3: 900ms;
-    --md-sys-motion-duration-extra-long4: 1000ms;
+    --md-sys-motion-duration-medium2: 350ms;
+    --md-sys-motion-duration-medium3: 400ms;
+    --md-sys-motion-duration-medium4: 450ms;
+    --md-sys-motion-duration-long1: 500ms;
+    --md-sys-motion-duration-long2: 600ms;
+    --md-sys-motion-duration-long3: 700ms;
+    --md-sys-motion-duration-long4: 800ms;
+    --md-sys-motion-duration-extra-long1: 900ms;
+    --md-sys-motion-duration-extra-long2: 1000ms;
+    --md-sys-motion-duration-extra-long3: 1100ms;
+    --md-sys-motion-duration-extra-long4: 1200ms;
     
     /* ============================================
-     * M3 Motion Easing Tokens
+     * M3 EXPRESSIVE Motion Easing Tokens
+     * More bouncy, playful easing curves
      * ============================================ */
     --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
     --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
@@ -101,6 +124,10 @@
     --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
     --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
     --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+    /* Expressive spring-like easing */
+    --md-sys-motion-easing-expressive: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --md-sys-motion-easing-expressive-decelerate: cubic-bezier(0, 0.55, 0.45, 1);
+    --md-sys-motion-easing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     
     /* ============================================
      * M3 Typography Tokens
@@ -223,80 +250,95 @@
 
 
   /* ============================================
-   * Material You 3 Design Tokens - Dark Theme
+   * Material You 3 EXPRESSIVE Design Tokens - Dark Theme
    * Uses tonal elevation instead of shadow elevation
+   * More vibrant colors for dark mode
    * ============================================ */
   .dark {
-    /* Primary colors (inverted tones for dark mode) */
-    --md-sys-color-primary: #D0BCFF;
-    --md-sys-color-on-primary: #381E72;
-    --md-sys-color-primary-container: #4F378B;
-    --md-sys-color-on-primary-container: #EADDFF;
+    /* Primary colors (inverted tones for dark mode) - More vibrant */
+    --md-sys-color-primary: #CFBDFF;
+    --md-sys-color-on-primary: #3A1F87;
+    --md-sys-color-primary-container: #523DA3;
+    --md-sys-color-on-primary-container: #E8DEFF;
+    --md-sys-color-primary-fixed: #E8DEFF;
+    --md-sys-color-primary-fixed-dim: #CFBDFF;
     
-    /* Secondary colors */
-    --md-sys-color-secondary: #CCC2DC;
-    --md-sys-color-on-secondary: #332D41;
-    --md-sys-color-secondary-container: #4A4458;
-    --md-sys-color-on-secondary-container: #E8DEF8;
+    /* Secondary colors - Vibrant coral */
+    --md-sys-color-secondary: #FFB3BE;
+    --md-sys-color-on-secondary: #5F1129;
+    --md-sys-color-secondary-container: #8C3347;
+    --md-sys-color-on-secondary-container: #FFD9DD;
     
-    /* Tertiary colors */
-    --md-sys-color-tertiary: #EFB8C8;
-    --md-sys-color-on-tertiary: #492532;
-    --md-sys-color-tertiary-container: #633B48;
-    --md-sys-color-on-tertiary-container: #FFD8E4;
+    /* Tertiary colors - Bright teal */
+    --md-sys-color-tertiary: #8AD9CA;
+    --md-sys-color-on-tertiary: #003830;
+    --md-sys-color-tertiary-container: #006B5A;
+    --md-sys-color-on-tertiary-container: #A6F5E6;
     
     /* Error colors */
-    --md-sys-color-error: #F2B8B5;
-    --md-sys-color-on-error: #601410;
-    --md-sys-color-error-container: #8C1D18;
-    --md-sys-color-on-error-container: #F9DEDC;
+    --md-sys-color-error: #FFB4AB;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000A;
+    --md-sys-color-on-error-container: #FFDAD6;
+    
+    /* Success colors (Expressive addition) */
+    --md-sys-color-success: #A5D6A7;
+    --md-sys-color-on-success: #1B5E20;
+    --md-sys-color-success-container: #2E7D32;
+    --md-sys-color-on-success-container: #C8E6C9;
+    
+    /* Warning colors (Expressive addition) */
+    --md-sys-color-warning: #FFD54F;
+    --md-sys-color-on-warning: #3E2723;
+    --md-sys-color-warning-container: #F57F17;
+    --md-sys-color-on-warning-container: #FFF3E0;
     
     /* Surface colors - using tonal elevation
      * In dark mode, higher elevation = lighter surface color
      * This creates visual hierarchy without shadows */
-    --md-sys-color-surface: #141218;
-    --md-sys-color-on-surface: #E6E0E9;
-    --md-sys-color-surface-variant: #49454F;
-    --md-sys-color-on-surface-variant: #CAC4D0;
-    --md-sys-color-surface-dim: #141218;
-    --md-sys-color-surface-bright: #3B383E;
-    --md-sys-color-surface-container-lowest: #0F0D13;
-    --md-sys-color-surface-container-low: #1D1B20;
-    --md-sys-color-surface-container: #211F26;
-    --md-sys-color-surface-container-high: #2B2930;
-    --md-sys-color-surface-container-highest: #36343B;
+    --md-sys-color-surface: #131316;
+    --md-sys-color-on-surface: #E5E1E8;
+    --md-sys-color-surface-variant: #48454E;
+    --md-sys-color-on-surface-variant: #C9C4D0;
+    --md-sys-color-surface-dim: #131316;
+    --md-sys-color-surface-bright: #3A383E;
+    --md-sys-color-surface-container-lowest: #0E0E11;
+    --md-sys-color-surface-container-low: #1C1B1F;
+    --md-sys-color-surface-container: #201F24;
+    --md-sys-color-surface-container-high: #2A292E;
+    --md-sys-color-surface-container-highest: #353439;
     
     /* Outline colors */
     --md-sys-color-outline: #938F99;
-    --md-sys-color-outline-variant: #49454F;
+    --md-sys-color-outline-variant: #48454E;
     
     /* Other colors */
     --md-sys-color-shadow: #000000;
     --md-sys-color-scrim: #000000;
-    --md-sys-color-inverse-surface: #E6E0E9;
-    --md-sys-color-inverse-on-surface: #322F35;
-    --md-sys-color-inverse-primary: #6750A4;
+    --md-sys-color-inverse-surface: #E5E1E8;
+    --md-sys-color-inverse-on-surface: #313034;
+    --md-sys-color-inverse-primary: #5B4BB5;
     
     /* Legacy shadcn/ui compatibility variables - Dark mode */
-    --background: 270 14% 9%;
-    --foreground: 270 20% 90%;
-    --card: 270 14% 13%;
-    --card-foreground: 270 20% 90%;
-    --popover: 270 14% 13%;
-    --popover-foreground: 270 20% 90%;
-    --primary: 265 100% 87%;
-    --primary-foreground: 265 59% 28%;
-    --secondary: 265 24% 75%;
-    --secondary-foreground: 265 14% 23%;
-    --muted: 265 14% 23%;
-    --muted-foreground: 265 10% 65%;
-    --accent: 265 14% 23%;
-    --accent-foreground: 265 24% 75%;
-    --destructive: 0 63% 82%;
-    --destructive-foreground: 0 63% 16%;
-    --border: 265 14% 23%;
-    --input: 265 14% 23%;
-    --ring: 265 100% 87%;
+    --background: 265 14% 8%;
+    --foreground: 265 20% 92%;
+    --card: 265 14% 12%;
+    --card-foreground: 265 20% 92%;
+    --popover: 265 14% 12%;
+    --popover-foreground: 265 20% 92%;
+    --primary: 260 100% 87%;
+    --primary-foreground: 260 65% 33%;
+    --secondary: 350 100% 85%;
+    --secondary-foreground: 350 68% 28%;
+    --muted: 265 14% 22%;
+    --muted-foreground: 265 10% 70%;
+    --accent: 265 14% 22%;
+    --accent-foreground: 265 24% 80%;
+    --destructive: 0 65% 85%;
+    --destructive-foreground: 0 63% 15%;
+    --border: 265 14% 22%;
+    --input: 265 14% 22%;
+    --ring: 260 100% 87%;
   }
 }
 
@@ -313,49 +355,72 @@
 }
 
 /* ============================================
- * M3 Expressive UI Component Styles
+ * M3 EXPRESSIVE UI Component Styles
+ * More dynamic, playful, and engaging
  * ============================================ */
 @layer components {
-  /* M3 Card styles with Expressive shape */
+  /* M3 Expressive Card styles with organic shape */
   .card-modern {
     background-color: var(--md-sys-color-surface-container);
     border-radius: var(--md-sys-shape-corner-large);
     border: 1px solid var(--md-sys-color-outline-variant);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    transition: box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
-                transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
+    transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
   
   .card-modern:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
   }
 
-  /* M3 Input styles */
+  /* M3 Expressive Elevated Card */
+  .card-elevated {
+    background: linear-gradient(
+      135deg,
+      var(--md-sys-color-surface-container-low) 0%,
+      var(--md-sys-color-surface-container) 100%
+    );
+    border-radius: var(--md-sys-shape-corner-extra-large);
+    box-shadow: 
+      0 1px 2px rgba(0, 0, 0, 0.06),
+      0 2px 4px rgba(0, 0, 0, 0.06),
+      0 4px 8px rgba(0, 0, 0, 0.04);
+    transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
+  }
+
+  .card-elevated:hover {
+    box-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.08),
+      0 4px 8px rgba(0, 0, 0, 0.08),
+      0 8px 16px rgba(0, 0, 0, 0.06);
+    transform: translateY(-4px) scale(1.01);
+  }
+
+  /* M3 Expressive Input styles */
   .input-modern {
     background-color: var(--md-sys-color-surface-container-highest);
-    border: 1px solid var(--md-sys-color-outline);
-    border-radius: var(--md-sys-shape-corner-extra-small);
-    transition: border-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
-                box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+    border: 2px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-medium);
+    transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
   }
   
   .input-modern:focus {
     border-color: var(--md-sys-color-primary);
-    box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.2);
+    box-shadow: 0 0 0 4px rgba(91, 75, 181, 0.15);
     outline: none;
   }
 
-  /* M3 Button styles */
+  /* M3 Expressive Button styles */
   .button-modern {
     background-color: var(--md-sys-color-surface-container);
     border: 1px solid var(--md-sys-color-outline);
-    border-radius: var(--md-sys-shape-corner-medium);
-    transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
-                box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+    border-radius: var(--md-sys-shape-corner-large);
+    transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
   }
   
   .button-modern:hover {
     background-color: var(--md-sys-color-surface-container-high);
+    transform: scale(1.02);
   }
 
   .button-modern-active {
@@ -364,34 +429,89 @@
     color: var(--md-sys-color-on-secondary-container);
   }
 
-  /* M3 Icon container */
+  /* M3 Expressive Icon container */
   .icon-container {
-    background-color: var(--md-sys-color-primary-container);
+    background: linear-gradient(
+      135deg,
+      var(--md-sys-color-primary-container) 0%,
+      var(--md-sys-color-tertiary-container) 100%
+    );
     color: var(--md-sys-color-on-primary-container);
     border-radius: var(--md-sys-shape-corner-full);
-    padding: 12px;
+    padding: 14px;
+    transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
 
-  /* M3 Filled button (gradient style) */
+  .icon-container:hover {
+    transform: scale(1.1) rotate(5deg);
+  }
+
+  /* M3 Expressive Filled button (gradient style) */
   .btn-gradient {
-    background-color: var(--md-sys-color-primary);
+    background: linear-gradient(
+      135deg,
+      var(--md-sys-color-primary) 0%,
+      color-mix(in srgb, var(--md-sys-color-primary) 80%, var(--md-sys-color-tertiary)) 100%
+    );
     color: var(--md-sys-color-on-primary);
     border-radius: var(--md-sys-shape-corner-full);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-    transition: box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard),
-                transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+    box-shadow: 
+      0 2px 4px rgba(91, 75, 181, 0.25),
+      0 4px 8px rgba(91, 75, 181, 0.15);
+    transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
   
   .btn-gradient:hover {
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+    box-shadow: 
+      0 4px 8px rgba(91, 75, 181, 0.3),
+      0 8px 16px rgba(91, 75, 181, 0.2);
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  .btn-gradient:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  /* M3 Expressive Secondary button */
+  .btn-secondary-expressive {
+    background: linear-gradient(
+      135deg,
+      var(--md-sys-color-secondary-container) 0%,
+      color-mix(in srgb, var(--md-sys-color-secondary-container) 85%, var(--md-sys-color-tertiary-container)) 100%
+    );
+    color: var(--md-sys-color-on-secondary-container);
+    border-radius: var(--md-sys-shape-corner-full);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
+  }
+
+  .btn-secondary-expressive:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+  }
+
+  /* M3 Expressive Tonal button */
+  .btn-tonal-expressive {
+    background-color: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    border-radius: var(--md-sys-shape-corner-large);
+    transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
+  }
+
+  .btn-tonal-expressive:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-tertiary-container) 90%, var(--md-sys-color-on-tertiary-container));
     transform: scale(1.02);
   }
 
   /* M3 Surface tonal elevation effect */
   .glass-effect {
-    background-color: var(--md-sys-color-surface-container);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--md-sys-color-outline-variant);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--md-sys-color-surface-container) 95%, transparent) 0%,
+      color-mix(in srgb, var(--md-sys-color-surface-container-high) 90%, transparent) 100%
+    );
+    backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 50%, transparent);
   }
 
   /* Hide scrollbar but keep functionality */
@@ -404,24 +524,70 @@
     display: none;
   }
 
-  /* M3 Gradient text */
+  /* M3 Expressive Gradient text */
   .text-gradient {
-    background: linear-gradient(135deg, var(--md-sys-color-primary), var(--md-sys-color-tertiary));
+    background: linear-gradient(
+      135deg, 
+      var(--md-sys-color-primary) 0%, 
+      var(--md-sys-color-secondary) 50%,
+      var(--md-sys-color-tertiary) 100%
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  /* M3 Hover lift effect */
+  /* M3 Expressive Animated gradient text */
+  .text-gradient-animated {
+    background: linear-gradient(
+      90deg, 
+      var(--md-sys-color-primary) 0%, 
+      var(--md-sys-color-secondary) 25%,
+      var(--md-sys-color-tertiary) 50%,
+      var(--md-sys-color-secondary) 75%,
+      var(--md-sys-color-primary) 100%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 5s ease infinite;
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* M3 Expressive Hover lift effect */
   .hover-lift {
-    transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+    transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
   
   .hover-lift:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  /* M3 Expressive Scale effect */
+  .hover-scale {
+    transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
+  }
+
+  .hover-scale:hover {
+    transform: scale(1.05);
+  }
+
+  .hover-scale:active {
+    transform: scale(0.98);
   }
   
   /* M3 State layer styles */
+  .state-layer-hover {
+    position: relative;
+    overflow: hidden;
+  }
+
   .state-layer-hover::before {
     content: '';
     position: absolute;
@@ -443,6 +609,124 @@
   
   .state-layer-hover:active::before {
     opacity: var(--md-sys-state-pressed-opacity);
+  }
+
+  /* M3 Expressive Chip styles */
+  .chip-expressive {
+    background-color: var(--md-sys-color-surface-container-high);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-small);
+    padding: 6px 14px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
+  }
+
+  .chip-expressive:hover {
+    background-color: var(--md-sys-color-surface-container-highest);
+    transform: scale(1.03);
+  }
+
+  .chip-expressive.selected {
+    background-color: var(--md-sys-color-secondary-container);
+    border-color: var(--md-sys-color-secondary);
+    color: var(--md-sys-color-on-secondary-container);
+  }
+
+  /* M3 Expressive FAB (Floating Action Button) */
+  .fab-expressive {
+    position: fixed;
+    background: linear-gradient(
+      135deg,
+      var(--md-sys-color-primary-container) 0%,
+      color-mix(in srgb, var(--md-sys-color-primary-container) 80%, var(--md-sys-color-tertiary-container)) 100%
+    );
+    color: var(--md-sys-color-on-primary-container);
+    border-radius: var(--md-sys-shape-corner-large);
+    padding: 16px;
+    box-shadow: 
+      0 4px 8px rgba(0, 0, 0, 0.12),
+      0 8px 16px rgba(0, 0, 0, 0.08);
+    transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
+  }
+
+  .fab-expressive:hover {
+    box-shadow: 
+      0 6px 12px rgba(0, 0, 0, 0.15),
+      0 12px 24px rgba(0, 0, 0, 0.1);
+    transform: scale(1.05);
+  }
+
+  .fab-expressive:active {
+    transform: scale(0.95);
+  }
+
+  /* M3 Expressive Navigation Rail */
+  .nav-rail-expressive {
+    background-color: var(--md-sys-color-surface-container);
+    border-right: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .nav-rail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: var(--md-sys-shape-corner-full);
+    transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
+  }
+
+  .nav-rail-item:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  }
+
+  .nav-rail-item.active {
+    background-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+  }
+
+  /* M3 Expressive Divider */
+  .divider-expressive {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--md-sys-color-outline-variant) 10%,
+      var(--md-sys-color-outline-variant) 90%,
+      transparent 100%
+    );
+  }
+
+  /* M3 Expressive Badge */
+  .badge-expressive {
+    background: linear-gradient(
+      135deg,
+      var(--md-sys-color-tertiary) 0%,
+      var(--md-sys-color-secondary) 100%
+    );
+    color: white;
+    padding: 2px 8px;
+    border-radius: var(--md-sys-shape-corner-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  /* M3 Expressive Progress indicator */
+  .progress-expressive {
+    background-color: var(--md-sys-color-surface-container-highest);
+    border-radius: var(--md-sys-shape-corner-full);
+    overflow: hidden;
+  }
+
+  .progress-expressive-bar {
+    background: linear-gradient(
+      90deg,
+      var(--md-sys-color-primary) 0%,
+      var(--md-sys-color-tertiary) 100%
+    );
+    border-radius: var(--md-sys-shape-corner-full);
+    transition: width var(--md-sys-motion-duration-long2) var(--md-sys-motion-easing-emphasized);
   }
 }
 

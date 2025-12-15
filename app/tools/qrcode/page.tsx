@@ -29,7 +29,11 @@ const errorCorrectionLevels = [
 // QR Code content types
 type ContentType = "text" | "url" | "contact" | "phone" | "email" | "location" | "event" | "wifi" | "payment"
 
-export default function QRCodePage() {
+interface QRCodePageProps {
+  params?: Record<string, string>
+}
+
+export default function QRCodePage({ params }: QRCodePageProps) {
   const t = useTranslations("qrcode")
 
   // 基础状态

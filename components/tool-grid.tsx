@@ -49,20 +49,22 @@ interface ToolGridProps {
 }
 
 /**
- * M3 Icon Container Component
- * Renders icons inside M3 tonal surface containers
- * Requirements: 8.4
+ * M3 EXPRESSIVE Icon Container Component
+ * Renders icons inside gradient M3 tonal surface containers
  */
 function IconContainer({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div 
       className={cn(
         "flex items-center justify-center",
-        "w-12 h-12",
-        "rounded-[var(--md-sys-shape-corner-full)]",
-        "bg-[var(--md-sys-color-primary-container)]",
+        "w-14 h-14",
+        "rounded-[var(--md-sys-shape-corner-large)]",
+        "bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)]",
         "text-[var(--md-sys-color-on-primary-container)]",
-        "transition-colors duration-[var(--md-sys-motion-duration-short2)]",
+        "shadow-md",
+        "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
+        "ease-[var(--md-sys-motion-easing-expressive)]",
+        "group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg",
         className
       )}
     >
@@ -78,9 +80,8 @@ interface ToolCardProps {
 }
 
 /**
- * M3 Tool Card Component
- * Individual tool card with M3 Expressive styling and long-press support
- * Requirements: 8.1, 8.2, 8.3, 17.3
+ * M3 EXPRESSIVE Tool Card Component
+ * Individual tool card with expressive styling and long-press support
  */
 function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
   const router = useRouter()
@@ -92,7 +93,6 @@ function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
   const { handlers: longPressHandlers, isPressed } = useLongPress({
     duration: 500,
     onLongPress: (e) => {
-      // Get position from touch or mouse event
       const touch = 'touches' in e ? e.touches[0] : e
       const position = {
         x: 'clientX' in touch ? touch.clientX : 0,
@@ -104,7 +104,6 @@ function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
 
   // Handle click - navigate to tool
   const handleClick = useCallback((e: React.MouseEvent) => {
-    // Don't navigate if long press was triggered
     if (isPressed) {
       e.preventDefault()
       return
@@ -120,36 +119,36 @@ function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
     >
       <M3Card
         variant="elevated"
-        shape="large"
+        shape="extraLarge"
         interactive
         fullWidth
         className={cn(
-          "h-full min-h-[120px]", // M3 minimum card height for touch targeting (Req 13.4)
-          "p-0", // Remove default padding, we'll add it to content
-          // Visual feedback during long press
-          isPressed && "scale-[0.98] transition-transform duration-150"
+          "h-full min-h-[140px]",
+          "p-0",
+          // Expressive visual feedback during long press
+          isPressed && "scale-[0.97] transition-transform duration-150"
         )}
       >
-        <div className="p-5">
+        <div className="p-6">
           {/* Header: Icon and Badges */}
           <div className="flex items-start justify-between mb-4">
             {IconComponent && (
               <IconContainer>
-                <IconComponent className="h-6 w-6" />
+                <IconComponent className="h-7 w-7" />
               </IconContainer>
             )}
             
             {/* Badge container */}
-            <div className="flex gap-1.5 flex-wrap justify-end">
+            <div className="flex gap-2 flex-wrap justify-end">
               {tool.isNew && (
                 <M3Chip
                   variant="suggestion"
                   elevated
                   className={cn(
-                    "h-6 px-2 text-xs",
-                    "bg-[var(--md-sys-color-tertiary-container)]",
+                    "h-7 px-3 text-xs font-semibold",
+                    "bg-gradient-to-r from-[var(--md-sys-color-tertiary-container)] to-[var(--md-sys-color-secondary-container)]",
                     "text-[var(--md-sys-color-on-tertiary-container)]",
-                    "border-transparent cursor-default"
+                    "border-transparent cursor-default shadow-sm"
                   )}
                 >
                   新
@@ -160,10 +159,10 @@ function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
                   variant="suggestion"
                   elevated
                   className={cn(
-                    "h-6 px-2 text-xs",
-                    "bg-[var(--md-sys-color-secondary-container)]",
+                    "h-7 px-3 text-xs font-semibold",
+                    "bg-gradient-to-r from-[var(--md-sys-color-secondary-container)] to-[var(--md-sys-color-primary-container)]",
                     "text-[var(--md-sys-color-on-secondary-container)]",
-                    "border-transparent cursor-default"
+                    "border-transparent cursor-default shadow-sm"
                   )}
                 >
                   热门
@@ -175,11 +174,11 @@ function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
           {/* Tool Name - M3 Title Medium */}
           <h3 
             className={cn(
-              "font-medium text-base leading-6",
+              "font-semibold text-base leading-6",
               "text-[var(--md-sys-color-on-surface)]",
               "mb-2",
-              "transition-colors duration-[var(--md-sys-motion-duration-short2)]",
-              "group-hover:text-[var(--md-sys-color-primary)]"
+              "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
+              "group-hover:text-gradient"
             )}
           >
             {tool.name}
@@ -202,13 +201,13 @@ function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
           {tool.category && (
             <div 
               className={cn(
-                "mt-3 pt-3",
-                "border-t border-[var(--md-sys-color-outline-variant)]"
+                "mt-4 pt-4",
+                "border-t border-[var(--md-sys-color-outline-variant)]/50"
               )}
             >
               <span 
                 className={cn(
-                  "text-xs font-medium",
+                  "text-xs font-semibold",
                   "text-[var(--md-sys-color-on-surface-variant)]"
                 )}
               >

@@ -45,6 +45,10 @@ interface FileInfo {
   sizeFormatted: string
 }
 
+interface ClassicCipherProps {
+  params?: Record<string, string>
+}
+
 // 格式化文件大小
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes"
@@ -71,7 +75,7 @@ const classicAlgorithms = [
   { id: "affine", name: "仿射密码", category: "mathematical" },
 ]
 
-export default function ClassicCipherPage() {
+export default function ClassicCipherPage({ params }: ClassicCipherProps) {
   const t = useTranslations("classicCipher")
 
   // 基础状态

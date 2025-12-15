@@ -6,54 +6,59 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 /**
- * M3 Button Component
+ * M3 EXPRESSIVE Button Component
  * 
  * Implements Material You 3 Expressive button specifications with:
  * - Five variants: filled, outlined, text, elevated, tonal
- * - Ripple effect on interaction
- * - M3 Expressive shape (medium corners for standard, full for FAB)
- * - State layer colors with appropriate opacity values
- * 
- * Requirements: 4.1, 3.3, 5.4
+ * - Enhanced ripple effect with spring-like animation
+ * - More rounded M3 Expressive shapes
+ * - Vibrant state layers with playful hover effects
+ * - Gradient backgrounds for filled variant
  */
 
 /**
- * M3 Button variant styles using CSS custom properties
+ * M3 Expressive Button variant styles
  * Based on Material Design 3 Expressive specifications
  */
 const m3ButtonVariants = cva(
   // Base styles
   [
     'relative inline-flex items-center justify-center gap-2',
-    'whitespace-nowrap font-medium',
+    'whitespace-nowrap font-semibold',
     'transition-all',
+    'duration-[var(--md-sys-motion-duration-short4)]',
+    'ease-[var(--md-sys-motion-easing-expressive)]',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-38',
     '[&_svg]:pointer-events-none [&_svg]:shrink-0',
     'overflow-hidden', // Required for ripple effect
+    'active:scale-[0.97]', // Expressive press effect
   ].join(' '),
   {
     variants: {
       /**
-       * M3 Button variants:
-       * - filled: Primary action, high emphasis
-       * - outlined: Secondary action, medium emphasis
+       * M3 Expressive Button variants:
+       * - filled: Primary action with gradient background
+       * - outlined: Secondary action with vibrant border
        * - text: Low emphasis, tertiary action
-       * - elevated: Medium emphasis with shadow
-       * - tonal: Secondary container color, medium emphasis
+       * - elevated: Medium emphasis with enhanced shadow
+       * - tonal: Secondary container color with gradient
        */
       variant: {
         filled: [
-          'bg-[var(--md-sys-color-primary)]',
+          'bg-gradient-to-br from-[var(--md-sys-color-primary)] to-[color-mix(in_srgb,var(--md-sys-color-primary)_80%,var(--md-sys-color-tertiary))]',
           'text-[var(--md-sys-color-on-primary)]',
-          'hover:shadow-md',
+          'shadow-md shadow-[var(--md-sys-color-primary)]/20',
+          'hover:shadow-lg hover:shadow-[var(--md-sys-color-primary)]/30',
+          'hover:-translate-y-0.5',
           'focus-visible:ring-[var(--md-sys-color-primary)]',
         ].join(' '),
         outlined: [
           'bg-transparent',
           'text-[var(--md-sys-color-primary)]',
-          'border border-[var(--md-sys-color-outline)]',
+          'border-2 border-[var(--md-sys-color-outline)]',
           'hover:bg-[var(--md-sys-color-primary)]/[0.08]',
+          'hover:border-[var(--md-sys-color-primary)]',
           'focus-visible:ring-[var(--md-sys-color-primary)]',
         ].join(' '),
         text: [
@@ -63,39 +68,39 @@ const m3ButtonVariants = cva(
           'focus-visible:ring-[var(--md-sys-color-primary)]',
         ].join(' '),
         elevated: [
-          'bg-[var(--md-sys-color-surface-container-low)]',
+          'bg-gradient-to-br from-[var(--md-sys-color-surface-container-low)] to-[var(--md-sys-color-surface-container)]',
           'text-[var(--md-sys-color-primary)]',
           'shadow-md',
-          'hover:shadow-lg',
+          'hover:shadow-xl hover:-translate-y-0.5',
           'focus-visible:ring-[var(--md-sys-color-primary)]',
         ].join(' '),
         tonal: [
-          'bg-[var(--md-sys-color-secondary-container)]',
+          'bg-gradient-to-br from-[var(--md-sys-color-secondary-container)] to-[color-mix(in_srgb,var(--md-sys-color-secondary-container)_85%,var(--md-sys-color-tertiary-container))]',
           'text-[var(--md-sys-color-on-secondary-container)]',
-          'hover:shadow-sm',
+          'hover:shadow-md hover:-translate-y-0.5',
           'focus-visible:ring-[var(--md-sys-color-secondary)]',
         ].join(' '),
       },
       /**
-       * M3 Button sizes
+       * M3 Expressive Button sizes - larger radii
        */
       size: {
         small: [
-          'h-9 px-3',
+          'h-10 px-4',
           'text-sm',
-          'rounded-[var(--md-sys-shape-corner-small)]',
+          'rounded-[var(--md-sys-shape-corner-medium)]',
           '[&_svg]:size-4',
         ].join(' '),
         medium: [
-          'h-10 px-6',
+          'h-11 px-7',
           'text-sm',
-          'rounded-[var(--md-sys-shape-corner-medium)]',
+          'rounded-[var(--md-sys-shape-corner-large)]',
           '[&_svg]:size-5',
         ].join(' '),
         large: [
-          'h-12 px-8',
+          'h-14 px-9',
           'text-base',
-          'rounded-[var(--md-sys-shape-corner-medium)]',
+          'rounded-[var(--md-sys-shape-corner-extra-large)]',
           '[&_svg]:size-6',
         ].join(' '),
       },
@@ -141,8 +146,8 @@ export interface M3ButtonProps
 
 
 /**
- * Ripple effect hook for M3 buttons
- * Creates a ripple animation originating from the touch/click point
+ * Enhanced Ripple effect hook for M3 Expressive buttons
+ * Creates a spring-like ripple animation
  */
 function useRipple() {
   const [ripples, setRipples] = React.useState<Array<{
@@ -156,12 +161,11 @@ function useRipple() {
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
     
-    // Calculate ripple position relative to button
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     
-    // Calculate ripple size (should cover the entire button)
-    const size = Math.max(rect.width, rect.height) * 2;
+    // Larger ripple for more expressive effect
+    const size = Math.max(rect.width, rect.height) * 2.5;
     
     const newRipple = {
       key: Date.now(),
@@ -172,27 +176,29 @@ function useRipple() {
     
     setRipples((prev) => [...prev, newRipple]);
     
-    // Remove ripple after animation completes
+    // Longer duration for expressive feel
     setTimeout(() => {
       setRipples((prev) => prev.filter((r) => r.key !== newRipple.key));
-    }, 600); // M3 ripple duration
+    }, 800);
   }, []);
 
   return { ripples, addRipple };
 }
 
 /**
- * Ripple component for visual feedback
+ * Expressive Ripple component with spring animation
  */
 function Ripple({ x, y, size }: { x: number; y: number; size: number }) {
   return (
     <span
-      className="absolute pointer-events-none animate-ripple rounded-full bg-current opacity-[0.12]"
+      className="absolute pointer-events-none rounded-full bg-current opacity-[0.15] animate-[ripple_0.8s_ease-out_forwards]"
       style={{
         left: x - size / 2,
         top: y - size / 2,
         width: size,
         height: size,
+        transform: 'scale(0)',
+        animation: 'ripple 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
       }}
     />
   );
@@ -228,13 +234,14 @@ function LoadingSpinner({ className }: { className?: string }) {
 }
 
 /**
- * M3 Button Component
+ * M3 EXPRESSIVE Button Component
  * 
  * A Material You 3 Expressive button with support for:
  * - Five variants: filled, outlined, text, elevated, tonal
  * - Three sizes: small, medium, large
  * - FAB mode with pill shape
- * - Ripple effect on interaction
+ * - Enhanced ripple effect with spring animation
+ * - Playful hover and press states
  * - Loading state
  * - Icon support
  */

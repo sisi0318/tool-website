@@ -15,6 +15,10 @@ import { useTranslations } from "@/hooks/use-translations"
 import { Copy, Minus, Plus, Calculator, Settings, ChevronUp, ChevronDown, Zap, Eye, Check, Hash, RefreshCw, ArrowLeftRight, Binary } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 
+interface BaseConverterProps {
+  params?: Record<string, string>
+}
+
 // Base conversion utilities
 // Using '-' instead of '/' to avoid regex issues
 const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-"
@@ -129,7 +133,7 @@ function convertBase(value: string, fromBase: number, toBase: number): string {
   }
 }
 
-export default function BaseConverterPage() {
+export default function BaseConverterPage({ params }: BaseConverterProps) {
   const t = useTranslations("baseConverter")
   // Use useRef to create a stable reference to the t function
   const tRef = useRef(t)

@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { debounce } from "lodash"
 
+interface ColorPickerProps {
+  params?: Record<string, string>
+}
+
 // Extended color names mapping
 const COLOR_NAMES: Record<string, string> = {
   "#000000": "black",
@@ -56,7 +60,6 @@ const COLOR_NAMES: Record<string, string> = {
   "#fafad2": "lightgoldenrodyellow",
   "#fffacd": "lemonchiffon",
   "#ffffe0": "lightyellow",
-  "#ffff00": "yellow",
   "#ffd700": "gold",
   "#daa520": "goldenrod",
   "#b8860b": "darkgoldenrod",
@@ -73,7 +76,6 @@ const COLOR_NAMES: Record<string, string> = {
   "#ff7f50": "coral",
   "#ff6347": "tomato",
   "#ff4500": "orangered",
-  "#ff0000": "red",
   "#dc143c": "crimson",
   "#c71585": "mediumvioletred",
   "#ff1493": "deeppink",
@@ -90,15 +92,12 @@ const COLOR_NAMES: Record<string, string> = {
   "#9400d3": "darkviolet",
   "#9932cc": "darkorchid",
   "#8b008b": "darkmagenta",
-  "#800080": "purple",
   "#4b0082": "indigo",
   "#483d8b": "darkslateblue",
   "#6a5acd": "slateblue",
   "#7b68ee": "mediumslateblue",
-  "#0000ff": "blue",
   "#0000cd": "mediumblue",
   "#00008b": "darkblue",
-  "#000080": "navy",
   "#191970": "midnightblue",
   "#6495ed": "cornflowerblue",
   "#4169e1": "royalblue",
@@ -112,13 +111,10 @@ const COLOR_NAMES: Record<string, string> = {
   "#b0e0e6": "powderblue",
   "#afeeee": "paleturquoise",
   "#e0ffff": "lightcyan",
-  "#00ffff": "cyan",
   "#00ced1": "darkturquoise",
   "#2f4f4f": "darkslategray",
   "#696969": "dimgray",
-  "#808080": "gray",
   "#a9a9a9": "darkgray",
-  "#c0c0c0": "silver",
   "#d3d3d3": "lightgray",
   "#dcdcdc": "gainsboro",
   "#f5f5f5": "whitesmoke",
@@ -146,7 +142,6 @@ const COLOR_NAMES: Record<string, string> = {
   "#b22222": "firebrick",
   "#a52a2a": "brown",
   "#8b0000": "darkred",
-  "#800000": "maroon",
 }
 
 // Common colors for the color palette
@@ -186,7 +181,7 @@ interface ColorFormat {
   copied: boolean
 }
 
-export default function ColorPickerPage() {
+export default function ColorPickerPage({ params }: ColorPickerProps) {
   const t = useTranslations("color")
   
   // 基础状态
@@ -210,6 +205,17 @@ export default function ColorPickerPage() {
   const copyTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({})
 
   // Find the closest named color
+  // Pre-compute RGB values for all named colors (only once)
+  const namedColorsWithRgb = useMemo(() => {
+    return Object.entries(COLOR_NAMES).map(([hex, name]) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+      const rgb = result
+        ? [Number.parseInt(result[1], 16), Number.parseInt(result[2], 16), Number.parseInt(result[3], 16)] as [number, number, number]
+        : null
+      return { hex, name, rgb }
+    }).filter(item => item.rgb !== null)
+  }, [])
+
   const findClosestNamedColor = (hexColor: string): string => {
     // Try exact match first
     const normalizedHex = hexColor.toLowerCase()
@@ -226,22 +232,21 @@ export default function ColorPickerPage() {
     let closestColor = ""
     let minDistance = Number.MAX_VALUE
 
-    Object.entries(COLOR_NAMES).forEach(([hex, name]) => {
-      const namedRgb = hexToRgb(hex)
-      if (namedRgb) {
-        const [nr, ng, nb] = namedRgb
-        // Calculate color distance using Euclidean distance in RGB space
-        const distance = Math.sqrt(Math.pow(r - nr, 2) + Math.pow(g - ng, 2) + Math.pow(b - nb, 2))
+    // Use pre-computed RGB values
+    for (const item of namedColorsWithRgb) {
+      if (!item.rgb) continue
+      const [nr, ng, nb] = item.rgb
+      // Use squared distance (avoid sqrt for performance)
+      const distance = (r - nr) ** 2 + (g - ng) ** 2 + (b - nb) ** 2
 
-        if (distance < minDistance) {
-          minDistance = distance
-          closestColor = name
-        }
+      if (distance < minDistance) {
+        minDistance = distance
+        closestColor = item.name
       }
-    })
+    }
 
-    // Only return if the color is reasonably close (threshold can be adjusted)
-    return minDistance < 50 ? closestColor : ""
+    // Only return if the color is reasonably close (threshold: 50^2 = 2500)
+    return minDistance < 2500 ? closestColor : ""
   }
 
   // Debounced update function to improve performance
@@ -249,23 +254,31 @@ export default function ColorPickerPage() {
     () =>
       debounce((hexColor: string) => {
         updateAllFormats(hexColor)
-      }, 100),
+      }, 150),
+    [],
+  )
+
+  // Debounced function to add to recent colors (separate from format updates)
+  const debouncedAddToRecent = useMemo(
+    () =>
+      debounce((hexColor: string) => {
+        setRecentColors((prev) => {
+          if (prev.includes(hexColor)) return prev
+          return [hexColor, ...prev.slice(0, 9)]
+        })
+      }, 500),
     [],
   )
 
   // Update all color formats when the color changes
   useEffect(() => {
     debouncedUpdateFormats(color)
-
-    // Add to recent colors if not already there
-    if (!recentColors.includes(color)) {
-      setRecentColors((prev) => [color, ...prev.slice(0, 9)])
-    }
+    debouncedAddToRecent(color)
 
     return () => {
       debouncedUpdateFormats.cancel()
     }
-  }, [color, debouncedUpdateFormats, recentColors])
+  }, [color, debouncedUpdateFormats, debouncedAddToRecent])
 
   // Clean up timeouts on unmount
   useEffect(() => {
@@ -470,12 +483,12 @@ export default function ColorPickerPage() {
         case "hwb":
           const hwbMatch = value.match(/hwb$$\s*(\d+)\s+(\d+)%\s+(\d+)%\s*$$/)
           if (hwbMatch) {
-            const [_, h, w, b] = hwbMatch.map(Number)
-            if (h >= 0 && h <= 360 && w >= 0 && w <= 100 && b >= 0 && b <= 100) {
+            const [_, hwbH, hwbW, hwbB] = hwbMatch.map(Number)
+            if (hwbH >= 0 && hwbH <= 360 && hwbW >= 0 && hwbW <= 100 && hwbB >= 0 && hwbB <= 100) {
               // Convert HWB to RGB (simplified conversion)
-              const hue = h / 360
-              const white = w / 100
-              const black = b / 100
+              const hue = hwbH / 360
+              const white = hwbW / 100
+              const black = hwbB / 100
 
               // If white + black exceeds 1, normalize them
               const sum = white + black
@@ -778,8 +791,8 @@ export default function ColorPickerPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
-                  {recentColors.map((recentColor) => (
-                    <TooltipProvider key={recentColor}>
+                  {recentColors.map((recentColor, index) => (
+                    <TooltipProvider key={`${recentColor}-${index}`}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
