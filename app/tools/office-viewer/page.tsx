@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
@@ -13,19 +13,15 @@ import {
   FileText,
   FileSpreadsheet,
   Presentation,
-  Download,
   Trash2,
   ZoomIn,
   ZoomOut,
-  ChevronLeft,
-  ChevronRight,
   Maximize2,
   Minimize2,
   File,
   AlertCircle,
   Loader2,
   Eye,
-  X,
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import mammoth from "mammoth"
@@ -46,8 +42,7 @@ interface ExcelSheet {
   data: string[][]
 }
 
-export default function OfficeViewerPage({ params }: OfficeViewerProps) {
-  const t = useTranslations("officeViewer")
+export default function OfficeViewerPage({}: OfficeViewerProps) {
   
   // 文件状态
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null)
@@ -63,8 +58,9 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
   const [activeSheet, setActiveSheet] = useState(0)
   
   // PPT 预览状态
-  const [pptSlides, setPptSlides] = useState<string[]>([])
-  const [currentSlide, setCurrentSlide] = useState(0)
+  const [pptReady, setPptReady] = useState(false)
+  const [pptArrayBuffer, setPptArrayBuffer] = useState<ArrayBuffer | null>(null)
+  const pptContainerRef = useRef<HTMLDivElement>(null)
   
   // UI 状态
   const [isDragging, setIsDragging] = useState(false)
@@ -125,11 +121,49 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
     }
   }
 
-  // 处理 PPT 文件 - 暂不支持
+  // 处理 PPT 文件 - 只存储 ArrayBuffer，实际渲染由 useEffect 处理
   const processPPT = async (file: File) => {
-    setPptSlides([])
-    setError("暂不支持 PPT 文件预览")
+    try {
+      setPptReady(false)
+      const arrayBuffer = await file.arrayBuffer()
+      setPptArrayBuffer(arrayBuffer)
+    } catch (err) {
+      console.error("PPT parse error:", err)
+      throw new Error("PPT 文件解析失败，请确保文件格式正确")
+    }
   }
+
+  // PPT 渲染 - 当容器和数据都准备好时执行
+  useEffect(() => {
+    const initPptPreview = async () => {
+      if (!pptArrayBuffer || !pptContainerRef.current || fileInfo?.type !== "ppt") {
+        return
+      }
+      
+      try {
+        // 动态导入 pptx-preview
+        const pptxPreview = await import("pptx-preview")
+        
+        // 清空容器
+        pptContainerRef.current.innerHTML = ""
+        
+        // 初始化预览器
+        const previewer = pptxPreview.init(pptContainerRef.current, {
+          width: 800,
+          height: 600,
+        })
+        
+        // 预览 PPT
+        await previewer.preview(pptArrayBuffer)
+        setPptReady(true)
+      } catch (err) {
+        console.error("PPT render error:", err)
+        setError("PPT 渲染失败")
+      }
+    }
+    
+    initPptPreview()
+  }, [pptArrayBuffer, fileInfo])
 
 
   // 处理文件上传
@@ -137,7 +171,7 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
     const type = detectFileType(file)
     
     if (type === "unknown") {
-      setError("不支持的文件格式，请上传 Word 或 Excel 文件")
+      setError("不支持的文件格式，请上传 Word、Excel 或 PPT 文件")
       return
     }
     
@@ -146,7 +180,11 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
     setProgress(0)
     setWordContent("")
     setExcelSheets([])
-    setPptSlides([])
+    setPptReady(false)
+    setPptArrayBuffer(null)
+    if (pptContainerRef.current) {
+      pptContainerRef.current.innerHTML = ""
+    }
     
     const info: FileInfo = {
       name: file.name,
@@ -201,7 +239,11 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
     setFileInfo(null)
     setWordContent("")
     setExcelSheets([])
-    setPptSlides([])
+    setPptReady(false)
+    setPptArrayBuffer(null)
+    if (pptContainerRef.current) {
+      pptContainerRef.current.innerHTML = ""
+    }
     setError(null)
     setZoom(100)
     if (fileInputRef.current) {
@@ -285,7 +327,7 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".doc,.docx,.xls,.xlsx,.csv"
+                accept=".doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx"
                 onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
                 className="hidden"
               />
@@ -305,7 +347,7 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
                   点击或拖放文件
                 </p>
                 <p className="text-xs text-gray-400">
-                  支持 .doc, .docx, .xls, .xlsx, .csv
+                  支持 .doc, .docx, .xls, .xlsx, .ppt, .pptx
                 </p>
               </div>
             </CardContent>
@@ -358,6 +400,10 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
               <div className="flex items-center gap-2 text-sm">
                 <FileSpreadsheet className="h-4 w-4 text-green-600" />
                 <span>Excel: .xls, .xlsx, .csv</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Presentation className="h-4 w-4 text-orange-600" />
+                <span>PPT: .ppt, .pptx</span>
               </div>
             </CardContent>
           </Card>
@@ -439,7 +485,7 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
           {/* 预览区域 */}
           <Card className={isFullscreen ? "h-full" : "min-h-[600px]"}>
             <CardContent 
-              className={`p-4 bg-white dark:bg-gray-900 ${isFullscreen ? "h-screen overflow-auto" : ""}`} 
+              className={`p-4 bg-white dark:bg-gray-900 scrollbar-m3 ${isFullscreen ? "h-screen overflow-auto" : "overflow-auto max-h-[600px]"}`} 
               ref={previewRef}
             >
               {/* 加载状态 */}
@@ -524,6 +570,18 @@ export default function OfficeViewerPage({ params }: OfficeViewerProps) {
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* PPT 预览 */}
+              {fileInfo?.type === "ppt" && !isLoading && !error && (
+                <div
+                  ref={pptContainerRef}
+                  className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4"
+                  style={{
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: "top left",
+                  }}
+                />
               )}
             </CardContent>
           </Card>
