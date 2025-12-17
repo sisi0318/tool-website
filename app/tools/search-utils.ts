@@ -148,6 +148,22 @@ export function getTools(locale = "en"): Tool[] {
       keywords: ["image", "compress", "optimize", "reduce", "size", "quality", "jpeg", "png", "webp", "batch"],
       path: "/tools/image-compress",
     },
+    // Image Editor
+    {
+      id: "image-editor",
+      name: t.imageEditor?.title || "Image Editor",
+      description: t.imageEditor?.description || "Edit images: crop, rotate, flip, mirror, filters",
+      keywords: ["image", "editor", "crop", "rotate", "flip", "mirror", "filter", "brightness", "contrast", "saturation", "edit", "photo"],
+      path: "/tools/image-editor",
+    },
+    // Office Viewer
+    {
+      id: "office-viewer",
+      name: t.officeViewer?.title || "Office Viewer",
+      description: t.officeViewer?.description || "Preview Word, Excel, PPT documents online",
+      keywords: ["office", "word", "excel", "ppt", "powerpoint", "doc", "docx", "xls", "xlsx", "preview", "viewer", "document"],
+      path: "/tools/office-viewer",
+    },
     // Case Converter
     {
       id: "case-converter",

@@ -63,6 +63,8 @@ const UUIDGenerator = dynamic(() => import("./uuid/page"), { ssr: false })
 const JWTParser = dynamic(() => import("./jwt/page"), { ssr: false })
 const TextStats = dynamic(() => import("./text-stats/page"), { ssr: false })
 const ImageCompressTool = dynamic(() => import("./image-compress/page"), { ssr: false })
+const ImageEditorTool = dynamic(() => import("./image-editor/page"), { ssr: false })
+const OfficeViewerTool = dynamic(() => import("./office-viewer/page"), { ssr: false })
 const CaseConverterTool = dynamic(() => import("./case-converter/page"), { ssr: false })
 const TOTPTool = dynamic(() => import("./totp/page"), { ssr: false })
 
@@ -388,6 +390,36 @@ export default function ToolsPage() {
         getComponent: (params?: Record<string, string>) => <ImageCompressTool params={params} />,
       },
       {
+        id: "image-editor",
+        title: t("imageEditor.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" x2="12" y1="3" y2="15" />
+            <path d="m14 14-2 2-2-2" />
+            <rect width="20" height="14" x="2" y="3" rx="2" />
+            <circle cx="8" cy="10" r="2" />
+            <path d="m22 17-5-5-5 5" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <ImageEditorTool params={params} />,
+      },
+      {
+        id: "office-viewer",
+        title: t("officeViewer.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" x2="8" y1="13" y2="13" />
+            <line x1="16" x2="8" y1="17" y2="17" />
+            <line x1="10" x2="8" y1="9" y2="9" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <OfficeViewerTool params={params} />,
+      },
+      {
         id: "case-converter",
         title: t("caseConverter.name"),
         icon: (
@@ -707,14 +739,14 @@ export default function ToolsPage() {
   // 工具卡片组件 - M3 Expressive Style
   const ToolCard = useCallback(
     ({ id, name, icon, onClick }: { id: string; name: string; icon: React.ReactNode; onClick: () => void }) => (
-      <Card 
+      <Card
         className="
           h-full card-elevated cursor-pointer group
           hover:shadow-xl hover:-translate-y-2
           transition-all duration-[var(--md-sys-motion-duration-medium2)]
           ease-[var(--md-sys-motion-easing-expressive)]
           active:scale-[0.98] active:translate-y-0
-        " 
+        "
         onClick={onClick}
       >
         <CardContent className="flex flex-col items-center justify-center p-6 h-full">
@@ -930,7 +962,7 @@ export default function ToolsPage() {
         <div className="relative">
           <div className="flex items-center gap-2 sm:gap-3">
             {/* M3 Expressive Search Bar with gradient border on focus */}
-            <div 
+            <div
               className={`
                 relative flex-grow
                 bg-[var(--md-sys-color-surface-container-high)]
@@ -938,8 +970,8 @@ export default function ToolsPage() {
                 transition-all
                 duration-[var(--md-sys-motion-duration-medium2)]
                 ease-[var(--md-sys-motion-easing-expressive)]
-                ${isSearchFocused 
-                  ? 'shadow-xl ring-2 ring-[var(--md-sys-color-primary)] scale-[1.01]' 
+                ${isSearchFocused
+                  ? 'shadow-xl ring-2 ring-[var(--md-sys-color-primary)] scale-[1.01]'
                   : 'shadow-md hover:shadow-lg hover:scale-[1.005]'
                 }
               `}
@@ -982,7 +1014,7 @@ export default function ToolsPage() {
 
           {/* M3 Expressive Search Results Menu */}
           {isSearchFocused && searchResults.length > 0 && (
-            <div 
+            <div
               className="
                 search-results
                 absolute z-50 w-full mt-3
@@ -1158,7 +1190,7 @@ export default function ToolsPage() {
             </div>
 
             {/* Tab content container with swipe gesture support on mobile */}
-            <div 
+            <div
               ref={tabContentRef}
               className="mt-4"
               {...(isCompact ? swipeHandlers : {})}

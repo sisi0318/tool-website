@@ -47,7 +47,7 @@ export function ToolSearch({ onSearch, searchResults, onSelectResult, className 
   return (
     <div className={`relative ${className}`}>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-md-on-surface-variant" />
         <Input
           type="text"
           value={searchTerm}
@@ -59,7 +59,7 @@ export function ToolSearch({ onSearch, searchResults, onSelectResult, className 
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-md-on-surface/10"
             onClick={clearSearch}
           >
             <X className="h-3 w-3" />
@@ -68,20 +68,20 @@ export function ToolSearch({ onSearch, searchResults, onSelectResult, className 
       </div>
 
       {isOpen && searchResults.length > 0 && (
-        <Card className="absolute z-50 w-full mt-2 p-2 max-h-80 overflow-y-auto card-modern shadow-lg">
+        <Card className="absolute z-50 w-full mt-2 p-2 max-h-80 overflow-y-auto card-modern shadow-lg bg-md-surface-container-high border-md-outline-variant">
           {searchResults.map((result, index) => (
             <button
               key={index}
-              className="w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="w-full p-3 text-left hover:bg-md-on-surface/8 rounded-[--md-sys-shape-corner-medium] transition-colors"
               onClick={() => handleSelectResult(result.toolId, result.featureName)}
             >
-              <div className="font-medium text-gray-900 dark:text-gray-100">
+              <div className="font-medium text-md-on-surface">
                 {result.featureName}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1">
+              <div className="text-sm text-md-on-surface-variant flex items-center mt-1">
                 <span>{result.toolName}</span>
                 {result.featureDescription && (
-                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                  <span className="ml-2 text-xs text-md-on-surface-variant/70">
                     - {result.featureDescription}
                   </span>
                 )}

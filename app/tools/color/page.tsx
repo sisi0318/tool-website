@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { debounce } from "lodash"
+import { ColorPicker } from "@/components/ui/color-picker"
 
 interface ColorPickerProps {
   params?: Record<string, string>
@@ -183,13 +184,13 @@ interface ColorFormat {
 
 export default function ColorPickerPage({ params }: ColorPickerProps) {
   const t = useTranslations("color")
-  
+
   // 基础状态
   const [showColorSettings, setShowColorSettings] = useState(false)
   const [autoSync, setAutoSync] = useState(true)
   const [showPreview, setShowPreview] = useState(true)
   const [enableNameDetection, setEnableNameDetection] = useState(true)
-  
+
   const [color, setColor] = useState("#106a2f")
   const [formats, setFormats] = useState<ColorFormat[]>([
     { label: "hex", value: "#106a2f", copied: false },
@@ -729,16 +730,15 @@ export default function ColorPickerPage({ params }: ColorPickerProps) {
                   </div>
 
                   {/* 颜色选择器 */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col gap-4">
                     <Label className="text-sm font-medium">颜色选择:</Label>
                     <div className="relative flex-1">
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={handleColorChange}
-                        className="w-full h-12 cursor-pointer rounded-lg border-2 border-gray-200 dark:border-gray-700"
+                      <ColorPicker
+                        color={color}
+                        onChange={setColor}
+                        width={300}
+                        height={200}
                       />
-                      <Pipette className="absolute right-3 top-3 h-6 w-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                 </div>
@@ -761,11 +761,10 @@ export default function ColorPickerPage({ params }: ColorPickerProps) {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
-                          className={`w-10 h-10 rounded-xl border-3 transition-all hover:scale-110 hover:shadow-lg ${
-                            paletteColor === color 
-                              ? "border-gray-800 dark:border-white ring-2 ring-blue-500" 
-                              : "border-gray-200 dark:border-gray-700"
-                          }`}
+                          className={`w-10 h-10 rounded-xl border-3 transition-all hover:scale-110 hover:shadow-lg ${paletteColor === color
+                            ? "border-gray-800 dark:border-white ring-2 ring-blue-500"
+                            : "border-gray-200 dark:border-gray-700"
+                            }`}
                           style={{ backgroundColor: paletteColor }}
                           onClick={() => handleSwatchClick(paletteColor)}
                         />
@@ -796,11 +795,10 @@ export default function ColorPickerPage({ params }: ColorPickerProps) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
-                            className={`w-10 h-10 rounded-xl border-3 transition-all hover:scale-110 hover:shadow-lg ${
-                              recentColor === color 
-                                ? "border-gray-800 dark:border-white ring-2 ring-blue-500" 
-                                : "border-gray-200 dark:border-gray-700"
-                            }`}
+                            className={`w-10 h-10 rounded-xl border-3 transition-all hover:scale-110 hover:shadow-lg ${recentColor === color
+                              ? "border-gray-800 dark:border-white ring-2 ring-blue-500"
+                              : "border-gray-200 dark:border-gray-700"
+                              }`}
                             style={{ backgroundColor: recentColor }}
                             onClick={() => handleSwatchClick(recentColor)}
                           />

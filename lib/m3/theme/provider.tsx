@@ -113,6 +113,9 @@ function M3ThemeProviderInternal({
   }, [resolved, setTheme]);
 
   // Apply CSS custom properties for the color scheme
+  // DISABLED: We are using manual CSS variables in globals.css for the Matcha theme
+  // and do not want programmatic overrides from the seed color generator.
+  /*
   useEffect(() => {
     const root = document.documentElement;
     const scheme = colorScheme;
@@ -158,6 +161,7 @@ function M3ThemeProviderInternal({
     root.style.setProperty('--md-sys-color-inverse-on-surface', scheme.inverseOnSurface);
     root.style.setProperty('--md-sys-color-inverse-primary', scheme.inversePrimary);
   }, [colorScheme]);
+  */
 
   const contextValue: M3ThemeContextValue = useMemo(
     () => ({

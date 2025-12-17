@@ -118,6 +118,12 @@ export const translations = {
       imageCompress: {
         name: "图片压缩",
       },
+      imageEditor: {
+        name: "图片编辑器",
+      },
+      officeViewer: {
+        name: "Office预览",
+      },
       caseConverter: {
         name: "大小写转换",
       },
@@ -1181,6 +1187,12 @@ export const translations = {
       },
       imageCompress: {
         name: "Image Compress",
+      },
+      imageEditor: {
+        name: "Image Editor",
+      },
+      officeViewer: {
+        name: "Office Viewer",
       },
       caseConverter: {
         name: "Case Converter",
