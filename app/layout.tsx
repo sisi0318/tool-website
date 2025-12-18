@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Roboto } from "next/font/google"
 import "./globals.css"
 import { M3ThemeProvider } from "@/lib/m3/theme"
@@ -19,10 +19,26 @@ const roboto = Roboto({
   display: "swap",
 })
 
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export const metadata: Metadata = {
   title: "工具站",
   description: "一个实用的在线工具集合",
-  generator: 'v0.dev'
+  generator: 'v0.dev',
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "工具站",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 }
 
 export default function RootLayout({
