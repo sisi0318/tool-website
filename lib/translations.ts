@@ -124,6 +124,9 @@ export const translations = {
       officeViewer: {
         name: "Office预览",
       },
+      memeSplitter: {
+        name: "智能切图",
+      },
       caseConverter: {
         name: "大小写转换",
       },
@@ -1193,6 +1196,9 @@ export const translations = {
       },
       officeViewer: {
         name: "Office Viewer",
+      },
+      memeSplitter: {
+        name: "Smart Splitter",
       },
       caseConverter: {
         name: "Case Converter",

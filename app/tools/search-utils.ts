@@ -164,6 +164,14 @@ export function getTools(locale = "en"): Tool[] {
       keywords: ["office", "word", "excel", "ppt", "powerpoint", "doc", "docx", "xls", "xlsx", "preview", "viewer", "document"],
       path: "/tools/office-viewer",
     },
+    // Meme Splitter
+    {
+      id: "meme-splitter",
+      name: t.memeSplitter?.title || "Smart Splitter",
+      description: t.memeSplitter?.description || "Intelligently detect and split meme grids",
+      keywords: ["meme", "splitter", "split", "grid", "cut", "slice", "image", "sticker", "emoji", "表情包", "切图", "九宫格"],
+      path: "/tools/meme-splitter",
+    },
     // Case Converter
     {
       id: "case-converter",

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { useDropzone } from "react-dropzone" // Need to check if this is available or implement custom
+// import { useDropzone } from "react-dropzone" // Need to check if this is available or implement custom
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Upload, FileText, FileSpreadsheet, FileIcon, X } from "lucide-react"
