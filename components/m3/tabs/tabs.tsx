@@ -80,6 +80,7 @@ const tabListVariants = cva(
     'relative',
     'flex items-end',
     'min-w-full',
+    'flex-none', // Ensure container doesn't shrink and allows scrolling
   ].join(' ')
 );
 
@@ -130,11 +131,11 @@ function useIndicator(
   const updateIndicator = React.useCallback(() => {
     const activeTabElement = tabRefs.current.get(activeTab);
     const container = containerRef.current;
-    
+
     if (activeTabElement && container) {
       const containerRect = container.getBoundingClientRect();
       const tabRect = activeTabElement.getBoundingClientRect();
-      
+
       setIndicatorStyle({
         left: tabRect.left - containerRect.left + container.scrollLeft,
         width: tabRect.width,
@@ -145,18 +146,18 @@ function useIndicator(
   React.useEffect(() => {
     // 如果有动画正在进行，延迟更新指示器位置
     const delay = isAnimating ? 50 : 0;
-    
+
     const timeoutId = setTimeout(() => {
       // 使用 requestAnimationFrame 确保 DOM 已更新
       requestAnimationFrame(() => {
         updateIndicator();
       });
     }, delay);
-    
+
     // Update on resize
     const handleResize = () => updateIndicator();
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       clearTimeout(timeoutId);
       window.removeEventListener('resize', handleResize);
@@ -196,12 +197,12 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
     const [animatingTabs, setAnimatingTabs] = React.useState<Set<string>>(new Set());
     const [exitingTabs, setExitingTabs] = React.useState<Set<string>>(new Set());
     const prevTabsRef = React.useRef<TabItem[]>(tabs);
-    
+
     const isAnimating = animatingTabs.size > 0 || exitingTabs.size > 0;
     const { indicatorStyle, updateIndicator } = useIndicator(
-      activeTab, 
-      tabRefs, 
-      containerRef, 
+      activeTab,
+      tabRefs,
+      containerRef,
       tabs.length,
       isAnimating
     );
@@ -210,11 +211,11 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
     React.useEffect(() => {
       const prevIds = new Set(prevTabsRef.current.map(t => t.id));
       const newTabs = tabs.filter(t => !prevIds.has(t.id));
-      
+
       if (newTabs.length > 0) {
         const newIds = new Set(newTabs.map(t => t.id));
         setAnimatingTabs(newIds);
-        
+
         // Remove animation class after animation completes and update indicator
         const timer = setTimeout(() => {
           setAnimatingTabs(new Set());
@@ -223,17 +224,17 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
             updateIndicator();
           });
         }, 500); // M3 emphasized motion duration
-        
+
         return () => clearTimeout(timer);
       }
-      
+
       prevTabsRef.current = tabs;
     }, [tabs, updateIndicator]);
 
     const handleTabClose = (id: string) => {
       // Add to exiting tabs for exit animation
       setExitingTabs(prev => new Set(prev).add(id));
-      
+
       // Call onTabClose after animation
       setTimeout(() => {
         setExitingTabs(prev => {
@@ -287,12 +288,12 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
               aria-hidden="true"
             />
           )}
-          
+
           {/* Tabs */}
           {visibleTabs.map((tab) => {
             const isEntering = animatingTabs.has(tab.id);
             const isExiting = exitingTabs.has(tab.id);
-            
+
             return (
               <M3Tab
                 key={tab.id}

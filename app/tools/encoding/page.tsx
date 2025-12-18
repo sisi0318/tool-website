@@ -1,18 +1,18 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useMemo } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  ArrowLeftRight, 
-  Copy, 
-  Check, 
-  Trash2, 
-  ArrowRight, 
+import {
+  ArrowLeftRight,
+  Copy,
+  Check,
+  Trash2,
+  ArrowRight,
   ArrowLeft,
   Settings,
   Zap,
@@ -25,6 +25,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { M3Card } from "@/components/m3/card"
+import { M3Tabs, type TabItem } from "@/components/m3/tabs"
+import { M3Button } from "@/components/m3/button" // Assuming exist or use Button with className
 
 // 添加参数接口
 interface EncodingPageProps {
@@ -93,10 +96,10 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   // 新的转换函数
   const performTransform = (input: string, fromType: "text" | "encoded", toType: "text" | "encoded"): string => {
     if (!input.trim()) return ""
-    
+
     try {
       setError({}) // 清除错误
-      
+
       if (fromType === "text" && toType === "encoded") {
         // 编码
         switch (encodingType) {
@@ -155,7 +158,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   const handleLeftInputChange = (value: string) => {
     setLeftInput(value)
     setLeftInputLength(value.length)
-    
+
     if (autoMode && value.trim()) {
       const targetType = leftType === "text" ? "encoded" : "text"
       const result = performTransform(value, leftType, targetType)
@@ -170,7 +173,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   const handleRightInputChange = (value: string) => {
     setRightInput(value)
     setRightInputLength(value.length)
-    
+
     if (autoMode && value.trim()) {
       const targetType = leftType === "text" ? "text" : "encoded"
       const result = performTransform(value, leftType === "text" ? "encoded" : "text", targetType)
@@ -194,7 +197,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
 
   const transformRightToLeft = () => {
     if (rightInput.trim()) {
-      const targetType = leftType === "text" ? "text" : "encoded"  
+      const targetType = leftType === "text" ? "text" : "encoded"
       const result = performTransform(rightInput, leftType === "text" ? "encoded" : "text", targetType)
       setLeftInput(result)
       setLeftInputLength(result.length)
@@ -205,12 +208,12 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   const swapInputs = () => {
     const tempInput = leftInput
     const tempLength = leftInputLength
-    
+
     setLeftInput(rightInput)
     setLeftInputLength(rightInputLength)
     setRightInput(tempInput)
     setRightInputLength(tempLength)
-    
+
     // 交换类型
     setLeftType(leftType === "text" ? "encoded" : "text")
   }
@@ -340,7 +343,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         </div>
       )
     }
-    
+
     return descriptions[type] || <p>未知编码格式</p>
   }
 
@@ -444,7 +447,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         </div>
       )
     }
-    
+
     return examples[type] || <div className="text-xs">暂无示例</div>
   }
 
@@ -1045,7 +1048,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
     try {
       const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
       const bytes = new TextEncoder().encode(text)
-      
+
       if (multiline) {
         return text
           .split("\n")
@@ -1056,7 +1059,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       return encodeBase58(bytes, alphabet)
     } catch (error) {
       setError((prev) => ({ ...prev, encode: t("invalidInput") }))
@@ -1067,7 +1070,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   const base58Decode = (text: string): string => {
     try {
       const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-      
+
       if (multiline) {
         return text
           .split("\n")
@@ -1082,7 +1085,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       const bytes = decodeBase58(text.trim(), alphabet)
       return new TextDecoder().decode(bytes)
     } catch (error) {
@@ -1097,19 +1100,19 @@ export default function EncodingPage({ params }: EncodingPageProps) {
     for (const byte of bytes) {
       num = num * BigInt(256) + BigInt(byte)
     }
-    
+
     let result = ""
     while (num > 0) {
       result = alphabet[Number(num % BigInt(58))] + result
       num = num / BigInt(58)
     }
-    
+
     // 处理前导零
     for (const byte of bytes) {
       if (byte === 0) result = alphabet[0] + result
       else break
     }
-    
+
     return result || alphabet[0]
   }
 
@@ -1120,19 +1123,19 @@ export default function EncodingPage({ params }: EncodingPageProps) {
       if (index === -1) throw new Error("Invalid character")
       num = num * BigInt(58) + BigInt(index)
     }
-    
+
     const bytes: number[] = []
     while (num > 0) {
       bytes.unshift(Number(num % BigInt(256)))
       num = num / BigInt(256)
     }
-    
+
     // 处理前导零
     for (const char of text) {
       if (char === alphabet[0]) bytes.unshift(0)
       else break
     }
-    
+
     return new Uint8Array(bytes)
   }
 
@@ -1140,7 +1143,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   const base85Encode = (text: string): string => {
     try {
       const bytes = new TextEncoder().encode(text)
-      
+
       if (multiline) {
         return text
           .split("\n")
@@ -1151,7 +1154,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       return encodeBase85(bytes)
     } catch (error) {
       setError((prev) => ({ ...prev, encode: t("invalidInput") }))
@@ -1175,7 +1178,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       const bytes = decodeBase85(text.trim())
       return new TextDecoder().decode(bytes)
     } catch (error) {
@@ -1192,7 +1195,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
       for (let j = 0; j < 4 && i + j < bytes.length; j++) {
         value = value * 256 + (bytes[i + j] || 0)
       }
-      
+
       if (value === 0 && i + 4 <= bytes.length) {
         result += "z"
       } else {
@@ -1204,32 +1207,32 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         result += chars.join("")
       }
     }
-    
+
     return result
   }
 
   const decodeBase85 = (text: string): Uint8Array => {
     const result: number[] = []
-    
+
     for (let i = 0; i < text.length; i += 5) {
       if (text[i] === "z") {
         result.push(0, 0, 0, 0)
         i -= 4
         continue
       }
-      
+
       let value = 0
       for (let j = 0; j < 5 && i + j < text.length; j++) {
         const charCode = text.charCodeAt(i + j) - 33
         if (charCode < 0 || charCode >= 85) throw new Error("Invalid character")
         value = value * 85 + charCode
       }
-      
+
       for (let k = 3; k >= 0; k--) {
         result.push((value >>> (k * 8)) & 255)
       }
     }
-    
+
     return new Uint8Array(result)
   }
 
@@ -1247,7 +1250,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       return Array.from(new TextEncoder().encode(text))
         .map(byte => byte.toString(2).padStart(8, '0'))
         .join(' ')
@@ -1274,7 +1277,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       const bytes = text.trim().split(/\s+/)
         .map(bin => parseInt(bin, 2))
       return new TextDecoder().decode(new Uint8Array(bytes))
@@ -1298,7 +1301,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       return Array.from(new TextEncoder().encode(text))
         .map(byte => '\\' + byte.toString(8).padStart(3, '0'))
         .join('')
@@ -1325,7 +1328,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       const octals = text.match(/\\(\d{1,3})/g) || []
       const bytes = octals.map(oct => parseInt(oct.slice(1), 8))
       return new TextDecoder().decode(new Uint8Array(bytes))
@@ -1346,7 +1349,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         "'": '&#39;',
         ' ': '&nbsp;'
       }
-      
+
       return text.replace(/[&<>"' ]/g, char => htmlEntities[char] || char)
     } catch (error) {
       setError((prev) => ({ ...prev, encode: t("invalidInput") }))
@@ -1364,7 +1367,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         '&#39;': "'",
         '&nbsp;': ' '
       }
-      
+
       return text.replace(/&[a-zA-Z0-9#]+;/g, entity => htmlEntities[entity] || entity)
     } catch (error) {
       setError((prev) => ({ ...prev, decode: t("invalidInput") }))
@@ -1388,7 +1391,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         '+': '.-.-.', '-': '-....-', '_': '..--.-', '"': '.-..-.', '$': '...-..-',
         '@': '.--.-.'
       }
-      
+
       return text.toUpperCase()
         .split('')
         .map(char => morseCode[char] || char)
@@ -1409,12 +1412,12 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         '-.--': 'Y', '--..': 'Z', '-----': '0', '.----': '1', '..---': '2',
         '...--': '3', '....-': '4', '.....': '5', '-....': '6', '--...': '7',
         '---..': '8', '----.': '9', '/': ' ', '.-.-.-': '.', '--..--': ',',
-        '..--..': '?', '.----.': "'", '-.-.--': '!', '-..-.': '/', '-.--.' : '(',
+        '..--..': '?', '.----.': "'", '-.-.--': '!', '-..-.': '/', '-.--.': '(',
         '-.--.-': ')', '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
         '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"', '...-..-': '$',
-        '.--.-' : '@'
+        '.--.-': '@'
       }
-      
+
       return text.split(' ')
         .map(morse => morseToChar[morse] || morse)
         .join('')
@@ -1447,7 +1450,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
         const code = char.charCodeAt(0)
         return code > 127 ? `xn--${code.toString(36)}` : char
       }).join('')
-      
+
       return encoded
     } catch (error) {
       setError((prev) => ({ ...prev, encode: t("invalidInput") }))
@@ -1490,7 +1493,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       // 将字符串转换为UTF-8字节，然后编码每个字节
       const utf8Bytes = new TextEncoder().encode(text)
       let result = ""
@@ -1516,7 +1519,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           .map((line) => {
             try {
               if (!line.trim()) return ""
-              
+
               // 收集所有字节
               const bytes = []
               let i = 0
@@ -1535,7 +1538,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                   i += 1
                 }
               }
-              
+
               // 使用TextDecoder解码UTF-8字节序列
               return new TextDecoder('utf-8').decode(new Uint8Array(bytes))
             } catch {
@@ -1544,7 +1547,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           })
           .join("\n")
       }
-      
+
       // 收集所有字节
       const bytes = []
       let i = 0
@@ -1563,7 +1566,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           i += 1
         }
       }
-      
+
       // 使用TextDecoder解码UTF-8字节序列
       return new TextDecoder('utf-8').decode(new Uint8Array(bytes))
     } catch (error) {
@@ -1588,17 +1591,17 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           case "base64":
             result = multiline
               ? text
-                  .split("\n")
-                  .map((line) => (line.trim() ? btoa(unescape(encodeURIComponent(line))) : ""))
-                  .join("\n")
+                .split("\n")
+                .map((line) => (line.trim() ? btoa(unescape(encodeURIComponent(line))) : ""))
+                .join("\n")
               : btoa(unescape(encodeURIComponent(text)))
             break
           case "url":
             result = multiline
               ? text
-                  .split("\n")
-                  .map((line) => (line.trim() ? encodeURIComponent(line) : ""))
-                  .join("\n")
+                .split("\n")
+                .map((line) => (line.trim() ? encodeURIComponent(line) : ""))
+                .join("\n")
               : encodeURIComponent(text)
             break
           case "hex":
@@ -1672,29 +1675,29 @@ export default function EncodingPage({ params }: EncodingPageProps) {
           case "base64":
             result = multiline
               ? text
-                  .split("\n")
-                  .map((line) => {
-                    try {
-                      return line.trim() ? decodeURIComponent(escape(atob(line))) : ""
-                    } catch {
-                      return `[${t("invalidInput")}: ${line}]`
-                    }
-                  })
-                  .join("\n")
+                .split("\n")
+                .map((line) => {
+                  try {
+                    return line.trim() ? decodeURIComponent(escape(atob(line))) : ""
+                  } catch {
+                    return `[${t("invalidInput")}: ${line}]`
+                  }
+                })
+                .join("\n")
               : decodeURIComponent(escape(atob(text)))
             break
           case "url":
             result = multiline
               ? text
-                  .split("\n")
-                  .map((line) => {
-                    try {
-                      return line.trim() ? decodeURIComponent(line) : ""
-                    } catch {
-                      return `[${t("invalidInput")}: ${line}]`
-                    }
-                  })
-                  .join("\n")
+                .split("\n")
+                .map((line) => {
+                  try {
+                    return line.trim() ? decodeURIComponent(line) : ""
+                  } catch {
+                    return `[${t("invalidInput")}: ${line}]`
+                  }
+                })
+                .join("\n")
               : decodeURIComponent(text)
             break
           case "hex":
@@ -1996,7 +1999,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   // 监听编码类型切换，自动重新转换
   useEffect(() => {
     if (!autoSwitch) return
-    
+
     // 如果有左侧输入内容，自动重新转换到右侧
     if (leftInput.trim()) {
       const targetType = leftType === "text" ? "encoded" : "text"
@@ -2018,6 +2021,12 @@ export default function EncodingPage({ params }: EncodingPageProps) {
     setEncodeInputLength(encodeInput.length)
     setDecodeInputLength(decodeInput.length)
   }, [])
+
+  // M3 Tabs items
+  const tabItems: TabItem[] = React.useMemo(() => encodingTypes.map(t => ({
+    id: t.id,
+    label: t.name,
+  })), [])
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
@@ -2061,20 +2070,38 @@ export default function EncodingPage({ params }: EncodingPageProps) {
       {!showAllResults && (
         <>
           {/* 编码类型选择 */}
+          {/* 编码类型选择 */}
           <div className="mb-6">
-            <Tabs value={encodingType} onValueChange={setEncodingType} className="w-full">
-              <TabsList className="grid grid-cols-4 lg:grid-cols-8 xl:grid-cols-16 gap-1 w-full bg-gray-100 dark:bg-gray-800 p-1 h-auto flex-wrap justify-center">
-                {encodingTypes.map((type) => (
-                  <TabsTrigger
-                    key={type.id}
-                    value={type.id}
-                    className="text-xs px-2 py-1.5 whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm min-w-0 flex-shrink-0"
-                  >
-                    {type.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            {/* 移动端：下拉选择 */}
+            <div className="md:hidden mb-4">
+              <Label className="mb-2 block text-sm font-medium text-[var(--md-sys-color-on-surface-variant)]">选择编码格式</Label>
+              <Select value={encodingType} onValueChange={setEncodingType}>
+                <SelectTrigger className="w-full input-modern h-12 bg-[var(--md-sys-color-surface-container-high)] border-none">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{encodingTypes.find(t => t.id === encodingType)?.name}</span>
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {encodingTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 桌面端：Scrollable Tabs */}
+            <div className="hidden md:block">
+              <M3Tabs
+                tabs={tabItems}
+                activeTab={encodingType}
+                onTabChange={setEncodingType}
+                scrollable
+                variant="secondary"
+                className="w-full"
+              />
+            </div>
 
             {/* 编码说明折叠区域 */}
             <div className="mt-4">
@@ -2114,7 +2141,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                           {getEncodingDescription(encodingType)}
                         </div>
                       </div>
-                      
+
                       {/* 示例 */}
                       <div className="space-y-3">
                         <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -2132,205 +2159,242 @@ export default function EncodingPage({ params }: EncodingPageProps) {
             </div>
           </div>
 
-          {/* 主转换区域 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* 主转换区域 - M3 Optimized */}
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 mb-6">
             {/* 左侧输入 */}
-            <Card className="card-modern">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${leftType === "text" ? "bg-green-500" : "bg-blue-500"}`} />
+            <M3Card variant="elevated" className="flex-1 min-w-0">
+              <div className="px-4 pt-4 pb-3 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${leftType === "text" ? "bg-green-500" : "bg-blue-500"}`} />
                     {leftType === "text" ? "原文" : "编码文本"}
-                  </CardTitle>
-                  <div className="flex gap-1">
-                    <Badge variant="outline" className="text-xs">
-                      {leftInputLength} 字符
+                  </h3>
+                  <div className="flex gap-1 items-center">
+                    <Badge variant="outline" className="text-xs font-mono h-5 px-1.5 border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)]">
+                      {leftInputLength}
                     </Badge>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(leftInput, "left")}
-                            disabled={!leftInput.trim()}
-                          >
-                            {copied.left ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>复制内容</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <div className="hidden md:flex gap-1">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                navigator.clipboard.readText().then(text => handleLeftInputChange(text)).catch(console.error)
+                              }}
+                            >
+                              <span className="text-xs">粘贴</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>粘贴内容</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => copyToClipboard(leftInput, "left")}
+                              disabled={!leftInput.trim()}
+                            >
+                              {copied.left ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>复制内容</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+
                 <Textarea
                   ref={leftInputRef}
                   value={leftInput}
                   onChange={(e) => handleLeftInputChange(e.target.value)}
                   placeholder={leftType === "text" ? "输入要编码的文本..." : "输入要解码的文本..."}
                   rows={8}
-                  className="font-mono text-sm resize-none"
+                  className="font-mono text-sm resize-none bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline-variant)] focus:border-[var(--md-sys-color-primary)] flex-grow"
                 />
                 {error.left && (
-                  <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                    <span className="w-1 h-1 bg-red-500 rounded-full" />
+                  <div className="text-[var(--md-sys-color-error)] text-xs mt-2 flex items-center gap-1">
+                    <span className="w-1 h-1 bg-[var(--md-sys-color-error)] rounded-full" />
                     {error.left}
                   </div>
                 )}
-              </CardContent>
-            </Card>
 
-            {/* 中间控制区域 */}
-            <div className="flex flex-col items-center justify-center space-y-4">
-              {/* 转换按钮 */}
-              <div className="flex flex-col lg:flex-row gap-3">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={transformLeftToRight}
-                        disabled={!leftInput.trim() || autoMode}
-                        className="btn-gradient"
-                        size="sm"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {leftType === "text" ? "编码 →" : "解码 →"}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={transformRightToLeft}
-                        disabled={!rightInput.trim() || autoMode}
-                        className="btn-gradient"
-                        size="sm"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {leftType === "text" ? "← 解码" : "← 编码"}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-
-              {/* 交换按钮 */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={swapInputs}
-                      variant="outline"
-                      size="sm"
-                      className="hover-lift"
-                    >
-                      <ArrowLeftRight className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>交换左右内容</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* 编码类型指示 */}
-              <div className="text-center">
-                <Badge variant="secondary" className="text-xs">
-                  {encodingTypes.find(t => t.id === encodingType)?.name}
-                </Badge>
-                <div className="flex flex-col items-center gap-1 mt-2">
-                  {autoMode && (
-                    <div className="flex items-center gap-1 text-xs text-green-600">
-                      <Zap className="h-3 w-3" />
-                      实时转换
-                    </div>
-                  )}
-                  {autoSwitch && (
-                    <div className="flex items-center gap-1 text-xs text-blue-600">
-                      <RefreshCw className="h-3 w-3" />
-                      智能切换
-                    </div>
-                  )}
+                {/* Mobile Quick Actions */}
+                <div className="grid grid-cols-3 gap-2 mt-3 md:hidden">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 text-xs bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] hover:bg-[var(--md-sys-color-secondary-container)]/80 border-none shadow-none"
+                    onClick={() => {
+                      navigator.clipboard.readText().then(text => handleLeftInputChange(text)).catch(console.error)
+                    }}
+                  >
+                    粘贴
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 text-xs bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] hover:bg-[var(--md-sys-color-secondary-container)]/80 border-none shadow-none"
+                    onClick={() => copyToClipboard(leftInput, "left")}
+                    disabled={!leftInput.trim()}
+                  >
+                    {copied.left ? "已复制" : "复制"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]"
+                    onClick={() => {
+                      setLeftInput("")
+                      setLeftInputLength(0)
+                    }}
+                  >
+                    清空
+                  </Button>
                 </div>
               </div>
+            </M3Card>
 
-              {/* 清空按钮 */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={clearAllInputs}
-                      variant="outline"
-                      size="sm"
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>清空所有内容</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            {/* 中间控制区域 */}
+            <div className="flex flex-row lg:flex-col items-center justify-center gap-4 py-0 lg:py-2 shrink-0">
+              <div className="flex lg:flex-col gap-3 items-center">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={autoMode ? undefined : transformLeftToRight}
+                        disabled={!leftInput.trim() && !autoMode}
+                        className={`rounded-full w-10 h-10 p-0 shadow-sm transition-all ${autoMode
+                            ? "bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] cursor-default"
+                            : "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
+                          }`}
+                      >
+                        {autoMode ? <Zap className="h-5 w-5" /> : <ArrowRight className="h-5 w-5 lg:rotate-0 rotate-90" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{autoMode ? "实时转换开启中" : "点击转换"}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={swapInputs}
+                        variant="outline"
+                        className="rounded-full w-10 h-10 p-0 border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)]"
+                      >
+                        <ArrowLeftRight className="h-4 w-4 text-[var(--md-sys-color-on-surface-variant)]" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>交换内容</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={clearAllInputs}
+                        variant="ghost"
+                        className="rounded-full w-10 h-10 p-0 text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>清空所有</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
 
             {/* 右侧输出 */}
-            <Card className="card-modern">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${leftType === "text" ? "bg-blue-500" : "bg-green-500"}`} />
+            <M3Card variant="filled" className="flex-1 min-w-0 bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)]/50">
+              <div className="px-4 pt-4 pb-3 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${leftType === "text" ? "bg-blue-500" : "bg-green-500"}`} />
                     {leftType === "text" ? "编码结果" : "解码结果"}
-                  </CardTitle>
-                  <div className="flex gap-1">
-                    <Badge variant="outline" className="text-xs">
-                      {rightInputLength} 字符
+                  </h3>
+                  <div className="flex gap-1 items-center">
+                    <Badge variant="outline" className="text-xs font-mono h-5 px-1.5 border-[var(--md-sys-color-outline)] text-[var(--md-sys-color-on-surface-variant)]">
+                      {rightInputLength}
                     </Badge>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(rightInput, "right")}
-                            disabled={!rightInput.trim()}
-                          >
-                            {copied.right ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>复制结果</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    {/* Desktop Actions */}
+                    <div className="hidden md:flex">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => copyToClipboard(rightInput, "right")}
+                              disabled={!rightInput.trim()}
+                            >
+                              {copied.right ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>复制结果</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+
                 <Textarea
                   ref={rightInputRef}
                   value={rightInput}
                   onChange={(e) => handleRightInputChange(e.target.value)}
                   placeholder={leftType === "text" ? "编码结果将在这里显示..." : "解码结果将在这里显示..."}
                   rows={8}
-                  className="font-mono text-sm resize-none"
+                  className="font-mono text-sm resize-none bg-transparent border-[var(--md-sys-color-outline-variant)] focus:border-[var(--md-sys-color-primary)] flex-grow"
                 />
+
                 {error.right && (
-                  <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                    <span className="w-1 h-1 bg-red-500 rounded-full" />
+                  <div className="text-[var(--md-sys-color-error)] text-xs mt-2 flex items-center gap-1">
+                    <span className="w-1 h-1 bg-[var(--md-sys-color-error)] rounded-full" />
                     {error.right}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+
+                {/* Mobile Quick Actions */}
+                <div className="grid grid-cols-2 gap-2 mt-3 md:hidden">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-8 text-xs bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] border-none shadow-none"
+                    onClick={() => copyToClipboard(rightInput, "right")}
+                    disabled={!rightInput.trim()}
+                  >
+                    {copied.right ? "已复制" : "复制结果"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]"
+                    onClick={() => {
+                      setRightInput("")
+                      setRightInputLength(0)
+                    }}
+                  >
+                    清空
+                  </Button>
+                </div>
+              </div>
+            </M3Card>
           </div>
 
           {/* 设置选项 */}
-          <Card className="card-modern">
-            <CardHeader className="pb-3">
+          <M3Card variant="outlined" className="card-modern">
+            <CardHeader className="pb-3 pt-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Settings className="h-4 w-4" />
@@ -2346,7 +2410,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
               </div>
             </CardHeader>
             {showSettings && (
-              <CardContent>
+              <CardContent className="pb-4">
                 <div className="flex flex-wrap gap-4 items-center">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -2361,7 +2425,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                   <div className="flex items-center space-x-2">
                     <Label className="text-sm">输入类型:</Label>
                     <Select value={leftType} onValueChange={(value: "text" | "encoded") => setLeftType(value)}>
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-32 h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -2373,273 +2437,276 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                 </div>
               </CardContent>
             )}
-          </Card>
+          </M3Card>
         </>
-      )}
+      )
+      }
 
       {/* 批量模式：优化界面 */}
-      {showAllResults && (
-        <div className="space-y-6">
-          {/* 编码格式选择器 */}
-          <Card className="card-modern">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Zap className="h-5 w-5 text-blue-600" />
-                编码格式选择
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-                {encodingTypes.map((type) => (
-                  <Button
-                    key={type.id}
-                    variant={encodingType === type.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setEncodingType(type.id)}
-                    className="text-xs h-8"
-                  >
-                    {type.name}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 编码说明和示例 - 可折叠 */}
-          <Card className="card-modern">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-green-600" />
-                  {encodingTypes.find(t => t.id === encodingType)?.name} 编码说明
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowEncodingInfo(!showEncodingInfo)}
-                  className="text-gray-600 dark:text-gray-400"
-                >
-                  {showEncodingInfo ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <>
-                      <ChevronDown className="h-4 w-4 mr-1" />
-                      <Badge variant="secondary" className="text-xs">
-                        点击查看
-                      </Badge>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardHeader>
-            {showEncodingInfo && (
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* 编码说明 */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                      <Settings className="h-4 w-4 text-green-600" />
-                      格式说明
-                    </h4>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                      {getEncodingDescription(encodingType)}
-                    </div>
-                  </div>
-                  
-                  {/* 示例 */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-blue-600" />
-                      转换示例
-                    </h4>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
-                      {getEncodingExample(encodingType)}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-
-          {/* 输入区域 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 编码输入 */}
-            <Card className="card-modern">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                  原文输入
-                  <Badge variant="outline" className="text-xs ml-auto">
-                    {encodeInputLength} 字符
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  id="encode-input"
-                  ref={encodeInputRef}
-                  value={encodeInput}
-                  onChange={(e) => {
-                    setEncodeInput(e.target.value)
-                    setEncodeInputLength(e.target.value.length)
-                  }}
-                  placeholder="输入要编码的文本..."
-                  rows={6}
-                  className="font-mono text-sm resize-none"
-                />
-                {error.left && (
-                  <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                    <span className="w-1 h-1 bg-red-500 rounded-full" />
-                    {error.left}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 解码输入 */}
-            <Card className="card-modern">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500" />
-                  编码输入
-                  <Badge variant="outline" className="text-xs ml-auto">
-                    {decodeInputLength} 字符
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  id="decode-input"
-                  ref={decodeInputRef}
-                  value={decodeInput}
-                  onChange={(e) => {
-                    setDecodeInput(e.target.value)
-                    setDecodeInputLength(e.target.value.length)
-                  }}
-                  placeholder="输入要解码的文本..."
-                  rows={6}
-                  className="font-mono text-sm resize-none"
-                />
-                {error.right && (
-                  <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                    <span className="w-1 h-1 bg-red-500 rounded-full" />
-                    {error.right}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* 控制区域 */}
-          <Card className="card-modern">
-            <CardContent className="py-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="multiline-batch"
-                      checked={multiline}
-                      onCheckedChange={(checked) => setMultiline(checked as boolean)}
-                    />
-                    <Label htmlFor="multiline-batch" className="cursor-pointer text-sm">
-                      多行处理模式
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  <Button
-                    onClick={handleEncode}
-                    className="flex-1 sm:flex-none bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
-                    size="sm"
-                  >
-                    <Zap className="h-4 w-4 mr-2" />
-                    批量编码
-                  </Button>
-                  <Button
-                    onClick={handleDecode}
-                    className="flex-1 sm:flex-none bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                    size="sm"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    批量解码
-                  </Button>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" onClick={clearAll} size="sm" className="text-red-500 hover:text-red-700">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>清空所有内容</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 批量结果显示 */}
-          {(allEncodeResults.length > 0 || allDecodeResults.length > 0) && (
+      {
+        showAllResults && (
+          <div className="space-y-6">
+            {/* 编码格式选择器 */}
             <Card className="card-modern">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-600" />
-                  批量转换结果
-                  <Badge variant="secondary" className="ml-auto">
-                    {allEncodeResults.length + allDecodeResults.length} 个结果
-                  </Badge>
+                  <Zap className="h-5 w-5 text-blue-600" />
+                  编码格式选择
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {[...allEncodeResults, ...allDecodeResults].map((result, index) => (
-                    <div
-                      key={index}
-                      className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+                  {encodingTypes.map((type) => (
+                    <Button
+                      key={type.id}
+                      variant={encodingType === type.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEncodingType(type.id)}
+                      className="text-xs h-8"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant="outline" className="text-xs font-medium">
-                              {result.type}
-                            </Badge>
-                            <span className="text-xs text-gray-500">
-                              {result.result.length} 字符
-                            </span>
-                          </div>
-                          <div className="font-mono text-sm break-all bg-white dark:bg-gray-900 p-2 rounded border">
-                            {result.result || <span className="text-gray-400">空结果</span>}
-                          </div>
-                        </div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyToClipboard(result.result, `batch-${index}`)}
-                                className="flex-shrink-0"
-                                disabled={!result.result}
-                              >
-                                {copied[`batch-${index}`] ? 
-                                  <Check className="h-4 w-4 text-green-500" /> : 
-                                  <Copy className="h-4 w-4" />
-                                }
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>复制结果</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </div>
+                      {type.name}
+                    </Button>
                   ))}
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
-      )}
-    </div>
+
+            {/* 编码说明和示例 - 可折叠 */}
+            <Card className="card-modern">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-green-600" />
+                    {encodingTypes.find(t => t.id === encodingType)?.name} 编码说明
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowEncodingInfo(!showEncodingInfo)}
+                    className="text-gray-600 dark:text-gray-400"
+                  >
+                    {showEncodingInfo ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-1" />
+                        <Badge variant="secondary" className="text-xs">
+                          点击查看
+                        </Badge>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              {showEncodingInfo && (
+                <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* 编码说明 */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <Settings className="h-4 w-4 text-green-600" />
+                        格式说明
+                      </h4>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                        {getEncodingDescription(encodingType)}
+                      </div>
+                    </div>
+
+                    {/* 示例 */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-blue-600" />
+                        转换示例
+                      </h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+                        {getEncodingExample(encodingType)}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* 输入区域 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 编码输入 */}
+              <Card className="card-modern">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    原文输入
+                    <Badge variant="outline" className="text-xs ml-auto">
+                      {encodeInputLength} 字符
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    id="encode-input"
+                    ref={encodeInputRef}
+                    value={encodeInput}
+                    onChange={(e) => {
+                      setEncodeInput(e.target.value)
+                      setEncodeInputLength(e.target.value.length)
+                    }}
+                    placeholder="输入要编码的文本..."
+                    rows={6}
+                    className="font-mono text-sm resize-none"
+                  />
+                  {error.left && (
+                    <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-red-500 rounded-full" />
+                      {error.left}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 解码输入 */}
+              <Card className="card-modern">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    编码输入
+                    <Badge variant="outline" className="text-xs ml-auto">
+                      {decodeInputLength} 字符
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    id="decode-input"
+                    ref={decodeInputRef}
+                    value={decodeInput}
+                    onChange={(e) => {
+                      setDecodeInput(e.target.value)
+                      setDecodeInputLength(e.target.value.length)
+                    }}
+                    placeholder="输入要解码的文本..."
+                    rows={6}
+                    className="font-mono text-sm resize-none"
+                  />
+                  {error.right && (
+                    <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-red-500 rounded-full" />
+                      {error.right}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 控制区域 */}
+            <Card className="card-modern">
+              <CardContent className="py-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="multiline-batch"
+                        checked={multiline}
+                        onCheckedChange={(checked) => setMultiline(checked as boolean)}
+                      />
+                      <Label htmlFor="multiline-batch" className="cursor-pointer text-sm">
+                        多行处理模式
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <Button
+                      onClick={handleEncode}
+                      className="flex-1 sm:flex-none bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+                      size="sm"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      批量编码
+                    </Button>
+                    <Button
+                      onClick={handleDecode}
+                      className="flex-1 sm:flex-none bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                      size="sm"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      批量解码
+                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" onClick={clearAll} size="sm" className="text-red-500 hover:text-red-700">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>清空所有内容</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 批量结果显示 */}
+            {(allEncodeResults.length > 0 || allDecodeResults.length > 0) && (
+              <Card className="card-modern">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    批量转换结果
+                    <Badge variant="secondary" className="ml-auto">
+                      {allEncodeResults.length + allDecodeResults.length} 个结果
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {[...allEncodeResults, ...allDecodeResults].map((result, index) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="text-xs font-medium">
+                                {result.type}
+                              </Badge>
+                              <span className="text-xs text-gray-500">
+                                {result.result.length} 字符
+                              </span>
+                            </div>
+                            <div className="font-mono text-sm break-all bg-white dark:bg-gray-900 p-2 rounded border">
+                              {result.result || <span className="text-gray-400">空结果</span>}
+                            </div>
+                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(result.result, `batch-${index}`)}
+                                  className="flex-shrink-0"
+                                  disabled={!result.result}
+                                >
+                                  {copied[`batch-${index}`] ?
+                                    <Check className="h-4 w-4 text-green-500" /> :
+                                    <Copy className="h-4 w-4" />
+                                  }
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>复制结果</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )
+      }
+    </div >
   )
 }

@@ -8,52 +8,60 @@
      * Material You 3 EXPRESSIVE Design Tokens - Light Theme
      * More vibrant, dynamic, and expressive design language
      * ============================================ */
-    
+
     /* ============================================
      * Material You 3 EXPRESSIVE Design Tokens - Light Theme (Matcha)
      * Inspired by mai.chongxi.us
      * ============================================ */
-    
+
     /* Primary colors - Matcha Green */
-    --md-sys-color-primary: #4A8135; /* Deep Matcha */
+    --md-sys-color-primary: #4A8135;
+    /* Deep Matcha */
     --md-sys-color-on-primary: #FFFFFF;
-    --md-sys-color-primary-container: #C8E6C9; /* Light Mint */
-    --md-sys-color-on-primary-container: #1B5E20; /* Dark Forest */
-    
+    --md-sys-color-primary-container: #C8E6C9;
+    /* Light Mint */
+    --md-sys-color-on-primary-container: #1B5E20;
+    /* Dark Forest */
+
     /* Secondary colors - Fresh Tea */
-    --md-sys-color-secondary: #66B269; /* Bright Leaf */
+    --md-sys-color-secondary: #66B269;
+    /* Bright Leaf */
     --md-sys-color-on-secondary: #FFFFFF;
-    --md-sys-color-secondary-container: #E8F5E9; /* Very Light Mint */
+    --md-sys-color-secondary-container: #E8F5E9;
+    /* Very Light Mint */
     --md-sys-color-on-secondary-container: #2E7D32;
-    
+
     /* Tertiary colors - Sky/Teal Accent */
-    --md-sys-color-tertiary: #00897B; /* Teal */
+    --md-sys-color-tertiary: #00897B;
+    /* Teal */
     --md-sys-color-on-tertiary: #FFFFFF;
     --md-sys-color-tertiary-container: #B2DFDB;
     --md-sys-color-on-tertiary-container: #004D40;
-    
+
     /* Error colors */
     --md-sys-color-error: #BA1A1A;
     --md-sys-color-on-error: #FFFFFF;
     --md-sys-color-error-container: #FFDAD6;
     --md-sys-color-on-error-container: #410002;
-    
+
     /* Success colors */
     --md-sys-color-success: #2E7D32;
     --md-sys-color-on-success: #FFFFFF;
     --md-sys-color-success-container: #C8E6C9;
     --md-sys-color-on-success-container: #1B5E20;
-    
+
     /* Warning colors */
     --md-sys-color-warning: #FB8C00;
     --md-sys-color-on-warning: #FFFFFF;
     --md-sys-color-warning-container: #FFE0B2;
     --md-sys-color-on-warning-container: #E65100;
-    
+
     /* Surface colors - Clean Light */
-    --md-sys-color-surface: #FDFDF5; /* Slight Cream/Eggshell */
+    --md-sys-color-surface: #FDFDF5;
+    /* Slight Cream/Eggshell */
     --md-sys-color-on-surface: #1A1C19;
-    --md-sys-color-surface-variant: #E1E3DF; /* Sage Gray */
+    --md-sys-color-surface-variant: #E1E3DF;
+    /* Sage Gray */
     --md-sys-color-on-surface-variant: #444744;
     --md-sys-color-surface-dim: #D9DBD7;
     --md-sys-color-surface-bright: #FDFDF5;
@@ -62,18 +70,18 @@
     --md-sys-color-surface-container: #F1F3EE;
     --md-sys-color-surface-container-high: #EBEDE9;
     --md-sys-color-surface-container-highest: #E5E7E3;
-    
+
     /* Outline colors */
     --md-sys-color-outline: #747874;
     --md-sys-color-outline-variant: #C4C7C3;
-    
+
     /* Other colors */
     --md-sys-color-shadow: #000000;
     --md-sys-color-scrim: #000000;
     --md-sys-color-inverse-surface: #2F312E;
     --md-sys-color-inverse-on-surface: #F1F3EE;
     --md-sys-color-inverse-primary: #8FCC84;
-    
+
     /* State layer opacities */
     --md-sys-state-hover-opacity: 0.08;
     --md-sys-state-focus-opacity: 0.12;
@@ -89,7 +97,7 @@
     --md-sys-shape-corner-large: 24px;
     --md-sys-shape-corner-extra-large: 32px;
     --md-sys-shape-corner-full: 9999px;
-    
+
     /* Motion tokens remain largely the same, maybe adjusted for snap */
     --md-sys-motion-duration-short1: 50ms;
     --md-sys-motion-duration-short2: 100ms;
@@ -103,7 +111,7 @@
     --md-sys-motion-duration-long2: 600ms;
     --md-sys-motion-duration-long3: 700ms;
     --md-sys-motion-duration-long4: 800ms;
-    
+
     --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
     --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
     --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
@@ -118,15 +126,19 @@
     /* ... (Assuming other typo tokens are fine for now) ... */
 
     /* Legacy shadcn mappings */
-    --background: 60 4% 98%; /* Warm off-white */
-    --foreground: 120 4% 10%; /* Dark Green/Gray */
+    --background: 60 4% 98%;
+    /* Warm off-white */
+    --foreground: 120 4% 10%;
+    /* Dark Green/Gray */
     --card: 60 4% 100%;
     --card-foreground: 120 4% 10%;
     --popover: 60 4% 100%;
     --popover-foreground: 120 4% 10%;
-    --primary: 104 40% 35%; /* Matcha */
+    --primary: 104 40% 35%;
+    /* Matcha */
     --primary-foreground: 0 0% 100%;
-    --secondary: 103 30% 90%; /* Light Green */
+    --secondary: 103 30% 90%;
+    /* Light Green */
     --secondary-foreground: 120 40% 15%;
     --muted: 100 10% 94%;
     --muted-foreground: 100 5% 45%;
@@ -150,38 +162,39 @@
     --md-sys-color-on-primary: #193710;
     --md-sys-color-primary-container: #324F27;
     --md-sys-color-on-primary-container: #C8E6C9;
-    
+
     /* Secondary colors - Muted Tea */
     --md-sys-color-secondary: #B4CCB4;
     --md-sys-color-on-secondary: #203520;
     --md-sys-color-secondary-container: #374B37;
     --md-sys-color-on-secondary-container: #D0E8D0;
-    
+
     /* Tertiary colors - Teal */
     --md-sys-color-tertiary: #4EA699;
     --md-sys-color-on-tertiary: #003730;
     --md-sys-color-tertiary-container: #005047;
     --md-sys-color-on-tertiary-container: #B2DFDB;
-    
+
     /* Error colors */
     --md-sys-color-error: #FFB4AB;
     --md-sys-color-on-error: #690005;
     --md-sys-color-error-container: #93000A;
     --md-sys-color-on-error-container: #FFDAD6;
-    
+
     /* Success, Warning ... */
     --md-sys-color-success: #A5D6A7;
     --md-sys-color-on-success: #1B5E20;
     --md-sys-color-success-container: #2E7D32;
     --md-sys-color-on-success-container: #C8E6C9;
-    
+
     --md-sys-color-warning: #FFCC80;
     --md-sys-color-on-warning: #4E2C00;
     --md-sys-color-warning-container: #E65100;
     --md-sys-color-on-warning-container: #FFE0B2;
-    
+
     /* Surface colors - Dark Green/Gray */
-    --md-sys-color-surface: #10140F; /* Very Dark Green */
+    --md-sys-color-surface: #10140F;
+    /* Very Dark Green */
     --md-sys-color-on-surface: #E1E3DF;
     --md-sys-color-surface-variant: #444744;
     --md-sys-color-on-surface-variant: #C4C7C3;
@@ -192,18 +205,18 @@
     --md-sys-color-surface-container: #1C201B;
     --md-sys-color-surface-container-high: #272B26;
     --md-sys-color-surface-container-highest: #323631;
-    
+
     /* Outline colors */
     --md-sys-color-outline: #8E928D;
     --md-sys-color-outline-variant: #444744;
-    
+
     /* Other colors */
     --md-sys-color-shadow: #000000;
     --md-sys-color-scrim: #000000;
     --md-sys-color-inverse-surface: #E1E3DF;
     --md-sys-color-inverse-on-surface: #2F312E;
     --md-sys-color-inverse-primary: #4A8135;
-    
+
     /* Legacy shadcn mappings */
     --background: 120 4% 8%;
     --foreground: 60 4% 90%;
@@ -232,6 +245,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     background-color: var(--md-sys-color-surface);
@@ -244,6 +258,7 @@
  * More dynamic, playful, and engaging
  * ============================================ */
 @layer components {
+
   /* M3 Expressive Card styles with organic shape */
   .card-modern {
     background-color: var(--md-sys-color-surface-container);
@@ -252,7 +267,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.08);
     transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
-  
+
   .card-modern:hover {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.06);
     transform: translateY(-2px);
@@ -260,13 +275,11 @@
 
   /* M3 Expressive Elevated Card */
   .card-elevated {
-    background: linear-gradient(
-      135deg,
-      var(--md-sys-color-surface-container-low) 0%,
-      var(--md-sys-color-surface-container) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--md-sys-color-surface-container-low) 0%,
+        var(--md-sys-color-surface-container) 100%);
     border-radius: var(--md-sys-shape-corner-extra-large);
-    box-shadow: 
+    box-shadow:
       0 1px 2px rgba(0, 0, 0, 0.06),
       0 2px 4px rgba(0, 0, 0, 0.06),
       0 4px 8px rgba(0, 0, 0, 0.04);
@@ -274,7 +287,7 @@
   }
 
   .card-elevated:hover {
-    box-shadow: 
+    box-shadow:
       0 2px 4px rgba(0, 0, 0, 0.08),
       0 4px 8px rgba(0, 0, 0, 0.08),
       0 8px 16px rgba(0, 0, 0, 0.06);
@@ -288,7 +301,7 @@
     border-radius: var(--md-sys-shape-corner-medium);
     transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
   }
-  
+
   .input-modern:focus {
     border-color: var(--md-sys-color-primary);
     box-shadow: 0 0 0 4px rgba(91, 75, 181, 0.15);
@@ -302,7 +315,7 @@
     border-radius: var(--md-sys-shape-corner-large);
     transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-expressive);
   }
-  
+
   .button-modern:hover {
     background-color: var(--md-sys-color-surface-container-high);
     transform: scale(1.02);
@@ -316,11 +329,9 @@
 
   /* M3 Expressive Icon container */
   .icon-container {
-    background: linear-gradient(
-      135deg,
-      var(--md-sys-color-primary-container) 0%,
-      var(--md-sys-color-tertiary-container) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--md-sys-color-primary-container) 0%,
+        var(--md-sys-color-tertiary-container) 100%);
     color: var(--md-sys-color-on-primary-container);
     border-radius: var(--md-sys-shape-corner-full);
     padding: 14px;
@@ -333,21 +344,19 @@
 
   /* M3 Expressive Filled button (gradient style) */
   .btn-gradient {
-    background: linear-gradient(
-      135deg,
-      var(--md-sys-color-primary) 0%,
-      color-mix(in srgb, var(--md-sys-color-primary) 80%, var(--md-sys-color-tertiary)) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--md-sys-color-primary) 0%,
+        color-mix(in srgb, var(--md-sys-color-primary) 80%, var(--md-sys-color-tertiary)) 100%);
     color: var(--md-sys-color-on-primary);
     border-radius: var(--md-sys-shape-corner-full);
-    box-shadow: 
+    box-shadow:
       0 2px 4px rgba(91, 75, 181, 0.25),
       0 4px 8px rgba(91, 75, 181, 0.15);
     transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
-  
+
   .btn-gradient:hover {
-    box-shadow: 
+    box-shadow:
       0 4px 8px rgba(91, 75, 181, 0.3),
       0 8px 16px rgba(91, 75, 181, 0.2);
     transform: translateY(-2px) scale(1.02);
@@ -359,11 +368,9 @@
 
   /* M3 Expressive Secondary button */
   .btn-secondary-expressive {
-    background: linear-gradient(
-      135deg,
-      var(--md-sys-color-secondary-container) 0%,
-      color-mix(in srgb, var(--md-sys-color-secondary-container) 85%, var(--md-sys-color-tertiary-container)) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--md-sys-color-secondary-container) 0%,
+        color-mix(in srgb, var(--md-sys-color-secondary-container) 85%, var(--md-sys-color-tertiary-container)) 100%);
     color: var(--md-sys-color-on-secondary-container);
     border-radius: var(--md-sys-shape-corner-full);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -390,11 +397,9 @@
 
   /* M3 Surface tonal elevation effect */
   .glass-effect {
-    background: linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--md-sys-color-surface-container) 95%, transparent) 0%,
-      color-mix(in srgb, var(--md-sys-color-surface-container-high) 90%, transparent) 100%
-    );
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--md-sys-color-surface-container) 95%, transparent) 0%,
+        color-mix(in srgb, var(--md-sys-color-surface-container-high) 90%, transparent) 100%);
     backdrop-filter: blur(16px) saturate(180%);
     border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 50%, transparent);
   }
@@ -445,12 +450,10 @@
 
   /* M3 Expressive Gradient text */
   .text-gradient {
-    background: linear-gradient(
-      135deg, 
-      var(--md-sys-color-primary) 0%, 
-      var(--md-sys-color-secondary) 50%,
-      var(--md-sys-color-tertiary) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--md-sys-color-primary) 0%,
+        var(--md-sys-color-secondary) 50%,
+        var(--md-sys-color-tertiary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -458,14 +461,12 @@
 
   /* M3 Expressive Animated gradient text */
   .text-gradient-animated {
-    background: linear-gradient(
-      90deg, 
-      var(--md-sys-color-primary) 0%, 
-      var(--md-sys-color-secondary) 25%,
-      var(--md-sys-color-tertiary) 50%,
-      var(--md-sys-color-secondary) 75%,
-      var(--md-sys-color-primary) 100%
-    );
+    background: linear-gradient(90deg,
+        var(--md-sys-color-primary) 0%,
+        var(--md-sys-color-secondary) 25%,
+        var(--md-sys-color-tertiary) 50%,
+        var(--md-sys-color-secondary) 75%,
+        var(--md-sys-color-primary) 100%);
     background-size: 200% 100%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -474,15 +475,22 @@
   }
 
   @keyframes gradient-shift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
   }
 
   /* M3 Expressive Hover lift effect */
   .hover-lift {
     transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
-  
+
   .hover-lift:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -500,7 +508,7 @@
   .hover-scale:active {
     transform: scale(0.98);
   }
-  
+
   /* M3 State layer styles */
   .state-layer-hover {
     position: relative;
@@ -517,15 +525,15 @@
     pointer-events: none;
     border-radius: inherit;
   }
-  
+
   .state-layer-hover:hover::before {
     opacity: var(--md-sys-state-hover-opacity);
   }
-  
+
   .state-layer-hover:focus::before {
     opacity: var(--md-sys-state-focus-opacity);
   }
-  
+
   .state-layer-hover:active::before {
     opacity: var(--md-sys-state-pressed-opacity);
   }
@@ -555,22 +563,20 @@
   /* M3 Expressive FAB (Floating Action Button) */
   .fab-expressive {
     position: fixed;
-    background: linear-gradient(
-      135deg,
-      var(--md-sys-color-primary-container) 0%,
-      color-mix(in srgb, var(--md-sys-color-primary-container) 80%, var(--md-sys-color-tertiary-container)) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--md-sys-color-primary-container) 0%,
+        color-mix(in srgb, var(--md-sys-color-primary-container) 80%, var(--md-sys-color-tertiary-container)) 100%);
     color: var(--md-sys-color-on-primary-container);
     border-radius: var(--md-sys-shape-corner-large);
     padding: 16px;
-    box-shadow: 
+    box-shadow:
       0 4px 8px rgba(0, 0, 0, 0.12),
       0 8px 16px rgba(0, 0, 0, 0.08);
     transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-expressive);
   }
 
   .fab-expressive:hover {
-    box-shadow: 
+    box-shadow:
       0 6px 12px rgba(0, 0, 0, 0.15),
       0 12px 24px rgba(0, 0, 0, 0.1);
     transform: scale(1.05);
@@ -607,22 +613,18 @@
   /* M3 Expressive Divider */
   .divider-expressive {
     height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      var(--md-sys-color-outline-variant) 10%,
-      var(--md-sys-color-outline-variant) 90%,
-      transparent 100%
-    );
+    background: linear-gradient(90deg,
+        transparent 0%,
+        var(--md-sys-color-outline-variant) 10%,
+        var(--md-sys-color-outline-variant) 90%,
+        transparent 100%);
   }
 
   /* M3 Expressive Badge */
   .badge-expressive {
-    background: linear-gradient(
-      135deg,
-      var(--md-sys-color-tertiary) 0%,
-      var(--md-sys-color-secondary) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--md-sys-color-tertiary) 0%,
+        var(--md-sys-color-secondary) 100%);
     color: white;
     padding: 2px 8px;
     border-radius: var(--md-sys-shape-corner-full);
@@ -639,21 +641,46 @@
   }
 
   .progress-expressive-bar {
-    background: linear-gradient(
-      90deg,
-      var(--md-sys-color-primary) 0%,
-      var(--md-sys-color-tertiary) 100%
-    );
+    background: linear-gradient(90deg,
+        var(--md-sys-color-primary) 0%,
+        var(--md-sys-color-tertiary) 100%);
     border-radius: var(--md-sys-shape-corner-full);
     transition: width var(--md-sys-motion-duration-long2) var(--md-sys-motion-easing-emphasized);
   }
 }
+
+/* ============================================
+ * Safe Area & Mobile Utilities
+ * ============================================ */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Padding for content to avoid being hidden behind floating bottom nav */
+.pb-nav-mobile {
+  padding-bottom: 6rem;
+  /* 80px nav + 16px padding approx */
+}
+
+@media (min-width: 768px) {
+  .pb-nav-mobile {
+    padding-bottom: 0;
+  }
+}
+
 
 
 /* ============================================
  * Mobile Responsiveness Improvements
  * ============================================ */
 @media (max-width: 640px) {
+
   /* Ensure content doesn't overflow */
   .overflow-fix {
     max-width: 100%;
@@ -698,6 +725,7 @@
 }
 
 @media (max-width: 768px) {
+
   /* Tablet adjustments */
   .tablet-grid {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -708,6 +736,7 @@
  * Touch Device Optimizations
  * ============================================ */
 @media (hover: none) and (pointer: coarse) {
+
   /* Remove hover effects on touch devices */
   .touch-friendly:hover {
     transform: none !important;
@@ -730,7 +759,7 @@
     --md-sys-color-on-primary: #381E72;
     --md-sys-color-primary-container: #4F378B;
     --md-sys-color-on-primary-container: #EADDFF;
-    
+
     /* Surface colors with tonal elevation */
     --md-sys-color-surface: #141218;
     --md-sys-color-on-surface: #E6E0E9;
@@ -741,7 +770,7 @@
     --md-sys-color-surface-container: #211F26;
     --md-sys-color-surface-container-high: #2B2930;
     --md-sys-color-surface-container-highest: #36343B;
-    
+
     /* Legacy compatibility */
     --background: 270 14% 9%;
     --foreground: 270 20% 90%;
@@ -758,10 +787,12 @@
     left: -35%;
     width: 35%;
   }
+
   60% {
     left: 100%;
     width: 35%;
   }
+
   100% {
     left: 100%;
     width: 35%;
@@ -773,6 +804,7 @@
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -784,10 +816,12 @@
     stroke-dasharray: 1, 150;
     stroke-dashoffset: 0;
   }
+
   50% {
     stroke-dasharray: 90, 150;
     stroke-dashoffset: -35;
   }
+
   100% {
     stroke-dasharray: 90, 150;
     stroke-dashoffset: -124;
@@ -844,6 +878,7 @@
 
 /* Global focus-visible styles for all interactive elements */
 @layer base {
+
   /* Apply M3 focus ring to all focusable elements by default */
   a:focus-visible,
   button:focus-visible,
@@ -864,6 +899,7 @@
 
   /* High contrast mode support */
   @media (forced-colors: active) {
+
     a:focus-visible,
     button:focus-visible,
     [role="button"]:focus-visible,
@@ -933,6 +969,7 @@
  * Requirements: 12.4
  * ============================================ */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -1018,6 +1055,7 @@
     transform: scale(0);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -1029,6 +1067,7 @@
     transform: scale(1);
     opacity: 1;
   }
+
   to {
     transform: scale(0);
     opacity: 0;
@@ -1040,6 +1079,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1049,6 +1089,7 @@
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }
@@ -1060,6 +1101,7 @@
     transform: translateY(100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1071,6 +1113,7 @@
     transform: translateY(0);
     opacity: 1;
   }
+
   to {
     transform: translateY(100%);
     opacity: 0;
@@ -1082,6 +1125,7 @@
     transform: translateY(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1093,6 +1137,7 @@
     transform: translateY(0);
     opacity: 1;
   }
+
   to {
     transform: translateY(-100%);
     opacity: 0;
@@ -1104,6 +1149,7 @@
     transform: translateX(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1115,6 +1161,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(-100%);
     opacity: 0;
@@ -1126,6 +1173,7 @@
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1137,6 +1185,7 @@
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 0;
@@ -1148,6 +1197,7 @@
   from {
     transform: translateY(0);
   }
+
   to {
     transform: translateY(-2px);
   }
@@ -1158,6 +1208,7 @@
   from {
     transform: scale(1);
   }
+
   to {
     transform: scale(0.98);
   }
@@ -1262,12 +1313,10 @@
 
 /* Image loading skeleton */
 .lazy-image-skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--md-sys-color-surface-container) 0%,
-    var(--md-sys-color-surface-container-high) 50%,
-    var(--md-sys-color-surface-container) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--md-sys-color-surface-container) 0%,
+      var(--md-sys-color-surface-container-high) 50%,
+      var(--md-sys-color-surface-container) 100%);
   background-size: 200% 100%;
   animation: lazy-image-shimmer 1.5s infinite;
 }
@@ -1276,6 +1325,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -1296,6 +1346,7 @@
  * Reduced Motion - Performance Fallbacks
  * ============================================ */
 @media (prefers-reduced-motion: reduce) {
+
   /* Disable all GPU-accelerated animations */
   .animate-m3-scale-in,
   .animate-m3-scale-out,

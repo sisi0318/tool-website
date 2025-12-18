@@ -4,6 +4,7 @@ import { Roboto } from "next/font/google"
 import "./globals.css"
 import { M3ThemeProvider } from "@/lib/m3/theme"
 import { I18nProvider } from "@/components/i18n-provider"
+import { BottomNav } from "@/components/bottom-nav"
 
 /**
  * Configure Roboto font family as per M3 specifications
@@ -55,7 +56,8 @@ export default function RootLayout({
       <body className={roboto.className}>
         <M3ThemeProvider defaultMode="system">
           <I18nProvider locale={locale}>
-            <main>{children}</main>
+            <main className="min-h-screen pb-nav-mobile">{children}</main>
+            <BottomNav />
           </I18nProvider>
         </M3ThemeProvider>
       </body>

@@ -42,6 +42,8 @@ const tabVariants = cva(
     'px-4 py-3',
     'min-h-[48px]', // Minimum touch target
     'font-medium text-sm',
+    'whitespace-nowrap', // Prevent text wrapping
+    'flex-shrink-0', // Prevent shrinking
     'cursor-pointer',
     'select-none',
     'outline-none',
@@ -87,15 +89,15 @@ function useRipple() {
   const addRipple = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
     const element = event.currentTarget;
     const rect = element.getBoundingClientRect();
-    
+
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const size = Math.max(rect.width, rect.height) * 2;
-    
+
     const newRipple = { key: Date.now(), x, y, size };
-    
+
     setRipples((prev) => [...prev, newRipple]);
-    
+
     setTimeout(() => {
       setRipples((prev) => prev.filter((r) => r.key !== newRipple.key));
     }, 600);
@@ -176,22 +178,22 @@ const M3Tab = React.forwardRef<HTMLButtonElement, M3TabProps>(
           style={{ opacity: stateLayerOpacity }}
           aria-hidden="true"
         />
-        
+
         {/* Ripples */}
         {ripples.map((ripple) => (
           <Ripple key={ripple.key} x={ripple.x} y={ripple.y} size={ripple.size} />
         ))}
-        
+
         {/* Icon */}
         {icon && (
           <span className="relative z-10 flex items-center justify-center w-5 h-5">
             {icon}
           </span>
         )}
-        
+
         {/* Label */}
         <span className="relative z-10">{children}</span>
-        
+
         {/* Close button - using span with role="button" to avoid nested button warning */}
         {closable && (
           <span
