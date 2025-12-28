@@ -127,6 +127,9 @@ export const translations = {
       memeSplitter: {
         name: "智能切图",
       },
+      imageCoordinates: {
+        name: "坐标拾取",
+      },
       caseConverter: {
         name: "大小写转换",
       },
@@ -1199,6 +1202,9 @@ export const translations = {
       },
       memeSplitter: {
         name: "Smart Splitter",
+      },
+      imageCoordinates: {
+        name: "Coordinate Picker",
       },
       caseConverter: {
         name: "Case Converter",

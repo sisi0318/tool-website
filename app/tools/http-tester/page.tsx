@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
-import { 
+import {
   Copy, Check, Plus, Trash2, Send, FileJson, Code, Database, Binary, X, ExternalLink,
   Globe, Settings, Clock, History, Bookmark, Download, Upload, RotateCcw, Zap,
   Eye, EyeOff, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2
@@ -26,6 +26,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { M3Card } from "@/components/m3/card"
+import { M3Tabs, type TabItem } from "@/components/m3/tabs"
+import { useMemo } from "react"
 
 interface RequestParam {
   id: string
@@ -112,12 +115,12 @@ async function proxyRequest(
   const apiU = finalUrl
 
   const requestHeaders: Record<string, string> = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0",
-      "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-      "api-h0": apiH0,
-      "api-o0": apiO0,
-      "api-u": apiU,
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0",
+    "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+    "api-h0": apiH0,
+    "api-o0": apiO0,
+    "api-u": apiU,
   }
 
   // Set Content-Type based on body type
@@ -293,7 +296,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
     })))
     setBody(historyItem.body)
     setBodyType(historyItem.bodyType as any)
-    
+
     toast({
       title: "已加载历史请求",
       description: `${historyItem.method} ${historyItem.url}`
@@ -315,7 +318,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
       body,
       bodyType
     }
-    
+
     setTemplates(prev => [...prev, template])
     toast({
       title: "模板已保存",
@@ -331,7 +334,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
     setCustomHeaders(template.headers)
     setBody(template.body)
     setBodyType(template.bodyType as any)
-    
+
     toast({
       title: "已加载模板",
       description: template.name
@@ -345,11 +348,11 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
       .filter(param => param.enabled && param.name)
       .map(param => `${encodeURIComponent(param.name)}=${encodeURIComponent(param.value || "")}`)
       .join("&")
-    
+
     const finalUrl = queryParams ? `${processedUrl}?${queryParams}` : processedUrl
-    
+
     let curlCommand = `curl -X ${method} "${finalUrl}"`
-    
+
     // 添加自定义头部
     customHeaders.forEach(header => {
       if (header.enabled && header.name) {
@@ -357,13 +360,13 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
         curlCommand += ` \\\n  -H "${header.name}: ${processedValue}"`
       }
     })
-    
+
     // 添加请求体
     if (body && bodyType === "raw") {
       const processedBody = replaceEnvironmentVariables(body)
       curlCommand += ` \\\n  -d '${processedBody}'`
     }
-    
+
     return curlCommand
   }, [method, url, requestParams, customHeaders, body, bodyType, replaceEnvironmentVariables])
 
@@ -375,10 +378,10 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
       let parsedUrl = ''
       const parsedHeaders: RequestParam[] = []
       let parsedBody = ''
-      
+
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].replace(/\s*\\\s*$/, '') // 移除行末的 \
-        
+
         if (line.startsWith('curl ')) {
           // 提取 URL
           const urlMatch = line.match(/"([^"]+)"/)
@@ -386,14 +389,14 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
             parsedUrl = urlMatch[1]
           }
         }
-        
+
         if (line.includes('-X ')) {
           const methodMatch = line.match(/-X\s+(\w+)/)
           if (methodMatch) {
             parsedMethod = methodMatch[1]
           }
         }
-        
+
         if (line.includes('-H ')) {
           const headerMatch = line.match(/-H\s+"([^:]+):\s*([^"]+)"/)
           if (headerMatch) {
@@ -406,7 +409,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
             })
           }
         }
-        
+
         if (line.includes('-d ')) {
           const bodyMatch = line.match(/-d\s+'([^']+)'/)
           if (bodyMatch) {
@@ -414,7 +417,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
           }
         }
       }
-      
+
       // 更新状态
       setMethod(parsedMethod)
       setUrl(parsedUrl)
@@ -423,7 +426,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
         setBody(parsedBody)
         setBodyType('raw')
       }
-      
+
       toast({
         title: "cURL 导入成功",
         description: `${parsedMethod} ${parsedUrl}`
@@ -537,14 +540,14 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
   const handleSubmit = async () => {
     setLoading(true)
     const startTime = Date.now()
-    
+
     // 创建新的 AbortController
     abortController.current = new AbortController()
-    
+
     try {
       // 处理环境变量
       const processedUrl = replaceEnvironmentVariables(url)
-      
+
       // Convert custom headers array to headers object
       const headersObj: Record<string, string> = {}
       customHeaders.forEach((header) => {
@@ -658,7 +661,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
 
       const duration = Date.now() - startTime
       const errorMessage = `Error: ${e.message}`
-      
+
       setResponse(errorMessage)
       setFormattedResponse(errorMessage)
       setIsJsonResponse(false)
@@ -796,19 +799,19 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
     const newUrl = e.target.value
     setManualUrlChange(true)
     setUrl(newUrl)
-    
+
     // 清除之前的延迟解析
     if (debouncedAutoParseRef.current) {
       clearTimeout(debouncedAutoParseRef.current)
     }
-    
+
     // 清除状态提示
     setAutoParseStatus("")
-    
+
     // 如果URL包含查询参数，显示等待状态
     if (newUrl.includes("?")) {
       setAutoParseStatus("等待同步...")
-      
+
       // 延迟1秒后自动解析，避免输入时的干扰
       debouncedAutoParseRef.current = setTimeout(() => {
         setAutoParseStatus("正在同步参数...")
@@ -832,7 +835,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
       const paramPairs = queryString.split("&")
       const newParams: RequestParam[] = []
       let hasChanges = false
-      
+
       // 获取现有参数的映射（name -> param对象）
       const existingParamsMap = new Map<string, RequestParam>()
       requestParams.forEach(param => {
@@ -845,7 +848,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
         const equalIndex = pair.indexOf("=")
         let name = ""
         let value = ""
-        
+
         if (equalIndex > 0) {
           name = pair.substring(0, equalIndex)
           value = pair.substring(equalIndex + 1)
@@ -863,7 +866,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
           } catch {
             decodedName = name // 如果解码失败，使用原始值
           }
-          
+
           const existingParam = existingParamsMap.get(decodedName)
           if (existingParam) {
             // 更新现有参数的值（如果值不同）
@@ -945,7 +948,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
         const equalIndex = pair.indexOf("=")
         let name = ""
         let value = ""
-        
+
         if (equalIndex > 0) {
           name = pair.substring(0, equalIndex)
           value = pair.substring(equalIndex + 1)
@@ -958,24 +961,24 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
         if (name) {
           // 只对参数名进行解码，保持值的原始编码状态
           const decodedName = decodeURIComponent(name)
-          
+
           const existingParam = existingParamsMap.get(decodedName)
-        if (existingParam) {
-          // 更新现有参数的值
-          if (existingParam.value !== value) {
-            existingParam.value = value
-            updatedCount++
-          }
-        } else {
-          // 添加新参数
-          newParams.push({
-            id: nextParamId.current.toString(),
+          if (existingParam) {
+            // 更新现有参数的值
+            if (existingParam.value !== value) {
+              existingParam.value = value
+              updatedCount++
+            }
+          } else {
+            // 添加新参数
+            newParams.push({
+              id: nextParamId.current.toString(),
               name: decodedName,
               value: value, // 保持原始编码值
-            type: "String",
-            enabled: true,
-          })
-          nextParamId.current += 1
+              type: "String",
+              enabled: true,
+            })
+            nextParamId.current += 1
           }
         }
       })
@@ -983,7 +986,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
       // 更新参数列表
       if (newParams.length > 0 || updatedCount > 0) {
         setRequestParams([...requestParams, ...newParams])
-        
+
         // 清理URL，移除查询参数
         const baseUrl = url.split("?")[0]
         setUrl(baseUrl)
@@ -994,7 +997,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
         })
       } else {
         toast({
-          title: "提示", 
+          title: "提示",
           description: "所有参数都已存在且值相同",
         })
       }
@@ -1043,6 +1046,18 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
     }
   }
 
+  // M3 Tab Items
+  const requestTabItems = useMemo<TabItem[]>(() => [
+    { id: "params", label: "查询参数", icon: <Database className="h-4 w-4" /> },
+    { id: "headers", label: "请求头", icon: <Code className="h-4 w-4" /> },
+    { id: "body", label: "请求体", icon: <FileJson className="h-4 w-4" /> },
+  ], [])
+
+  const responseTabItems = useMemo<TabItem[]>(() => [
+    { id: "response", label: "响应内容", icon: <FileJson className="h-4 w-4" /> },
+    { id: "headers", label: "响应头", icon: <Code className="h-4 w-4" /> },
+  ], [])
+
   return (
     <div className="container mx-auto py-6 px-4 max-w-7xl">
       {/* 页面标题 */}
@@ -1066,13 +1081,13 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
         {/* 侧边栏 */}
         <div className="lg:col-span-1 space-y-4">
           {/* 环境选择 */}
-      <Card>
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 环境设置
               </CardTitle>
-        </CardHeader>
+            </CardHeader>
             <CardContent className="pt-0">
               <Select value={currentEnvironment} onValueChange={setCurrentEnvironment}>
                 <SelectTrigger className="w-full">
@@ -1212,14 +1227,14 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
 
         {/* 主内容区域 */}
         <div className="lg:col-span-3">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Send className="h-5 w-5" />
-                  HTTP 请求构建器
-                </CardTitle>
-                <div className="flex items-center gap-2">
+          <Card className="overflow-visible">
+            <CardContent className="p-4 md:p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Send className="h-5 w-5 text-primary" />
+                  Request Builder
+                </h2>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1228,7 +1243,7 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
                       navigator.clipboard.writeText(curl)
                       toast({ title: "cURL已复制到剪贴板" })
                     }}
-                    className="gap-2"
+                    className="gap-2 flex-1 sm:flex-none"
                   >
                     <Download className="h-4 w-4" />
                     导出cURL
@@ -1240,118 +1255,98 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
                       const curlCommand = prompt("请粘贴cURL命令:")
                       if (curlCommand) parseCurl(curlCommand)
                     }}
-                    className="gap-2"
+                    className="gap-2 flex-1 sm:flex-none"
                   >
                     <Upload className="h-4 w-4" />
                     导入cURL
                   </Button>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
               {/* 请求URL配置 */}
               <div className="space-y-4">
-          <div className="flex flex-col md:flex-row items-stretch gap-2">
-            <div className="flex-shrink-0 w-full md:w-auto">
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger
-                  className={`w-full md:w-[120px] font-medium ${getMethodColor(method)} text-white border-0`}
-                >
-                  <SelectValue placeholder="Method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GET">GET</SelectItem>
-                  <SelectItem value="POST">POST</SelectItem>
-                  <SelectItem value="PUT">PUT</SelectItem>
-                  <SelectItem value="DELETE">DELETE</SelectItem>
-                  <SelectItem value="PATCH">PATCH</SelectItem>
-                  <SelectItem value="HEAD">HEAD</SelectItem>
-                  <SelectItem value="OPTIONS">OPTIONS</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="flex flex-col md:flex-row items-stretch gap-2">
+                  <div className="flex-shrink-0 w-full md:w-auto">
+                    <Select value={method} onValueChange={setMethod}>
+                      <SelectTrigger
+                        className={`w-full md:w-[120px] h-10 md:h-12 font-medium ${getMethodColor(method)} text-white border-0 shadow-sm transition-transform active:scale-95`}
+                      >
+                        <SelectValue placeholder="Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GET">GET</SelectItem>
+                        <SelectItem value="POST">POST</SelectItem>
+                        <SelectItem value="PUT">PUT</SelectItem>
+                        <SelectItem value="DELETE">DELETE</SelectItem>
+                        <SelectItem value="PATCH">PATCH</SelectItem>
+                        <SelectItem value="HEAD">HEAD</SelectItem>
+                        <SelectItem value="OPTIONS">OPTIONS</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                              <div className="flex-grow space-y-2">
-                    <div className="relative">
+                  <div className="flex-grow space-y-2 relative">
+                    <div className="relative z-0 group">
                       <Input
-                        className="h-full pr-10"
+                        className="h-10 md:h-12 pr-10 font-mono text-sm bg-muted/30 border-muted-foreground/20 focus:border-primary transition-all"
                         value={url}
                         onChange={handleUrlChange}
-                        placeholder="https://example.com?param=value (支持复杂编码和 {{变量}} 语法)"
+                        placeholder="https://example.com/api/v1/resource"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-muted-foreground hover:text-blue-600 h-8 w-8"
                         onClick={parseUrlParameters}
-                        title="手动解析URL中的查询参数到参数表格（保留原始编码）"
+                        title="手动解析URL参数"
                       >
-                        <Database className="h-4 w-4 text-blue-600" />
+                        <Database className="h-4 w-4" />
                       </Button>
                     </div>
-                    
+
                     {/* 自动同步状态提示 */}
                     {autoParseStatus && (
-                      <div className="flex items-center gap-2 text-xs">
-                        {autoParseStatus.includes("等待") && (
-                          <Clock className="h-3 w-3 text-orange-500" />
-                        )}
-                        {autoParseStatus.includes("正在") && (
-                          <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
-                        )}
-                        {autoParseStatus.includes("已同步") && (
-                          <CheckCircle2 className="h-3 w-3 text-green-500" />
-                        )}
-                        {autoParseStatus.includes("失败") && (
-                          <AlertCircle className="h-3 w-3 text-red-500" />
-                        )}
-                        {autoParseStatus.includes("最新") && (
-                          <CheckCircle2 className="h-3 w-3 text-blue-500" />
-                        )}
-                        <span className={`
-                          ${autoParseStatus.includes("等待") ? "text-orange-600" : ""}
-                          ${autoParseStatus.includes("正在") ? "text-blue-600" : ""}
-                          ${autoParseStatus.includes("已同步") ? "text-green-600" : ""}
-                          ${autoParseStatus.includes("失败") ? "text-red-600" : ""}
-                          ${autoParseStatus.includes("最新") ? "text-blue-600" : ""}
-                        `}>
-                          自动同步: {autoParseStatus}
-                        </span>
+                      <div className="absolute top-full left-0 mt-1 z-10 pointer-events-none">
+                        <div className="inline-flex items-center gap-2 text-xs bg-background/90 backdrop-blur px-2 py-1 rounded shadow-sm border animate-in fade-in slide-in-from-top-1">
+                          {autoParseStatus.includes("等待") && <Clock className="h-3 w-3 text-orange-500" />}
+                          {autoParseStatus.includes("正在") && <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />}
+                          {autoParseStatus.includes("已同步") && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                          <span className="text-muted-foreground">{autoParseStatus}</span>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full md:w-auto">
                     {loading && (
                       <Button
                         variant="destructive"
                         onClick={cancelRequest}
-                        className="gap-2"
+                        className="gap-2 flex-grow md:flex-grow-0 h-10 md:h-12"
                       >
                         <X className="h-4 w-4" />
                         取消
                       </Button>
                     )}
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="flex-shrink-0 gap-2 bg-primary hover:bg-primary/90"
-            >
-              {loading ? (
-                <>
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={loading}
+                      className="flex-grow md:flex-grow-0 gap-2 bg-primary hover:bg-primary/90 h-10 md:h-12 px-6 shadow-md hover:shadow-lg transition-all"
+                    >
+                      {loading ? (
+                        <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          发送中...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                          发送请求
-                </>
-              )}
-            </Button>
+                          <span className="sr-only sm:not-sr-only">发送中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          <span>发送</span>
+                        </>
+                      )}
+                    </Button>
                   </div>
-          </div>
+                </div>
 
                 {/* 环境变量提示 */}
                 {currentEnvironment !== 'default' && (
@@ -1368,21 +1363,21 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
               {/* 请求配置选项卡 */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid grid-cols-3 mb-6">
-              <TabsTrigger value="params" className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
+                  <TabsTrigger value="params" className="flex items-center gap-2">
+                    <Database className="h-4 w-4" />
                     查询参数
-              </TabsTrigger>
-              <TabsTrigger value="headers" className="flex items-center gap-2">
-                <Code className="h-4 w-4" />
+                  </TabsTrigger>
+                  <TabsTrigger value="headers" className="flex items-center gap-2">
+                    <Code className="h-4 w-4" />
                     请求头
-              </TabsTrigger>
-              <TabsTrigger value="body" className="flex items-center gap-2">
-                <FileJson className="h-4 w-4" />
+                  </TabsTrigger>
+                  <TabsTrigger value="body" className="flex items-center gap-2">
+                    <FileJson className="h-4 w-4" />
                     请求体
-              </TabsTrigger>
-            </TabsList>
+                  </TabsTrigger>
+                </TabsList>
 
-                            <TabsContent value="params">
+                <TabsContent value="params">
                   <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="flex items-start gap-2">
                       <Database className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -1399,315 +1394,315 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
                     </div>
                   </div>
                   <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[50px]"></TableHead>
-                      <TableHead>{t("parameterName")}</TableHead>
-                      <TableHead>{t("parameterValue")}</TableHead>
-                      <TableHead className="w-[120px]">{t("type")}</TableHead>
-                      <TableHead className="w-[80px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {requestParams.map((param) => (
-                      <TableRow key={param.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={param.enabled}
-                            onCheckedChange={(checked) => updateParam(param.id, "enabled", !!checked)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={param.name}
-                            onChange={(e) => updateParam(param.id, "name", e.target.value)}
-                            placeholder="Query name"
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={param.value}
-                            onChange={(e) => updateParam(param.id, "value", e.target.value)}
-                            placeholder="Query value"
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Select value={param.type} onValueChange={(value) => updateParam(param.id, "type", value)}>
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="String">String</SelectItem>
-                              <SelectItem value="Number">Number</SelectItem>
-                              <SelectItem value="Boolean">Boolean</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => removeParam(param.id)}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="p-2 border-t bg-muted/20">
-                  <Button variant="outline" size="sm" onClick={addParam} className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    {t("addParameter")}
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-[50px]"></TableHead>
+                          <TableHead>{t("parameterName")}</TableHead>
+                          <TableHead>{t("parameterValue")}</TableHead>
+                          <TableHead className="w-[120px]">{t("type")}</TableHead>
+                          <TableHead className="w-[80px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {requestParams.map((param) => (
+                          <TableRow key={param.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={param.enabled}
+                                onCheckedChange={(checked) => updateParam(param.id, "enabled", !!checked)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={param.name}
+                                onChange={(e) => updateParam(param.id, "name", e.target.value)}
+                                placeholder="Query name"
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={param.value}
+                                onChange={(e) => updateParam(param.id, "value", e.target.value)}
+                                placeholder="Query value"
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Select value={param.type} onValueChange={(value) => updateParam(param.id, "type", value)}>
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="String">String</SelectItem>
+                                  <SelectItem value="Number">Number</SelectItem>
+                                  <SelectItem value="Boolean">Boolean</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" onClick={() => removeParam(param.id)}>
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="p-2 border-t bg-muted/20">
+                      <Button variant="outline" size="sm" onClick={addParam} className="gap-1">
+                        <Plus className="h-4 w-4" />
+                        {t("addParameter")}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
 
-            <TabsContent value="headers">
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[50px]"></TableHead>
-                      <TableHead>{t("headerName")}</TableHead>
-                      <TableHead>{t("headerValue")}</TableHead>
-                      <TableHead className="w-[80px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customHeaders.map((header) => (
-                      <TableRow key={header.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={header.enabled}
-                            onCheckedChange={(checked) => updateHeader(header.id, "enabled", !!checked)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={header.name}
-                            onChange={(e) => updateHeader(header.id, "name", e.target.value)}
-                            placeholder="Header name"
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={header.value}
-                            onChange={(e) => updateHeader(header.id, "value", e.target.value)}
-                            placeholder="Header value"
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => removeHeader(header.id)}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="p-2 border-t bg-muted/20">
-                  <Button variant="outline" size="sm" onClick={addHeader} className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    {t("addHeader")}
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
+                <TabsContent value="headers">
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-[50px]"></TableHead>
+                          <TableHead>{t("headerName")}</TableHead>
+                          <TableHead>{t("headerValue")}</TableHead>
+                          <TableHead className="w-[80px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {customHeaders.map((header) => (
+                          <TableRow key={header.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={header.enabled}
+                                onCheckedChange={(checked) => updateHeader(header.id, "enabled", !!checked)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={header.name}
+                                onChange={(e) => updateHeader(header.id, "name", e.target.value)}
+                                placeholder="Header name"
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={header.value}
+                                onChange={(e) => updateHeader(header.id, "value", e.target.value)}
+                                placeholder="Header value"
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" onClick={() => removeHeader(header.id)}>
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="p-2 border-t bg-muted/20">
+                      <Button variant="outline" size="sm" onClick={addHeader} className="gap-1">
+                        <Plus className="h-4 w-4" />
+                        {t("addHeader")}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
 
-            <TabsContent value="body">
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant={bodyType === "none" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBodyType("none")}
-                    className="gap-1"
-                  >
-                    <X className="h-4 w-4" />
-                    {t("none")}
-                  </Button>
-                  <Button
-                    variant={bodyType === "raw" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBodyType("raw")}
-                    className="gap-1"
-                  >
-                    <Code className="h-4 w-4" />
-                    {t("raw")}
-                  </Button>
-                  <Button
-                    variant={bodyType === "form-data" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBodyType("form-data")}
-                    className="gap-1"
-                  >
-                    <Database className="h-4 w-4" />
-                    {t("formData")}
-                  </Button>
-                  <Button
-                    variant={bodyType === "urlencoded" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBodyType("urlencoded")}
-                    className="gap-1"
-                  >
-                    <FileJson className="h-4 w-4" />
-                    {t("urlencoded")}
-                  </Button>
-                  <Button
-                    variant={bodyType === "binary" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBodyType("binary")}
-                    className="gap-1"
-                  >
-                    <Binary className="h-4 w-4" />
-                    {t("binary")}
-                  </Button>
-                </div>
+                <TabsContent value="body">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant={bodyType === "none" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBodyType("none")}
+                        className="gap-1"
+                      >
+                        <X className="h-4 w-4" />
+                        {t("none")}
+                      </Button>
+                      <Button
+                        variant={bodyType === "raw" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBodyType("raw")}
+                        className="gap-1"
+                      >
+                        <Code className="h-4 w-4" />
+                        {t("raw")}
+                      </Button>
+                      <Button
+                        variant={bodyType === "form-data" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBodyType("form-data")}
+                        className="gap-1"
+                      >
+                        <Database className="h-4 w-4" />
+                        {t("formData")}
+                      </Button>
+                      <Button
+                        variant={bodyType === "urlencoded" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBodyType("urlencoded")}
+                        className="gap-1"
+                      >
+                        <FileJson className="h-4 w-4" />
+                        {t("urlencoded")}
+                      </Button>
+                      <Button
+                        variant={bodyType === "binary" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBodyType("binary")}
+                        className="gap-1"
+                      >
+                        <Binary className="h-4 w-4" />
+                        {t("binary")}
+                      </Button>
+                    </div>
 
-                {bodyType !== "none" && (
-                  <div className="bg-muted/20 p-2 rounded-md">
-                    <Badge variant="outline" className="mb-2">
-                      {getBodyTypeIcon(bodyType)}
-                      {bodyType === "raw"
-                        ? t("raw")
-                        : bodyType === "form-data"
-                          ? t("formData")
-                          : bodyType === "urlencoded"
-                            ? t("urlencoded")
-                            : t("binary")}
-                    </Badge>
+                    {bodyType !== "none" && (
+                      <div className="bg-muted/20 p-2 rounded-md">
+                        <Badge variant="outline" className="mb-2">
+                          {getBodyTypeIcon(bodyType)}
+                          {bodyType === "raw"
+                            ? t("raw")
+                            : bodyType === "form-data"
+                              ? t("formData")
+                              : bodyType === "urlencoded"
+                                ? t("urlencoded")
+                                : t("binary")}
+                        </Badge>
 
-                    {bodyType === "raw" && (
-                      <div className="relative">
-                        <Textarea
-                          value={body}
-                          onChange={(e) => setBody(e.target.value)}
-                          placeholder="Request body (JSON, XML, etc.)"
-                          rows={8}
-                          className="font-mono text-sm"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-2 top-2"
-                          onClick={clearRequestBody}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    )}
+                        {bodyType === "raw" && (
+                          <div className="relative">
+                            <Textarea
+                              value={body}
+                              onChange={(e) => setBody(e.target.value)}
+                              placeholder="Request body (JSON, XML, etc.)"
+                              rows={8}
+                              className="font-mono text-sm"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-2 top-2"
+                              onClick={clearRequestBody}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        )}
 
-                    {bodyType === "form-data" && (
-                      <div className="border rounded-md overflow-hidden">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50">
-                              <TableHead className="w-[50px]"></TableHead>
-                              <TableHead>{t("key")}</TableHead>
-                              <TableHead>{t("value")}</TableHead>
-                              <TableHead className="w-[120px]">{t("type")}</TableHead>
-                              <TableHead className="w-[80px]"></TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {formDataParams.map((param) => (
-                              <TableRow key={param.id}>
-                                <TableCell>
-                                  <Checkbox
-                                    checked={param.enabled}
-                                    onCheckedChange={(checked) => updateFormDataParam(param.id, "enabled", !!checked)}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    value={param.name}
-                                    onChange={(e) => updateFormDataParam(param.id, "name", e.target.value)}
-                                    placeholder="Key"
-                                    className="h-8"
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  {param.type === "String" ? (
-                                    <Input
-                                      value={param.value}
-                                      onChange={(e) => updateFormDataParam(param.id, "value", e.target.value)}
-                                      placeholder="Value"
-                                      className="h-8"
-                                    />
-                                  ) : (
-                                    <div className="flex items-center justify-between">
-                                      <input
-                                        type="file"
-                                        ref={binaryInputRef}
-                                        onChange={handleBinaryFileChange}
-                                        className="hidden"
+                        {bodyType === "form-data" && (
+                          <div className="border rounded-md overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/50">
+                                  <TableHead className="w-[50px]"></TableHead>
+                                  <TableHead>{t("key")}</TableHead>
+                                  <TableHead>{t("value")}</TableHead>
+                                  <TableHead className="w-[120px]">{t("type")}</TableHead>
+                                  <TableHead className="w-[80px]"></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {formDataParams.map((param) => (
+                                  <TableRow key={param.id}>
+                                    <TableCell>
+                                      <Checkbox
+                                        checked={param.enabled}
+                                        onCheckedChange={(checked) => updateFormDataParam(param.id, "enabled", !!checked)}
                                       />
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => binaryInputRef.current?.click()}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        value={param.name}
+                                        onChange={(e) => updateFormDataParam(param.id, "name", e.target.value)}
+                                        placeholder="Key"
+                                        className="h-8"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      {param.type === "String" ? (
+                                        <Input
+                                          value={param.value}
+                                          onChange={(e) => updateFormDataParam(param.id, "value", e.target.value)}
+                                          placeholder="Value"
+                                          className="h-8"
+                                        />
+                                      ) : (
+                                        <div className="flex items-center justify-between">
+                                          <input
+                                            type="file"
+                                            ref={binaryInputRef}
+                                            onChange={handleBinaryFileChange}
+                                            className="hidden"
+                                          />
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => binaryInputRef.current?.click()}
+                                          >
+                                            {binaryFile ? binaryFile.name : t("selectBinaryFile")}
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select
+                                        value={param.type}
+                                        onValueChange={(value) => updateFormDataParam(param.id, "type", value)}
                                       >
-                                        {binaryFile ? binaryFile.name : t("selectBinaryFile")}
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="String">String</SelectItem>
+                                          <SelectItem value="File">File</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button variant="ghost" size="icon" onClick={() => removeFormDataParam(param.id)}>
+                                        <Trash2 className="h-4 w-4 text-red-500" />
                                       </Button>
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Select
-                                    value={param.type}
-                                    onValueChange={(value) => updateFormDataParam(param.id, "type", value)}
-                                  >
-                                    <SelectTrigger className="h-8">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="String">String</SelectItem>
-                                      <SelectItem value="File">File</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  <Button variant="ghost" size="icon" onClick={() => removeFormDataParam(param.id)}>
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                        <div className="p-2 border-t bg-muted/20">
-                          <Button variant="outline" size="sm" onClick={addFormDataParam} className="gap-1">
-                            <Plus className="h-4 w-4" />
-                            {t("addFormData")}
-                          </Button>
-                        </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                            <div className="p-2 border-t bg-muted/20">
+                              <Button variant="outline" size="sm" onClick={addFormDataParam} className="gap-1">
+                                <Plus className="h-4 w-4" />
+                                {t("addFormData")}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {bodyType === "binary" && (
+                          <div className="border rounded-md p-4 text-center">
+                            <input type="file" ref={binaryInputRef} onChange={handleBinaryFileChange} className="hidden" />
+                            <Button variant="outline" onClick={() => binaryInputRef.current?.click()} className="mx-auto">
+                              {binaryFile ? binaryFile.name : t("selectBinaryFile")}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {bodyType === "binary" && (
-                      <div className="border rounded-md p-4 text-center">
-                        <input type="file" ref={binaryInputRef} onChange={handleBinaryFileChange} className="hidden" />
-                        <Button variant="outline" onClick={() => binaryInputRef.current?.click()} className="mx-auto">
-                          {binaryFile ? binaryFile.name : t("selectBinaryFile")}
-                        </Button>
+                    {bodyType === "none" && (
+                      <div className="border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground bg-muted/10">
+                        <X className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                        {t("noBody")}
                       </div>
                     )}
                   </div>
-                )}
-
-                {bodyType === "none" && (
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground bg-muted/10">
-                    <X className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                    {t("noBody")}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 
@@ -1722,146 +1717,146 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
               </CardHeader>
               <CardContent className="space-y-4">
 
-              {statusInfo.statusCode && (
-                <div className="flex items-center gap-2 mb-4">
-                  <Badge className={`${getStatusColor(Number.parseInt(statusInfo.statusCode))} text-white`}>
-                    {statusInfo.statusCode}
-                  </Badge>
-                  <span className="text-sm font-medium">{statusInfo.statusText}</span>
-                  {timings.total && (
-                    <Badge variant="outline" className="ml-auto">
-                      {timings.total}ms
+                {statusInfo.statusCode && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge className={`${getStatusColor(Number.parseInt(statusInfo.statusCode))} text-white`}>
+                      {statusInfo.statusCode}
                     </Badge>
-                  )}
-                </div>
-              )}
-
-              <Tabs value={responseTab} onValueChange={setResponseTab}>
-                <TabsList className="grid grid-cols-4 mb-4">
-                  <TabsTrigger value="response" className="flex items-center gap-2">
-                    <FileJson className="h-4 w-4" />
-                    {t("response")}
-                  </TabsTrigger>
-                  <TabsTrigger value="responseHeaders" className="flex items-center gap-2">
-                    <Code className="h-4 w-4" />
-                    {t("responseHeaders")}
-                  </TabsTrigger>
-                  <TabsTrigger value="requestHeaders" className="flex items-center gap-2">
-                    <Code className="h-4 w-4" />
-                    {t("requestHeaders")}
-                  </TabsTrigger>
-                  <TabsTrigger value="timings" className="flex items-center gap-2">
-                    <ExternalLink className="h-4 w-4" />
-                    {t("timings")}
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="response">
-                  <div className="relative">
-                    <Textarea
-                      value={isJsonResponse ? formattedResponse : response}
-                      readOnly
-                      className="font-mono text-sm"
-                      rows={15}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-2"
-                      onClick={handleCopyToClipboard}
-                    >
-                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
+                    <span className="text-sm font-medium">{statusInfo.statusText}</span>
+                    {timings.total && (
+                      <Badge variant="outline" className="ml-auto">
+                        {timings.total}ms
+                      </Badge>
+                    )}
                   </div>
-                </TabsContent>
+                )}
 
-                <TabsContent value="responseHeaders">
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>{t("header")}</TableHead>
-                          <TableHead>{t("value")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(responseHeaders)
-                          .filter(([key]) => key !== "api-o0")
-                          .map(([key, headers], index) =>
-                            headers.map((header, i) => (
-                              <TableRow key={`${key}-${i}`}>
+                <Tabs value={responseTab} onValueChange={setResponseTab}>
+                  <TabsList className="grid grid-cols-4 mb-4">
+                    <TabsTrigger value="response" className="flex items-center gap-2">
+                      <FileJson className="h-4 w-4" />
+                      {t("response")}
+                    </TabsTrigger>
+                    <TabsTrigger value="responseHeaders" className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      {t("responseHeaders")}
+                    </TabsTrigger>
+                    <TabsTrigger value="requestHeaders" className="flex items-center gap-2">
+                      <Code className="h-4 w-4" />
+                      {t("requestHeaders")}
+                    </TabsTrigger>
+                    <TabsTrigger value="timings" className="flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      {t("timings")}
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="response">
+                    <div className="relative">
+                      <Textarea
+                        value={isJsonResponse ? formattedResponse : response}
+                        readOnly
+                        className="font-mono text-sm"
+                        rows={15}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-2 top-2"
+                        onClick={handleCopyToClipboard}
+                      >
+                        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="responseHeaders">
+                    <div className="border rounded-md overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>{t("header")}</TableHead>
+                            <TableHead>{t("value")}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(responseHeaders)
+                            .filter(([key]) => key !== "api-o0")
+                            .map(([key, headers], index) =>
+                              headers.map((header, i) => (
+                                <TableRow key={`${key}-${i}`}>
+                                  <TableCell className="font-medium">{header.name}</TableCell>
+                                  <TableCell className="font-mono text-sm">{header.value}</TableCell>
+                                </TableRow>
+                              )),
+                            )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="requestHeaders">
+                    <div className="border rounded-md overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>{t("header")}</TableHead>
+                            <TableHead>{t("value")}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {customHeaders
+                            .filter((h) => h.enabled)
+                            .map((header) => (
+                              <TableRow key={header.id}>
                                 <TableCell className="font-medium">{header.name}</TableCell>
                                 <TableCell className="font-mono text-sm">{header.value}</TableCell>
                               </TableRow>
-                            )),
-                          )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </TabsContent>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </TabsContent>
 
-                <TabsContent value="requestHeaders">
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>{t("header")}</TableHead>
-                          <TableHead>{t("value")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {customHeaders
-                          .filter((h) => h.enabled)
-                          .map((header) => (
-                            <TableRow key={header.id}>
-                              <TableCell className="font-medium">{header.name}</TableCell>
-                              <TableCell className="font-mono text-sm">{header.value}</TableCell>
+                  <TabsContent value="timings">
+                    <div className="border rounded-md overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>{t("name")}</TableHead>
+                            <TableHead>{t("value")}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(timings).map(([name, value]) => (
+                            <TableRow key={name}>
+                              <TableCell className="font-medium">{name}</TableCell>
+                              <TableCell>{value ? <Badge variant="outline">{value}ms</Badge> : "N/A"}</TableCell>
                             </TableRow>
                           ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="timings">
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>{t("name")}</TableHead>
-                          <TableHead>{t("value")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(timings).map(([name, value]) => (
-                          <TableRow key={name}>
-                            <TableCell className="font-medium">{name}</TableCell>
-                            <TableCell>{value ? <Badge variant="outline">{value}ms</Badge> : "N/A"}</TableCell>
+                          <TableRow>
+                            <TableCell className="font-medium">{t("statusCode")}</TableCell>
+                            <TableCell>
+                              <Badge className={`${getStatusColor(Number.parseInt(statusInfo.statusCode))} text-white`}>
+                                {statusInfo.statusCode}
+                              </Badge>
+                            </TableCell>
                           </TableRow>
-                        ))}
-                        <TableRow>
-                          <TableCell className="font-medium">{t("statusCode")}</TableCell>
-                          <TableCell>
-                            <Badge className={`${getStatusColor(Number.parseInt(statusInfo.statusCode))} text-white`}>
-                              {statusInfo.statusCode}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">{t("statusText")}</TableCell>
-                          <TableCell>{statusInfo.statusText}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">{t("httpVersion")}</TableCell>
-                          <TableCell>{statusInfo.httpVersion}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </TabsContent>
-              </Tabs>
-        </CardContent>
-      </Card>
+                          <TableRow>
+                            <TableCell className="font-medium">{t("statusText")}</TableCell>
+                            <TableCell>{statusInfo.statusText}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">{t("httpVersion")}</TableCell>
+                            <TableCell>{statusInfo.httpVersion}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>

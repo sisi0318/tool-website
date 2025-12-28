@@ -66,6 +66,7 @@ const ImageCompressTool = dynamic(() => import("./image-compress/page"), { ssr: 
 const ImageEditorTool = dynamic(() => import("./image-editor/page"), { ssr: false })
 const OfficeViewerTool = dynamic(() => import("./office-viewer/page"), { ssr: false })
 const MemeSplitterTool = dynamic(() => import("./meme-splitter/page"), { ssr: false })
+const ImageCoordinatesTool = dynamic(() => import("./image-coordinates/page"), { ssr: false })
 const CaseConverterTool = dynamic(() => import("./case-converter/page"), { ssr: false })
 const TOTPTool = dynamic(() => import("./totp/page"), { ssr: false })
 
@@ -433,6 +434,20 @@ export default function ToolsPage() {
           </svg>
         ),
         getComponent: (params?: Record<string, string>) => <MemeSplitterTool params={params} />,
+      },
+      {
+        id: "image-coordinates",
+        title: t("imageCoordinates.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="22" x2="18" y1="12" y2="12" />
+            <line x1="6" x2="2" y1="12" y2="12" />
+            <line x1="12" x2="12" y1="6" y2="2" />
+            <line x1="12" x2="12" y1="22" y2="18" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <ImageCoordinatesTool params={params} />,
       },
       {
         id: "case-converter",

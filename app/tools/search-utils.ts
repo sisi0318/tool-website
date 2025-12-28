@@ -172,6 +172,14 @@ export function getTools(locale = "en"): Tool[] {
       keywords: ["meme", "splitter", "split", "grid", "cut", "slice", "image", "sticker", "emoji", "表情包", "切图", "九宫格"],
       path: "/tools/meme-splitter",
     },
+    // Image Coordinates
+    {
+      id: "image-coordinates",
+      name: t.imageCoordinates?.title || "Coordinate Picker",
+      description: t.imageCoordinates?.description || "Pick coordinates from image with percent, permille, permyriad formats",
+      keywords: ["coordinate", "position", "pixel", "percent", "permille", "permyriad", "image", "picker", "坐标", "位置", "百分比", "千分比", "万分比"],
+      path: "/tools/image-coordinates",
+    },
     // Case Converter
     {
       id: "case-converter",
