@@ -1110,7 +1110,7 @@ export default function ToolsPage() {
               border border-[var(--md-sys-color-outline-variant)]/50
             ">
               {/* M3 Tabs Component */}
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 min-w-0">
                 <M3Tabs
                   tabs={m3TabItems}
                   activeTab={activeTab || ""}

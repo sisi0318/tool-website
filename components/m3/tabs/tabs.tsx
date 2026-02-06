@@ -193,6 +193,7 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
     ref
   ) => {
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
     const tabRefs = React.useRef<Map<string, HTMLButtonElement | null>>(new Map());
     const [animatingTabs, setAnimatingTabs] = React.useState<Set<string>>(new Set());
     const [exitingTabs, setExitingTabs] = React.useState<Set<string>>(new Set());
@@ -206,6 +207,31 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
       tabs.length,
       isAnimating
     );
+
+    // 鼠标滚轮转横向滚动
+    React.useEffect(() => {
+      const el = scrollContainerRef.current;
+      if (!el || !scrollable) return;
+
+      const handleWheel = (e: WheelEvent) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+        }
+      };
+
+      el.addEventListener('wheel', handleWheel, { passive: false });
+      return () => el.removeEventListener('wheel', handleWheel);
+    }, [scrollable]);
+
+    // 自动滚动到激活的 tab
+    React.useEffect(() => {
+      if (!scrollable || !scrollContainerRef.current) return;
+      const activeTabEl = tabRefs.current.get(activeTab);
+      if (activeTabEl) {
+        activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      }
+    }, [activeTab, scrollable]);
 
     // Detect new tabs for enter animation
     React.useEffect(() => {
@@ -259,7 +285,7 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
 
     return (
       <div
-        ref={ref}
+        ref={scrollContainerRef}
         className={cn(tabsContainerVariants({ scrollable }), className)}
         role="tablist"
         aria-orientation="horizontal"
