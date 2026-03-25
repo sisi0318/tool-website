@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -139,9 +139,9 @@ function getNextExecutionTimes(cronExpression: string, includeSeconds = false, c
     current.setSeconds(0)
   }
 
-  // 性能保护：最多尝试1000次迭代
+  // 性能保护：最多尝试10000次迭代
   let iterations = 0
-  const MAX_ITERATIONS = 1000
+  const MAX_ITERATIONS = 10000
 
   // 尝试找到下一个匹配的时间
   while (results.length < count && iterations < MAX_ITERATIONS) {
@@ -330,6 +330,230 @@ function generateCronDescription(expression: string, includeSeconds = false, t: 
   return parts.join('，') + '执行'
 }
 
+// ============ 时间线可视化组件 ============
+
+interface TimelineProps {
+  times: Date[]
+  use24HourFormat: boolean
+}
+
+function CronTimeline({ times, use24HourFormat }: TimelineProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  if (times.length < 2) return null
+
+  const start = times[0].getTime()
+  const end = times[times.length - 1].getTime()
+  const totalSpan = end - start
+
+  if (totalSpan <= 0) return null
+
+  // 计算间隔统计
+  const intervals = times.slice(1).map((t, i) => t.getTime() - times[i].getTime())
+  const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
+  const minInterval = Math.min(...intervals)
+  const maxInterval = Math.max(...intervals)
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: !use24HourFormat,
+    })
+  }
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    })
+  }
+
+  const formatDuration = (ms: number) => {
+    const seconds = Math.floor(ms / 1000)
+    if (seconds < 60) return `${seconds}秒`
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}分钟`
+    const hours = Math.floor(minutes / 60)
+    const remainMinutes = minutes % 60
+    if (hours < 24) return remainMinutes > 0 ? `${hours}小时${remainMinutes}分` : `${hours}小时`
+    const days = Math.floor(hours / 24)
+    const remainHours = hours % 24
+    return remainHours > 0 ? `${days}天${remainHours}小时` : `${days}天`
+  }
+
+  // 按日期分组
+  const dayGroups: Map<string, Date[]> = new Map()
+  times.forEach((t) => {
+    const key = t.toLocaleDateString()
+    if (!dayGroups.has(key)) dayGroups.set(key, [])
+    dayGroups.get(key)!.push(t)
+  })
+
+  // 24小时热力图数据
+  const hourCounts = new Array(24).fill(0)
+  times.forEach((t) => {
+    hourCounts[t.getHours()]++
+  })
+  const maxHourCount = Math.max(...hourCounts, 1)
+
+  return (
+    <div className="space-y-4">
+      {/* 间隔统计 */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <div className="text-xs text-gray-500">最小间隔</div>
+          <div className="text-sm font-medium text-blue-700 dark:text-blue-300">{formatDuration(minInterval)}</div>
+        </div>
+        <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+          <div className="text-xs text-gray-500">平均间隔</div>
+          <div className="text-sm font-medium text-green-700 dark:text-green-300">{formatDuration(avgInterval)}</div>
+        </div>
+        <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+          <div className="text-xs text-gray-500">最大间隔</div>
+          <div className="text-sm font-medium text-orange-700 dark:text-orange-300">{formatDuration(maxInterval)}</div>
+        </div>
+      </div>
+
+      {/* 24小时热力图 */}
+      <div>
+        <div className="text-sm font-medium mb-2">24小时分布</div>
+        <div className="flex gap-[2px]" ref={containerRef}>
+          {hourCounts.map((count, hour) => {
+            const intensity = count / maxHourCount
+            return (
+              <div key={hour} className="flex-1 flex flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-sm transition-all"
+                  style={{
+                    height: "24px",
+                    backgroundColor: count > 0
+                      ? `rgba(59, 130, 246, ${0.15 + intensity * 0.85})`
+                      : "rgba(0,0,0,0.05)",
+                  }}
+                  title={`${hour}:00 - ${count}次`}
+                />
+                {hour % 6 === 0 && (
+                  <span className="text-[10px] text-gray-400">{hour}</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-[10px] text-gray-400">0:00</span>
+          <span className="text-[10px] text-gray-400">23:00</span>
+        </div>
+      </div>
+
+      {/* 时间线 */}
+      <div>
+        <div className="text-sm font-medium mb-2">执行时间线</div>
+        <div className="relative overflow-x-auto scrollbar-m3 pb-2">
+          <div className="min-w-[400px]">
+            {/* SVG 时间线 */}
+            <svg width="100%" height={Math.max(60, dayGroups.size * 40 + 30)} className="overflow-visible">
+              {Array.from(dayGroups.entries()).map(([dateStr, dateTimes], groupIdx) => {
+                const y = groupIdx * 40 + 20
+                return (
+                  <g key={dateStr}>
+                    {/* 日期标签 */}
+                    <text
+                      x="0"
+                      y={y + 4}
+                      className="text-[11px] fill-gray-500 dark:fill-gray-400"
+                      fontWeight="500"
+                    >
+                      {formatDate(dateTimes[0])}
+                    </text>
+                    {/* 时间轴线 */}
+                    <line
+                      x1="60"
+                      y1={y}
+                      x2="100%"
+                      y2={y}
+                      stroke="currentColor"
+                      strokeOpacity="0.15"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    {/* 执行点 */}
+                    {dateTimes.map((t, i) => {
+                      const dayStart = new Date(t)
+                      dayStart.setHours(0, 0, 0, 0)
+                      const dayEnd = new Date(t)
+                      dayEnd.setHours(23, 59, 59, 999)
+                      const progress = (t.getTime() - dayStart.getTime()) / (dayEnd.getTime() - dayStart.getTime())
+                      // Map to 60px - 95% of container
+                      const xPercent = 15 + progress * 80
+
+                      return (
+                        <g key={i}>
+                          <circle
+                            cx={`${xPercent}%`}
+                            cy={y}
+                            r="5"
+                            className="fill-blue-500 dark:fill-blue-400"
+                            opacity={0.9}
+                          >
+                            <title>{formatTime(t)}</title>
+                          </circle>
+                          <circle
+                            cx={`${xPercent}%`}
+                            cy={y}
+                            r="8"
+                            className="fill-blue-500 dark:fill-blue-400"
+                            opacity={0.15}
+                          />
+                          {/* 时间标签 - 只在点不太密集时显示 */}
+                          {(dateTimes.length <= 12 || i % Math.ceil(dateTimes.length / 12) === 0) && (
+                            <text
+                              x={`${xPercent}%`}
+                              y={y + 16}
+                              textAnchor="middle"
+                              className="text-[9px] fill-gray-500 dark:fill-gray-400"
+                            >
+                              {formatTime(t)}
+                            </text>
+                          )}
+                        </g>
+                      )
+                    })}
+                  </g>
+                )
+              })}
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* 每日执行次数 */}
+      {dayGroups.size > 1 && (
+        <div>
+          <div className="text-sm font-medium mb-2">每日执行次数</div>
+          <div className="space-y-1">
+            {Array.from(dayGroups.entries()).map(([dateStr, dateTimes]) => (
+              <div key={dateStr} className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 w-16 flex-shrink-0">{formatDate(dateTimes[0])}</span>
+                <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all flex items-center justify-end pr-2"
+                    style={{
+                      width: `${Math.max(20, (dateTimes.length / Math.max(...Array.from(dayGroups.values()).map(d => d.length))) * 100)}%`,
+                    }}
+                  >
+                    <span className="text-[10px] text-white font-medium">{dateTimes.length}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CrontabPage({ params }: CrontabToolProps) {
   const t = useTranslations("crontab")
   const { toast } = useToast()
@@ -342,6 +566,7 @@ export default function CrontabPage({ params }: CrontabToolProps) {
   const [daysStartAt0, setDaysStartAt0] = useState(true)
   const [includeSeconds, setIncludeSeconds] = useState(false)
   const [nextRuns, setNextRuns] = useState<string[]>([])
+  const [timelineTimes, setTimelineTimes] = useState<Date[]>([])
   const [activeTab, setActiveTab] = useState("visual")
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -538,6 +763,7 @@ export default function CrontabPage({ params }: CrontabToolProps) {
       if (!validation.isValid) {
         setDescription("表达式无效")
         setNextRuns([])
+        setTimelineTimes([])
         setIsProcessing(false)
         return
       }
@@ -566,6 +792,10 @@ export default function CrontabPage({ params }: CrontabToolProps) {
           })
 
           setNextRuns(formattedTimes)
+
+          // 生成更多执行时间用于时间线可视化
+          const timelineData = getNextExecutionTimes(expr, includeSeconds, 50)
+          setTimelineTimes(timelineData)
           
           // 添加到历史记录
           if (validation.isValid) {
@@ -1293,6 +1523,21 @@ export default function CrontabPage({ params }: CrontabToolProps) {
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 时间线可视化 */}
+          {isValid && timelineTimes.length >= 2 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-purple-500" />
+                  执行时间线
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CronTimeline times={timelineTimes} use24HourFormat={use24HourFormat} />
               </CardContent>
             </Card>
           )}

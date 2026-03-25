@@ -196,6 +196,14 @@ export function getTools(locale = "en"): Tool[] {
       keywords: ["totp", "otp", "authenticator", "2fa", "two-factor", "google", "security", "password", "token"],
       path: "/tools/totp",
     },
+    // JCE Parser
+    {
+      id: "jce",
+      name: t.jce?.title || "JCE Parser",
+      description: t.jce?.description || "Parse and encode JCE/Tars binary protocol data",
+      keywords: ["jce", "tars", "tencent", "binary", "protocol", "parse", "decode", "encode", "struct", "serialize"],
+      path: "/tools/jce",
+    },
   ]
 }
 
@@ -1168,6 +1176,30 @@ export function createSearchableFeatures(translations: any): SearchResult[] {
         toolName: translations.totp.name,
         featureName: "2FA Authenticator",
         featureDescription: "Two-factor authentication code generator",
+      },
+    )
+  }
+
+  // JCE Parser features
+  if (translations?.jce?.name) {
+    features.push(
+      {
+        toolId: "jce",
+        toolName: translations.jce.name,
+        featureName: "JCE Decode",
+        featureDescription: "Decode JCE binary data to JSON",
+      },
+      {
+        toolId: "jce",
+        toolName: translations.jce.name,
+        featureName: "JCE Encode",
+        featureDescription: "Encode JSON to JCE binary format",
+      },
+      {
+        toolId: "jce",
+        toolName: translations.jce.name,
+        featureName: "Tars Protocol",
+        featureDescription: "Tars/JCE binary serialization protocol",
       },
     )
   }

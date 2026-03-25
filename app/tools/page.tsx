@@ -69,6 +69,7 @@ const MemeSplitterTool = dynamic(() => import("./meme-splitter/page"), { ssr: fa
 const ImageCoordinatesTool = dynamic(() => import("./image-coordinates/page"), { ssr: false })
 const CaseConverterTool = dynamic(() => import("./case-converter/page"), { ssr: false })
 const TOTPTool = dynamic(() => import("./totp/page"), { ssr: false })
+const JceTool = dynamic(() => import("./jce/page"), { ssr: false })
 
 // 标签页类型
 interface ToolTabType {
@@ -473,6 +474,19 @@ export default function ToolsPage() {
         ),
         getComponent: (params?: Record<string, string>) => <TOTPTool params={params} />,
       },
+      {
+        id: "jce",
+        title: t("jce.name"),
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="M4 7V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
+            <polyline points="14 2 14 8 20 8" />
+            <path d="M4 12h12" />
+            <path d="M4 15h8" />
+          </svg>
+        ),
+        getComponent: (params?: Record<string, string>) => <JceTool params={params} />,
+      },
     ],
     [t],
   )
@@ -506,6 +520,7 @@ export default function ToolsPage() {
         imageCompress: { name: t("imageCompress.name") },
         caseConverter: { name: t("caseConverter.name") },
         totp: { name: t("totp.name") },
+        jce: { name: t("jce.name") },
       }
 
       const validTranslations = Object.entries(translations).reduce(
