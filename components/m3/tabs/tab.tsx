@@ -49,8 +49,8 @@ const tabVariants = cva(
     'outline-none',
     'overflow-hidden',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-emphasized)]',
+    'duration-md-medium-2',
+    'ease-md-emphasized',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-38',
   ].join(' '),
@@ -174,7 +174,7 @@ const M3Tab = React.forwardRef<HTMLButtonElement, M3TabProps>(
       >
         {/* State layer */}
         <span
-          className="absolute inset-0 pointer-events-none bg-current transition-opacity duration-[var(--md-sys-motion-duration-short2)]"
+          className="absolute inset-0 pointer-events-none bg-current transition-opacity duration-md-short-2"
           style={{ opacity: stateLayerOpacity }}
           aria-hidden="true"
         />
@@ -203,7 +203,7 @@ const M3Tab = React.forwardRef<HTMLButtonElement, M3TabProps>(
               'relative z-10 ml-1 p-1 rounded-full',
               'hover:bg-[var(--md-sys-color-on-surface)]/[0.08]',
               'focus-visible:outline-none focus-visible:ring-2',
-              'transition-colors duration-[var(--md-sys-motion-duration-short2)]',
+              'transition-colors duration-md-short-2',
               'cursor-pointer'
             )}
             onClick={handleCloseClick}

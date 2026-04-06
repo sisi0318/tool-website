@@ -116,7 +116,7 @@ const M3LinearProgress = React.forwardRef<HTMLDivElement, M3LinearProgressProps>
             m3LinearProgressIndicatorVariants({ size }),
             isIndeterminate
               ? 'animate-m3-linear-progress-indeterminate'
-              : 'transition-[width] duration-[var(--md-sys-motion-duration-medium2)] ease-[var(--md-sys-motion-easing-standard)]'
+              : 'transition-[width] duration-md-medium-2 ease-md-standard'
           )}
           style={
             isIndeterminate

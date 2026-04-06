@@ -25,8 +25,8 @@ const m3TextFieldVariants = cva(
   [
     'relative w-full',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-short4)]',
-    'ease-[var(--md-sys-motion-easing-standard)]',
+    'duration-md-short-4',
+    'ease-md-standard',
   ].join(' '),
   {
     variants: {
@@ -71,8 +71,8 @@ const inputContainerVariants = cva(
     'relative flex items-center',
     'min-h-[56px]',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-short4)]',
-    'ease-[var(--md-sys-motion-easing-standard)]',
+    'duration-md-short-4',
+    'ease-md-standard',
   ].join(' '),
   {
     variants: {
@@ -171,8 +171,8 @@ const labelVariants = cva(
   [
     'absolute left-4 pointer-events-none',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-short4)]',
-    'ease-[var(--md-sys-motion-easing-emphasized)]',
+    'duration-md-short-4',
+    'ease-md-emphasized',
     'origin-top-left',
   ].join(' '),
   {
@@ -436,7 +436,7 @@ const M3TextField = React.forwardRef<HTMLInputElement, M3TextFieldProps>(
             id={supportingTextId}
             className={cn(
               'mt-1 px-4 text-xs',
-              'transition-colors duration-[var(--md-sys-motion-duration-short2)]',
+              'transition-colors duration-md-short-2',
               hasError
                 ? 'text-[var(--md-sys-color-error)]'
                 : 'text-[var(--md-sys-color-on-surface-variant)]'

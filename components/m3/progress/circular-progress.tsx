@@ -130,7 +130,7 @@ const M3CircularProgress = React.forwardRef<SVGSVGElement, M3CircularProgressPro
             'origin-center -rotate-90',
             isIndeterminate
               ? 'animate-m3-circular-progress-dash'
-              : 'transition-[stroke-dashoffset] duration-[var(--md-sys-motion-duration-medium2)] ease-[var(--md-sys-motion-easing-standard)]'
+              : 'transition-[stroke-dashoffset] duration-md-medium-2 ease-md-standard'
           )}
           style={{
             strokeDasharray: circumference,

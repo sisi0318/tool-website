@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { JsonTreeView } from "@/components/json-tree-view"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -865,6 +866,15 @@ export default function JceTool({ params }: JceToolProps) {
                   readOnly
                   placeholder={t("outputPlaceholder")}
                 />
+
+                {outputData && !showTypeInfo && (
+                  <div className="mt-4">
+                    <JsonTreeView
+                      jsonText={outputData}
+                      indentSize={indentSize}
+                    />
+                  </div>
+                )}
 
                 <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
                   <Label className="text-sm font-medium">{t("outputOptions")}</Label>

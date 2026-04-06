@@ -5,6 +5,7 @@ import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
+import { JsonTreeView } from "@/components/json-tree-view"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
@@ -1752,21 +1753,27 @@ export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
                   </TabsList>
 
                   <TabsContent value="response">
-                    <div className="relative">
-                      <Textarea
-                        value={isJsonResponse ? formattedResponse : response}
-                        readOnly
-                        className="font-mono text-sm"
-                        rows={15}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-2 top-2"
-                        onClick={handleCopyToClipboard}
-                      >
-                        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                      </Button>
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <Textarea
+                          value={isJsonResponse ? formattedResponse : response}
+                          readOnly
+                          className="font-mono text-sm"
+                          rows={15}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-2"
+                          onClick={handleCopyToClipboard}
+                        >
+                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+
+                      {isJsonResponse && formattedResponse && (
+                        <JsonTreeView jsonText={formattedResponse} indentSize={2} />
+                      )}
                     </div>
                   </TabsContent>
 

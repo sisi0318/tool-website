@@ -101,8 +101,8 @@ describe('M3SearchBar Component', () => {
       const { container } = render(<M3SearchBar />);
       const searchContainer = container.firstChild?.firstChild;
       
-      expect(searchContainer).toHaveClass('duration-[var(--md-sys-motion-duration-medium2)]');
-      expect(searchContainer).toHaveClass('ease-[var(--md-sys-motion-easing-emphasized)]');
+      expect(searchContainer).toHaveClass('duration-md-medium-2');
+      expect(searchContainer).toHaveClass('ease-md-emphasized');
     });
   });
 

@@ -788,8 +788,8 @@ export default function ToolsPage() {
         className="
           h-full card-elevated cursor-pointer group
           hover:shadow-xl hover:-translate-y-2
-          transition-all duration-[var(--md-sys-motion-duration-medium2)]
-          ease-[var(--md-sys-motion-easing-expressive)]
+          transition-all duration-md-medium-2
+          ease-md-expressive
           active:scale-[0.98] active:translate-y-0
         "
         onClick={onClick}
@@ -800,8 +800,8 @@ export default function ToolsPage() {
             bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)]
             text-[var(--md-sys-color-on-primary-container)]
             rounded-[var(--md-sys-shape-corner-large)]
-            transition-all duration-[var(--md-sys-motion-duration-medium2)]
-            ease-[var(--md-sys-motion-easing-expressive)]
+            transition-all duration-md-medium-2
+            ease-md-expressive
             group-hover:scale-110 group-hover:rotate-3
             shadow-md group-hover:shadow-lg
           ">
@@ -811,7 +811,7 @@ export default function ToolsPage() {
             font-semibold text-center
             text-[var(--md-sys-color-on-surface)]
             group-hover:text-gradient
-            transition-colors duration-[var(--md-sys-motion-duration-medium2)]
+            transition-colors duration-md-medium-2
           ">
             {name}
           </h3>
@@ -1013,8 +1013,8 @@ export default function ToolsPage() {
                 bg-[var(--md-sys-color-surface-container-high)]
                 rounded-[var(--md-sys-shape-corner-full)]
                 transition-all
-                duration-[var(--md-sys-motion-duration-medium2)]
-                ease-[var(--md-sys-motion-easing-expressive)]
+                duration-md-medium-2
+                ease-md-expressive
                 ${isSearchFocused
                   ? 'shadow-xl ring-2 ring-[var(--md-sys-color-primary)] scale-[1.01]'
                   : 'shadow-md hover:shadow-lg hover:scale-[1.005]'
@@ -1046,7 +1046,7 @@ export default function ToolsPage() {
                     className="
                       p-1 rounded-full ml-2
                       hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                      transition-colors duration-[var(--md-sys-motion-duration-short2)]
+                      transition-colors duration-md-short-2
                     "
                   >
                     <X className="h-4 w-4 text-[var(--md-sys-color-on-surface-variant)]" />
@@ -1069,7 +1069,7 @@ export default function ToolsPage() {
                 p-3 max-h-80 overflow-y-auto
                 border border-[var(--md-sys-color-outline-variant)]
                 animate-in fade-in-0 slide-in-from-top-3
-                duration-[var(--md-sys-motion-duration-medium2)]
+                duration-md-medium-2
               "
             >
               {searchResults.map((result, index) => (
@@ -1080,7 +1080,7 @@ export default function ToolsPage() {
                     rounded-[var(--md-sys-shape-corner-medium)]
                     hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
                     active:bg-[var(--md-sys-color-on-surface)]/[0.12]
-                    transition-colors duration-[var(--md-sys-motion-duration-short2)]
+                    transition-colors duration-md-short-2
                     flex items-start gap-3
                   "
                   onClick={() => openToolWithFeature(result.toolId, result.featureName)}
@@ -1149,7 +1149,7 @@ export default function ToolsPage() {
                             p-2 rounded-full
                             hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
                             active:bg-[var(--md-sys-color-on-surface)]/[0.12]
-                            transition-colors duration-[var(--md-sys-motion-duration-short2)]
+                            transition-colors duration-md-short-2
                             text-[var(--md-sys-color-on-surface-variant)]
                           "
                           onClick={copyMultiTabShareLink}
@@ -1170,7 +1170,7 @@ export default function ToolsPage() {
                       p-2 rounded-full
                       hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
                       active:bg-[var(--md-sys-color-on-surface)]/[0.12]
-                      transition-colors duration-[var(--md-sys-motion-duration-short2)]
+                      transition-colors duration-md-short-2
                       text-[var(--md-sys-color-on-surface-variant)]
                     "
                     onClick={(e) => {
@@ -1195,7 +1195,7 @@ export default function ToolsPage() {
                         max-h-96 overflow-y-auto
                         border border-[var(--md-sys-color-outline-variant)]/50
                         animate-in fade-in-0 slide-in-from-top-3
-                        duration-[var(--md-sys-motion-duration-medium2)]
+                        duration-md-medium-2
                       "
                     >
                       {toolDefinitions.map((tool) => (
@@ -1207,8 +1207,8 @@ export default function ToolsPage() {
                             hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
                             active:bg-[var(--md-sys-color-on-surface)]/[0.16]
                             active:scale-[0.98]
-                            transition-all duration-[var(--md-sys-motion-duration-short4)]
-                            ease-[var(--md-sys-motion-easing-expressive)]
+                            transition-all duration-md-short-4
+                            ease-md-expressive
                             text-left group
                           "
                           onClick={(e) => {
@@ -1219,7 +1219,7 @@ export default function ToolsPage() {
                           <span className="
                             text-[var(--md-sys-color-on-surface-variant)]
                             group-hover:text-[var(--md-sys-color-primary)]
-                            transition-colors duration-[var(--md-sys-motion-duration-short4)]
+                            transition-colors duration-md-short-4
                           ">
                             {tool.icon}
                           </span>
@@ -1261,8 +1261,8 @@ export default function ToolsPage() {
                   text-[var(--md-sys-color-on-secondary-container)]
                   shadow-lg
                   hover:shadow-xl
-                  transition-all duration-[var(--md-sys-motion-duration-medium2)]
-                  ease-[var(--md-sys-motion-easing-emphasized)]
+                  transition-all duration-md-medium-2
+                  ease-md-emphasized
                 "
                 onClick={() => setShowToolOptionsSheet(true)}
                 aria-label="More options"
@@ -1304,7 +1304,7 @@ export default function ToolsPage() {
                 bg-[var(--md-sys-color-surface-container-high)]
                 hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
                 active:bg-[var(--md-sys-color-on-surface)]/[0.12]
-                transition-colors duration-[var(--md-sys-motion-duration-short2)]
+                transition-colors duration-md-short-2
               "
               onClick={() => {
                 addTab(tool.id)

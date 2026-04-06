@@ -81,6 +81,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.21",
     "@types/node": "^22",
     "@types/react": "^18",

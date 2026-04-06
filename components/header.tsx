@@ -48,8 +48,8 @@ const M3IconButton = React.forwardRef<HTMLButtonElement, M3IconButtonProps>(
           "active:bg-[var(--md-sys-color-on-surface)]/[0.16]",
           "active:scale-95",
           // Expressive transitions
-          "transition-all duration-[var(--md-sys-motion-duration-short4)]",
-          "ease-[var(--md-sys-motion-easing-expressive)]",
+          "transition-all duration-md-short-4",
+          "ease-md-expressive",
           // Focus ring
           "focus-visible:outline-none focus-visible:ring-2",
           "focus-visible:ring-[var(--md-sys-color-primary)]",
@@ -103,8 +103,8 @@ function ThemeToggle() {
         <SunIcon
           className={cn(
             "absolute inset-0 h-6 w-6",
-            "transition-all duration-[var(--md-sys-motion-duration-medium3)]",
-            "ease-[var(--md-sys-motion-easing-expressive)]",
+            "transition-all duration-md-medium-3",
+            "ease-md-expressive",
             theme === "dark"
               ? "rotate-0 scale-100 opacity-100"
               : "rotate-180 scale-0 opacity-0"
@@ -114,8 +114,8 @@ function ThemeToggle() {
         <MoonIcon
           className={cn(
             "absolute inset-0 h-6 w-6",
-            "transition-all duration-[var(--md-sys-motion-duration-medium3)]",
-            "ease-[var(--md-sys-motion-easing-expressive)]",
+            "transition-all duration-md-medium-3",
+            "ease-md-expressive",
             theme === "dark"
               ? "-rotate-180 scale-0 opacity-0"
               : "rotate-0 scale-100 opacity-100"
@@ -168,8 +168,8 @@ export default function Header() {
         // Border
         "border-b border-[var(--md-sys-color-outline-variant)]/50",
         // Expressive transitions for scroll behavior
-        "transition-all duration-[var(--md-sys-motion-duration-medium3)]",
-        "ease-[var(--md-sys-motion-easing-expressive)]",
+        "transition-all duration-md-medium-3",
+        "ease-md-expressive",
         // Elevated state on scroll
         isScrolled && [
           "bg-[var(--md-sys-color-surface-container)]/98",
@@ -192,8 +192,8 @@ export default function Header() {
             // Hover state with expressive transition
             "rounded-[var(--md-sys-shape-corner-large)]",
             "hover:bg-[var(--md-sys-color-on-surface)]/[0.06]",
-            "transition-all duration-[var(--md-sys-motion-duration-short4)]",
-            "ease-[var(--md-sys-motion-easing-expressive)]",
+            "transition-all duration-md-short-4",
+            "ease-md-expressive",
             "px-3 -ml-3"
           )}
         >
@@ -203,8 +203,8 @@ export default function Header() {
               "w-10 h-10 flex items-center justify-center",
               "bg-gradient-to-br from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-tertiary)]",
               "rounded-[var(--md-sys-shape-corner-medium)]",
-              "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
-              "ease-[var(--md-sys-motion-easing-expressive)]",
+              "transition-all duration-md-medium-2",
+              "ease-md-expressive",
               "group-hover:scale-110 group-hover:rotate-3",
               "shadow-md group-hover:shadow-lg"
             )}
@@ -217,7 +217,7 @@ export default function Header() {
               "hidden sm:inline font-semibold text-lg",
               "text-[var(--md-sys-color-on-surface)]",
               "group-hover:text-gradient",
-              "transition-colors duration-[var(--md-sys-motion-duration-short4)]"
+              "transition-colors duration-md-short-4"
             )}
           >
             {t("siteName")}
@@ -287,8 +287,8 @@ function NavLink({ href, active, children }: NavLinkProps) {
               "hover:text-[var(--md-sys-color-on-surface)]",
             ],
         // Expressive transitions
-        "transition-all duration-[var(--md-sys-motion-duration-short4)]",
-        "ease-[var(--md-sys-motion-easing-expressive)]",
+        "transition-all duration-md-short-4",
+        "ease-md-expressive",
         "hover:scale-105 active:scale-95",
         // Focus ring
         "focus-visible:outline-none focus-visible:ring-2",

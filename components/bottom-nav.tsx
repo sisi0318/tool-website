@@ -70,7 +70,7 @@ export function BottomNav() {
                             <div
                                 className={cn(
                                     "absolute top-0 h-8 w-16 rounded-full -z-10",
-                                    "transition-all duration-300 ease-[var(--md-sys-motion-easing-expressive)]",
+                                    "transition-all duration-300 ease-md-expressive",
                                     item.isActive
                                         ? "bg-[var(--md-sys-color-secondary-container)] opacity-100 scale-100"
                                         : "bg-transparent opacity-0 scale-50"

@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useCallback, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { JsonTreeView } from "@/components/json-tree-view"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -318,57 +319,11 @@ export default function JWTPage({ params }: JWTPageProps) {
               </TabsList>
 
               <TabsContent value="header" className="space-y-2">
-                <div className="relative">
-                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto text-sm font-mono">
-                    {formatJSON(decoded.header)}
-                  </pre>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute top-2 right-2"
-                          onClick={() => copyToClipboard(formatJSON(decoded.header), "header")}
-                        >
-                          {copied["header"] ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{copied["header"] ? t("copied") : t("copy")}</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <JsonTreeView jsonText={formatJSON(decoded.header)} indentSize={2} rootLabel="header" />
               </TabsContent>
 
               <TabsContent value="payload" className="space-y-2">
-                <div className="relative">
-                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto text-sm font-mono">
-                    {formatJSON(decoded.payload)}
-                  </pre>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute top-2 right-2"
-                          onClick={() => copyToClipboard(formatJSON(decoded.payload), "payload")}
-                        >
-                          {copied["payload"] ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{copied["payload"] ? t("copied") : t("copy")}</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <JsonTreeView jsonText={formatJSON(decoded.payload)} indentSize={2} rootLabel="payload" />
 
                 {/* 常见 Claims 解释 */}
                 {decoded.payload && (

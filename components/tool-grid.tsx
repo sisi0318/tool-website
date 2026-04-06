@@ -62,8 +62,8 @@ function IconContainer({ children, className }: { children: React.ReactNode; cla
         "bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)]",
         "text-[var(--md-sys-color-on-primary-container)]",
         "shadow-md",
-        "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
-        "ease-[var(--md-sys-motion-easing-expressive)]",
+        "transition-all duration-md-medium-2",
+        "ease-md-expressive",
         "group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg",
         className
       )}
@@ -177,7 +177,7 @@ function ToolCard({ tool, showDescription, onLongPress }: ToolCardProps) {
               "font-semibold text-base leading-6",
               "text-[var(--md-sys-color-on-surface)]",
               "mb-2",
-              "transition-all duration-[var(--md-sys-motion-duration-medium2)]",
+              "transition-all duration-md-medium-2",
               "group-hover:text-gradient"
             )}
           >

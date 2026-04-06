@@ -210,8 +210,8 @@ describe('M3Slider Component', () => {
       render(<M3Slider aria-label="Animated slider" />);
       const slider = screen.getByRole('slider');
       
-      expect(slider).toHaveClass('duration-[var(--md-sys-motion-duration-short4)]');
-      expect(slider).toHaveClass('ease-[var(--md-sys-motion-easing-standard)]');
+      expect(slider).toHaveClass('duration-md-short-4');
+      expect(slider).toHaveClass('ease-md-standard');
     });
   });
 

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { JsonTreeView } from "@/components/json-tree-view"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -649,6 +650,17 @@ export default function QRCodeDecoder({ params }: QRCodeDecoderProps) {
               {details.email && <div><strong>邮箱:</strong> {details.email}</div>}
               {details.url && <div><strong>网址:</strong> {details.url}</div>}
             </div>
+          </div>
+        )
+
+      case 'json':
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="font-medium">JSON 数据</span>
+            </div>
+            <JsonTreeView jsonText={JSON.stringify(details, null, 2)} indentSize={2} />
           </div>
         )
 

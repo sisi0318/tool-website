@@ -37,7 +37,7 @@ const m3DialogContentVariants = cva(
     // Shadow for elevation
     'shadow-xl',
     // Animation
-    'duration-[var(--md-sys-motion-duration-medium2)]',
+    'duration-md-medium-2',
     'data-[state=open]:animate-in data-[state=closed]:animate-out',
     'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
     'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -101,7 +101,7 @@ const M3DialogOverlay = React.forwardRef<
       // Animation
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-      'duration-[var(--md-sys-motion-duration-medium2)]',
+      'duration-md-medium-2',
       className
     )}
     {...props}
@@ -149,7 +149,7 @@ const M3DialogContent = React.forwardRef<
             'focus:ring-[var(--md-sys-color-primary)]',
             'focus:ring-offset-2',
             'disabled:pointer-events-none',
-            'transition-all duration-[var(--md-sys-motion-duration-short2)]'
+            'transition-all duration-md-short-2'
           )}
           aria-label="Close"
         >
