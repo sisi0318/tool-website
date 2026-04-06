@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
 import { createHash } from "crypto"
-import { SHA3 } from "sha3"
+import { Keccak, SHA3, SHAKE } from "sha3"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -24,12 +24,18 @@ interface HashPageProps {
   }
 }
 
-// 添加CRC32函数实现
-function crc32(str: string) {
-  // 函数实现保持不变
+interface HashAlgorithm {
+  id: string
+  name: string
+  configurable: boolean
+  sizes?: number[]
+}
+
+// 基于字节的 CRC32，保证文本与文件模式都按原始字节计算
+function crc32Bytes(bytes: Uint8Array) {
   function makeCRCTable() {
     let c
-    const crcTable = []
+    const crcTable: number[] = []
     for (let n = 0; n < 256; n++) {
       c = n
       for (let k = 0; k < 8; k++) {
@@ -43,16 +49,21 @@ function crc32(str: string) {
   const crcTable = makeCRCTable()
   let crc = 0 ^ -1
 
-  for (let i = 0; i < str.length; i++) {
-    crc = (crc >>> 8) ^ crcTable[(crc ^ str.charCodeAt(i)) & 0xff]
+  for (let i = 0; i < bytes.length; i++) {
+    crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xff]
   }
 
   return (crc ^ -1) >>> 0
 }
 
+function crc32Text(str: string) {
+  return crc32Bytes(new TextEncoder().encode(str))
+}
+
 // 哈希结果类型
 interface HashResult {
   algorithm: string
+  algorithmSize?: number
   displayName: string
   value: string
   status?: "pending" | "calculating" | "completed" | "error"
@@ -87,7 +98,7 @@ function formatFileSize(bytes: number): string {
 const MAX_FILE_SIZE = 100 * 1024 * 1024
 
 // 重构哈希算法分类
-const hashCategories = [
+const hashCategories: Array<{ name: string; algorithms: HashAlgorithm[] }> = [
   {
     name: "MD",
     algorithms: [{ id: "md5", name: "MD5", configurable: false }],
@@ -104,8 +115,8 @@ const hashCategories = [
         name: "SHA2",
         configurable: true,
         sizes: [224, 256, 384, 512],
-        defaultRounds: 1,
       },
+      { id: "sha512", name: "SHA-512/t", configurable: true, sizes: [224, 256] },
     ],
   },
   {
@@ -116,13 +127,25 @@ const hashCategories = [
         name: "SHA3",
         configurable: true,
         sizes: [224, 256, 384, 512],
-        defaultRounds: 24,
       },
+      { id: "keccak", name: "Keccak", configurable: true, sizes: [224, 256, 384, 512] },
+      { id: "shake", name: "SHAKE", configurable: true, sizes: [128, 256] },
     ],
   },
   {
     name: "RIPEMD",
     algorithms: [{ id: "ripemd160", name: "RIPEMD160", configurable: false }],
+  },
+  {
+    name: "BLAKE2",
+    algorithms: [
+      { id: "blake2s256", name: "BLAKE2s-256", configurable: false },
+      { id: "blake2b512", name: "BLAKE2b-512", configurable: false },
+    ],
+  },
+  {
+    name: "SM3",
+    algorithms: [{ id: "sm3", name: "SM3", configurable: false }],
   },
   {
     name: "CRC",
@@ -169,11 +192,12 @@ export default function HashPage({ params }: HashPageProps) {
 
       // 查找匹配的算法
       let found = false
+      const normalizedFeature = featureLower.replace(/\//g, "-")
 
       // 遍历所有算法类别
       for (const category of hashCategories) {
         for (const algo of category.algorithms) {
-          if (algo.name.toLowerCase() === featureLower || algo.id.toLowerCase() === featureLower) {
+          if (algo.name.toLowerCase().replace(/\//g, "-") === normalizedFeature || algo.id.toLowerCase() === normalizedFeature) {
             setAlgorithm(algo.id)
             setSelectedCategory(category.name)
             found = true
@@ -183,8 +207,8 @@ export default function HashPage({ params }: HashPageProps) {
           // 对于可配置的算法，检查是否匹配特定大小
           if (algo.configurable && algo.sizes) {
             for (const s of algo.sizes) {
-              const sizeSpecificName = `${algo.name}-${s}`.toLowerCase()
-              if (sizeSpecificName === featureLower) {
+              const sizeSpecificName = getAlgorithmDisplayName(algo.id, s).toLowerCase().replace(/\//g, "-")
+              if (sizeSpecificName === normalizedFeature) {
                 setAlgorithm(algo.id)
                 setSelectedCategory(category.name)
                 setSize(s)
@@ -219,25 +243,30 @@ export default function HashPage({ params }: HashPageProps) {
     try {
       let result = ""
 
-      // Handle HMAC algorithms
-
       if (algorithmId === "sha3") {
-        // 使用SHA3库计算SHA3哈希
-        const sha3 = new SHA3(algorithmSize || size)
+        const sha3 = new SHA3((algorithmSize || size) as 224 | 256 | 384 | 512)
         sha3.update(input)
         result = outputFormat === "hex" ? sha3.digest("hex") : sha3.digest("base64")
+      } else if (algorithmId === "keccak") {
+        const keccak = new Keccak((algorithmSize || size) as 224 | 256 | 384 | 512)
+        keccak.update(input)
+        result = outputFormat === "hex" ? keccak.digest("hex") : keccak.digest("base64")
+      } else if (algorithmId === "shake") {
+        const shake = new SHAKE((algorithmSize || size) as 128 | 256)
+        shake.update(input)
+        result = outputFormat === "hex" ? shake.digest("hex") : shake.digest("base64")
       } else if (algorithmId === "sha2") {
-        // 使用crypto模块计算SHA2哈希
-        const hashAlgorithm = `sha${algorithmSize || size}`
-        const hashObj = createHash(hashAlgorithm)
+        const hashObj = createHash(`sha${algorithmSize || size}`)
+        hashObj.update(input)
+        result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
+      } else if (algorithmId === "sha512") {
+        const hashObj = createHash(`sha512-${algorithmSize || size}`)
         hashObj.update(input)
         result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
       } else if (algorithmId === "crc32") {
-        // 计算CRC32
-        const crcResult = crc32(input).toString(16).padStart(8, "0")
+        const crcResult = crc32Text(input).toString(16).padStart(8, "0")
         result = outputFormat === "hex" ? crcResult : Buffer.from(crcResult, "hex").toString("base64")
       } else {
-        // 使用crypto模块计算其他哈希
         const hashObj = createHash(algorithmId)
         hashObj.update(input)
         result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
@@ -255,11 +284,23 @@ export default function HashPage({ params }: HashPageProps) {
     const algorithmObj = allAlgorithms.find((algo) => algo.id === algorithmId)
     if (!algorithmObj) return algorithmId
 
-    if ((algorithmId === "sha2" || algorithmId === "sha3") && algorithmSize) {
+    if (!algorithmSize) {
+      return algorithmObj.name
+    }
+
+    if (algorithmId === "sha2" || algorithmId === "sha3" || algorithmId === "keccak") {
       return `${algorithmObj.name}-${algorithmSize}`
     }
 
-    return algorithmObj.name
+    if (algorithmId === "sha512") {
+      return `SHA-512/${algorithmSize}`
+    }
+
+    if (algorithmId === "shake") {
+      return `SHAKE${algorithmSize}`
+    }
+
+    return `${algorithmObj.name}-${algorithmSize}`
   }
 
   // 计算所有哈希值（文本）
@@ -293,10 +334,11 @@ export default function HashPage({ params }: HashPageProps) {
           algo.sizes.forEach((s) => {
             const value = calculateSingleTextHash(algo.id, s)
             results.push({
-              algorithm: `${algo.id}-${s}`,
-              displayName: `${algo.name}-${s}`,
+              algorithm: algo.id,
+              displayName: getAlgorithmDisplayName(algo.id, s),
               value,
               status: "completed",
+              algorithmSize: s,
             })
           })
         }
@@ -314,40 +356,40 @@ export default function HashPage({ params }: HashPageProps) {
         // Increase chunk size to improve performance
         const chunkSize = 5 * 1024 * 1024 // 5MB chunks
         let offset = 0
-        let hash
+        let hash: any
 
         // Initialize hash object
 
         if (algorithmId === "sha3") {
-          hash = new SHA3(algorithmSize || size)
+          hash = new SHA3((algorithmSize || size) as 224 | 256 | 384 | 512)
+        } else if (algorithmId === "keccak") {
+          hash = new Keccak((algorithmSize || size) as 224 | 256 | 384 | 512)
+        } else if (algorithmId === "shake") {
+          hash = new SHAKE((algorithmSize || size) as 128 | 256)
         } else if (algorithmId === "sha2") {
-          const hashAlgorithm = `sha${algorithmSize || size}`
-          hash = createHash(hashAlgorithm)
+          hash = createHash(`sha${algorithmSize || size}`)
+        } else if (algorithmId === "sha512") {
+          hash = createHash(`sha512-${algorithmSize || size}`)
         } else if (algorithmId === "crc32") {
-          // CRC32 needs special handling as it's not streaming
-          // We'll calculate it after the last read
           hash = { update: () => {}, digest: () => {} }
         } else {
           hash = createHash(algorithmId)
         }
 
-        // Store all data for CRC32 calculation
-        let fullData = ""
+        const crcChunks: Uint8Array[] = []
 
         fileReader.onload = (e) => {
           if (e.target?.result) {
-            const chunk = e.target.result as string
+            const chunk = new Uint8Array(e.target.result as ArrayBuffer)
 
-            // For CRC32, we store the data
             if (algorithmId === "crc32") {
-              fullData += chunk
+              crcChunks.push(chunk)
             } else {
-              // For other algorithms, we update the hash
-              hash.update(chunk)
+              hash.update(Buffer.from(chunk))
             }
 
             // Update progress
-            offset += chunk.length
+            offset += chunk.byteLength
             const progress = Math.min(100, Math.round((offset / file.size) * 100))
             setFileProgress(progress)
 
@@ -359,11 +401,15 @@ export default function HashPage({ params }: HashPageProps) {
               let result
 
               if (algorithmId === "crc32") {
-                // Calculate CRC32
-                const crcResult = crc32(fullData).toString(16).padStart(8, "0")
+                const merged = new Uint8Array(crcChunks.reduce((total, item) => total + item.length, 0))
+                let position = 0
+                for (const item of crcChunks) {
+                  merged.set(item, position)
+                  position += item.length
+                }
+                const crcResult = crc32Bytes(merged).toString(16).padStart(8, "0")
                 result = outputFormat === "hex" ? crcResult : Buffer.from(crcResult, "hex").toString("base64")
               } else {
-                // Get results for other algorithms
                 result = outputFormat === "hex" ? hash.digest("hex") : hash.digest("base64")
               }
 
@@ -378,7 +424,7 @@ export default function HashPage({ params }: HashPageProps) {
 
         const readNextChunk = () => {
           const slice = file.slice(offset, offset + chunkSize)
-          fileReader.readAsText(slice)
+          fileReader.readAsArrayBuffer(slice)
         }
 
         // Start reading
@@ -422,15 +468,16 @@ export default function HashPage({ params }: HashPageProps) {
         .forEach((algo) => {
           if (algo.sizes) {
             algo.sizes.forEach((s) => {
-              results.push({
-                algorithm: `${algo.id}-${s}`,
-                displayName: `${algo.name}-${s}`,
-                value: "",
-                status: "pending",
-              })
+            results.push({
+              algorithm: algo.id,
+              displayName: getAlgorithmDisplayName(algo.id, s),
+              value: "",
+              status: "pending",
+              algorithmSize: s,
             })
-          }
-        })
+          })
+        }
+      })
 
       // 立即设置结果数组，这样用户可以看到将要计算的所有算法
       setAllHashResults([...results])
@@ -451,13 +498,7 @@ export default function HashPage({ params }: HashPageProps) {
           let value = ""
 
           // 解析算法 ID 和大小
-          if (result.algorithm.includes("-")) {
-            const [algoId, sizeStr] = result.algorithm.split("-")
-            const algoSize = Number.parseInt(sizeStr)
-            value = await calculateFileHash(fileInfo.file, algoId, algoSize)
-          } else {
-            value = await calculateFileHash(fileInfo.file, result.algorithm)
-          }
+          value = await calculateFileHash(fileInfo.file, result.algorithm, result.algorithmSize)
 
           // 更新结果和状态
           results[i].value = value
@@ -491,7 +532,7 @@ export default function HashPage({ params }: HashPageProps) {
     try {
       let result
 
-      if (algorithm === "sha3" || algorithm === "sha2") {
+      if (isCurrentAlgorithmConfigurable()) {
         result = await calculateFileHash(fileInfo.file, algorithm, size)
       } else {
         result = await calculateFileHash(fileInfo.file, algorithm)
@@ -521,7 +562,7 @@ export default function HashPage({ params }: HashPageProps) {
       }
 
       // 计算当前选中的算法
-      const result = calculateSingleTextHash(algorithm)
+      const result = calculateSingleTextHash(algorithm, isCurrentAlgorithmConfigurable() ? size : undefined)
       setHashResult(result)
 
       // 如果启用了显示所有结果，计算所有算法
@@ -736,6 +777,16 @@ export default function HashPage({ params }: HashPageProps) {
     }
   }
 
+  const handleAlgorithmChange = (nextAlgorithm: string) => {
+    setAlgorithm(nextAlgorithm)
+    const categoryData = hashCategories.find((category) =>
+      category.algorithms.some((algo) => algo.id === nextAlgorithm),
+    )
+    if (categoryData) {
+      setSelectedCategory(categoryData.name)
+    }
+  }
+
   // 获取当前算法是否可配置
   const isCurrentAlgorithmConfigurable = () => {
     const currentAlgo = allAlgorithms.find((algo) => algo.id === algorithm)
@@ -894,15 +945,34 @@ export default function HashPage({ params }: HashPageProps) {
           </TabsContent>
         </Tabs>
 
-        <Tabs defaultValue="md5" value={algorithm} onValueChange={setAlgorithm}>
-          <TabsList className="grid grid-cols-5 mb-6">
-            <TabsTrigger value="md5">MD5</TabsTrigger>
-            <TabsTrigger value="sha1">SHA1</TabsTrigger>
-            <TabsTrigger value="sha2">SHA2</TabsTrigger>
-            <TabsTrigger value="sha3">SHA3</TabsTrigger>
-            <TabsTrigger value="crc32">CRC32</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>算法分类</Label>
+            <div className="flex flex-wrap gap-2">
+              {hashCategories.map((category) => (
+                <Button
+                  key={category.name}
+                  type="button"
+                  variant={selectedCategory === category.name ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleCategoryChange(category.name)}
+                >
+                  {category.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <Tabs value={algorithm} onValueChange={handleAlgorithmChange}>
+            <TabsList className="flex h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+              {(hashCategories.find((category) => category.name === selectedCategory)?.algorithms || []).map((algo) => (
+                <TabsTrigger key={algo.id} value={algo.id} className="min-w-[92px]">
+                  {algo.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
 
         {!showAllResults && isCurrentAlgorithmConfigurable() && (
           <div className="mt-4 space-y-4">
@@ -999,7 +1069,7 @@ export default function HashPage({ params }: HashPageProps) {
             <div className="space-y-2">
               {allHashResults.map((result) => (
                 <div
-                  key={result.algorithm}
+                  key={`${result.algorithm}-${result.algorithmSize ?? "default"}`}
                   className={`flex items-center justify-between p-3 rounded-md ${
                     result.status === "calculating"
                       ? "bg-blue-50 dark:bg-blue-900/20"
@@ -1023,16 +1093,18 @@ export default function HashPage({ params }: HashPageProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => copyToClipboard(result.value, result.algorithm)}
+                            onClick={() => copyToClipboard(result.value, `${result.algorithm}-${result.algorithmSize ?? "default"}`)}
                           >
-                            {copied[result.algorithm] ? (
+                            {copied[`${result.algorithm}-${result.algorithmSize ?? "default"}`] ? (
                               <Check className="h-4 w-4 text-green-500" />
                             ) : (
                               <Copy className="h-4 w-4" />
                             )}
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{copied[result.algorithm] ? t("copied") : t("copy")}</TooltipContent>
+                        <TooltipContent>
+                          {copied[`${result.algorithm}-${result.algorithmSize ?? "default"}`] ? t("copied") : t("copy")}
+                        </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
