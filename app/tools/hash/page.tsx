@@ -11,11 +11,13 @@ import { createHash } from "crypto"
 import { Keccak, SHA3, SHAKE } from "sha3"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Copy, Check, Upload, FileText, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
 
 // 添加参数接口
 interface HashPageProps {
@@ -156,6 +158,14 @@ const hashCategories: Array<{ name: string; algorithms: HashAlgorithm[] }> = [
 // 扁平化算法列表，方便查找
 const allAlgorithms = hashCategories.flatMap((category) => category.algorithms)
 
+const algorithmDescriptions: Record<string, string> = {
+  sha3: "NIST 标准版",
+  keccak: "原始 Keccak 变体",
+  shake: "可扩展输出",
+}
+
+const serverBackedAlgorithms = new Set(["sha512", "blake2s256", "blake2b512", "sm3"])
+
 export default function HashPage({ params }: HashPageProps) {
   const t = useTranslations("hash")
 
@@ -237,10 +247,49 @@ export default function HashPage({ params }: HashPageProps) {
   // 其余代码保持不变...
   // 这里省略了原有的函数实现，实际代码中应保留所有原有功能
 
+  const calculateServerHash = async (
+    algorithmId: string,
+    options: { algorithmSize?: number; text?: string; file?: File },
+  ): Promise<string> => {
+    const formData = new FormData()
+    formData.append("algorithm", algorithmId)
+    formData.append("outputFormat", outputFormat)
+
+    if (options.algorithmSize) {
+      formData.append("size", options.algorithmSize.toString())
+    }
+
+    if (typeof options.text === "string") {
+      formData.append("text", options.text)
+    }
+
+    if (options.file) {
+      formData.append("file", options.file)
+    }
+
+    const response = await fetch("/api/hash", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Hash API responded with ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data.result
+  }
+
   // 计算单个哈希值（文本）
-  // Update the calculateSingleTextHash function to handle HMAC
-  const calculateSingleTextHash = (algorithmId: string, algorithmSize?: number): string => {
+  const calculateSingleTextHash = async (algorithmId: string, algorithmSize?: number): Promise<string> => {
     try {
+      if (serverBackedAlgorithms.has(algorithmId)) {
+        return await calculateServerHash(algorithmId, {
+          algorithmSize,
+          text: input,
+        })
+      }
+
       let result = ""
 
       if (algorithmId === "sha3") {
@@ -304,7 +353,7 @@ export default function HashPage({ params }: HashPageProps) {
   }
 
   // 计算所有哈希值（文本）
-  const calculateAllTextHashes = () => {
+  const calculateAllTextHashes = async () => {
     if (!input) {
       setAllHashResults([])
       return
@@ -314,35 +363,33 @@ export default function HashPage({ params }: HashPageProps) {
     const results: HashResult[] = []
 
     // 计算非可配置算法
-    allAlgorithms
-      .filter((algo) => !algo.configurable)
-      .forEach((algo) => {
-        const value = calculateSingleTextHash(algo.id)
-        results.push({
-          algorithm: algo.id,
-          displayName: algo.name,
-          value,
-          status: "completed",
-        })
+    for (const algo of allAlgorithms.filter((item) => !item.configurable)) {
+      const value = await calculateSingleTextHash(algo.id)
+      results.push({
+        algorithm: algo.id,
+        displayName: algo.name,
+        value,
+        status: "completed",
       })
+    }
 
     // 计算可配置算法的所有大小
-    allAlgorithms
-      .filter((algo) => algo.configurable)
-      .forEach((algo) => {
-        if (algo.sizes) {
-          algo.sizes.forEach((s) => {
-            const value = calculateSingleTextHash(algo.id, s)
-            results.push({
-              algorithm: algo.id,
-              displayName: getAlgorithmDisplayName(algo.id, s),
-              value,
-              status: "completed",
-              algorithmSize: s,
-            })
-          })
-        }
-      })
+    for (const algo of allAlgorithms.filter((item) => item.configurable)) {
+      if (!algo.sizes) {
+        continue
+      }
+
+      for (const s of algo.sizes) {
+        const value = await calculateSingleTextHash(algo.id, s)
+        results.push({
+          algorithm: algo.id,
+          displayName: getAlgorithmDisplayName(algo.id, s),
+          value,
+          status: "completed",
+          algorithmSize: s,
+        })
+      }
+    }
 
     setAllHashResults(results)
   }
@@ -350,6 +397,13 @@ export default function HashPage({ params }: HashPageProps) {
   // 计算文件哈希
   // Update the calculateFileHash function to handle HMAC
   const calculateFileHash = async (file: File, algorithmId: string, algorithmSize?: number): Promise<string> => {
+    if (serverBackedAlgorithms.has(algorithmId)) {
+      return calculateServerHash(algorithmId, {
+        algorithmSize,
+        file,
+      })
+    }
+
     return new Promise((resolve, reject) => {
       try {
         const fileReader = new FileReader()
@@ -553,7 +607,7 @@ export default function HashPage({ params }: HashPageProps) {
   }
 
   // 计算哈希
-  const calculateHash = () => {
+  const calculateHash = async () => {
     if (inputMode === "text") {
       if (!input) {
         setHashResult("")
@@ -562,12 +616,12 @@ export default function HashPage({ params }: HashPageProps) {
       }
 
       // 计算当前选中的算法
-      const result = calculateSingleTextHash(algorithm, isCurrentAlgorithmConfigurable() ? size : undefined)
+      const result = await calculateSingleTextHash(algorithm, isCurrentAlgorithmConfigurable() ? size : undefined)
       setHashResult(result)
 
       // 如果启用了显示所有结果，计算所有算法
       if (showAllResults) {
-        calculateAllTextHashes()
+        await calculateAllTextHashes()
       }
 
       // 如果有验证哈希，检查是否匹配
@@ -675,9 +729,9 @@ export default function HashPage({ params }: HashPageProps) {
       if (autoCalculate) {
         setTimeout(() => {
           if (showAllResults) {
-            calculateAllFileHashes()
+            void calculateAllFileHashes()
           } else {
-            calculateSingleFileHash()
+            void calculateSingleFileHash()
           }
         }, 300)
       }
@@ -714,9 +768,9 @@ export default function HashPage({ params }: HashPageProps) {
       if (autoCalculate) {
         setTimeout(() => {
           if (showAllResults) {
-            calculateAllFileHashes()
+            void calculateAllFileHashes()
           } else {
-            calculateSingleFileHash()
+            void calculateSingleFileHash()
           }
         }, 300)
       }
@@ -734,7 +788,7 @@ export default function HashPage({ params }: HashPageProps) {
     if (autoCalculate) {
       if (inputMode === "text" && input) {
         const timer = setTimeout(() => {
-          calculateHash()
+          void calculateHash()
         }, 300)
         return () => clearTimeout(timer)
       }
@@ -842,19 +896,17 @@ export default function HashPage({ params }: HashPageProps) {
                   {t("clearInput")}
                 </Button>
               </div>
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="auto-calculate" className="text-sm cursor-pointer">
-                  {t("autoCalculate")}
-                </Label>
-                <input
-                  id="auto-calculate"
-                  type="checkbox"
-                  checked={autoCalculate}
-                  onChange={(e) => setAutoCalculate(e.target.checked)}
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
-                />
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="auto-calculate" className="text-sm cursor-pointer">
+                    {t("autoCalculate")}
+                  </Label>
+                  <Checkbox
+                    id="auto-calculate"
+                    checked={autoCalculate}
+                    onCheckedChange={(checked) => setAutoCalculate(!!checked)}
+                  />
+                </div>
               </div>
-            </div>
 
             <Textarea
               ref={inputRef}
@@ -873,19 +925,17 @@ export default function HashPage({ params }: HashPageProps) {
                   {t("clearInput")}
                 </Button>
               </div>
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="auto-calculate-file" className="text-sm cursor-pointer">
-                  {t("autoCalculate")}
-                </Label>
-                <input
-                  id="auto-calculate-file"
-                  type="checkbox"
-                  checked={autoCalculate}
-                  onChange={(e) => setAutoCalculate(e.target.checked)}
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
-                />
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="auto-calculate-file" className="text-sm cursor-pointer">
+                    {t("autoCalculate")}
+                  </Label>
+                  <Checkbox
+                    id="auto-calculate-file"
+                    checked={autoCalculate}
+                    onCheckedChange={(checked) => setAutoCalculate(!!checked)}
+                  />
+                </div>
               </div>
-            </div>
 
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
 
@@ -964,10 +1014,22 @@ export default function HashPage({ params }: HashPageProps) {
           </div>
 
           <Tabs value={algorithm} onValueChange={handleAlgorithmChange}>
-            <TabsList className="flex h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+            <TabsList className="grid h-auto grid-cols-1 gap-2 bg-transparent p-0 sm:grid-cols-2 md:grid-cols-3">
               {(hashCategories.find((category) => category.name === selectedCategory)?.algorithms || []).map((algo) => (
-                <TabsTrigger key={algo.id} value={algo.id} className="min-w-[92px]">
-                  {algo.name}
+                <TabsTrigger
+                  key={algo.id}
+                  value={algo.id}
+                  className={cn(
+                    "h-auto min-h-[72px] items-start justify-start rounded-2xl border border-md-outline/50 bg-md-surface px-4 py-3 text-left transition-all",
+                    "data-[state=active]:border-md-primary data-[state=active]:bg-md-primary/10 data-[state=active]:text-md-primary data-[state=active]:shadow-sm",
+                  )}
+                >
+                  <span className="flex flex-col gap-1">
+                    <span className="text-sm font-semibold">{algo.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {algorithmDescriptions[algo.id] || (algo.configurable ? "可选不同输出位数" : "固定输出")}
+                    </span>
+                  </span>
                 </TabsTrigger>
               ))}
             </TabsList>
