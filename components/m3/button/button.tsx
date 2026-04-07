@@ -26,8 +26,8 @@ const m3ButtonVariants = cva(
     'relative inline-flex items-center justify-center gap-2',
     'whitespace-nowrap font-semibold',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-short4)]',
-    'ease-[var(--md-sys-motion-easing-expressive)]',
+    'duration-md-short-4',
+    'ease-md-expressive',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-38',
     '[&_svg]:pointer-events-none [&_svg]:shrink-0',
@@ -296,7 +296,7 @@ const M3Button = React.forwardRef<HTMLButtonElement, M3ButtonProps>(
         
         {/* State layer for hover/focus/pressed states */}
         <span
-          className="absolute inset-0 rounded-inherit pointer-events-none transition-opacity duration-[var(--md-sys-motion-duration-short2)]"
+          className="absolute inset-0 rounded-inherit pointer-events-none transition-opacity duration-md-short-2"
           aria-hidden="true"
         />
         

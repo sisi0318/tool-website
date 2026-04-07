@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { JsonTreeView } from "@/components/json-tree-view"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
@@ -1449,6 +1450,11 @@ export default function DeviceInfoPage({ params }: DevicePageProps) {
                     <div className="text-xs font-mono break-all bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-3 max-h-60 overflow-y-auto">
                       {navigatorFingerprint}
                     </div>
+                    {navigatorFingerprint && (
+                      <div className="mb-3">
+                        <JsonTreeView jsonText={navigatorFingerprint} indentSize={2} rootLabel="navigator" />
+                      </div>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

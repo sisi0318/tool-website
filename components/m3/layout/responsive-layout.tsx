@@ -106,8 +106,8 @@ export function ResponsiveLayout({
         'min-h-screen w-full',
         // Transition animation for layout changes
         'transition-all',
-        'duration-[var(--md-sys-motion-duration-medium2)]',
-        'ease-[var(--md-sys-motion-easing-standard)]',
+        'duration-md-medium-2',
+        'ease-md-standard',
         // Add transitioning state for potential animation hooks
         isTransitioning && 'layout-transitioning',
         className
@@ -125,8 +125,8 @@ export function ResponsiveLayout({
           className={cn(
             // Animate rail entrance/exit
             'transition-transform',
-            'duration-[var(--md-sys-motion-duration-medium2)]',
-            'ease-[var(--md-sys-motion-easing-emphasized)]',
+            'duration-md-medium-2',
+            'ease-md-emphasized',
             isTransitioning && 'translate-x-0'
           )}
         />
@@ -138,8 +138,8 @@ export function ResponsiveLayout({
           // Base content styles
           'min-h-screen',
           'transition-all',
-          'duration-[var(--md-sys-motion-duration-medium2)]',
-          'ease-[var(--md-sys-motion-easing-standard)]',
+          'duration-md-medium-2',
+          'ease-md-standard',
           // Adjust padding based on navigation presence
           showNavigationRail && 'ml-20', // 80px for navigation rail width
           showNavigationBar && 'pb-20',  // 80px for navigation bar height
@@ -162,8 +162,8 @@ export function ResponsiveLayout({
           className={cn(
             // Animate bar entrance/exit
             'transition-transform',
-            'duration-[var(--md-sys-motion-duration-medium2)]',
-            'ease-[var(--md-sys-motion-easing-emphasized)]',
+            'duration-md-medium-2',
+            'ease-md-emphasized',
             isTransitioning && 'translate-y-0'
           )}
         />

@@ -28,8 +28,8 @@ const m3SwitchTrackVariants = cva(
     'rounded-[var(--md-sys-shape-corner-full)]',
     'border-2',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-short4)]',
-    'ease-[var(--md-sys-motion-easing-standard)]',
+    'duration-md-short-4',
+    'ease-md-standard',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
     'focus-visible:ring-[var(--md-sys-color-primary)]',
     'disabled:cursor-not-allowed disabled:opacity-38',
@@ -60,8 +60,8 @@ const m3SwitchThumbVariants = cva(
     'rounded-full',
     'shadow-md',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-short4)]',
-    'ease-[var(--md-sys-motion-easing-standard)]',
+    'duration-md-short-4',
+    'ease-md-standard',
   ].join(' '),
   {
     variants: {
@@ -208,11 +208,11 @@ const M3Switch = React.forwardRef<
           {showIcons && (
             <>
               {/* Checked icon */}
-              <span className="absolute data-[state=unchecked]:opacity-0 data-[state=checked]:opacity-100 transition-opacity duration-[var(--md-sys-motion-duration-short2)]">
+              <span className="absolute data-[state=unchecked]:opacity-0 data-[state=checked]:opacity-100 transition-opacity duration-md-short-2">
                 {checkedIcon || <CheckIcon className={iconSizeClass} />}
               </span>
               {/* Unchecked icon */}
-              <span className="absolute data-[state=checked]:opacity-0 data-[state=unchecked]:opacity-100 transition-opacity duration-[var(--md-sys-motion-duration-short2)]">
+              <span className="absolute data-[state=checked]:opacity-0 data-[state=unchecked]:opacity-100 transition-opacity duration-md-short-2">
                 {uncheckedIcon || <CloseIcon className={iconSizeClass} />}
               </span>
             </>

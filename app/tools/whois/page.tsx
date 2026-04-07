@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { JsonTreeView } from "@/components/json-tree-view"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -1088,11 +1089,14 @@ export default function RdapQueryPage({ params }: { params?: Record<string, stri
                         </Button>
                       </div>
                       {rdapData!.raw ? (
-                        <ScrollArea className="h-96">
-                          <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">
-                            {rdapData!.raw}
-                          </pre>
-                        </ScrollArea>
+                        <div className="space-y-4">
+                          <ScrollArea className="h-96">
+                            <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">
+                              {rdapData!.raw}
+                            </pre>
+                          </ScrollArea>
+                          <JsonTreeView jsonText={rdapData!.raw} indentSize={2} />
+                        </div>
                       ) : (
                         <div className="text-center text-muted-foreground py-8">
                           无原始数据

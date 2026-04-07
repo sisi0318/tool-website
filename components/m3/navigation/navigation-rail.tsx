@@ -69,8 +69,8 @@ const railItemVariants = cva(
     'outline-none',
     'rounded-[var(--md-sys-shape-corner-full)]',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-emphasized)]',
+    'duration-md-medium-2',
+    'ease-md-emphasized',
     'overflow-hidden',
   ].join(' ')
 );
@@ -87,8 +87,8 @@ const railIndicatorVariants = cva(
     'rounded-[var(--md-sys-shape-corner-full)]',
     'bg-[var(--md-sys-color-secondary-container)]',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-emphasized)]',
+    'duration-md-medium-2',
+    'ease-md-emphasized',
   ].join(' ')
 );
 
@@ -210,7 +210,7 @@ function RailItemComponent({ item, isActive, onClick, showLabel }: RailItemCompo
         
         {/* State layer */}
         <span
-          className="absolute inset-0 rounded-[var(--md-sys-shape-corner-full)] pointer-events-none bg-[var(--md-sys-color-on-surface)] transition-opacity duration-[var(--md-sys-motion-duration-short2)]"
+          className="absolute inset-0 rounded-[var(--md-sys-shape-corner-full)] pointer-events-none bg-[var(--md-sys-color-on-surface)] transition-opacity duration-md-short-2"
           style={{ opacity: stateLayerOpacity }}
           aria-hidden="true"
         />
@@ -232,7 +232,7 @@ function RailItemComponent({ item, isActive, onClick, showLabel }: RailItemCompo
         <span
           className={cn(
             'mt-1 text-xs font-medium text-center',
-            'transition-all duration-[var(--md-sys-motion-duration-short2)]',
+            'transition-all duration-md-short-2',
             isActive
               ? 'text-[var(--md-sys-color-on-surface)]'
               : 'text-[var(--md-sys-color-on-surface-variant)]'

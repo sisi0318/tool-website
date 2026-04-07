@@ -26,8 +26,8 @@ const m3SearchBarVariants = cva(
     'bg-[var(--md-sys-color-surface-container-high)]',
     'rounded-[var(--md-sys-shape-corner-full)]',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-emphasized)]',
+    'duration-md-medium-2',
+    'ease-md-emphasized',
   ].join(' '),
   {
     variants: {
@@ -262,7 +262,7 @@ const M3SearchBar = React.forwardRef<HTMLInputElement, M3SearchBarProps>(
             className={cn(
               'flex items-center justify-center shrink-0',
               'text-[var(--md-sys-color-on-surface-variant)]',
-              'transition-colors duration-[var(--md-sys-motion-duration-short2)]',
+              'transition-colors duration-md-short-2',
               size === 'small' ? 'w-10' : size === 'large' ? 'w-14' : 'w-12',
               isFocused && 'text-[var(--md-sys-color-on-surface)]'
             )}
@@ -312,7 +312,7 @@ const M3SearchBar = React.forwardRef<HTMLInputElement, M3SearchBarProps>(
                     'text-[var(--md-sys-color-on-surface-variant)]',
                     'hover:bg-[var(--md-sys-color-on-surface)]/[0.08]',
                     'active:bg-[var(--md-sys-color-on-surface)]/[0.12]',
-                    'transition-colors duration-[var(--md-sys-motion-duration-short2)]',
+                    'transition-colors duration-md-short-2',
                     'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]'
                   )}
                   aria-label="Clear search"
@@ -342,8 +342,8 @@ const M3SearchBar = React.forwardRef<HTMLInputElement, M3SearchBarProps>(
               'shadow-lg',
               'overflow-hidden',
               'animate-in fade-in-0 zoom-in-95',
-              'duration-[var(--md-sys-motion-duration-short4)]',
-              'ease-[var(--md-sys-motion-easing-emphasized-decelerate)]'
+              'duration-md-short-4',
+              'ease-md-emphasized-decelerate'
             )}
             role="listbox"
           >
@@ -383,7 +383,7 @@ const M3SearchResultItem = React.forwardRef<HTMLButtonElement, M3SearchResultIte
         className={cn(
           'w-full flex items-center gap-4 px-4 py-3',
           'text-left',
-          'transition-colors duration-[var(--md-sys-motion-duration-short2)]',
+          'transition-colors duration-md-short-2',
           'hover:bg-[var(--md-sys-color-on-surface)]/[0.08]',
           'active:bg-[var(--md-sys-color-on-surface)]/[0.12]',
           'focus:outline-none focus-visible:bg-[var(--md-sys-color-on-surface)]/[0.12]',

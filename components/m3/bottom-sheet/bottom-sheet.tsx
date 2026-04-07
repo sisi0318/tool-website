@@ -176,7 +176,7 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
         <div
           className={cn(
             scrimVariants(),
-            'transition-opacity duration-[var(--md-sys-motion-duration-medium2)]',
+            'transition-opacity duration-md-medium-2',
             isAnimating ? 'opacity-100' : 'opacity-0'
           )}
           onClick={onClose}
@@ -195,7 +195,7 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
           }}
           className={cn(
             bottomSheetVariants(),
-            'transition-transform duration-[var(--md-sys-motion-duration-medium2)] ease-[var(--md-sys-motion-easing-emphasized)]',
+            'transition-transform duration-md-medium-2 ease-md-emphasized',
             isAnimating ? 'translate-y-0' : 'translate-y-full',
             className
           )}

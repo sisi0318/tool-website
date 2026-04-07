@@ -62,7 +62,7 @@ const M3PullToRefreshIndicator = React.forwardRef<
         className={cn(
           'flex items-center justify-center',
           'overflow-hidden',
-          'transition-[height] duration-[var(--md-sys-motion-duration-medium2)] ease-[var(--md-sys-motion-easing-emphasized)]',
+          'transition-[height] duration-md-medium-2 ease-md-emphasized',
           className
         )}
         style={{
@@ -77,7 +77,7 @@ const M3PullToRefreshIndicator = React.forwardRef<
             'rounded-full',
             'bg-[var(--md-sys-color-surface-container-high)]',
             'shadow-md',
-            'transition-transform duration-[var(--md-sys-motion-duration-short4)] ease-[var(--md-sys-motion-easing-standard)]'
+            'transition-transform duration-md-short-4 ease-md-standard'
           )}
           style={{
             transform: isRefreshing 

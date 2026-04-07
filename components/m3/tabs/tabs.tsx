@@ -94,8 +94,8 @@ const primaryIndicatorVariants = cva(
     'bg-[var(--md-sys-color-primary)]',
     'rounded-t-full',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-emphasized)]',
+    'duration-md-medium-2',
+    'ease-md-emphasized',
   ].join(' ')
 );
 
@@ -108,8 +108,8 @@ const secondaryIndicatorVariants = cva(
     'h-full',
     'bg-[var(--md-sys-color-secondary-container)]',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-emphasized)]',
+    'duration-md-medium-2',
+    'ease-md-emphasized',
   ].join(' ')
 );
 

@@ -166,7 +166,7 @@ const LazyIcon = React.forwardRef<SVGSVGElement, LazyIconProps>(
         strokeWidth={strokeWidth}
         className={cn(
           // GPU-accelerated fade-in
-          'transition-opacity duration-[var(--md-sys-motion-duration-short4)] ease-[var(--md-sys-motion-easing-standard)]',
+          'transition-opacity duration-md-short-4 ease-md-standard',
           'transform-gpu',
           className
         )}

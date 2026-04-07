@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
+import { JsonTreeView } from "@/components/json-tree-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
@@ -124,7 +125,7 @@ export default function JsonTool({ params }: JsonToolProps) {
         const parsed = JSON.parse(jsonText)
 
         // 创建一个只有顶层键的对象
-        const collapsedObj: Record<string, string> = {}
+        const collapsedObj: Record<string, string | number | boolean | null> = {}
         Object.keys(parsed).forEach((key) => {
           const value = parsed[key]
           if (value === null) {
@@ -603,6 +604,26 @@ export default function JsonTool({ params }: JsonToolProps) {
                   whiteSpace: wordWrap ? "pre-wrap" : "pre",
                 }}
               />
+            </CardContent>
+          </Card>
+
+          <Card className="card-modern mt-6">
+            <CardHeader className="pb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clipboard className="h-4 w-4 text-indigo-600" />
+                  JSON 节点视图
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs">
+                  可复制
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  可折叠
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <JsonTreeView jsonText={jsonText} indentSize={indentSize} />
             </CardContent>
           </Card>
         </div>

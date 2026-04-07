@@ -210,8 +210,8 @@ describe('M3Switch Component', () => {
       render(<M3Switch aria-label="Animated switch" />);
       const switchEl = screen.getByRole('switch');
       
-      expect(switchEl).toHaveClass('duration-[var(--md-sys-motion-duration-short4)]');
-      expect(switchEl).toHaveClass('ease-[var(--md-sys-motion-easing-standard)]');
+      expect(switchEl).toHaveClass('duration-md-short-4');
+      expect(switchEl).toHaveClass('ease-md-standard');
     });
   });
 

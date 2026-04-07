@@ -169,7 +169,7 @@ const LazyImage = React.forwardRef<HTMLImageElement, LazyImageProps>(
             onError={handleError}
             className={cn(
               // GPU-accelerated fade-in animation
-              'transition-opacity duration-[var(--md-sys-motion-duration-medium2)] ease-[var(--md-sys-motion-easing-standard)]',
+              'transition-opacity duration-md-medium-2 ease-md-standard',
               'transform-gpu',
               isLoaded ? 'opacity-100' : 'opacity-0',
               className

@@ -67,7 +67,7 @@ const menuItemVariants = cva(
     'w-full px-4 py-3',
     'text-sm font-medium',
     'text-[var(--md-sys-color-on-surface)]',
-    'transition-colors duration-[var(--md-sys-motion-duration-short2)]',
+    'transition-colors duration-md-short-2',
     'cursor-pointer',
     'outline-none',
     // State layers
@@ -234,7 +234,7 @@ const M3ContextMenu = React.forwardRef<HTMLDivElement, M3ContextMenuProps>(
           }}
           className={cn(
             contextMenuVariants(),
-            'transition-all duration-150 ease-[var(--md-sys-motion-easing-emphasized-decelerate)]',
+            'transition-all duration-150 ease-md-emphasized-decelerate',
             isAnimating 
               ? 'opacity-100 scale-100' 
               : 'opacity-0 scale-95',

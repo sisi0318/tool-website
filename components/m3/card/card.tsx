@@ -25,8 +25,8 @@ const m3CardVariants = cva(
     'relative',
     'overflow-hidden',
     'transition-all',
-    'duration-[var(--md-sys-motion-duration-medium2)]',
-    'ease-[var(--md-sys-motion-easing-expressive)]',
+    'duration-md-medium-2',
+    'ease-md-expressive',
   ].join(' '),
   {
     variants: {
@@ -191,7 +191,7 @@ function StateLayer({ isHovered, isPressed }: { isHovered: boolean; isPressed: b
   
   return (
     <span
-      className="absolute inset-0 pointer-events-none bg-[var(--md-sys-color-on-surface)] transition-opacity duration-[var(--md-sys-motion-duration-short4)] ease-[var(--md-sys-motion-easing-expressive)]"
+      className="absolute inset-0 pointer-events-none bg-[var(--md-sys-color-on-surface)] transition-opacity duration-md-short-4 ease-md-expressive"
       style={{ opacity }}
       aria-hidden="true"
     />
