@@ -122,6 +122,60 @@ pnpm add @xyflow/react zustand
 |------|------|-----------|
 | `components/bottom-nav.tsx` | 添加「画布」导航入口 | 修改 |
 
+### 2.10 测试文件
+
+| 文件 | 职责 | 新增/修改 |
+|------|------|-----------|
+| `lib/canvas/types/json-meta.test.ts` | JSON typename 验证测试 | 新增 |
+| `lib/canvas/validation.test.ts` | 连接验证逻辑测试 | 新增 |
+| `lib/canvas/engine.test.ts` | 拓扑排序测试 | 新增 |
+| `lib/canvas/store.test.ts` | Zustand store 集成测试 | 新增 |
+| `lib/adapters/basic.test.ts` | 基础节点适配器测试 | 新增 |
+| `lib/adapters/hash.test.ts` | Hash 适配器测试 | 新增 |
+| `lib/adapters/hmac.test.ts` | HMAC 适配器测试 | 新增 |
+| `lib/adapters/crypto.test.ts` | Crypto 适配器测试 | 新增 |
+| `lib/adapters/encoding.test.ts` | Encoding 适配器测试 | 新增 |
+| `lib/adapters/classic-cipher.test.ts` | Classic Cipher 适配器测试 | 新增 |
+| `lib/adapters/jwt.test.ts` | JWT 适配器测试 | 新增 |
+| `lib/adapters/json-format.test.ts` | JSON 格式化适配器测试 | 新增 |
+| `lib/adapters/protobuf.test.ts` | Protobuf 适配器测试 | 新增 |
+| `lib/adapters/jce.test.ts` | JCE 适配器测试 | 新增 |
+| `lib/adapters/text-stats.test.ts` | Text Stats 适配器测试 | 新增 |
+| `lib/adapters/case-converter.test.ts` | Case Converter 适配器测试 | 新增 |
+| `lib/adapters/regex.test.ts` | Regex 适配器测试 | 新增 |
+| `lib/adapters/uuid.test.ts` | UUID 适配器测试 | 新增 |
+| `lib/adapters/totp.test.ts` | TOTP 适配器测试 | 新增 |
+| `lib/adapters/color.test.ts` | Color 适配器测试 | 新增 |
+| `lib/adapters/base-converter.test.ts` | Base Converter 适配器测试 | 新增 |
+| `lib/adapters/temperature-converter.test.ts` | Temperature Converter 适配器测试 | 新增 |
+| `lib/adapters/bmi.test.ts` | BMI 适配器测试 | 新增 |
+| `components/canvas/nodes/BaseNode.test.tsx` | BaseNode 组件测试 | 新增 |
+| `components/canvas/NodePalette.test.tsx` | NodePalette 组件测试 | 新增 |
+
+### 2.11 现有工具测试
+
+| 文件 | 职责 | 新增/修改 |
+|------|------|-----------|
+| `app/tools/hash/hash.test.ts` | Hash 工具核心逻辑测试 | 新增 |
+| `app/tools/crypto/crypto.test.ts` | Crypto 工具核心逻辑测试 | 新增 |
+| `app/tools/encoding/encoding.test.ts` | Encoding 工具核心逻辑测试 | 新增 |
+| `app/tools/classic-cipher/classic-cipher.test.ts` | Classic Cipher 工具测试 | 新增 |
+| `app/tools/hmac/hmac.test.ts` | HMAC 工具测试 | 新增 |
+| `app/tools/json/json.test.ts` | JSON 工具测试 | 新增 |
+| `app/tools/protobuf/protobuf.test.ts` | Protobuf 工具测试 | 新增 |
+| `app/tools/jce/jce.test.ts` | JCE 工具测试 | 新增 |
+| `app/tools/text-stats/text-stats.test.ts` | Text Stats 工具测试 | 新增 |
+| `app/tools/case-converter/case-converter.test.ts` | Case Converter 工具测试 | 新增 |
+| `app/tools/regex/regex.test.ts` | Regex 工具测试 | 新增 |
+| `app/tools/base-converter/base-converter.test.ts` | Base Converter 工具测试 | 新增 |
+| `app/tools/temperature-converter/temperature-converter.test.ts` | Temperature Converter 工具测试 | 新增 |
+| `app/tools/bmi/bmi.test.ts` | BMI 工具测试 | 新增 |
+| `app/tools/crontab/crontab.test.ts` | Crontab 工具测试 | 新增 |
+| `app/tools/color/color.test.ts` | Color 工具测试 | 新增 |
+| `app/tools/uuid/uuid.test.ts` | UUID 工具测试 | 新增 |
+| `app/tools/totp/totp.test.ts` | TOTP 工具测试 | 新增 |
+| `app/tools/jwt/jwt.test.ts` | JWT 工具测试 | 新增 |
+
 ---
 
 ## 3. 开发顺序
@@ -220,24 +274,42 @@ graph LR
 2. 创建 `app/canvas/layout.tsx`
 3. 修改 `components/bottom-nav.tsx`，添加画布导航入口
 
-### Phase 7: 工具适配器 (Day 5-10)
+### Phase 7: 核心模块测试 (Day 4-5)
 
-按优先级分批实现：
+```mermaid
+graph TB
+    A["lib/canvas/types/json-meta.test.ts"] --> B["lib/canvas/validation.test.ts"]
+    A --> C["lib/canvas/engine.test.ts"]
+    B --> D["lib/canvas/store.test.ts"]
+    C --> D
+    D --> E["lib/adapters/basic.test.ts"]
+```
 
-**第一批：编码加密类 (Day 5-6)**
-- [ ] hash.ts
-- [ ] hmac.ts
-- [ ] crypto.ts
-- [ ] encoding.ts
-- [ ] classic-cipher.ts
-- [ ] jwt.ts
+**任务：**
+1. 创建 `json-meta.test.ts`，测试 validateJsonTypename, createJsonPort
+2. 创建 `validation.test.ts`，测试 validateConnection, canAcceptInput
+3. 创建 `engine.test.ts`，测试 topologicalSort（无依赖、有依赖、环形依赖）
+4. 创建 `store.test.ts`，测试 Zustand store CRUD 和 executeNode
+5. 创建 `basic.test.ts`，测试 4 个基础节点适配器
 
-**第二批：数据格式类 (Day 6)**
-- [ ] json-format.ts
-- [ ] protobuf.ts
-- [ ] jce.ts
+### Phase 8: 工具适配器 (Day 6-11)
 
-**第三批：图片处理类 (Day 7-8)**
+按优先级分批实现，每个适配器同步编写测试：
+
+**第一批：编码加密类 (Day 6-7)**
+- [ ] hash.ts + hash.test.ts
+- [ ] hmac.ts + hmac.test.ts
+- [ ] crypto.ts + crypto.test.ts
+- [ ] encoding.ts + encoding.test.ts
+- [ ] classic-cipher.ts + classic-cipher.test.ts
+- [ ] jwt.ts + jwt.test.ts
+
+**第二批：数据格式类 (Day 7)**
+- [ ] json-format.ts + json-format.test.ts
+- [ ] protobuf.ts + protobuf.test.ts
+- [ ] jce.ts + jce.test.ts
+
+**第三批：图片处理类 (Day 8-9)**
 - [ ] image-to-base64.ts
 - [ ] exif-viewer.ts
 - [ ] image-compress.ts
@@ -247,31 +319,62 @@ graph LR
 - [ ] meme-splitter.ts
 - [ ] image-coordinates.ts
 
-**第四批：文本处理类 (Day 8)**
-- [ ] text-stats.ts
-- [ ] case-converter.ts
-- [ ] regex.ts
+**第四批：文本处理类 (Day 9)**
+- [ ] text-stats.ts + text-stats.test.ts
+- [ ] case-converter.ts + case-converter.test.ts
+- [ ] regex.ts + regex.test.ts
 - [ ] diff.ts
 
-**第五批：开发工具类 (Day 9)**
+**第五批：开发工具类 (Day 10)**
 - [ ] http-tester.ts
-- [ ] crontab.ts
+- [ ] crontab.ts + crontab.test.ts
 - [ ] docker-converter.ts
 - [ ] whois.ts
 
-**第六批：实用工具 + 查看器类 (Day 9-10)**
-- [ ] uuid.ts
-- [ ] totp.ts
-- [ ] color.ts
-- [ ] base-converter.ts
-- [ ] temperature-converter.ts
+**第六批：实用工具 + 查看器类 (Day 10-11)**
+- [ ] uuid.ts + uuid.test.ts
+- [ ] totp.ts + totp.test.ts
+- [ ] color.ts + color.test.ts
+- [ ] base-converter.ts + base-converter.test.ts
+- [ ] temperature-converter.ts + temperature-converter.test.ts
 - [ ] currency.ts
-- [ ] bmi.ts
+- [ ] bmi.ts + bmi.test.ts
 - [ ] device-info.ts
 - [ ] office-viewer.ts
 - [ ] time.ts
 
-### Phase 8: 持久化 + 体验优化 (Day 10-11)
+### Phase 9: 现有工具测试覆盖 (Day 11-13)
+
+对现有工具核心逻辑补充单元测试：
+
+**编码加密类 (Day 11)**
+- [ ] app/tools/hash/hash.test.ts
+- [ ] app/tools/crypto/crypto.test.ts
+- [ ] app/tools/encoding/encoding.test.ts
+- [ ] app/tools/classic-cipher/classic-cipher.test.ts
+- [ ] app/tools/hmac/hmac.test.ts
+- [ ] app/tools/jwt/jwt.test.ts
+
+**数据格式类 (Day 11)**
+- [ ] app/tools/json/json.test.ts
+- [ ] app/tools/protobuf/protobuf.test.ts
+- [ ] app/tools/jce/jce.test.ts
+
+**文本处理类 (Day 12)**
+- [ ] app/tools/text-stats/text-stats.test.ts
+- [ ] app/tools/case-converter/case-converter.test.ts
+- [ ] app/tools/regex/regex.test.ts
+
+**实用工具类 (Day 12)**
+- [ ] app/tools/base-converter/base-converter.test.ts
+- [ ] app/tools/temperature-converter/temperature-converter.test.ts
+- [ ] app/tools/bmi/bmi.test.ts
+- [ ] app/tools/crontab/crontab.test.ts
+- [ ] app/tools/color/color.test.ts
+- [ ] app/tools/uuid/uuid.test.ts
+- [ ] app/tools/totp/totp.test.ts
+
+### Phase 10: 持久化 + 体验优化 (Day 13-14)
 
 **任务：**
 1. localStorage 持久化画布状态
@@ -331,6 +434,14 @@ export const xxxAdapter: ToolAdapter = {
 - [ ] 右侧面板可编辑选中节点配置
 - [ ] 画布状态可保存到 localStorage
 - [ ] 所有 34 个工具已适配为节点
+
+### 测试验收
+
+- [ ] 核心模块测试覆盖率 > 90%（类型系统、验证、引擎）
+- [ ] 工具适配器测试覆盖率 > 80%
+- [ ] 现有工具核心逻辑测试覆盖率 > 70%
+- [ ] 所有测试通过 `pnpm test`
+- [ ] 无 TypeScript 类型错误
 
 ### 性能验收
 

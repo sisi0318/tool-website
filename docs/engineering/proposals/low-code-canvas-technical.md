@@ -672,7 +672,199 @@ export function useConnectionValidator() {
 
 ---
 
-## 10. 依赖项
+## 10. 单元测试方案
+
+### 10.1 测试策略
+
+```mermaid
+graph TB
+    subgraph TestLayers ["测试分层"]
+        UT["单元测试<br/>vitest + @testing-library/react"]
+        PT["属性测试<br/>fast-check"]
+        IT["集成测试<br/>vitest"]
+    end
+
+    subgraph TestTargets ["测试目标"]
+        T1["类型系统"]
+        T2["连接验证"]
+        T3["执行引擎"]
+        T4["工具适配器"]
+        T5["UI 组件"]
+        T6["现有工具"]
+    end
+
+    TestLayers --> TestTargets
+```
+
+### 10.2 测试文件结构
+
+```
+lib/
+├── canvas/
+│   ├── types/
+│   │   └── json-meta.test.ts         # JSON typename 验证测试
+│   ├── validation.test.ts            # 连接验证测试
+│   ├── engine.test.ts                # 拓扑排序测试
+│   └── store.test.ts                 # Zustand store 测试
+├── adapters/
+│   ├── basic.test.ts                 # 基础节点测试
+│   ├── hash.test.ts                  # Hash 适配器测试
+│   └── ...
+
+app/tools/
+├── hash/
+│   └── hash.test.ts                  # Hash 工具单元测试
+├── crypto/
+│   └── crypto.test.ts                # Crypto 工具单元测试
+└── ...
+```
+
+### 10.3 核心模块测试用例
+
+#### 类型系统测试 (json-meta.test.ts)
+
+```typescript
+import { describe, it, expect } from "vitest"
+import { validateJsonTypename, createJsonPort } from "./json-meta"
+
+describe("validateJsonTypename", () => {
+  it("相同 typename 返回 match", () => {
+    expect(validateJsonTypename("TypeA", "TypeA")).toBe("match")
+  })
+
+  it("不同 typename 返回 mismatch", () => {
+    expect(validateJsonTypename("TypeA", "TypeB")).toBe("mismatch")
+  })
+
+  it("任一 typename 为空返回 compatible", () => {
+    expect(validateJsonTypename(undefined, "TypeA")).toBe("compatible")
+    expect(validateJsonTypename("TypeA", undefined)).toBe("compatible")
+    expect(validateJsonTypename(undefined, undefined)).toBe("compatible")
+  })
+})
+
+describe("createJsonPort", () => {
+  it("创建带 typename 的 JSON 端口", () => {
+    const port = createJsonPort("out1", "输出", "DeviceInfo")
+    expect(port.dataType).toBe("json")
+    expect(port.jsonTypename).toBe("DeviceInfo")
+  })
+})
+```
+
+#### 连接验证测试 (validation.test.ts)
+
+```typescript
+import { describe, it, expect } from "vitest"
+import { validateConnection, canAcceptInput } from "./validation"
+
+describe("validateConnection", () => {
+  it("相同类型返回 ok", () => {
+    const source = { id: "s", name: "S", dataType: "string" }
+    const target = { id: "t", name: "T", dataType: "string" }
+    expect(validateConnection(source, target)).toEqual({ valid: true, level: "ok" })
+  })
+
+  it("string 和 number 兼容", () => {
+    const source = { id: "s", name: "S", dataType: "string" }
+    const target = { id: "t", name: "T", dataType: "number" }
+    expect(validateConnection(source, target).valid).toBe(true)
+  })
+
+  it("string 和 bytes 不兼容", () => {
+    const source = { id: "s", name: "S", dataType: "string" }
+    const target = { id: "t", name: "T", dataType: "bytes" }
+    expect(validateConnection(source, target).valid).toBe(false)
+  })
+
+  it("JSON typename 不匹配返回 warning", () => {
+    const source = { id: "s", name: "S", dataType: "json", jsonTypename: "TypeA" }
+    const target = { id: "t", name: "T", dataType: "json", jsonTypename: "TypeB" }
+    const result = validateConnection(source, target)
+    expect(result.valid).toBe(true)
+    expect(result.level).toBe("warning")
+  })
+})
+
+describe("canAcceptInput", () => {
+  it("已有连线时返回 false", () => {
+    const existing = { id: "e1", source: "a", sourcePort: "o", target: "b", targetPort: "i" }
+    const source = { id: "s", name: "S", dataType: "string" }
+    const target = { id: "t", name: "T", dataType: "string" }
+    expect(canAcceptInput(existing, source, target)).toBe(false)
+  })
+})
+```
+
+#### 执行引擎测试 (engine.test.ts)
+
+```typescript
+import { describe, it, expect } from "vitest"
+import { topologicalSort } from "./engine"
+
+describe("topologicalSort", () => {
+  it("无依赖的节点按原顺序返回", () => {
+    const nodes = [
+      { id: "a", type: "string", position: { x: 0, y: 0 }, config: {} },
+      { id: "b", type: "number", position: { x: 0, y: 0 }, config: {} },
+    ]
+    const result = topologicalSort(nodes, [])
+    expect(result.map((n) => n.id)).toEqual(["a", "b"])
+  })
+
+  it("有依赖的节点按拓扑序返回", () => {
+    const nodes = [
+      { id: "b", type: "hash", position: { x: 0, y: 0 }, config: {} },
+      { id: "a", type: "string", position: { x: 0, y: 0 }, config: {} },
+    ]
+    const edges = [
+      { id: "e1", source: "a", sourcePort: "out", target: "b", targetPort: "data" },
+    ]
+    const result = topologicalSort(nodes, edges)
+    expect(result.map((n) => n.id)).toEqual(["a", "b"])
+  })
+
+  it("环形依赖时只返回无环部分", () => {
+    const nodes = [
+      { id: "a", type: "x", position: { x: 0, y: 0 }, config: {} },
+      { id: "b", type: "x", position: { x: 0, y: 0 }, config: {} },
+    ]
+    const edges = [
+      { id: "e1", source: "a", sourcePort: "o", target: "b", targetPort: "i" },
+      { id: "e2", source: "b", sourcePort: "o", target: "a", targetPort: "i" },
+    ]
+    const result = topologicalSort(nodes, edges)
+    expect(result.length).toBe(0)
+  })
+})
+```
+
+### 10.4 现有工具测试
+
+对现有 34 个工具的核心逻辑进行单元测试覆盖：
+
+| 分类 | 工具 | 测试重点 |
+|------|------|----------|
+| 编码加密 | hash, hmac, crypto, encoding, classic-cipher, jwt | 输入输出正确性、边界值 |
+| 数据格式 | json, protobuf, jce | 格式转换、错误处理 |
+| 图片处理 | image-to-base64, image-compress | 文件处理、输出格式 |
+| 文本处理 | text-stats, case-converter, regex | 文本计算、正则匹配 |
+| 开发工具 | http-tester, crontab, whois | API 调用 mock、结果解析 |
+| 实用工具 | uuid, totp, color, base-converter, temperature-converter, bmi | 数学计算、格式转换 |
+
+### 10.5 测试命令
+
+```bash
+pnpm test                    # 运行所有测试
+pnpm test -- --watch         # 监听模式
+pnpm test -- --coverage      # 覆盖率报告
+pnpm test lib/canvas/        # 只运行画布相关测试
+pnpm test app/tools/         # 只运行工具测试
+```
+
+---
+
+## 11. 依赖项
 
 ```json
 {
