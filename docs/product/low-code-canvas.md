@@ -41,13 +41,12 @@ interface JsonMeta {
 
 ### 3.1 String Node
 
-```
-┌─────────────┐
-│  String     │
-│             │
-│ [value] ────┤──→ output: string
-│             │
-└─────────────┘
+```mermaid
+graph LR
+    subgraph StringNode ["String"]
+        value["[value]"]
+    end
+    value -->|"output: string"| out(( ))
 ```
 
 - 输入：手动编辑或连接
@@ -56,13 +55,12 @@ interface JsonMeta {
 
 ### 3.2 Number Node
 
-```
-┌─────────────┐
-│  Number     │
-│             │
-│ [value] ────┤──→ output: number
-│             │
-└─────────────┘
+```mermaid
+graph LR
+    subgraph NumberNode ["Number"]
+        value["[value]"]
+    end
+    value -->|"output: number"| out(( ))
 ```
 
 - 输入：手动编辑或连接
@@ -71,13 +69,13 @@ interface JsonMeta {
 
 ### 3.3 JSON Node
 
-```
-┌─────────────┐
-│  JSON       │
-│             │
-│ [value] ────┤──→ output: json (typename: "custom")
-│ [typename]  │
-└─────────────┘
+```mermaid
+graph LR
+    subgraph JsonNode ["JSON"]
+        value["[value]"]
+        typename["[typename]"]
+    end
+    value -->|"output: json (typename: 'custom')"| out(( ))
 ```
 
 - 输入：手动编辑 JSON 字符串
@@ -86,13 +84,12 @@ interface JsonMeta {
 
 ### 3.4 File Node
 
-```
-┌─────────────┐
-│  File       │
-│             │
-│ [file] ─────┤──→ output: bytes
-│             │
-└─────────────┘
+```mermaid
+graph LR
+    subgraph FileNode ["File"]
+        file["[file]"]
+    end
+    file -->|"output: bytes"| out(( ))
 ```
 
 - 输入：文件上传区域
@@ -188,14 +185,14 @@ interface JsonMeta {
 
 ### 5.1 基本规则
 
+```mermaid
+graph LR
+    A["Output A"] -->|"✓ 相同类型"| B["Input B"]
 ```
-┌──────────┐    ┌──────────┐
-│ Output A │───→│ Input B  │   ✓ 相同类型可连接
-└──────────┘    └──────────┘
 
-┌──────────┐    ┌──────────┐
-│ Output A │───→│ Input B  │   ✗ 不同类型不可连接
-└──────────┘    └──────────┘
+```mermaid
+graph LR
+    A["Output A"] -.-x|"✗ 不同类型"| B["Input B"]
 ```
 
 - 相同数据类型的端口可相互连接
@@ -204,11 +201,12 @@ interface JsonMeta {
 
 ### 5.2 JSON 子类型验证
 
-```
-工具A 输出: json(typename: "TypeA")
-工具B 输入1: json(typename: "TypeA")  → 连接成功
-工具B 输入2: json(typename: "TypeC")  → 连接成功
-工具B 输入3: json(typename: "TypeB")  → 警告！typename 不匹配
+```mermaid
+graph LR
+    A["工具A 输出<br/>json(typename: TypeA)"]
+    A -->|"✓ 连接成功"| B1["输入1<br/>json(typename: TypeA)"]
+    A -->|"✓ 连接成功"| B2["输入2<br/>json(typename: TypeC)"]
+    A -->|"⚠ 警告: typename 不匹配"| B3["输入3<br/>json(typename: TypeB)"]
 ```
 
 连接流程：

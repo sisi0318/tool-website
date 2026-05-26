@@ -7,42 +7,38 @@ type: proposal
 
 ## 1. 整体架构
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                          Canvas Page                            │
-│  ┌──────────┐  ┌──────────────────────────────┐  ┌──────────┐  │
-│  │  Node    │  │       ReactFlow Canvas       │  │ Property │  │
-│  │ Palette  │  │  ┌─────┐    ┌─────┐         │  │  Panel   │  │
-│  │          │  │  │NodeA│────│NodeB│         │  │          │  │
-│  │ String   │  │  └─────┘    └─────┘         │  │          │  │
-│  │ Number   │  │       ┌─────┐               │  │          │  │
-│  │ JSON     │  │       │NodeC│               │  │          │  │
-│  │ File     │  │       └─────┘               │  │          │  │
-│  │ Hash     │  │                              │  │          │  │
-│  │ ...      │  │                              │  │          │  │
-│  └──────────┘  └──────────────────────────────┘  └──────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Engine Layer                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │  Type System │  │  Execution   │  │   State Manager      │  │
-│  │              │  │   Engine     │  │   (Zustand Store)    │  │
-│  │  DataType    │  │              │  │                      │  │
-│  │  Port        │  │  Topological │  │  nodes[]             │  │
-│  │  Validation  │  │  Sort + Eval │  │  edges[]             │  │
-│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       Tool Adapters                             │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
-│  │  Hash  │ │ Crypto │ │  JSON  │ │ Image  │ │  ...   │       │
-│  │Adapter │ │Adapter │ │Adapter │ │Adapter │ │        │       │
-│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph CanvasPage ["Canvas Page"]
+        direction TB
+        subgraph Layout ["页面布局"]
+            NP["Node Palette<br/>节点面板"]
+            RF["ReactFlow Canvas<br/>画布"]
+            PP["Property Panel<br/>属性面板"]
+        end
+
+        subgraph CanvasContent ["画布内容"]
+            NA["NodeA"] --> NB["NodeB"]
+            NC["NodeC"]
+        end
+    end
+
+    subgraph EngineLayer ["Engine Layer"]
+        TS["Type System<br/>类型系统"]
+        EE["Execution Engine<br/>拓扑排序 + 求值"]
+        SM["State Manager<br/>Zustand Store<br/>nodes[], edges[]"]
+    end
+
+    subgraph ToolAdapters ["Tool Adapters"]
+        TA1["Hash Adapter"]
+        TA2["Crypto Adapter"]
+        TA3["JSON Adapter"]
+        TA4["Image Adapter"]
+        TA5["... Adapter"]
+    end
+
+    CanvasPage --> EngineLayer
+    EngineLayer --> ToolAdapters
 ```
 
 ## 2. 目录结构
