@@ -17,6 +17,19 @@
 | [[07-performance]] | 性能优化 | 代码分割、懒加载、动画 GPU 加速、预加载 |
 | [[08-frontend-conventions]] | 前端规范 | 编码风格、命名约定、组件结构约定 |
 
+### 工具实现 (tools/)
+
+| 文档 | 领域 | 覆盖工具 |
+|------|------|----------|
+| [[tools/security-crypto]] | 安全与加密 | Hash, HMAC, Crypto, Classic Cipher, JWT, JCE, TOTP |
+| [[tools/encoding-data]] | 编码与数据 | Encoding, JSON, Protobuf, Base Converter, Case Converter |
+| [[tools/image-media]] | 图片与媒体 | QR Code, Image Compress/Edit/Coordinates, EXIF, Meme Splitter, Color Picker |
+| [[tools/conversion]] | 格式转换 | Temperature, Currency, Docker, Crontab |
+| [[tools/text-analysis]] | 文本分析 | Text Stats, Regex, Diff |
+| [[tools/network-tools]] | 网络工具 | WHOIS, HTTP Tester, Device Info |
+| [[tools/system-time]] | 系统与时间 | Time, UUID, BMI |
+| [[tools/document-tools]] | 文档查看 | Office Viewer, Doc Viewer |
+
 ## 规范
 
 - 每个文档以 YAML front matter 开头
