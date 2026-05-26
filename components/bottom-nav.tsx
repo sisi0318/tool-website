@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Wrench, Search, Settings } from "lucide-react"
+import { Home, Wrench, Search, Settings, Workflow } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -37,7 +37,12 @@ export function BottomNav() {
             href: "/tools",
             isActive: pathname.startsWith("/tools"),
         },
-        // We can add more items here if needed, e.g. favorites or settings
+        {
+            label: "Canvas",
+            icon: Workflow,
+            href: "/canvas",
+            isActive: pathname.startsWith("/canvas"),
+        },
     ]
 
     return (
