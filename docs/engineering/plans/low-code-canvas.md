@@ -297,10 +297,10 @@ graph TB
 按优先级分批实现，每个适配器同步编写测试：
 
 **第一批：编码加密类 (Day 6-7)**
-- [ ] hash.ts + hash.test.ts
+- [x] hash.ts + hash.test.ts
 - [ ] hmac.ts + hmac.test.ts
 - [ ] crypto.ts + crypto.test.ts
-- [ ] encoding.ts + encoding.test.ts
+- [x] encoding.ts + encoding.test.ts
 - [ ] classic-cipher.ts + classic-cipher.test.ts
 - [ ] jwt.ts + jwt.test.ts
 
@@ -332,11 +332,11 @@ graph TB
 - [ ] whois.ts
 
 **第六批：实用工具 + 查看器类 (Day 10-11)**
-- [ ] uuid.ts + uuid.test.ts
+- [x] uuid.ts + uuid.test.ts
 - [ ] totp.ts + totp.test.ts
 - [ ] color.ts + color.test.ts
-- [ ] base-converter.ts + base-converter.test.ts
-- [ ] temperature-converter.ts + temperature-converter.test.ts
+- [x] base-converter.ts + base-converter.test.ts
+- [x] temperature-converter.ts + temperature-converter.test.ts
 - [ ] currency.ts
 - [ ] bmi.ts + bmi.test.ts
 - [ ] device-info.ts
