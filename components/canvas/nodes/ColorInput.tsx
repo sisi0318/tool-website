@@ -1,3 +1,5 @@
+import { useCallback } from "react"
+
 interface ColorInputProps {
   value: string
   onChange: (value: string) => void
@@ -5,8 +7,16 @@ interface ColorInputProps {
 }
 
 export function ColorInput({ value, onChange, disabled }: ColorInputProps) {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
+
   return (
-    <div className="flex items-center gap-2" data-testid="color-input">
+    <div
+      className="flex items-center gap-2"
+      data-testid="color-input"
+      onMouseDown={handleMouseDown}
+    >
       <input
         type="color"
         value={value}

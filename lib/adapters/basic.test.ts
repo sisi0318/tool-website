@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { stringNode, numberNode, jsonNode, fileNode, registerBasicNodes } from "./basic"
+import { stringNode, numberNode, jsonNode, fileNode, booleanNode, registerBasicNodes } from "./basic"
 import { getNodeDefinition, clearRegistry } from "../canvas/registry"
 
 beforeEach(() => {
@@ -48,11 +48,43 @@ describe("jsonNode", () => {
   })
 })
 
+describe("booleanNode", () => {
+  it("定义正确", () => {
+    expect(booleanNode.type).toBe("boolean")
+    expect(booleanNode.category).toBe("basic")
+    expect(booleanNode.config).toHaveLength(1)
+    expect(booleanNode.config[0].dataType).toBe("boolean")
+    expect(booleanNode.config[0].hasInput).toBe(true)
+    expect(booleanNode.config[0].hasOutput).toBe(true)
+  })
+
+  it("execute 返回 true", async () => {
+    const result = await booleanNode.execute({}, { value: true })
+    expect(result).toEqual({ value: true })
+  })
+
+  it("execute 返回 false", async () => {
+    const result = await booleanNode.execute({}, { value: false })
+    expect(result).toEqual({ value: false })
+  })
+
+  it("execute 默认值 false", async () => {
+    const result = await booleanNode.execute({}, {})
+    expect(result).toEqual({ value: false })
+  })
+
+  it("execute 输入优先于配置", async () => {
+    const result = await booleanNode.execute({ value: true }, { value: false })
+    expect(result).toEqual({ value: true })
+  })
+})
+
 describe("registerBasicNodes", () => {
   it("注册后可通过 getNodeDefinition 获取", () => {
     expect(getNodeDefinition("string")).toBeDefined()
     expect(getNodeDefinition("number")).toBeDefined()
     expect(getNodeDefinition("json")).toBeDefined()
     expect(getNodeDefinition("file")).toBeDefined()
+    expect(getNodeDefinition("boolean")).toBeDefined()
   })
 })
