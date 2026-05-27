@@ -13,7 +13,22 @@ export const exifViewerAdapter: ToolAdapter = {
   outputs: [
     { id: "exif", name: "EXIF Data", dataType: "json" },
   ],
-  config: [],
+  config: [
+    {
+      id: "category",
+      name: "Category",
+      dataType: "string",
+      defaultValue: "all",
+      options: [
+        { label: "All", value: "all" },
+        { label: "Camera", value: "camera" },
+        { label: "Image", value: "image" },
+        { label: "Location", value: "location" },
+        { label: "DateTime", value: "datetime" },
+        { label: "Technical", value: "technical" },
+      ],
+    },
+  ],
   async execute(inputs, config) {
     const file = inputs.file as File | null
     if (!file) {

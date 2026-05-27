@@ -7,6 +7,13 @@ const ENCODING_TYPES = [
   { label: "URL", value: "url" },
   { label: "HEX", value: "hex" },
   { label: "HTML", value: "html" },
+  { label: "Unicode", value: "unicode" },
+  { label: "UTF-8", value: "utf8" },
+  { label: "ASCII", value: "ascii" },
+  { label: "Base32", value: "base32" },
+  { label: "Binary", value: "binary" },
+  { label: "Morse", value: "morse" },
+  { label: "ROT13", value: "rot13" },
 ]
 
 function encode(input: string, encoding: string): string {

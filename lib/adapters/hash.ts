@@ -9,6 +9,8 @@ const ALGORITHMS = [
   { label: "SHA-256", value: "sha256" },
   { label: "SHA-384", value: "sha384" },
   { label: "SHA-512", value: "sha512" },
+  { label: "SHA3", value: "sha3" },
+  { label: "RIPEMD-160", value: "ripemd160" },
 ]
 
 export const hashAdapter: ToolAdapter = {
@@ -28,6 +30,35 @@ export const hashAdapter: ToolAdapter = {
       dataType: "string",
       defaultValue: "sha256",
       options: ALGORITHMS,
+    },
+    {
+      id: "variant",
+      name: "Variant",
+      dataType: "string",
+      defaultValue: "sha3-256",
+      dependsOn: "algorithm",
+      dynamicOptions: (algorithm) => {
+        if (algorithm === "sha3") {
+          return [
+            { label: "SHA3-256", value: "sha3-256" },
+            { label: "SHA3-384", value: "sha3-384" },
+            { label: "SHA3-512", value: "sha3-512" },
+            { label: "SHAKE128", value: "shake128" },
+            { label: "SHAKE256", value: "shake256" },
+          ]
+        }
+        return []
+      },
+    },
+    {
+      id: "outputFormat",
+      name: "Output",
+      dataType: "string",
+      defaultValue: "hex",
+      options: [
+        { label: "Hex", value: "hex" },
+        { label: "Base64", value: "base64" },
+      ],
     },
   ],
   async execute(inputs, config) {

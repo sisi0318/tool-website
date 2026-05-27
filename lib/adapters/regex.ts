@@ -32,6 +32,7 @@ export const regexAdapter: ToolAdapter = {
       name: "Replacement",
       dataType: "string",
       defaultValue: "",
+      multiline: true,
     },
   ],
   async execute(inputs, config) {

@@ -14,7 +14,20 @@ export const imageToBase64Adapter: ToolAdapter = {
     { id: "base64", name: "Base64", dataType: "string" },
     { id: "dataUri", name: "Data URI", dataType: "string" },
   ],
-  config: [],
+  config: [
+    {
+      id: "outputFormat",
+      name: "Output",
+      dataType: "string",
+      defaultValue: "base64",
+      options: [
+        { label: "Base64", value: "base64" },
+        { label: "Data URL", value: "dataUrl" },
+        { label: "CSS", value: "css" },
+        { label: "HTML", value: "html" },
+      ],
+    },
+  ],
   async execute(inputs, config) {
     const file = inputs.file as File | null
     if (!file) {

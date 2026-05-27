@@ -1,4 +1,4 @@
-export type DataType = "string" | "number" | "json" | "bytes"
+export type DataType = "string" | "number" | "json" | "bytes" | "boolean"
 
 export interface PortDefinition {
   id: string
@@ -9,12 +9,24 @@ export interface PortDefinition {
   jsonTypename?: string
 }
 
+export interface SliderConfig {
+  min: number
+  max: number
+  step: number
+}
+
 export interface ConfigField {
   id: string
   name: string
   dataType: DataType
   defaultValue?: unknown
   options?: Array<{ label: string; value: string }>
+  slider?: SliderConfig
+  multiline?: boolean
+  color?: boolean
+  dependsOn?: string
+  dynamicOptions?: (dependentValue: string) => Array<{ label: string; value: string }>
+  portId?: string
 }
 
 export interface NodeDefinition {

@@ -19,22 +19,27 @@ export const imageEditorAdapter: ToolAdapter = {
       name: "Brightness",
       dataType: "number",
       defaultValue: 100,
+      slider: { min: 0, max: 200, step: 1 },
     },
     {
       id: "contrast",
       name: "Contrast",
       dataType: "number",
       defaultValue: 100,
+      slider: { min: 0, max: 200, step: 1 },
+    },
+    {
+      id: "saturation",
+      name: "Saturation",
+      dataType: "number",
+      defaultValue: 100,
+      slider: { min: 0, max: 200, step: 1 },
     },
     {
       id: "grayscale",
       name: "Grayscale",
-      dataType: "string",
-      defaultValue: "false",
-      options: [
-        { label: "No", value: "false" },
-        { label: "Yes", value: "true" },
-      ],
+      dataType: "boolean",
+      defaultValue: false,
     },
   ],
   async execute(inputs, config) {

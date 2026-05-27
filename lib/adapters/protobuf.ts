@@ -24,6 +24,13 @@ export const protobufAdapter: ToolAdapter = {
         { label: "Encode", value: "encode" },
       ],
     },
+    {
+      id: "indentSize",
+      name: "Indent",
+      dataType: "number",
+      defaultValue: 2,
+      slider: { min: 0, max: 8, step: 1 },
+    },
   ],
   async execute(inputs, config) {
     const data = String(inputs.data ?? "")

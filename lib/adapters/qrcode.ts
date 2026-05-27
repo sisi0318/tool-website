@@ -20,6 +20,7 @@ export const qrcodeAdapter: ToolAdapter = {
       name: "Size",
       dataType: "number",
       defaultValue: 200,
+      slider: { min: 100, max: 500, step: 10 },
     },
     {
       id: "errorCorrection",
@@ -27,11 +28,25 @@ export const qrcodeAdapter: ToolAdapter = {
       dataType: "string",
       defaultValue: "M",
       options: [
-        { label: "Low", value: "L" },
-        { label: "Medium", value: "M" },
-        { label: "Quartile", value: "Q" },
-        { label: "High", value: "H" },
+        { label: "Low (7%)", value: "L" },
+        { label: "Medium (15%)", value: "M" },
+        { label: "Quartile (25%)", value: "Q" },
+        { label: "High (30%)", value: "H" },
       ],
+    },
+    {
+      id: "fgColor",
+      name: "Foreground",
+      dataType: "string",
+      defaultValue: "#000000",
+      color: true,
+    },
+    {
+      id: "bgColor",
+      name: "Background",
+      dataType: "string",
+      defaultValue: "#FFFFFF",
+      color: true,
     },
   ],
   async execute(inputs, config) {

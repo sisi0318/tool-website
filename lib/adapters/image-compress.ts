@@ -20,6 +20,19 @@ export const imageCompressAdapter: ToolAdapter = {
       name: "Quality",
       dataType: "number",
       defaultValue: 80,
+      slider: { min: 10, max: 100, step: 5 },
+    },
+    {
+      id: "outputFormat",
+      name: "Format",
+      dataType: "string",
+      defaultValue: "original",
+      options: [
+        { label: "Original", value: "original" },
+        { label: "JPEG", value: "jpeg" },
+        { label: "WebP", value: "webp" },
+        { label: "PNG", value: "png" },
+      ],
     },
   ],
   async execute(inputs, config) {
