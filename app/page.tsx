@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Workflow } from "lucide-react"
 
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -62,6 +62,18 @@ export default function HomePage() {
               >
                 {t("exploreTools")}
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+            <Link href="/canvas" className="w-full sm:w-auto">
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="w-full sm:w-auto text-base sm:text-lg px-8 sm:px-10 py-6 sm:py-7
+                  gap-3 font-semibold touch-target
+                "
+              >
+                <Workflow className="h-5 w-5" />
+                工具画布
               </Button>
             </Link>
           </div>
