@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { FilePlus } from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { SaveDialog } from "./SaveDialog"
@@ -53,9 +52,24 @@ export function WorkflowNewButton() {
             当前画布有未保存的内容，是否保存？
           </p>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setShowConfirm(false)}>取消</Button>
-            <Button variant="outline" size="sm" onClick={handleDiscard}>不保存</Button>
-            <Button size="sm" onClick={() => { setShowConfirm(false); setShowSaveDialog(true) }}>保存</Button>
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleDiscard}
+              className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              不保存
+            </button>
+            <button
+              onClick={() => { setShowConfirm(false); setShowSaveDialog(true) }}
+              className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              保存
+            </button>
           </div>
         </div>
       </div>
@@ -63,8 +77,12 @@ export function WorkflowNewButton() {
   }
 
   return (
-    <Button onClick={handleClick} variant="outline" size="sm" className="flex-1">
-      <FilePlus className="w-4 h-4 mr-1" /> 新建
-    </Button>
+    <div
+      onClick={handleClick}
+      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    >
+      <FilePlus className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+      <span className="text-sm text-gray-700 dark:text-gray-300">新建</span>
+    </div>
   )
 }

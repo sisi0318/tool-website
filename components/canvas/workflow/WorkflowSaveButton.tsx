@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Save } from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { SaveDialog } from "./SaveDialog"
@@ -28,8 +27,12 @@ export function WorkflowSaveButton() {
   }
 
   return (
-    <Button onClick={() => setShowDialog(true)} variant="outline" size="sm" className="flex-1">
-      <Save className="w-4 h-4 mr-1" /> 保存
-    </Button>
+    <div
+      onClick={() => setShowDialog(true)}
+      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    >
+      <Save className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+      <span className="text-sm text-gray-700 dark:text-gray-300">保存</span>
+    </div>
   )
 }

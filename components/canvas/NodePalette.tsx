@@ -52,7 +52,7 @@ export function NodePalette() {
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Workflow</h3>
         </button>
         {workflowExpanded && (
-          <div className="p-2 flex gap-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="p-2 space-y-1 border-b border-gray-200 dark:border-gray-700">
             <WorkflowNewButton />
             <WorkflowSaveButton />
             <WorkflowLoadButton />
