@@ -45,6 +45,7 @@ export const classicCipherAdapter: ToolAdapter = {
       name: "Shift",
       dataType: "number",
       defaultValue: 3,
+      slider: { min: 1, max: 25, step: 1 },
       dependsOn: "algorithm",
       dynamicOptions: (algorithm) => algorithm === "caesar" ? [{ label: "1-25", value: "1-25" }] : [],
       hasInput: true,

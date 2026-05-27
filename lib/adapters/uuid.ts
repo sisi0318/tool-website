@@ -1,7 +1,17 @@
 import { Fingerprint } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
-import { randomUUID } from "crypto"
+
+function generateUUID(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
 
 export const uuidAdapter: ToolAdapter = {
   type: "uuid",
@@ -45,7 +55,7 @@ export const uuidAdapter: ToolAdapter = {
     const uppercase = inputs.uppercase ?? config.uppercase ?? false
     const withHyphens = inputs.withHyphens ?? config.withHyphens ?? true
 
-    let uuid = randomUUID()
+    let uuid = generateUUID()
     if (!withHyphens) uuid = uuid.replace(/-/g, "")
     if (uppercase) uuid = uuid.toUpperCase()
 

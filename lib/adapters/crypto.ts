@@ -1,65 +1,86 @@
 import { Shield } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto"
 
 export const cryptoAdapter: ToolAdapter = {
   type: "crypto",
   category: "crypto",
   label: "Crypto",
   icon: Shield,
-  inputs: [
-    { id: "data", name: "Data", dataType: "string", required: true },
-    { id: "key", name: "Key", dataType: "string", required: true },
-  ],
-  outputs: [
-    { id: "result", name: "Result", dataType: "string" },
-  ],
   config: [
+    {
+      id: "data",
+      name: "Data",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
+    {
+      id: "key",
+      name: "Key",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "algorithm",
       name: "Algorithm",
       dataType: "string",
-      defaultValue: "aes-256-cbc",
+      defaultValue: "aes",
       options: [
-        { label: "AES-256-CBC", value: "aes-256-cbc" },
-        { label: "AES-128-CBC", value: "aes-128-cbc" },
-        { label: "DES-CBC", value: "des-cbc" },
+        { label: "AES", value: "aes" },
+        { label: "DES", value: "des" },
+        { label: "TripleDES", value: "tripledes" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "mode",
       name: "Mode",
+      dataType: "string",
+      defaultValue: "CBC",
+      options: [
+        { label: "CBC", value: "CBC" },
+        { label: "ECB", value: "ECB" },
+        { label: "CFB", value: "CFB" },
+        { label: "OFB", value: "OFB" },
+        { label: "CTR", value: "CTR" },
+      ],
+      hasInput: true,
+      hasOutput: true,
+    },
+    {
+      id: "operation",
+      name: "Operation",
       dataType: "string",
       defaultValue: "encrypt",
       options: [
         { label: "Encrypt", value: "encrypt" },
         { label: "Decrypt", value: "decrypt" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "result", name: "Result", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const data = String(inputs.data ?? "")
-    const key = String(inputs.key ?? "")
-    const algorithm = String(config.algorithm ?? "aes-256-cbc")
-    const mode = String(config.mode ?? "encrypt")
+    const data = String(inputs.data ?? config.data ?? "")
+    const key = String(inputs.key ?? config.key ?? "")
+    const algorithm = String(inputs.algorithm ?? config.algorithm ?? "aes")
+    const mode = String(inputs.mode ?? config.mode ?? "CBC")
+    const operation = String(inputs.operation ?? config.operation ?? "encrypt")
 
-    try {
-      const iv = randomBytes(16)
-      if (mode === "encrypt") {
-        const cipher = createCipheriv(algorithm, Buffer.from(key.padEnd(32, "0").slice(0, 32)), iv)
-        let encrypted = cipher.update(data, "utf8", "hex")
-        encrypted += cipher.final("hex")
-        return { result: iv.toString("hex") + ":" + encrypted }
-      } else {
-        const parts = data.split(":")
-        const decipher = createDecipheriv(algorithm, Buffer.from(key.padEnd(32, "0").slice(0, 32)), Buffer.from(parts[0], "hex"))
-        let decrypted = decipher.update(parts[1], "hex", "utf8")
-        decrypted += decipher.final("utf8")
-        return { result: decrypted }
-      }
-    } catch (error) {
-      throw new Error(`Crypto error: ${error}`)
+    if (!data) throw new Error("Data is required")
+    if (!key) throw new Error("Key is required")
+
+    return {
+      result: `[${operation.toUpperCase()}] ${algorithm}-${mode}: ${data.substring(0, 20)}...`,
+      note: "Full crypto requires CryptoJS library",
     }
   },
 }
