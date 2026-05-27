@@ -233,7 +233,7 @@ test.describe("Pipeline: Deterministic Output", () => {
     await connectNodes(page, src, "value", jwtNode, "token")
     await connectNodes(page, jwtNode, "header", out, "value")
     await executeAll(page)
-    expect(await getOutput(page, out, "value")).toHaveProperty("alg", "HS256")
+    expect(await getOutput(page, out, "parsed")).toHaveProperty("alg", "HS256")
   })
 
   test("String('test123') → Regex(pattern=\\d+) → JSON(matches)", async ({ page }) => {
@@ -243,7 +243,7 @@ test.describe("Pipeline: Deterministic Output", () => {
     await connectNodes(page, src, "value", regex, "text")
     await connectNodes(page, regex, "matches", out, "value")
     await executeAll(page)
-    const output = await getOutput(page, out, "value")
+    const output = await getOutput(page, out, "parsed")
     expect(Array.isArray(output)).toBe(true)
     expect(output).toContain("123")
   })
@@ -257,7 +257,7 @@ test.describe("Pipeline: Deterministic Output", () => {
     await connectNodes(page, src2, "value", diff, "text2")
     await connectNodes(page, diff, "diff", out, "value")
     await executeAll(page)
-    const output = await getOutput(page, out, "value")
+    const output = await getOutput(page, out, "parsed")
     expect(output).toHaveProperty("changes")
     expect(output).toHaveProperty("added")
     expect(output).toHaveProperty("removed")
@@ -270,21 +270,207 @@ test.describe("Pipeline: Deterministic Output", () => {
     await connectNodes(page, src, "value", cron, "expression")
     await connectNodes(page, cron, "parsed", out, "value")
     await executeAll(page)
-    const output = await getOutput(page, out, "value")
+    const output = await getOutput(page, out, "parsed")
     expect(output).toHaveProperty("minute")
     expect(output).toHaveProperty("hour")
   })
 
-  test("String('hello world') → Text Stats → JSON", async ({ page }) => {
+  test("String('hello world') → Text Stats(characters)", async ({ page }) => {
     const src = await addNode(page, "string", { value: "hello world" })
     const stats = await addNode(page, "text-stats")
-    const out = await addNode(page, "json", { value: "{}" })
+    const out = await addNode(page, "number", { value: 0 })
     await connectNodes(page, src, "value", stats, "text")
-    await connectNodes(page, stats, "stats", out, "value")
+    await connectNodes(page, stats, "characters", out, "value")
     await executeAll(page)
-    const output = await getOutput(page, out, "value")
-    expect(output).toHaveProperty("characters", 11)
-    expect(output).toHaveProperty("words", 2)
+    expect(await getOutput(page, out, "value")).toBe(11)
+  })
+
+  test("String('hello world') → Text Stats(words)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello world" })
+    const stats = await addNode(page, "text-stats")
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, src, "value", stats, "text")
+    await connectNodes(page, stats, "words", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe(2)
+  })
+
+  test("String('hello world') → Text Stats(bytes)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello" })
+    const stats = await addNode(page, "text-stats")
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, src, "value", stats, "text")
+    await connectNodes(page, stats, "bytes", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe(5)
+  })
+
+  test("Number(100) + Number('USD','CNY') → Currency → Number", async ({ page }) => {
+    const amount = await addNode(page, "number", { value: 100 })
+    const from = await addNode(page, "string", { value: "USD" })
+    const to = await addNode(page, "string", { value: "CNY" })
+    const curr = await addNode(page, "currency")
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, amount, "value", curr, "amount")
+    await connectNodes(page, from, "value", curr, "from")
+    await connectNodes(page, to, "value", curr, "to")
+    await connectNodes(page, curr, "converted", out, "value")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value")
+    expect(typeof result).toBe("number")
+    expect(result).toBeGreaterThan(0)
+  })
+
+  test("Number(100) + Number('USD','CNY') → Currency(rate) → Number", async ({ page }) => {
+    const amount = await addNode(page, "number", { value: 100 })
+    const from = await addNode(page, "string", { value: "USD" })
+    const to = await addNode(page, "string", { value: "CNY" })
+    const curr = await addNode(page, "currency")
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, amount, "value", curr, "amount")
+    await connectNodes(page, from, "value", curr, "from")
+    await connectNodes(page, to, "value", curr, "to")
+    await connectNodes(page, curr, "rate", out, "value")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value")
+    expect(typeof result).toBe("number")
+    expect(result).toBeCloseTo(7.24, 1)
+  })
+
+  test("String('abc') + String('abd') → Diff(added/removed/unchanged)", async ({ page }) => {
+    const src1 = await addNode(page, "string", { value: "abc" })
+    const src2 = await addNode(page, "string", { value: "abd" })
+    const diff = await addNode(page, "diff")
+    const outAdded = await addNode(page, "number", { value: 0 })
+    const outRemoved = await addNode(page, "number", { value: 0 })
+    const outUnchanged = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, src1, "value", diff, "text1")
+    await connectNodes(page, src2, "value", diff, "text2")
+    await connectNodes(page, diff, "added", outAdded, "value")
+    await connectNodes(page, diff, "removed", outRemoved, "value")
+    await connectNodes(page, diff, "unchanged", outUnchanged, "value")
+    await executeAll(page)
+    expect(await getOutput(page, outAdded, "value")).toBe(1)
+    expect(await getOutput(page, outRemoved, "value")).toBe(1)
+    expect(await getOutput(page, outUnchanged, "value")).toBe(0)
+  })
+
+  test("JSON node outputs JSON object", async ({ page }) => {
+    const json = await addNode(page, "json", { value: '{"key":"value"}' })
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, json, "parsed", out, "value")
+    await executeAll(page)
+    const output = await getOutput(page, out, "parsed")
+    expect(typeof output).toBe("object")
+    expect(output).toHaveProperty("key", "value")
+  })
+
+  test("Crypto: data + key → encrypt result", async ({ page }) => {
+    const data = await addNode(page, "string", { value: "hello" })
+    const key = await addNode(page, "string", { value: "secret" })
+    const crypto = await addNode(page, "crypto", { algorithm: "aes", mode: "CBC", operation: "encrypt" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, data, "value", crypto, "data")
+    await connectNodes(page, key, "value", crypto, "key")
+    await connectNodes(page, crypto, "result", out, "value")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value")
+    expect(typeof result).toBe("string")
+    expect(result).toContain("ENCRYPT")
+  })
+
+  test("File node: config file fallback", async ({ page }) => {
+    const fileNode = await addNode(page, "file")
+    await page.waitForTimeout(300)
+    const output = await page.evaluate(({ nodeId }) => {
+      const store = (window as any).__ZUSTAND_STORE__
+      store.getState().executeNode(nodeId)
+      return store.getState().nodeOutputs[nodeId]?.file
+    }, { nodeId: fileNode })
+    expect(output).toBeNull()
+  })
+
+  test("UUID: uppercase=true → uppercase format", async ({ page }) => {
+    const uuid = await addNode(page, "uuid", { uppercase: true, withHyphens: true })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, uuid, "uuid", out, "value")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value") as string
+    expect(result).toMatch(/^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/)
+  })
+
+  test("UUID: withHyphens=false → no hyphens", async ({ page }) => {
+    const uuid = await addNode(page, "uuid", { withHyphens: false })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, uuid, "uuid", out, "value")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value") as string
+    expect(result).toMatch(/^[0-9a-f]{32}$/)
+  })
+
+  test("Classic Cipher: Caesar shift=5", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "abc" })
+    const cipher = await addNode(page, "classic-cipher", { algorithm: "caesar", shift: 5 })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", cipher, "data")
+    await connectNodes(page, cipher, "result", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("fgh")
+  })
+
+  test("Classic Cipher: Atbash", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "abc" })
+    const cipher = await addNode(page, "classic-cipher", { algorithm: "atbash" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", cipher, "data")
+    await connectNodes(page, cipher, "result", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("zyx")
+  })
+
+  test("QRCode: generates image File", async ({ page }) => {
+    const qrcode = await addNode(page, "qrcode", { data: "test123" })
+    await page.waitForTimeout(500)
+    const output = await getOutput(page, qrcode, "image")
+    expect(output).not.toBeNull()
+  })
+
+  test("QRCode → Image to Base64 pipeline", async ({ page }) => {
+    const qrcode = await addNode(page, "qrcode", { data: "hello" })
+    const img64 = await addNode(page, "image-to-base64")
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, qrcode, "image", img64, "file")
+    await connectNodes(page, img64, "base64", out, "value")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value")
+    expect(typeof result).toBe("string")
+    expect((result as string).length).toBeGreaterThan(0)
+  })
+
+  test("String('hello') → Hash(MD5) connected via config field port", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello" })
+    const hash = await addNode(page, "hash", { algorithm: "sha256" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", hash, "data")
+    await connectNodes(page, hash, "hash", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+  })
+
+  test("Hash algorithm config field port: outputs algorithm value", async ({ page }) => {
+    const hash = await addNode(page, "hash", { algorithm: "sha256" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, hash, "algorithm", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("sha256")
+  })
+
+  test("Encoding encoding config field port: outputs encoding value", async ({ page }) => {
+    const enc = await addNode(page, "encoding", { encoding: "base64", mode: "encode" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, enc, "encoding", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("base64")
   })
 })
 
@@ -333,7 +519,7 @@ test.describe("Pipeline: Source Nodes", () => {
     const out = await addNode(page, "json", { value: "{}" })
     await connectNodes(page, device, "info", out, "value")
     await executeAll(page)
-    const output = await getOutput(page, out, "value")
+    const output = await getOutput(page, out, "parsed")
     expect(typeof output).toBe("object")
   })
 })

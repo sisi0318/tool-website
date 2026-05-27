@@ -55,7 +55,7 @@ export const imageEditorAdapter: ToolAdapter = {
     { id: "file", name: "File", dataType: "bytes" },
   ],
   async execute(inputs, config) {
-    const file = inputs.file as File | null
+    const file = (inputs.file ?? config.file) as File | null
     if (!file) {
       throw new Error("No file provided")
     }

@@ -20,7 +20,7 @@ export const officeViewerAdapter: ToolAdapter = {
     { id: "info", name: "Info", dataType: "json" },
   ],
   async execute(inputs, config) {
-    const file = inputs.file as File | null
+    const file = (inputs.file ?? config.file) as File | null
     if (!file) {
       throw new Error("No file provided")
     }
