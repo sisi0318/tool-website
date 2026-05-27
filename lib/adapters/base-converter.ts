@@ -6,7 +6,12 @@ const BASES = [
   { label: "Binary (2)", value: "2" },
   { label: "Octal (8)", value: "8" },
   { label: "Decimal (10)", value: "10" },
-  { label: "Hexadecimal (16)", value: "16" },
+  { label: "Hex (16)", value: "16" },
+  { label: "Base32", value: "32" },
+  { label: "Base36", value: "36" },
+  { label: "Base58", value: "58" },
+  { label: "Base62", value: "62" },
+  { label: "Base64", value: "64" },
 ]
 
 export const baseConverterAdapter: ToolAdapter = {

@@ -34,6 +34,7 @@ export const httpTesterAdapter: ToolAdapter = {
       name: "Headers",
       dataType: "string",
       defaultValue: "{}",
+      multiline: true,
     },
   ],
   async execute(inputs, config) {

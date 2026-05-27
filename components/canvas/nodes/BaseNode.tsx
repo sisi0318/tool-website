@@ -4,7 +4,7 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import type { NodeInstance, PortDefinition } from "@/lib/canvas/types"
-import { InlineEditor } from "./InlineEditor"
+import { ParameterRow } from "./ParameterRow"
 
 interface BaseNodeProps {
   data: NodeInstance & { definition: NonNullable<ReturnType<typeof getNodeDefinition>> }
@@ -13,33 +13,25 @@ interface BaseNodeProps {
 function PortHandle({
   port,
   type,
-  nodeId,
 }: {
   port: PortDefinition
   type: "source" | "target"
-  nodeId: string
 }) {
   const color = TYPE_COLORS[port.dataType]
   const isOutput = type === "source"
 
   return (
-    <div
-      className={`flex items-center gap-1 ${isOutput ? "flex-row-reverse" : ""}`}
-      style={{ position: "relative" }}
-    >
-      <Handle
-        type={type}
-        position={isOutput ? Position.Right : Position.Left}
-        id={port.id}
-        style={{
-          background: color,
-          width: 10,
-          height: 10,
-          border: "2px solid white",
-        }}
-      />
-      <span className="text-xs text-gray-600 dark:text-gray-400">{port.name}</span>
-    </div>
+    <Handle
+      type={type}
+      position={isOutput ? Position.Right : Position.Left}
+      id={port.id}
+      style={{
+        background: color,
+        width: 10,
+        height: 10,
+        border: "2px solid white",
+      }}
+    />
   )
 }
 
@@ -50,13 +42,18 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
   const nodeRunning = useCanvasStore((s) => s.nodeRunning[node.id])
   const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
   const selectNode = useCanvasStore((s) => s.selectNode)
+  const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
 
   const isSelected = selectedNodeId === node.id
   const Icon = definition.icon
 
+  // 分离端口关联参数和独立参数
+  const portFields = definition.config.filter((f) => f.portId)
+  const standaloneFields = definition.config.filter((f) => !f.portId)
+
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 min-w-[160px] ${
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 min-w-[200px] max-w-[280px] ${
         nodeErrors
           ? "border-red-500"
           : isSelected
@@ -75,24 +72,73 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
         )}
       </div>
 
-      <div className="p-3">
-        {definition.inputs.length > 0 && (
-          <div className="space-y-1 mb-2">
-            {definition.inputs.map((port) => (
-              <PortHandle key={port.id} port={port} type="target" nodeId={node.id} />
-            ))}
-          </div>
-        )}
+      <div className="py-1">
+        {/* 输入端口 + 关联参数 */}
+        {definition.inputs.map((port) => {
+          const field = portFields.find((f) => f.portId === port.id)
+          const color = TYPE_COLORS[port.dataType]
+          return (
+            <div key={port.id} className="flex items-center gap-2 px-3 py-1 relative">
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={port.id}
+                style={{
+                  background: color,
+                  width: 10,
+                  height: 10,
+                  border: "2px solid white",
+                }}
+              />
+              <span className="text-xs text-gray-500 min-w-[40px]">{port.name}</span>
+              {field && (
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={String(node.config[field.id] ?? field.defaultValue ?? "")}
+                    onChange={(e) => updateConfig(node.id, { ...node.config, [field.id]: e.target.value })}
+                    disabled={false}
+                    className="w-full px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600"
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })}
 
-        <InlineEditor nodeId={node.id} definition={definition} />
+        {/* 独立参数 */}
+        {standaloneFields.map((field) => (
+          <ParameterRow
+            key={field.id}
+            nodeId={node.id}
+            field={field}
+            value={node.config[field.id]}
+            onChange={(v) => updateConfig(node.id, { ...node.config, [field.id]: v })}
+            disabled={false}
+            allConfig={node.config}
+          />
+        ))}
 
-        {definition.outputs.length > 0 && (
-          <div className="space-y-1">
-            {definition.outputs.map((port) => (
-              <PortHandle key={port.id} port={port} type="source" nodeId={node.id} />
-            ))}
-          </div>
-        )}
+        {/* 输出端口 */}
+        {definition.outputs.map((port) => {
+          const color = TYPE_COLORS[port.dataType]
+          return (
+            <div key={port.id} className="flex items-center justify-end gap-2 px-3 py-1 relative">
+              <span className="text-xs text-gray-500 min-w-[40px] text-right">{port.name}</span>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={port.id}
+                style={{
+                  background: color,
+                  width: 10,
+                  height: 10,
+                  border: "2px solid white",
+                }}
+              />
+            </div>
+          )
+        })}
       </div>
 
       {nodeErrors && (

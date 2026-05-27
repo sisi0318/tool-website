@@ -17,9 +17,21 @@ export const uuidAdapter: ToolAdapter = {
       dataType: "string",
       defaultValue: "v4",
       options: [
-        { label: "v4", value: "v4" },
-        { label: "v1", value: "v1" },
+        { label: "v4 (Random)", value: "v4" },
+        { label: "v1 (Time-based)", value: "v1" },
       ],
+    },
+    {
+      id: "uppercase",
+      name: "Uppercase",
+      dataType: "boolean",
+      defaultValue: false,
+    },
+    {
+      id: "withHyphens",
+      name: "Hyphens",
+      dataType: "boolean",
+      defaultValue: true,
     },
   ],
   async execute(inputs, config) {

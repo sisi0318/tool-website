@@ -20,6 +20,13 @@ export const jsonFormatAdapter: ToolAdapter = {
       name: "Indent",
       dataType: "number",
       defaultValue: 2,
+      slider: { min: 0, max: 8, step: 1 },
+    },
+    {
+      id: "sortKeys",
+      name: "Sort Keys",
+      dataType: "boolean",
+      defaultValue: false,
     },
   ],
   async execute(inputs, config) {

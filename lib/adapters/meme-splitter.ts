@@ -18,13 +18,15 @@ export const memeSplitterAdapter: ToolAdapter = {
       id: "rows",
       name: "Rows",
       dataType: "number",
-      defaultValue: 2,
+      defaultValue: 4,
+      slider: { min: 1, max: 10, step: 1 },
     },
     {
       id: "cols",
       name: "Cols",
       dataType: "number",
-      defaultValue: 1,
+      defaultValue: 6,
+      slider: { min: 1, max: 10, step: 1 },
     },
   ],
   async execute(inputs, config) {
