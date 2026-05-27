@@ -11,7 +11,7 @@ export const jsonPreviewAdapter: ToolAdapter = {
     {
       id: "json",
       name: "JSON",
-      dataType: "string",
+      dataType: "json",
       defaultValue: "{}",
       multiline: true,
       hasInput: true,
@@ -20,13 +20,15 @@ export const jsonPreviewAdapter: ToolAdapter = {
   ],
   outputs: [],
   async execute(inputs, config) {
-    const jsonStr = String(inputs.json ?? config.json ?? "{}")
-    try {
-      const parsed = JSON.parse(jsonStr)
-      return { parsed }
-    } catch {
-      throw new Error("Invalid JSON")
+    const json = inputs.json ?? config.json ?? {}
+    if (typeof json === "string") {
+      try {
+        return { parsed: JSON.parse(json) }
+      } catch {
+        throw new Error("Invalid JSON")
+      }
     }
+    return { parsed: json }
   },
 }
 

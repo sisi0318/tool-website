@@ -17,18 +17,18 @@ describe("hashAdapter", () => {
   })
 
   it("SHA-256 哈希计算", async () => {
-    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "sha256", outputFormat: "hex" })
+    const result = await hashAdapter.execute({ data: "hello" }, { category: "sha2", algorithm: "sha2-256", outputFormat: "hex" })
     expect(result.hash).toBeDefined()
     expect(result.hash).toHaveLength(64)
   })
 
   it("MD5 哈希计算", async () => {
-    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "md5", outputFormat: "hex" })
+    const result = await hashAdapter.execute({ data: "hello" }, { category: "md", algorithm: "md5", outputFormat: "hex" })
     expect(result.hash).toHaveLength(32)
   })
 
   it("SHA-1 哈希计算", async () => {
-    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "sha1", outputFormat: "hex" })
+    const result = await hashAdapter.execute({ data: "hello" }, { category: "sha1", algorithm: "sha1", outputFormat: "hex" })
     expect(result.hash).toHaveLength(40)
   })
 

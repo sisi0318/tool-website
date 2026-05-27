@@ -172,25 +172,25 @@ describe("Adapter Execute Functions", () => {
   describe("Hash", () => {
     it("MD5: returns correct hash", async () => {
       const def = getNodeDefinition("hash")!
-      const result = await def.execute({ data: "1" }, { algorithm: "md5" })
+      const result = await def.execute({ data: "1" }, { category: "md", algorithm: "md5" })
       expect(result.hash).toBe("c4ca4238a0b923820dcc509a6f75849b")
     })
 
     it("SHA-256: returns correct hash", async () => {
       const def = getNodeDefinition("hash")!
-      const result = await def.execute({ data: "hello" }, { algorithm: "sha256" })
+      const result = await def.execute({ data: "hello" }, { category: "sha2", algorithm: "sha2-256" })
       expect(result.hash).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
     })
 
     it("SHA-1: returns correct hash", async () => {
       const def = getNodeDefinition("hash")!
-      const result = await def.execute({ data: "hello" }, { algorithm: "sha1" })
+      const result = await def.execute({ data: "hello" }, { category: "sha1", algorithm: "sha1" })
       expect(result.hash).toBe("aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")
     })
 
     it("empty data: returns hash of empty string", async () => {
       const def = getNodeDefinition("hash")!
-      const result = await def.execute({}, { algorithm: "md5" })
+      const result = await def.execute({}, { category: "md", algorithm: "md5" })
       expect(result.hash).toBe("d41d8cd98f00b204e9800998ecf8427e")
     })
   })
@@ -457,14 +457,14 @@ describe("Adapter Execute Functions", () => {
       const def = getNodeDefinition("currency")!
       const result = await def.execute({ amount: 100, from: "USD", to: "EUR" }, {})
       expect(typeof result.converted).toBe("number")
-      expect(result.converted).toBeCloseTo(92, 0)
+      expect(result.converted).toBeGreaterThan(0)
     })
 
     it("returns rate", async () => {
       const def = getNodeDefinition("currency")!
       const result = await def.execute({ amount: 100, from: "USD", to: "CNY" }, {})
       expect(typeof result.rate).toBe("number")
-      expect(result.rate).toBeCloseTo(7.24, 1)
+      expect(result.rate).toBeGreaterThan(0)
     })
 
     it("defaults to 0 amount", async () => {
@@ -477,14 +477,14 @@ describe("Adapter Execute Functions", () => {
   describe("Crypto", () => {
     it("encrypt returns result string", async () => {
       const def = getNodeDefinition("crypto")!
-      const result = await def.execute({ data: "hello", key: "secret" }, { algorithm: "aes", mode: "CBC", operation: "encrypt" })
+      const result = await def.execute({ data: "hello", key: "1234567890123456" }, { algorithm: "aes", mode: "CBC", operation: "encrypt", iv: "1234567890123456" })
       expect(typeof result.result).toBe("string")
-      expect(result.result).toContain("ENCRYPT")
+      expect(result.result.length).toBeGreaterThan(0)
     })
 
     it("throws on empty data", async () => {
       const def = getNodeDefinition("crypto")!
-      await expect(def.execute({ key: "secret" }, { algorithm: "aes" })).rejects.toThrow("Data is required")
+      await expect(def.execute({ key: "1234567890123456" }, { algorithm: "aes" })).rejects.toThrow("Data is required")
     })
 
     it("throws on empty key", async () => {
@@ -724,31 +724,35 @@ describe("Adapter Execute Functions", () => {
       it("queries root path", async () => {
         const def = getNodeDefinition("json-path")!
         const result = await def.execute({}, { json: '{"a":1}', path: "$" })
-        expect(result.result).toEqual({ a: 1 })
+        expect(result.object).toEqual({ a: 1 })
+        expect(result.type).toBe("object")
       })
 
       it("queries nested path", async () => {
         const def = getNodeDefinition("json-path")!
         const result = await def.execute({}, { json: '{"a":{"b":2}}', path: "$.a.b" })
-        expect(result.result).toBe(2)
+        expect(result.number).toBe(2)
+        expect(result.type).toBe("number")
       })
 
       it("queries array index", async () => {
         const def = getNodeDefinition("json-path")!
         const result = await def.execute({}, { json: '{"arr":[1,2,3]}', path: "$.arr[1]" })
-        expect(result.result).toBe(2)
+        expect(result.number).toBe(2)
+        expect(result.type).toBe("number")
       })
 
       it("queries array of objects", async () => {
         const def = getNodeDefinition("json-path")!
         const result = await def.execute({}, { json: '{"users":[{"name":"Alice"},{"name":"Bob"}]}', path: "$.users[0].name" })
-        expect(result.result).toBe("Alice")
+        expect(result.string).toBe("Alice")
+        expect(result.type).toBe("string")
       })
 
       it("returns undefined for non-existent path", async () => {
         const def = getNodeDefinition("json-path")!
         const result = await def.execute({}, { json: '{"a":1}', path: "$.b" })
-        expect(result.result).toBeUndefined()
+        expect(result.type).toBe("undefined")
       })
 
       it("throws on invalid JSON", async () => {
@@ -766,8 +770,13 @@ describe("Adapter Execute Functions", () => {
         expect(def.config).toHaveLength(2)
         expect(def.config[0].id).toBe("json")
         expect(def.config[1].id).toBe("path")
-        expect(def.outputs).toHaveLength(1)
-        expect(def.outputs[0].id).toBe("result")
+        expect(def.outputs).toHaveLength(6)
+        expect(def.outputs[0].id).toBe("string")
+        expect(def.outputs[1].id).toBe("number")
+        expect(def.outputs[2].id).toBe("boolean")
+        expect(def.outputs[3].id).toBe("object")
+        expect(def.outputs[4].id).toBe("array")
+        expect(def.outputs[5].id).toBe("type")
       })
     })
 

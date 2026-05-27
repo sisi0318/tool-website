@@ -1,4 +1,4 @@
-import { memo } from "react"
+import { memo, useEffect, useRef } from "react"
 import { Handle, Position } from "@xyflow/react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
@@ -23,7 +23,16 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
   const selectNode = useCanvasStore((s) => s.selectNode)
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
+  const executeNode = useCanvasStore((s) => s.executeNode)
   const edges = useCanvasStore((s) => s.edges)
+  const autoExecutedRef = useRef(false)
+
+  useEffect(() => {
+    if (definition && definition.config.length === 0 && !autoExecutedRef.current && !nodeOutputs && !nodeRunning) {
+      autoExecutedRef.current = true
+      executeNode(data.id)
+    }
+  }, [definition, data.id, nodeOutputs, nodeRunning, executeNode])
 
   if (!definition) return null
 

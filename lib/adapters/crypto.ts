@@ -1,4 +1,5 @@
 import { Shield } from "lucide-react"
+import CryptoJS from "crypto-js"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 
@@ -23,6 +24,16 @@ export const cryptoAdapter: ToolAdapter = {
       defaultValue: "",
       hasInput: true,
       hasOutput: false,
+    },
+    {
+      id: "iv",
+      name: "IV",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: true,
+      dependsOn: "mode",
+      dynamicOptions: (mode) => mode === "ECB" ? [] : [{ label: "16 bytes", value: "16" }],
     },
     {
       id: "algorithm",
@@ -71,6 +82,7 @@ export const cryptoAdapter: ToolAdapter = {
   async execute(inputs, config) {
     const data = String(inputs.data ?? config.data ?? "")
     const key = String(inputs.key ?? config.key ?? "")
+    const iv = String(inputs.iv ?? config.iv ?? "")
     const algorithm = String(inputs.algorithm ?? config.algorithm ?? "aes")
     const mode = String(inputs.mode ?? config.mode ?? "CBC")
     const operation = String(inputs.operation ?? config.operation ?? "encrypt")
@@ -78,9 +90,48 @@ export const cryptoAdapter: ToolAdapter = {
     if (!data) throw new Error("Data is required")
     if (!key) throw new Error("Key is required")
 
-    return {
-      result: `[${operation.toUpperCase()}] ${algorithm}-${mode}: ${data.substring(0, 20)}...`,
-      note: "Full crypto requires CryptoJS library",
+    const algoMap: Record<string, typeof CryptoJS.AES> = {
+      aes: CryptoJS.AES,
+      des: CryptoJS.DES,
+      tripledes: CryptoJS.TripleDES,
+    }
+
+    const modeMap: Record<string, typeof CryptoJS.mode.CBC> = {
+      CBC: CryptoJS.mode.CBC,
+      ECB: CryptoJS.mode.ECB,
+      CFB: CryptoJS.mode.CFB,
+      OFB: CryptoJS.mode.OFB,
+      CTR: CryptoJS.mode.CTR,
+    }
+
+    const cipher = algoMap[algorithm]
+    const cipherMode = modeMap[mode]
+
+    if (!cipher) throw new Error(`Unsupported algorithm: ${algorithm}`)
+    if (!cipherMode) throw new Error(`Unsupported mode: ${mode}`)
+
+    const keyParsed = CryptoJS.enc.Utf8.parse(key)
+    const ivParsed = iv ? CryptoJS.enc.Utf8.parse(iv) : undefined
+
+    const options: CryptoJS.CipherOption = {
+      mode: cipherMode,
+      padding: CryptoJS.pad.Pkcs7,
+    }
+
+    if (ivParsed && mode !== "ECB") {
+      options.iv = ivParsed
+    }
+
+    try {
+      if (operation === "encrypt") {
+        const encrypted = cipher.encrypt(data, keyParsed, options)
+        return { result: encrypted.toString() }
+      } else {
+        const decrypted = cipher.decrypt(data, keyParsed, options)
+        return { result: decrypted.toString(CryptoJS.enc.Utf8) }
+      }
+    } catch (error) {
+      throw new Error(`Crypto error: ${error}`)
     }
   },
 }

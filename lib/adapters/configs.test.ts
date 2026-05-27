@@ -78,16 +78,24 @@ describe("Adapter Config Validation", () => {
 })
 
 describe("Port Design Validation", () => {
-  it("hash: data is input-only, algorithm has input+output, hash is derived output", () => {
+  it("hash: data is input-only, category/algorithm are internal, outputFormat has output, hash is derived output", () => {
     const def = getNodeDefinition("hash")
     const dataField = def!.config.find((f) => f.id === "data")!
+    const categoryField = def!.config.find((f) => f.id === "category")!
     const algorithmField = def!.config.find((f) => f.id === "algorithm")!
+    const outputFormatField = def!.config.find((f) => f.id === "outputFormat")!
     
     expect(dataField.hasInput).toBe(true)
     expect(dataField.hasOutput).toBe(false)
     
-    expect(algorithmField.hasInput).toBe(true)
-    expect(algorithmField.hasOutput).toBe(true)
+    expect(categoryField.hasInput).toBe(false)
+    expect(categoryField.hasOutput).toBe(false)
+    
+    expect(algorithmField.hasInput).toBe(false)
+    expect(algorithmField.hasOutput).toBe(false)
+    
+    expect(outputFormatField.hasInput).toBe(false)
+    expect(outputFormatField.hasOutput).toBe(true)
     
     expect(def!.outputs).toHaveLength(1)
     expect(def!.outputs[0].id).toBe("hash")
