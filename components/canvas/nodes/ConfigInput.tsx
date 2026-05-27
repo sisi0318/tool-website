@@ -13,13 +13,11 @@ interface ConfigInputProps {
 }
 
 export function ConfigInput({ field, value, onChange, disabled, allConfig }: ConfigInputProps) {
-  // 处理联动选项
-  let options = field.options
+  // 处理联动选项 - 仅用于显示/隐藏，不用于替换选项
   if (field.dependsOn && field.dynamicOptions) {
     const dependentValue = allConfig[field.dependsOn]
     const dynamicOpts = field.dynamicOptions(String(dependentValue ?? ""))
     if (dynamicOpts.length === 0) return null
-    options = dynamicOpts
   }
 
   // boolean → 开关
@@ -45,10 +43,10 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
   }
 
   // 有 options → 下拉单选
-  if (options) {
+  if (field.options) {
     return (
       <SelectInput
-        options={options}
+        options={field.options}
         value={String(value ?? field.defaultValue ?? "")}
         onChange={onChange}
         disabled={disabled}

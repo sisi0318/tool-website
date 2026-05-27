@@ -4,6 +4,7 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import type { PortDefinition } from "@/lib/canvas/types"
+import { ParameterRow } from "./ParameterRow"
 
 interface ToolNodeProps {
   data: {
@@ -49,15 +50,19 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const nodeRunning = useCanvasStore((s) => s.nodeRunning[data.id])
   const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
   const selectNode = useCanvasStore((s) => s.selectNode)
+  const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
 
   if (!definition) return null
 
   const isSelected = selectedNodeId === data.id
   const Icon = definition.icon
 
+  // 分离独立参数
+  const standaloneFields = definition.config.filter((f) => !f.portId)
+
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 min-w-[160px] ${
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 min-w-[200px] max-w-[280px] ${
         nodeErrors
           ? "border-red-500"
           : isSelected
@@ -76,22 +81,33 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
         )}
       </div>
 
-      <div className="p-3">
-        {definition.inputs.length > 0 && (
-          <div className="space-y-1 mb-2">
-            {definition.inputs.map((port) => (
-              <PortHandle key={port.id} port={port} type="target" />
-            ))}
+      <div className="py-1">
+        {/* 输入端口 */}
+        {definition.inputs.map((port) => (
+          <div key={port.id} className="flex items-center gap-2 px-3 py-1 relative">
+            <PortHandle port={port} type="target" />
           </div>
-        )}
+        ))}
 
-        {definition.outputs.length > 0 && (
-          <div className="space-y-1">
-            {definition.outputs.map((port) => (
-              <PortHandle key={port.id} port={port} type="source" />
-            ))}
+        {/* 独立参数 */}
+        {standaloneFields.map((field) => (
+          <ParameterRow
+            key={field.id}
+            nodeId={data.id}
+            field={field}
+            value={data.config[field.id]}
+            onChange={(v) => updateConfig(data.id, { ...data.config, [field.id]: v })}
+            disabled={false}
+            allConfig={data.config}
+          />
+        ))}
+
+        {/* 输出端口 */}
+        {definition.outputs.map((port) => (
+          <div key={port.id} className="flex items-center justify-end gap-2 px-3 py-1 relative">
+            <PortHandle port={port} type="source" />
           </div>
-        )}
+        ))}
       </div>
 
       {nodeErrors && (

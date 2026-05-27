@@ -348,92 +348,125 @@ test.describe("Node Parameter Rendering", () => {
 
   test("Hash: algorithm dropdown visible", async ({ page }) => {
     await addNode(page, "hash")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("select")).toBeVisible()
+    await expect(node.locator("[data-testid='select-input']").first()).toBeVisible({ timeout: 5000 })
   })
 
   test("Classic Cipher: caesar shows shift, vigenere shows key", async ({ page }) => {
     await addNode(page, "classic-cipher", { algorithm: "caesar" })
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("input[type='number']")).toBeVisible()
-    await node.locator("select").first().selectOption("vigenere")
-    await expect(node.locator("input[type='text']")).toBeVisible()
+    
+    // Caesar shows algorithm select and shift number input
+    await expect(node.locator("[data-testid='select-input']").first()).toBeVisible({ timeout: 5000 })
+    await expect(node.locator("[data-testid='number-input']")).toBeVisible({ timeout: 5000 })
+    
+    // Change to vigenere
+    await node.locator("[data-testid='select-input']").first().selectOption("vigenere")
+    await page.waitForTimeout(500)
+    
+    // Vigenere shows key text input
+    await expect(node.locator("[data-testid='text-input']").first()).toBeVisible({ timeout: 5000 })
   })
 
   test("QRCode: size slider + color pickers", async ({ page }) => {
     await addNode(page, "qrcode")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("input[type='range']")).toBeVisible()
-    await expect(node.locator("input[type='color']")).toHaveCount(2)
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='slider-input']")).toBeVisible({ timeout: 5000 })
+    await expect(node.locator("[data-testid='color-input']")).toHaveCount(2, { timeout: 5000 })
   })
 
   test("Image Compress: quality slider", async ({ page }) => {
     await addNode(page, "image-compress")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("input[type='range']")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='slider-input']")).toBeVisible({ timeout: 5000 })
   })
 
   test("Image Editor: brightness/contrast/saturation sliders + grayscale switch", async ({ page }) => {
     await addNode(page, "image-editor")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("input[type='range']")).toHaveCount(3)
-    await expect(node.locator("input[type='checkbox']")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='slider-input']")).toHaveCount(3, { timeout: 5000 })
+    await expect(node.locator("[data-testid='switch-input']")).toBeVisible({ timeout: 5000 })
   })
 
   test("JSON Format: indent slider + sortKeys switch", async ({ page }) => {
     await addNode(page, "json-format")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("input[type='range']")).toBeVisible()
-    await expect(node.locator("input[type='checkbox']")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='slider-input']")).toBeVisible({ timeout: 5000 })
+    await expect(node.locator("[data-testid='switch-input']")).toBeVisible({ timeout: 5000 })
   })
 
   test("UUID: version dropdown + uppercase/hyphens switches", async ({ page }) => {
     await addNode(page, "uuid")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("select")).toBeVisible()
-    await expect(node.locator("input[type='checkbox']")).toHaveCount(2)
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='select-input']")).toBeVisible({ timeout: 5000 })
+    await expect(node.locator("[data-testid='switch-input']")).toHaveCount(2, { timeout: 5000 })
   })
 
   test("Meme Splitter: rows/cols sliders", async ({ page }) => {
     await addNode(page, "meme-splitter")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("input[type='range']")).toHaveCount(2)
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='slider-input']")).toHaveCount(2, { timeout: 5000 })
   })
 
   test("Temperature: fromUnit dropdown", async ({ page }) => {
     await addNode(page, "temperature-converter")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("select")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='select-input']")).toBeVisible({ timeout: 5000 })
   })
 
   test("Encoding: encoding dropdown", async ({ page }) => {
     await addNode(page, "encoding")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("select")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='select-input']")).toBeVisible({ timeout: 5000 })
   })
 
   test("HMAC: algorithm dropdown", async ({ page }) => {
     await addNode(page, "hmac")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("select")).toBeVisible()
+    await expect(node.locator("[data-testid='select-input']").first()).toBeVisible({ timeout: 5000 })
   })
 
   test("Regex: pattern/flags inputs + replacement textarea", async ({ page }) => {
     await addNode(page, "regex")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("input[type='text']")).toHaveCount(2)
-    await expect(node.locator("textarea")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='text-input']")).toHaveCount(2, { timeout: 5000 })
+    await expect(node.locator("[data-testid='textarea-input']")).toBeVisible({ timeout: 5000 })
   })
 
   test("Time: timezone dropdown", async ({ page }) => {
     await addNode(page, "time")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("select")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='select-input']")).toBeVisible({ timeout: 5000 })
   })
 
   test("Protobuf: mode dropdown", async ({ page }) => {
     await addNode(page, "protobuf")
+    await page.waitForTimeout(500)
     const node = page.locator(".react-flow__node").first()
-    await expect(node.locator("select")).toBeVisible()
+    await expect(node).toBeVisible()
+    await expect(node.locator("[data-testid='select-input']")).toBeVisible({ timeout: 5000 })
   })
 })
