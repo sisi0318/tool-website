@@ -26,6 +26,7 @@ interface CanvasState {
 
   saveToLocalStorage: () => void
   loadFromLocalStorage: () => void
+  clearCanvas: () => void
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -37,32 +38,39 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   selectedNodeId: null,
 
   addNode: (node) =>
-    set((state) => ({
-      nodes: [...state.nodes, node],
-    })),
+    set((state) => {
+      setTimeout(() => get().saveToLocalStorage(), 0)
+      return { nodes: [...state.nodes, node] }
+    }),
 
   removeNode: (nodeId) =>
-    set((state) => ({
-      nodes: state.nodes.filter((n) => n.id !== nodeId),
-      edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
-      nodeOutputs: Object.fromEntries(
-        Object.entries(state.nodeOutputs).filter(([k]) => k !== nodeId)
-      ),
-      nodeErrors: Object.fromEntries(
-        Object.entries(state.nodeErrors).filter(([k]) => k !== nodeId)
-      ),
-      nodeRunning: Object.fromEntries(
-        Object.entries(state.nodeRunning).filter(([k]) => k !== nodeId)
-      ),
-      selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
-    })),
+    set((state) => {
+      setTimeout(() => get().saveToLocalStorage(), 0)
+      return {
+        nodes: state.nodes.filter((n) => n.id !== nodeId),
+        edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+        nodeOutputs: Object.fromEntries(
+          Object.entries(state.nodeOutputs).filter(([k]) => k !== nodeId)
+        ),
+        nodeErrors: Object.fromEntries(
+          Object.entries(state.nodeErrors).filter(([k]) => k !== nodeId)
+        ),
+        nodeRunning: Object.fromEntries(
+          Object.entries(state.nodeRunning).filter(([k]) => k !== nodeId)
+        ),
+        selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+      }
+    }),
 
   updateNodePosition: (nodeId, position) =>
-    set((state) => ({
-      nodes: state.nodes.map((n) =>
-        n.id === nodeId ? { ...n, position } : n
-      ),
-    })),
+    set((state) => {
+      setTimeout(() => get().saveToLocalStorage(), 0)
+      return {
+        nodes: state.nodes.map((n) =>
+          n.id === nodeId ? { ...n, position } : n
+        ),
+      }
+    }),
 
   updateNodeConfig: (nodeId, config) => {
     set((state) => ({
@@ -70,19 +78,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         n.id === nodeId ? { ...n, config } : n
       ),
     }))
+    setTimeout(() => get().saveToLocalStorage(), 0)
     // Auto-execute the node and downstream nodes
     setTimeout(() => get().executeNode(nodeId), 0)
   },
 
   addEdge: (edge) =>
-    set((state) => ({
-      edges: [...state.edges, edge],
-    })),
+    set((state) => {
+      setTimeout(() => get().saveToLocalStorage(), 0)
+      return { edges: [...state.edges, edge] }
+    }),
 
   removeEdge: (edgeId) =>
-    set((state) => ({
-      edges: state.edges.filter((e) => e.id !== edgeId),
-    })),
+    set((state) => {
+      setTimeout(() => get().saveToLocalStorage(), 0)
+      return { edges: state.edges.filter((e) => e.id !== edgeId) }
+    }),
 
   selectNode: (nodeId) =>
     set({ selectedNodeId: nodeId }),
@@ -153,5 +164,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         set({ nodes: nodes ?? [], edges: edges ?? [] })
       } catch {}
     }
+  },
+
+  clearCanvas: () => {
+    set({
+      nodes: [],
+      edges: [],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+      selectedNodeId: null,
+    })
+    setTimeout(() => get().saveToLocalStorage(), 0)
   },
 }))

@@ -22,7 +22,7 @@ export default function CanvasContent() {
   }, [loadFromLocalStorage])
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-screen">
       <ReactFlowProvider>
         <NodePalette />
         <div className="flex-1">
