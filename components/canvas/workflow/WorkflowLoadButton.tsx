@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Button } from "@/components/ui/button"
 import { FolderOpen } from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { LoadDialog } from "./LoadDialog"
@@ -48,8 +47,12 @@ export function WorkflowLoadButton() {
   }
 
   return (
-    <Button onClick={handleOpen} variant="outline" size="sm" className="flex-1">
-      <FolderOpen className="w-4 h-4 mr-1" /> 读取
-    </Button>
+    <div
+      onClick={handleOpen}
+      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    >
+      <FolderOpen className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+      <span className="text-sm text-gray-700 dark:text-gray-300">读取</span>
+    </div>
   )
 }
