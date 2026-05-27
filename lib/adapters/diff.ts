@@ -31,6 +31,7 @@ export const diffAdapter: ToolAdapter = {
     { id: "added", name: "Added", dataType: "number" },
     { id: "removed", name: "Removed", dataType: "number" },
     { id: "unchanged", name: "Unchanged", dataType: "number" },
+    { id: "diff", name: "Diff", dataType: "json" },
     { id: "changes", name: "Changes", dataType: "json" },
   ],
   async execute(inputs, config) {
@@ -55,10 +56,19 @@ export const diffAdapter: ToolAdapter = {
       }
     }
 
+    const added = changes.filter((c) => c.type === "add").length
+    const removed = changes.filter((c) => c.type === "remove").length
+    const unchanged = changes.filter((c) => c.type === "same").length
+
     return {
-      added: changes.filter((c) => c.type === "add").length,
-      removed: changes.filter((c) => c.type === "remove").length,
-      unchanged: changes.filter((c) => c.type === "same").length,
+      added,
+      removed,
+      unchanged,
+      diff: {
+        text1,
+        text2,
+        changes,
+      },
       changes,
     }
   },
