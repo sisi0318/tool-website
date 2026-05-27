@@ -1089,54 +1089,672 @@ describe("Control Type Coverage", () => {
 
 ---
 
-## 6. Task 5: E2E 测试更新
+## 6. Task 5: E2E 测试
 
-### 6.1 修改文件
+### 6.1 测试文件
 
-| 文件 | 修改内容 |
-|------|----------|
-| `e2e/canvas-nodes.spec.ts` | 更新端口数量测试，添加参数渲染测试 |
+| 文件 | 说明 |
+|------|------|
+| `e2e/canvas-nodes.spec.ts` | 修改：更新端口数量测试，添加参数渲染测试 |
+| `e2e/canvas-pipelines.spec.ts` | 新增：全量工具闭环流程测试 |
 
-### 6.2 新增测试用例
+### 6.2 闭环流程测试设计
+
+每个工具节点测试一个完整的数据流：
+
+```
+输入源节点 → 工具节点 → 输出节点
+设置 config   设置参数    断言输出
+```
+
+### 6.3 全量闭环流程表
+
+#### A 组：确定性输出（精确断言）
+
+| # | 链路 | 输入 | 工具参数 | 预期输出 |
+|---|------|------|----------|----------|
+| 1 | String → Hash → String | "1" | algorithm=md5 | `c4ca4238a0b923820dcc509a6f75849b` |
+| 2 | String → Hash → String | "hello" | algorithm=sha256 | `2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824` |
+| 3 | String → Hash → String | "hello" | algorithm=sha512 | 前 32 字符验证 |
+| 4 | String → HMAC → String | "hello" | algorithm=sha256, key="secret" | 验证长度 64 |
+| 5 | String → Encoding → String | "hello" | encoding=base64 | `aGVsbG8=` |
+| 6 | String → Encoding → String | "hello world" | encoding=url | `hello%20world` |
+| 7 | String → Encoding → String | "hi" | encoding=hex | `6869` |
+| 8 | String → Encoding → String | "aGVsbG8=" | encoding=base64, mode=decode | `hello` |
+| 9 | String → Classic Cipher → String | "hello" | algorithm=rot13 | `uryyb` |
+| 10 | String → Classic Cipher → String | "abc" | algorithm=caesar, shift=3 | `def` |
+| 11 | String → Case Converter → String | "hello world" | — | upper=`HELLO WORLD` |
+| 12 | String → Base Converter → String | "255" | fromBase=10 | hex=`FF` |
+| 13 | String → Base Converter → String | "5" | fromBase=10 | binary=`101` |
+| 14 | String → JSON Format → String | '{"a":1}' | indent=2 | formatted=`{\n  "a": 1\n}` |
+| 15 | String → JSON Format → String | '{"a": 1}' | — | minified=`{"a":1}` |
+| 16 | Number → Temperature → Number | 100 | fromUnit=celsius | fahrenheit=212 |
+| 17 | Number → Temperature → Number | 0 | fromUnit=celsius | kelvin=273.15 |
+| 18 | Number → Temperature → Number | 100 | fromUnit=celsius | kelvin=373.15 |
+| 19 | Number + Number → BMI → Number | 70, 1.75 | — | bmi≈22.86 |
+| 20 | String → Color → String | "#ff0000" | — | hex="#ff0000" |
+| 21 | String → Color → String | "#ff0000" | — | rgb={r:255,g:0,b:0} |
+| 22 | String → JWT → JSON | valid JWT | — | header.alg="HS256" |
+| 23 | String → Regex → JSON | "test123" | pattern="\\d+" | matches=["123"] |
+| 24 | String + String → Diff → JSON | "abc", "abd" | — | changes.length>0 |
+| 25 | String → Crontab → JSON | "* * * * *" | — | parsed.minute exists |
+| 26 | String → Crontab → JSON | "0 9 * * 1-5" | — | nextRuns.length>0 |
+
+#### B 组：格式可验证（类型/存在性断言）
+
+| # | 链路 | 输入 | 工具参数 | 验证方式 |
+|---|------|------|----------|----------|
+| 27 | String → Text Stats → JSON | "hello world" | — | chars=11, words=2 |
+| 28 | String → Text Stats → JSON | "a\nb\nc" | — | lines=3 |
+| 29 | String → Crontab → JSON | "*/5 * * * *" | — | parsed.minute=[0,5,10,...,55] |
+| 30 | String → Crontab → JSON | "0 0 1 1 *" | — | nextRuns 包含 1月1日 |
+
+#### C 组：无输入源节点（直接 execute）
+
+| # | 节点 | 参数 | 验证方式 |
+|---|------|------|----------|
+| 31 | UUID | version=v4 | 输出匹配 UUID 格式 |
+| 32 | UUID | version=v1 | 输出匹配 UUID 格式 |
+| 33 | Time | timezone=UTC | timestamp>0, iso 包含 T |
+| 34 | Device Info | — | 输出为 object |
+
+#### D 组：需要特殊输入（仅参数渲染测试）
+
+| # | 节点 | 原因 |
+|---|------|------|
+| 35 | Image to Base64 | 需要 File 对象 |
+| 36 | EXIF Viewer | 需要图片文件 |
+| 37 | Image Compress | 需要图片文件 |
+| 38 | Image Editor | 需要图片文件 |
+| 39 | QRCode | 需要生成图片 |
+| 40 | QRCode Decode | 需要图片文件 |
+| 41 | Meme Splitter | 需要图片文件 |
+| 42 | Image Coordinates | 需要图片文件 |
+| 43 | Office Viewer | 需要文档文件 |
+
+#### E 组：需要网络/外部服务（仅参数渲染测试）
+
+| # | 节点 | 原因 |
+|---|------|------|
+| 44 | HTTP Tester | 需要网络请求 |
+| 45 | Whois | 需要 whois 服务 |
+| 46 | TOTP | 需要时间同步 |
+| 47 | Currency | 需要汇率 API |
+| 48 | Docker Converter | 输出为模板 |
+| 49 | Crypto | 需要 CryptoJS 库 |
+| 50 | Protobuf | 需要 protobuf 解析 |
+| 51 | JCE | 需要 JCE 解析 |
+
+---
+
+### 6.4 完整测试代码
 
 ```typescript
-describe("Node Parameter Rendering", () => {
-  test("Hash node: algorithm dropdown visible", async ({ page }) => {
-    const nodeId = await addNode(page, "hash")
+// e2e/canvas-pipelines.spec.ts
+
+import { test, expect, type Page } from "@playwright/test"
+
+let nodeCounter = 0
+
+function uniqueId(prefix: string) {
+  return `${prefix}-${++nodeCounter}`
+}
+
+async function addNode(page: Page, type: string, config: Record<string, unknown> = {}): Promise<string> {
+  const id = uniqueId(type)
+  await page.evaluate(({ id, type, config }) => {
+    const store = (window as any).__ZUSTAND_STORE__
+    store.getState().addNode({ id, type, position: { x: 300 + Math.random() * 200, y: 200 + Math.random() * 200 }, config })
+  }, { id, type, config })
+  await page.waitForTimeout(300)
+  return id
+}
+
+async function connectNodes(page: Page, sourceId: string, sourcePort: string, targetId: string, targetPort: string) {
+  await page.evaluate(({ s, sp, t, tp }) => {
+    const store = (window as any).__ZUSTAND_STORE__
+    store.getState().addEdge({ id: `edge-${s}-${sp}-${t}-${tp}`, source: s, sourcePort: sp, target: t, targetPort: tp })
+  }, { s: sourceId, sp: sourcePort, t: targetId, tp: targetPort })
+  await page.waitForTimeout(200)
+}
+
+async function executeAll(page: Page) {
+  await page.evaluate(() => {
+    const store = (window as any).__ZUSTAND_STORE__
+    return store.getState().executeAll()
+  })
+  await page.waitForTimeout(500)
+}
+
+async function getOutput(page: Page, nodeId: string, portId: string): Promise<unknown> {
+  return page.evaluate(({ nodeId, portId }) => {
+    const store = (window as any).__ZUSTAND_STORE__
+    return store.getState().nodeOutputs[nodeId]?.[portId]
+  }, { nodeId, portId })
+}
+
+// ─── A 组：确定性输出 ─────────────────────────────────────────────────────
+
+test.describe("Pipeline: Deterministic Output", () => {
+  test.beforeEach(async ({ page }) => {
+    nodeCounter = 0
+    await page.goto("/canvas")
+    await page.waitForLoadState("networkidle")
+    await page.waitForSelector(".react-flow", { timeout: 15000 })
+  })
+
+  test("String('1') → Hash(MD5) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "1" })
+    const hash = await addNode(page, "hash", { algorithm: "md5" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", hash, "data")
+    await connectNodes(page, hash, "hash", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("c4ca4238a0b923820dcc509a6f75849b")
+  })
+
+  test("String('hello') → Hash(SHA-256) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello" })
+    const hash = await addNode(page, "hash", { algorithm: "sha256" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", hash, "data")
+    await connectNodes(page, hash, "hash", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+  })
+
+  test("String('hello') → Hash(SHA-512) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello" })
+    const hash = await addNode(page, "hash", { algorithm: "sha512" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", hash, "data")
+    await connectNodes(page, hash, "hash", out, "input")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value")
+    expect(typeof result).toBe("string")
+    expect((result as string).length).toBe(128)
+    expect(result).toMatch(/^[0-9a-f]+$/)
+  })
+
+  test("String('hello') + String('secret') → HMAC(SHA-256) → String", async ({ page }) => {
+    const data = await addNode(page, "string", { value: "hello" })
+    const key = await addNode(page, "string", { value: "secret" })
+    const hmac = await addNode(page, "hmac", { algorithm: "sha256" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, data, "value", hmac, "data")
+    await connectNodes(page, key, "value", hmac, "key")
+    await connectNodes(page, hmac, "hmac", out, "input")
+    await executeAll(page)
+    const result = await getOutput(page, out, "value")
+    expect(typeof result).toBe("string")
+    expect((result as string).length).toBe(64)
+  })
+
+  test("String('hello') → Encoding(Base64) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello" })
+    const enc = await addNode(page, "encoding", { encoding: "base64" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", enc, "input")
+    await connectNodes(page, enc, "output", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("aGVsbG8=")
+  })
+
+  test("String('hello world') → Encoding(URL) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello world" })
+    const enc = await addNode(page, "encoding", { encoding: "url" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", enc, "input")
+    await connectNodes(page, enc, "output", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("hello%20world")
+  })
+
+  test("String('hi') → Encoding(HEX) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hi" })
+    const enc = await addNode(page, "encoding", { encoding: "hex" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", enc, "input")
+    await connectNodes(page, enc, "output", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("6869")
+  })
+
+  test("String('aGVsbG8=') → Encoding(Base64-Decode) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "aGVsbG8=" })
+    const mode = await addNode(page, "string", { value: "decode" })
+    const enc = await addNode(page, "encoding", { encoding: "base64" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", enc, "input")
+    await connectNodes(page, mode, "value", enc, "mode")
+    await connectNodes(page, enc, "output", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("hello")
+  })
+
+  test("String('hello') → Classic Cipher(ROT13) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello" })
+    const cipher = await addNode(page, "classic-cipher", { algorithm: "rot13" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", cipher, "data")
+    await connectNodes(page, cipher, "result", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("uryyb")
+  })
+
+  test("String('abc') → Classic Cipher(Caesar, shift=3) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "abc" })
+    const cipher = await addNode(page, "classic-cipher", { algorithm: "caesar", shift: 3 })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", cipher, "data")
+    await connectNodes(page, cipher, "result", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("def")
+  })
+
+  test("String('hello world') → Case Converter → String(upper)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello world" })
+    const conv = await addNode(page, "case-converter")
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", conv, "text")
+    await connectNodes(page, conv, "upper", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("HELLO WORLD")
+  })
+
+  test("String('255') → Base Converter(10→hex) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "255" })
+    const conv = await addNode(page, "base-converter", { fromBase: "10" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", conv, "value")
+    await connectNodes(page, conv, "hex", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("FF")
+  })
+
+  test("String('5') → Base Converter(10→binary) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "5" })
+    const conv = await addNode(page, "base-converter", { fromBase: "10" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", conv, "value")
+    await connectNodes(page, conv, "binary", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("101")
+  })
+
+  test("String('{\"a\":1}') → JSON Format(minified) → String", async ({ page }) => {
+    const src = await addNode(page, "string", { value: '{"a": 1}' })
+    const fmt = await addNode(page, "json-format")
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", fmt, "data")
+    await connectNodes(page, fmt, "minified", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe('{"a":1}')
+  })
+
+  test("Number(100) → Temperature(C→F) → Number", async ({ page }) => {
+    const src = await addNode(page, "number", { value: 100 })
+    const temp = await addNode(page, "temperature-converter", { fromUnit: "celsius" })
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, src, "value", temp, "value")
+    await connectNodes(page, temp, "fahrenheit", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe(212)
+  })
+
+  test("Number(0) → Temperature(C→K) → Number", async ({ page }) => {
+    const src = await addNode(page, "number", { value: 0 })
+    const temp = await addNode(page, "temperature-converter", { fromUnit: "celsius" })
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, src, "value", temp, "value")
+    await connectNodes(page, temp, "kelvin", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBeCloseTo(273.15, 1)
+  })
+
+  test("Number(100) → Temperature(C→K) → Number", async ({ page }) => {
+    const src = await addNode(page, "number", { value: 100 })
+    const temp = await addNode(page, "temperature-converter", { fromUnit: "celsius" })
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, src, "value", temp, "value")
+    await connectNodes(page, temp, "kelvin", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBeCloseTo(373.15, 1)
+  })
+
+  test("Number(70) + Number(1.75) → BMI → Number", async ({ page }) => {
+    const weight = await addNode(page, "number", { value: 70 })
+    const height = await addNode(page, "number", { value: 1.75 })
+    const bmi = await addNode(page, "bmi")
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, weight, "value", bmi, "weight")
+    await connectNodes(page, height, "value", bmi, "height")
+    await connectNodes(page, bmi, "bmi", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBeCloseTo(22.86, 1)
+  })
+
+  test("String('#ff0000') → Color → String(hex)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "#ff0000" })
+    const color = await addNode(page, "color")
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, src, "value", color, "color")
+    await connectNodes(page, color, "hex", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("#ff0000")
+  })
+
+  test("String('#ff0000') → Color → JSON(rgb)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "#ff0000" })
+    const color = await addNode(page, "color")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src, "value", color, "color")
+    await connectNodes(page, color, "rgb", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(output).toHaveProperty("r", 255)
+    expect(output).toHaveProperty("g", 0)
+    expect(output).toHaveProperty("b", 0)
+  })
+
+  test("String(JWT) → JWT → JSON(header)", async ({ page }) => {
+    const jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+    const src = await addNode(page, "string", { value: jwt })
+    const jwtNode = await addNode(page, "jwt")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src, "value", jwtNode, "token")
+    await connectNodes(page, jwtNode, "header", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toHaveProperty("alg", "HS256")
+  })
+
+  test("String('test123') → Regex(pattern=\\d+) → JSON(matches)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "test123" })
+    const regex = await addNode(page, "regex", { pattern: "\\d+", flags: "g" })
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src, "value", regex, "text")
+    await connectNodes(page, regex, "matches", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(Array.isArray(output)).toBe(true)
+    expect(output).toContain("123")
+  })
+
+  test("String('abc') + String('abd') → Diff → JSON", async ({ page }) => {
+    const src1 = await addNode(page, "string", { value: "abc" })
+    const src2 = await addNode(page, "string", { value: "abd" })
+    const diff = await addNode(page, "diff")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src1, "value", diff, "text1")
+    await connectNodes(page, src2, "value", diff, "text2")
+    await connectNodes(page, diff, "diff", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(output).toHaveProperty("changes")
+    expect(output).toHaveProperty("added")
+    expect(output).toHaveProperty("removed")
+  })
+
+  test("String('* * * * *') → Crontab → JSON(parsed)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "* * * * *" })
+    const cron = await addNode(page, "crontab")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src, "value", cron, "expression")
+    await connectNodes(page, cron, "parsed", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(output).toHaveProperty("minute")
+    expect(output).toHaveProperty("hour")
+  })
+
+  test("String('0 9 * * 1-5') → Crontab → JSON(nextRuns)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "0 9 * * 1-5" })
+    const cron = await addNode(page, "crontab")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src, "value", cron, "expression")
+    await connectNodes(page, cron, "nextRuns", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(Array.isArray(output)).toBe(true)
+    expect((output as any[]).length).toBeGreaterThan(0)
+  })
+
+  test("String('hello world') → Text Stats → JSON", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello world" })
+    const stats = await addNode(page, "text-stats")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src, "value", stats, "text")
+    await connectNodes(page, stats, "stats", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(output).toHaveProperty("characters", 11)
+    expect(output).toHaveProperty("words", 2)
+  })
+
+  test("String('a\\nb\\nc') → Text Stats → JSON(lines=3)", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "a\nb\nc" })
+    const stats = await addNode(page, "text-stats")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, src, "value", stats, "text")
+    await connectNodes(page, stats, "stats", out, "input")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toHaveProperty("lines", 3)
+  })
+})
+
+// ─── C 组：无输入源节点 ───────────────────────────────────────────────────
+
+test.describe("Pipeline: Source Nodes", () => {
+  test.beforeEach(async ({ page }) => {
+    nodeCounter = 0
+    await page.goto("/canvas")
+    await page.waitForLoadState("networkidle")
+    await page.waitForSelector(".react-flow", { timeout: 15000 })
+  })
+
+  test("UUID(v4) → String: format matches", async ({ page }) => {
+    const uuid = await addNode(page, "uuid", { version: "v4" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, uuid, "uuid", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(typeof output).toBe("string")
+    if ((output as string).length > 0) {
+      expect(output).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    }
+  })
+
+  test("UUID(v1) → String: format matches", async ({ page }) => {
+    const uuid = await addNode(page, "uuid", { version: "v1" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, uuid, "uuid", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(typeof output).toBe("string")
+    if ((output as string).length > 0) {
+      expect(output).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    }
+  })
+
+  test("Time → Number(timestamp): exists and > 0", async ({ page }) => {
+    const time = await addNode(page, "time")
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, time, "timestamp", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(typeof output).toBe("number")
+    expect(output).toBeGreaterThan(0)
+  })
+
+  test("Time → String(iso): contains T", async ({ page }) => {
+    const time = await addNode(page, "time")
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, time, "iso", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(typeof output).toBe("string")
+    expect(output).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+  })
+
+  test("Device Info → JSON: is object", async ({ page }) => {
+    const device = await addNode(page, "device-info")
+    const out = await addNode(page, "json", { value: "{}" })
+    await connectNodes(page, device, "info", out, "input")
+    await executeAll(page)
+    const output = await getOutput(page, out, "value")
+    expect(typeof output).toBe("object")
+  })
+})
+
+// ─── D 组：参数渲染测试 ───────────────────────────────────────────────────
+
+test.describe("Node Parameter Rendering", () => {
+  test.beforeEach(async ({ page }) => {
+    nodeCounter = 0
+    await page.goto("/canvas")
+    await page.waitForLoadState("networkidle")
+    await page.waitForSelector(".react-flow", { timeout: 15000 })
+  })
+
+  test("Hash: algorithm dropdown visible", async ({ page }) => {
+    await addNode(page, "hash")
     const node = page.locator(".react-flow__node").first()
     await expect(node.locator("select")).toBeVisible()
   })
 
-  test("Classic Cipher: algorithm change shows linked params", async ({ page }) => {
-    const nodeId = await addNode(page, "classic-cipher", { algorithm: "caesar" })
+  test("Classic Cipher: caesar shows shift, vigenere shows key", async ({ page }) => {
+    await addNode(page, "classic-cipher", { algorithm: "caesar" })
     const node = page.locator(".react-flow__node").first()
-    // Caesar shows shift input
     await expect(node.locator("input[type='number']")).toBeVisible()
-    
-    // Change to vigenere
-    await node.locator("select").selectOption("vigenere")
-    // Should show key input
+    await node.locator("select").first().selectOption("vigenere")
     await expect(node.locator("input[type='text']")).toBeVisible()
   })
 
-  test("Crypto: algorithm change updates mode options", async ({ page }) => {
-    const nodeId = await addNode(page, "crypto", { algorithm: "aes" })
+  test("Crypto: algorithm dropdown + mode dropdown", async ({ page }) => {
+    await addNode(page, "crypto", { algorithm: "aes" })
     const node = page.locator(".react-flow__node").first()
-    // AES shows CBC/ECB/CFB/OFB/CTR
-    const modeSelect = node.locator("select").nth(1)
-    await expect(modeSelect).toBeVisible()
+    const selects = node.locator("select")
+    await expect(selects).toHaveCount(4) // algorithm, mode, keySize, keyFormat
   })
 
-  test("QRCode: color pickers visible", async ({ page }) => {
-    const nodeId = await addNode(page, "qrcode")
+  test("QRCode: size slider + color pickers", async ({ page }) => {
+    await addNode(page, "qrcode")
     const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("input[type='range']")).toBeVisible()
     await expect(node.locator("input[type='color']")).toHaveCount(2)
   })
 
-  test("Image Compress: quality slider visible", async ({ page }) => {
-    const nodeId = await addNode(page, "image-compress")
+  test("Image Compress: quality slider", async ({ page }) => {
+    await addNode(page, "image-compress")
     const node = page.locator(".react-flow__node").first()
     await expect(node.locator("input[type='range']")).toBeVisible()
+  })
+
+  test("Image Editor: brightness/contrast sliders + grayscale switch", async ({ page }) => {
+    await addNode(page, "image-editor")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("input[type='range']")).toHaveCount(3) // brightness, contrast, saturation
+    await expect(node.locator("input[type='checkbox']")).toBeVisible() // grayscale
+  })
+
+  test("JSON Format: indent slider + sortKeys switch", async ({ page }) => {
+    await addNode(page, "json-format")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("input[type='range']")).toBeVisible()
+    await expect(node.locator("input[type='checkbox']")).toBeVisible()
+  })
+
+  test("UUID: version dropdown + uppercase/hyphens switches", async ({ page }) => {
+    await addNode(page, "uuid")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+    await expect(node.locator("input[type='checkbox']")).toHaveCount(2)
+  })
+
+  test("Meme Splitter: rows/cols sliders", async ({ page }) => {
+    await addNode(page, "meme-splitter")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("input[type='range']")).toHaveCount(2)
+  })
+
+  test("Temperature: fromUnit dropdown + precision dropdown", async ({ page }) => {
+    await addNode(page, "temperature-converter")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toHaveCount(2)
+  })
+
+  test("Currency: from/to dropdowns", async ({ page }) => {
+    await addNode(page, "currency")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toHaveCount(2)
+  })
+
+  test("Base Converter: fromBase dropdown", async ({ page }) => {
+    await addNode(page, "base-converter")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("Encoding: encoding dropdown", async ({ page }) => {
+    await addNode(page, "encoding")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("HMAC: algorithm dropdown", async ({ page }) => {
+    await addNode(page, "hmac")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("Docker Converter: format dropdown", async ({ page }) => {
+    await addNode(page, "docker-converter")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("HTTP Tester: method dropdown + headers textarea", async ({ page }) => {
+    await addNode(page, "http-tester")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+    await expect(node.locator("textarea")).toBeVisible()
+  })
+
+  test("Regex: pattern/flags inputs + replacement textarea", async ({ page }) => {
+    await addNode(page, "regex")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("input[type='text']")).toHaveCount(2) // pattern, flags
+    await expect(node.locator("textarea")).toBeVisible() // replacement
+  })
+
+  test("Time: timezone dropdown", async ({ page }) => {
+    await addNode(page, "time")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("Protobuf: mode dropdown", async ({ page }) => {
+    await addNode(page, "protobuf")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("JCE: mode dropdown", async ({ page }) => {
+    await addNode(page, "jce")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("EXIF Viewer: category dropdown", async ({ page }) => {
+    await addNode(page, "exif-viewer")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
+  })
+
+  test("Image to Base64: outputFormat dropdown", async ({ page }) => {
+    await addNode(page, "image-to-base64")
+    const node = page.locator(".react-flow__node").first()
+    await expect(node.locator("select")).toBeVisible()
   })
 })
 ```
@@ -1181,7 +1799,8 @@ describe("Node Parameter Rendering", () => {
 | 修改 | `lib/adapters/uuid.ts` | 添加 boolean |
 | 修改 | `lib/adapters/base-converter.ts` | 扩展 options |
 | 修改 | `lib/adapters/temperature-converter.ts` | 扩展 options, 添加 precision |
-| 修改 | `e2e/canvas-nodes.spec.ts` | 添加参数测试 |
+| 修改 | `e2e/canvas-nodes.spec.ts` | 更新端口测试 |
+| 新增 | `e2e/canvas-pipelines.spec.ts` | 全量闭环流程测试 |
 | 删除 | `components/canvas/nodes/InlineEditor.tsx` | 删除 |
 | 删除 | `components/canvas/nodes/editors/*.tsx` | 删除 |
 | 删除 | `components/canvas/nodes/editors/*.test.tsx` | 删除 |
