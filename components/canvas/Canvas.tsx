@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useEffect } from "react"
 import {
   ReactFlow,
   Background,
@@ -9,9 +9,9 @@ import {
   addEdge,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Connection,
   type NodeTypes,
-  type EdgeTypes,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { useCanvasStore } from "@/lib/canvas/store"
@@ -29,9 +29,11 @@ export function Canvas() {
   const {
     nodes: storeNodes,
     edges: storeEdges,
+    addNode,
     addEdge: addStoreEdge,
     updateNodePosition,
   } = useCanvasStore()
+  const { screenToFlowPosition } = useReactFlow()
 
   const flowNodes = useMemo(
     () =>
@@ -64,6 +66,14 @@ export function Canvas() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges)
+
+  useEffect(() => {
+    setNodes(flowNodes)
+  }, [flowNodes, setNodes])
+
+  useEffect(() => {
+    setEdges(flowEdges)
+  }, [flowEdges, setEdges])
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -120,14 +130,44 @@ export function Canvas() {
     [onNodesChange, updateNodePosition]
   )
 
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+  }, [])
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const type = event.dataTransfer.getData("application/canvas-node")
+      if (!type) return
+
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      })
+
+      const newNode = {
+        id: `node-${Date.now()}`,
+        type,
+        position,
+        config: {},
+      }
+      addNode(newNode)
+    },
+    [screenToFlowPosition, addNode]
+  )
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full" data-testid="canvas-drop-zone">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         nodeTypes={nodeTypes}
         fitView
       >

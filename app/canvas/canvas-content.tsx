@@ -10,6 +10,10 @@ import { registerAllAdapters } from "@/lib/adapters"
 
 registerAllAdapters()
 
+if (typeof window !== "undefined") {
+  (window as any).__ZUSTAND_STORE__ = useCanvasStore
+}
+
 export default function CanvasContent() {
   const loadFromLocalStorage = useCanvasStore((s) => s.loadFromLocalStorage)
 
