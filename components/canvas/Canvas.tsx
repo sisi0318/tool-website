@@ -221,8 +221,14 @@ export function Canvas() {
         fitView
       >
         <Background />
-        <Controls />
-        <MiniMap />
+        <Controls
+          className="!bg-gray-800 !border-gray-700 [&>button]:!bg-gray-700 [&>button]:!border-gray-600 [&>button]:!text-gray-200 [&>button:hover]:!bg-gray-600"
+        />
+        <MiniMap
+          className="!bg-gray-800 !border-gray-700"
+          nodeColor="#4b5563"
+          maskColor="rgba(0, 0, 0, 0.5)"
+        />
       </ReactFlow>
     </div>
   )
