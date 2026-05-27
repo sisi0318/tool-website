@@ -5,6 +5,7 @@ import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import type { ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
+import { JsonTreeViewer } from "./JsonTreeViewer"
 
 interface ToolNodeProps {
   data: {
@@ -174,6 +175,33 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
           </div>
         )}
       </div>
+
+      {/* Preview Content */}
+      {(data.type === "string-preview" || data.type === "json-preview" || data.type === "image-preview") && (
+        <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700">
+          {data.type === "string-preview" && nodeOutputs?.content && (
+            <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded max-h-32 overflow-auto">
+              <pre className="text-[10px] whitespace-pre-wrap break-words">
+                {String(nodeOutputs.content)}
+              </pre>
+            </div>
+          )}
+          {data.type === "json-preview" && nodeOutputs?.parsed && (
+            <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded max-h-48 overflow-auto">
+              <JsonTreeViewer data={nodeOutputs.parsed} />
+            </div>
+          )}
+          {data.type === "image-preview" && nodeOutputs?.file && (
+            <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded">
+              <img
+                src={URL.createObjectURL(nodeOutputs.file as File)}
+                alt="Preview"
+                className="max-w-full max-h-48 object-contain"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {nodeErrors && (
         <div className="px-3 py-2 border-t border-red-200 bg-red-50 dark:bg-red-900/20 rounded-b-lg">

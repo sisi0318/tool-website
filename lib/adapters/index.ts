@@ -6,6 +6,7 @@ import { registerEncodingAdapter } from "./encoding"
 import { registerClassicCipherAdapter } from "./classic-cipher"
 import { registerJwtAdapter } from "./jwt"
 import { registerJsonFormatAdapter } from "./json-format"
+import { registerJsonPathAdapter } from "./json-path"
 import { registerProtobufAdapter } from "./protobuf"
 import { registerJceAdapter } from "./jce"
 import { registerImageToBase64Adapter } from "./image-to-base64"
@@ -34,13 +35,20 @@ import { registerBmiAdapter } from "./bmi"
 import { registerDeviceInfoAdapter } from "./device-info"
 import { registerOfficeViewerAdapter } from "./office-viewer"
 import { registerTimeAdapter } from "./time"
+import { registerBase64ToFileAdapter } from "./base64-to-file"
+import { registerFileToBase64Adapter } from "./file-to-base64"
+import { registerFileToStringAdapter } from "./file-to-string"
+import { registerStringToFileAdapter } from "./string-to-file"
+import { registerStringPreviewAdapter } from "./string-preview"
+import { registerJsonPreviewAdapter } from "./json-preview"
+import { registerImagePreviewAdapter } from "./image-preview"
 import { registerNode } from "../canvas/registry"
 import type { ToolAdapter } from "./types"
 
 export type { ToolAdapter }
 
 export function registerAllAdapters(): void {
-  // Basic (4)
+  // Basic (5)
   registerBasicNodes()
   
   // Crypto (6)
@@ -51,10 +59,15 @@ export function registerAllAdapters(): void {
   registerClassicCipherAdapter()
   registerJwtAdapter()
   
-  // Data (3)
+  // Data (8)
   registerJsonFormatAdapter()
+  registerJsonPathAdapter()
   registerProtobufAdapter()
   registerJceAdapter()
+  registerBase64ToFileAdapter()
+  registerFileToBase64Adapter()
+  registerFileToStringAdapter()
+  registerStringToFileAdapter()
   
   // Image (8)
   registerImageToBase64Adapter()
@@ -87,8 +100,11 @@ export function registerAllAdapters(): void {
   registerCurrencyAdapter()
   registerBmiAdapter()
   
-  // Viewer (3)
+  // Viewer (6)
   registerDeviceInfoAdapter()
   registerOfficeViewerAdapter()
   registerTimeAdapter()
+  registerStringPreviewAdapter()
+  registerJsonPreviewAdapter()
+  registerImagePreviewAdapter()
 }
