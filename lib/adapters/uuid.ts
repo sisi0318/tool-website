@@ -1,4 +1,4 @@
-import { UUID } from "lucide-react"
+import { Fingerprint } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { randomUUID } from "crypto"
@@ -7,7 +7,7 @@ export const uuidAdapter: ToolAdapter = {
   type: "uuid",
   category: "utility",
   label: "UUID",
-  icon: UUID,
+  icon: Fingerprint,
   inputs: [],
   outputs: [{ id: "uuid", name: "UUID", dataType: "string" }],
   config: [
