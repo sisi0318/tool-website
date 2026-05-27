@@ -64,12 +64,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       ),
     })),
 
-  updateNodeConfig: (nodeId, config) =>
+  updateNodeConfig: (nodeId, config) => {
     set((state) => ({
       nodes: state.nodes.map((n) =>
         n.id === nodeId ? { ...n, config } : n
       ),
-    })),
+    }))
+    // Auto-execute the node and downstream nodes
+    setTimeout(() => get().executeNode(nodeId), 0)
+  },
 
   addEdge: (edge) =>
     set((state) => ({
