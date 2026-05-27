@@ -75,7 +75,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
           return (
             <div key={field.id} className="flex items-center gap-1 px-2 py-1">
               {/* Input Port */}
-              <div className="w-6 flex justify-center">
+              <div className="w-3 flex justify-center">
                 {field.hasInput && (
                   <Handle
                     type="target"
@@ -87,7 +87,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                       height: 8,
                       border: "2px solid white",
                       position: "relative",
-                      left: 0,
+                      left: -12,
                       transform: "none",
                     }}
                   />
@@ -115,7 +115,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
               </div>
 
               {/* Output Port */}
-              <div className="w-6 flex justify-center">
+              <div className="w-3 flex justify-center">
                 {field.hasOutput && (
                   <Handle
                     type="source"
@@ -127,7 +127,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                       height: 8,
                       border: "2px solid white",
                       position: "relative",
-                      right: 0,
+                      right: -12,
                       transform: "none",
                     }}
                   />
@@ -144,7 +144,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
               const outputValue = nodeOutputs?.[output.id]
               return (
                 <div key={output.id} className="flex items-center gap-1 px-2 py-1">
-                  <div className="w-6" />
+                  <div className="w-3" />
                   <div className="flex-1 flex items-center gap-1 min-w-0">
                     <span className="text-[10px] text-gray-400 w-14 shrink-0 truncate" title={output.name}>
                       {output.name}
@@ -153,7 +153,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                       {outputValue !== undefined ? String(outputValue) : ""}
                     </span>
                   </div>
-                  <div className="w-6 flex justify-center">
+                  <div className="w-3 flex justify-center">
                     <Handle
                       type="source"
                       position={Position.Right}
@@ -164,7 +164,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                         height: 8,
                         border: "2px solid white",
                         position: "relative",
-                        right: 0,
+                        right: -12,
                         transform: "none",
                       }}
                     />
