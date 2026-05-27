@@ -237,7 +237,7 @@ import { QRCodeSVG } from "qrcode.react"
 
 **变更**:
 - `json` 字段 `dataType` 从 `"string"` 改为 `"json"`
-- `outputs` 增加 5 个输出端口：
+- `outputs` 增加 6 个输出端口：
 
 ```typescript
 outputs: [
@@ -246,18 +246,21 @@ outputs: [
   { id: "boolean", name: "Boolean", dataType: "boolean" },
   { id: "object", name: "Object", dataType: "json" },
   { id: "array", name: "Array", dataType: "json" },
+  { id: "type", name: "Type", dataType: "string" },
 ]
 ```
 
 **execute 逻辑**:
 ```javascript
 const result = getByPath(parsed, path)
+const type = Array.isArray(result) ? "array" : (result === null ? "null" : typeof result)
 return {
   string: typeof result === "string" ? result : JSON.stringify(result),
   number: typeof result === "number" ? result : Number(result) || 0,
   boolean: typeof result === "boolean" ? result : Boolean(result),
   object: typeof result === "object" && !Array.isArray(result) ? result : null,
   array: Array.isArray(result) ? result : null,
+  type,
 }
 ```
 

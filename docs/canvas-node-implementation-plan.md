@@ -30,10 +30,11 @@
 
 #### 2.1 JSON Path 修改
 - **文件**: `lib/adapters/json-path.ts`
-- **任务**: 入参改 JSON 类型，增加 5 个输出端口
+- **任务**: 入参改 JSON 类型，增加 6 个输出端口
 - **变更**:
   - `json` 字段 `dataType: "string"` → `dataType: "json"`
-  - `outputs` 增加 string/number/boolean/object/array
+  - `outputs` 增加 string/number/boolean/object/array/type
+  - `type` 输出返回 typeof 值（"string"/"number"/"boolean"/"object"/"undefined"）
   - execute 根据 result 类型返回对应值
 - **验证**: `npm run build` + 单元测试
 
