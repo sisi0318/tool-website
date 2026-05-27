@@ -31,16 +31,16 @@
 
 **依赖检查**:
 - `sha3` 包已安装 → 用于 SHA3/Keccak/SHAKE
-- BLAKE2s → 需安装 `blakejs` 或自实现
-- SM3 → 需安装 `sm-crypto` 或自实现
-- CRC32 → 自实现（简单位运算）
-- SHA-512/t → 自实现（基于 sha512 截断）
+- BLAKE2s/BLAKE2b/SM3 → 调用 `/api/hash` 服务端接口（Node.js crypto 原生支持）
+- CRC32 → 自实现（参考 `app/tools/hash/page.tsx` 的 `crc32Bytes` 函数）
+- SHA-512/t → 调用 `/api/hash` 服务端接口（`createHash('sha512-224')` / `createHash('sha512-256')`）
 
 **execute 逻辑**:
 ```
-1. 根据 category + algorithm 确定实际算法
-2. 使用 crypto.createHash() 或对应库计算
-3. 输出 hex/base64
+1. SHA3/Keccak/SHAKE → 使用 sha3 包（浏览器端）
+2. SHA-512/t, BLAKE2s-256, BLAKE2b-512, SM3 → 调用 /api/hash 服务端接口
+3. CRC32 → 自实现 crc32Bytes 函数
+4. 其他（MD5, SHA1, SHA2, RIPEMD）→ 使用 crypto-browserify 或调用 /api/hash
 ```
 
 ---
@@ -80,6 +80,7 @@
 **Config 字段**:
 | 字段 | 类型 | hasInput | hasOutput | 说明 |
 |------|------|----------|-----------|------|
+| expectedHmac | string | true | false | 预期的 HMAC 值 |
 | data | string | true | false | 待验证数据 |
 | key | string | true | false | HMAC 密钥 |
 | algorithm | string | false | false | select: MD5/SHA-1/SHA-256/SHA-384/SHA-512 |
@@ -89,13 +90,9 @@
 **execute 逻辑**:
 ```
 1. 计算 HMAC(data, key, algorithm)
-2. 与预期 HMAC 比较
+2. 与 expectedHmac 比较（支持 hex 和 base64 格式）
 3. 返回 boolean
 ```
-
-**注意**: 需要一个 `expectedHmac` 输入字段来比较。用户需求描述为「入参 Data/Key/Algorithm，出参 Valid」，但没有 expectedHmac。这可能意味着需要另一个输入端口来接收预期的 HMAC 值。
-
-**待确认**: 是否需要 `expectedHmac` 字段？如果没有，节点只能验证两个输入的 HMAC 是否匹配，需要两个 Data 输入。
 
 ---
 
@@ -215,25 +212,22 @@ import CryptoJS from "crypto-js"
 **变更**:
 - 移除自定义 `generateQRPattern` 函数
 - 使用 `qrcode.react` 包的 `QRCodeSVG` 组件（已安装）
-- 通过 `ReactDOMServer.renderToStaticMarkup()` 渲染 SVG
-- 将 SVG 转换为 PNG data URI
+- 参考 `app/tools/qrcode/page.tsx` 的实现方式
 
 **execute 逻辑**:
 ```javascript
 import { QRCodeSVG } from "qrcode.react"
-import { renderToStaticMarkup } from "react-dom/server"
 
-// 1. 创建 QRCodeSVG React 元素
-// 2. renderToStaticMarkup 渲染为 SVG 字符串
-// 3. 将 SVG 转为 canvas → PNG data URI
-// 4. 返回 File 和 dataUri
+// 1. 创建隐藏 DOM 容器
+// 2. 使用 ReactDOM.createRoot 渲染 QRCodeSVG 到容器
+// 3. 获取 SVG 元素并序列化为字符串
+// 4. 创建 Image 对象加载 SVG
+// 5. 绘制到 Canvas 上
+// 6. canvas.toDataURL("image/png") 获得 PNG data URI
+// 7. 返回 File 和 dataUri
 ```
 
-**注意**: `renderToStaticMarkup` 是服务端渲染，需要 `react-dom/server`。Canvas 节点在浏览器端执行，可能需要使用 `ReactDOM.render` 到隐藏元素再导出。
-
-**备选方案**: 使用 `qrcode` npm 包（非 react 版本）直接生成 canvas，更简单。
-
-**待确认**: 是否需要安装 `qrcode` 包？或者继续用 `qrcode.react` + canvas 转换？
+**参考实现**: `app/tools/qrcode/page.tsx` 中的 `handleDownload` 函数已实现 SVG → Canvas → PNG 的转换流程。
 
 ---
 
@@ -391,10 +385,7 @@ return {
 
 ## 待确认问题
 
-1. **HMAC Verify**: 是否需要 `expectedHmac` 输入字段？
-2. **QRCode**: 使用 `qrcode` npm 包（非 react 版本）还是 `qrcode.react`？
-3. **SM3/BLAKE2s**: 是否需要安装额外依赖？还是只支持 Node.js crypto 内置算法？
-4. **SHA-512/t**: 是否需要自实现？Node.js crypto 不直接支持。
+无（已全部确认）
 
 ---
 
