@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "e2e": "playwright test",
     "lint": "next lint",
     "start": "next start",
     "test": "vitest --run",
@@ -81,6 +82,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/js-yaml": "^4.0.9",
