@@ -44,57 +44,86 @@ interface JsonMeta {
 ```mermaid
 graph LR
     subgraph StringNode ["String"]
-        value["[value]"]
+        in((("input"))) --> value["value"]
+        value --> out((("output")))
     end
-    value -->|"output: string"| out(( ))
 ```
 
-- 输入：手动编辑或连接
-- 输出：string
-- 用途：手动输入文本、常量
+- **输入端口**: `input: string` - 接收上游字符串数据
+- **输出端口**: `output: string` - 输出当前值
+- **节点内展示**: 显示当前值的预览（截断至 50 字符）
+- **配置**: 可手动编辑文本，支持单行输入
+- **用途**: 手动输入文本、常量、或接收上游数据
 
 ### 3.2 Number Node
 
 ```mermaid
 graph LR
     subgraph NumberNode ["Number"]
-        value["[value]"]
+        in((("input"))) --> value["value"]
+        value --> out((("output")))
     end
-    value -->|"output: number"| out(( ))
 ```
 
-- 输入：手动编辑或连接
-- 输出：number
-- 用途：手动输入数值、常量
+- **输入端口**: `input: number` - 接收上游数值数据
+- **输出端口**: `output: number` - 输出当前值
+- **节点内展示**: 显示当前数值
+- **配置**: 可手动编辑数字输入框
+- **用途**: 手动输入数值、常量、或接收上游数据
 
 ### 3.3 JSON Node
 
 ```mermaid
 graph LR
     subgraph JsonNode ["JSON"]
-        value["[value]"]
-        typename["[typename]"]
+        in((("input"))) --> value["value"]
+        value --> out((("output")))
     end
-    value -->|"output: json (typename: 'custom')"| out(( ))
 ```
 
-- 输入：手动编辑 JSON 字符串
-- 输出：json，可配置 typename
-- 用途：手动构造 JSON 常量
+- **输入端口**: `input: json` - 接收上游 JSON 数据
+- **输出端口**: `output: json(typename)` - 输出 JSON 对象，携带 typename
+- **节点内展示**: 显示 JSON 结构预览（折叠展示，可展开）
+- **配置**: 多行文本编辑器（支持语法高亮），typename 配置
+- **用途**: 手动构造 JSON 常量、接收并转发 JSON 数据
 
 ### 3.4 File Node
 
 ```mermaid
 graph LR
     subgraph FileNode ["File"]
-        file["[file]"]
+        in((("input"))) --> value["value"]
+        value --> out((("output")))
+        value --> download["⬇ 下载"]
     end
-    file -->|"output: bytes"| out(( ))
 ```
 
-- 输入：文件上传区域
-- 输出：bytes (Base64)
-- 用途：提供文件数据源
+- **输入端口**: `input: bytes` - 接收上游二进制数据
+- **输出端口**: `output: bytes` - 输出文件数据
+- **节点内展示**: 
+  - 显示文件名和大小
+  - **下载按钮**: 点击可将当前内容下载到本地
+- **配置**: 文件上传区域，支持拖拽上传
+- **用途**: 提供文件数据源、接收并下载文件
+
+---
+
+## 3.5 节点内值展示规范
+
+所有节点必须在节点本身上展示当前值，而不仅仅在右侧属性面板中：
+
+| 节点类型 | 展示内容 | 展示方式 |
+|----------|----------|----------|
+| String | 文本值预览 | 截断显示，hover 展开 |
+| Number | 数值 | 直接显示 |
+| JSON | JSON 结构 | 折叠树形预览 |
+| File | 文件名 + 大小 | 文本 + 下载按钮 |
+| 工具节点 | 输出值预览 | 根据类型截断显示 |
+
+**交互规则**:
+- 值为空时显示占位符（灰色斜体）
+- 值过长时截断并显示省略号
+- 点击节点可选中并在右侧面板编辑完整值
 
 ---
 
@@ -106,8 +135,26 @@ graph LR
 - **Inputs**: 工具接受的参数端口
 - **Outputs**: 工具产出的结果端口
 - **配置项**: 工具内部设置（不影响数据流）
+- **节点内展示**: 显示输出值预览
 
-### 4.2 工具节点映射表
+### 4.2 工具注册表
+
+所有现有工具必须注册到节点注册表中，才能在画布中使用。注册信息包括：
+
+```typescript
+interface ToolRegistration {
+  type: string           // 唯一标识，与工具目录名一致
+  category: string       // 分类：crypto | image | text | dev | utility | viewer
+  label: string          // 显示名称
+  icon: IconComponent    // 图标
+  inputs: Port[]         // 输入端口定义
+  outputs: Port[]        // 输出端口定义
+  config: ConfigField[]  // 配置项定义
+  execute: Function      // 执行函数
+}
+```
+
+### 4.3 工具节点映射表
 
 #### 编码加密类
 
@@ -250,14 +297,33 @@ graph LR
 ### 6.2 节点面板
 
 左侧侧边栏分类列出所有可添加的节点：
-- **基础节点**: String, Number, JSON, File
-- **编码加密**: Hash, HMAC, Crypto, Encoding, Classic Cipher, JWT
-- **数据格式**: JSON Format, Protobuf, JCE
-- **图片处理**: Image to Base64, EXIF, Compress, Editor, QRCode, Meme Splitter
-- **文本处理**: Text Stats, Case Converter, Regex, Diff
-- **开发工具**: HTTP Tester, Crontab, Docker, Whois
-- **实用工具**: UUID, TOTP, Color, Base/Temperature/Currency Converter, BMI
-- **查看器**: Device Info, Office Viewer, Time
+
+#### 基础节点
+- String, Number, JSON, File
+
+#### 编码加密
+- Hash, HMAC, Crypto, Encoding, Classic Cipher, JWT
+
+#### 数据格式
+- JSON Format, Protobuf, JCE
+
+#### 图片处理
+- Image to Base64, EXIF Viewer, Image Compress, Image Editor
+- QRCode Generate, QRCode Decode, Meme Splitter, Image Coordinates
+
+#### 文本处理
+- Text Stats, Case Converter, Regex, Diff
+
+#### 开发工具
+- HTTP Tester, Crontab, Docker Converter, Whois
+
+#### 实用工具
+- UUID, TOTP, Color, Base Converter, Temperature Converter, Currency, BMI
+
+#### 查看器
+- Device Info, Office Viewer, Time
+
+**注意**: 所有已在 `app/tools/` 中实现的工具都必须注册到节点面板中，用户可通过搜索快速查找。
 
 ### 6.3 执行机制
 
