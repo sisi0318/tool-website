@@ -44,90 +44,57 @@ interface JsonMeta {
 ```mermaid
 graph LR
     subgraph StringNode ["String"]
-        in((("input"))) --> value["编辑框"]
-        value --> out((("output")))
+        value["[value]"]
     end
+    value -->|"output: string"| out(( ))
 ```
 
-- **输入端口**: `input: string` - 接收上游字符串数据
-- **输出端口**: `output: string` - 输出当前值
-- **节点内编辑**: 
-  - 未连接 input 时：显示可编辑的文本输入框，用户可直接在节点上编辑
-  - 已连接 input 时：**禁用编辑框**，显示上游传入的值（只读）
-- **用途**: 手动输入文本、常量、或接收上游数据
+- 输入：手动编辑或连接
+- 输出：string
+- 用途：手动输入文本、常量
 
 ### 3.2 Number Node
 
 ```mermaid
 graph LR
     subgraph NumberNode ["Number"]
-        in((("input"))) --> value["编辑框"]
-        value --> out((("output")))
+        value["[value]"]
     end
+    value -->|"output: number"| out(( ))
 ```
 
-- **输入端口**: `input: number` - 接收上游数值数据
-- **输出端口**: `output: number` - 输出当前值
-- **节点内编辑**: 
-  - 未连接 input 时：显示可编辑的数字输入框
-  - 已连接 input 时：**禁用编辑框**，显示上游传入的值（只读）
-- **用途**: 手动输入数值、常量、或接收上游数据
+- 输入：手动编辑或连接
+- 输出：number
+- 用途：手动输入数值、常量
 
 ### 3.3 JSON Node
 
 ```mermaid
 graph LR
     subgraph JsonNode ["JSON"]
-        in((("input"))) --> value["多行编辑框"]
-        value --> out((("output")))
+        value["[value]"]
+        typename["[typename]"]
     end
+    value -->|"output: json (typename: 'custom')"| out(( ))
 ```
 
-- **输入端口**: `input: json` - 接收上游 JSON 数据
-- **输出端口**: `output: json(typename)` - 输出 JSON 对象，携带 typename
-- **节点内编辑**: 
-  - 未连接 input 时：显示**多行文本编辑器**（支持语法高亮），可直接编辑 JSON
-  - 已连接 input 时：**禁用编辑器**，显示上游传入的 JSON（只读，折叠展示）
-- **配置**: typename 配置
-- **用途**: 手动构造 JSON 常量、接收并转发 JSON 数据
+- 输入：手动编辑 JSON 字符串
+- 输出：json，可配置 typename
+- 用途：手动构造 JSON 常量
 
 ### 3.4 File Node
 
 ```mermaid
 graph LR
     subgraph FileNode ["File"]
-        in((("input"))) --> value["文件区域"]
-        value --> out((("output")))
-        value --> download["⬇ 下载"]
+        file["[file]"]
     end
+    file -->|"output: bytes"| out(( ))
 ```
 
-- **输入端口**: `input: bytes` - 接收上游二进制数据
-- **输出端口**: `output: bytes` - 输出文件数据
-- **节点内操作**: 
-  - 未连接 input 时：显示**文件上传区域**，支持拖拽上传或点击选择文件
-  - 已连接 input 时：**禁用上传**，显示上游传入的文件名和大小
-- **下载按钮**: 始终可用，点击可将当前内容下载到本地
-- **用途**: 提供文件数据源、接收并下载文件
-
----
-
-## 3.5 节点内编辑规范
-
-所有基础节点必须在节点本身支持**编辑**，而不仅仅是展示：
-
-| 节点类型 | 未连接 input 时 | 已连接 input 时 |
-|----------|-----------------|-----------------|
-| String | 可编辑文本输入框 | 禁用编辑框，只读展示上游值 |
-| Number | 可编辑数字输入框 | 禁用编辑框，只读展示上游值 |
-| JSON | 多行文本编辑器（语法高亮） | 禁用编辑器，只读展示上游 JSON |
-| File | 文件上传区域（拖拽/点击） | 禁用上传，显示文件名和大小 |
-
-**交互规则**:
-- 编辑框直接内嵌在节点中，用户无需打开右侧面板即可编辑
-- input 端口连接后，编辑框自动禁用并显示上游值
-- input 端口断开后，编辑框恢复可编辑状态
-- File 节点的下载按钮始终可用
+- 输入：文件上传区域
+- 输出：bytes (Base64)
+- 用途：提供文件数据源
 
 ---
 
@@ -139,26 +106,8 @@ graph LR
 - **Inputs**: 工具接受的参数端口
 - **Outputs**: 工具产出的结果端口
 - **配置项**: 工具内部设置（不影响数据流）
-- **节点内展示**: 显示输出值预览
 
-### 4.2 工具注册表
-
-所有现有工具必须注册到节点注册表中，才能在画布中使用。注册信息包括：
-
-```typescript
-interface ToolRegistration {
-  type: string           // 唯一标识，与工具目录名一致
-  category: string       // 分类：crypto | image | text | dev | utility | viewer
-  label: string          // 显示名称
-  icon: IconComponent    // 图标
-  inputs: Port[]         // 输入端口定义
-  outputs: Port[]        // 输出端口定义
-  config: ConfigField[]  // 配置项定义
-  execute: Function      // 执行函数
-}
-```
-
-### 4.3 工具节点映射表
+### 4.2 工具节点映射表
 
 #### 编码加密类
 
@@ -301,33 +250,14 @@ graph LR
 ### 6.2 节点面板
 
 左侧侧边栏分类列出所有可添加的节点：
-
-#### 基础节点
-- String, Number, JSON, File
-
-#### 编码加密
-- Hash, HMAC, Crypto, Encoding, Classic Cipher, JWT
-
-#### 数据格式
-- JSON Format, Protobuf, JCE
-
-#### 图片处理
-- Image to Base64, EXIF Viewer, Image Compress, Image Editor
-- QRCode Generate, QRCode Decode, Meme Splitter, Image Coordinates
-
-#### 文本处理
-- Text Stats, Case Converter, Regex, Diff
-
-#### 开发工具
-- HTTP Tester, Crontab, Docker Converter, Whois
-
-#### 实用工具
-- UUID, TOTP, Color, Base Converter, Temperature Converter, Currency, BMI
-
-#### 查看器
-- Device Info, Office Viewer, Time
-
-**注意**: 所有已在 `app/tools/` 中实现的工具都必须注册到节点面板中，用户可通过搜索快速查找。
+- **基础节点**: String, Number, JSON, File
+- **编码加密**: Hash, HMAC, Crypto, Encoding, Classic Cipher, JWT
+- **数据格式**: JSON Format, Protobuf, JCE
+- **图片处理**: Image to Base64, EXIF, Compress, Editor, QRCode, Meme Splitter
+- **文本处理**: Text Stats, Case Converter, Regex, Diff
+- **开发工具**: HTTP Tester, Crontab, Docker, Whois
+- **实用工具**: UUID, TOTP, Color, Base/Temperature/Currency Converter, BMI
+- **查看器**: Device Info, Office Viewer, Time
 
 ### 6.3 执行机制
 

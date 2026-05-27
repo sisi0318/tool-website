@@ -544,12 +544,6 @@ export function BaseNode({ id, data, type }: NodeProps) {
   const outputs = useCanvasStore((s) => s.nodeOutputs[id])
   const error = useCanvasStore((s) => s.nodeErrors[id])
   const running = useCanvasStore((s) => s.nodeRunning[id])
-  const edges = useCanvasStore((s) => s.edges)
-
-  // 检查 input 端口是否已连接
-  const isInputConnected = (portId: string) => {
-    return edges.some((e) => e.target === id && e.targetPort === portId)
-  }
 
   return (
     <div className={`
@@ -579,9 +573,6 @@ export function BaseNode({ id, data, type }: NodeProps) {
         ))}
       </div>
 
-      {/* Inline Editor Area */}
-      <InlineEditor nodeId={id} definition={definition} isInputConnected={isInputConnected} />
-
       {/* Outputs */}
       <div className="px-3 py-2 space-y-1 border-t border-outline-variant">
         {definition.outputs.map((output) => (
@@ -604,107 +595,6 @@ export function BaseNode({ id, data, type }: NodeProps) {
           <p className="text-xs text-red-500">{error}</p>
         </div>
       )}
-    </div>
-  )
-}
-```
-
-### 8.2 内联编辑器组件
-
-```tsx
-// components/canvas/nodes/InlineEditor.tsx
-
-interface InlineEditorProps {
-  nodeId: string
-  definition: NodeDefinition
-  isInputConnected: (portId: string) => boolean
-}
-
-export function InlineEditor({ nodeId, definition, isInputConnected }: InlineEditorProps) {
-  const config = useCanvasStore((s) => s.nodes.find(n => n.id === nodeId)?.config ?? {})
-  const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
-
-  // 根据节点类型渲染不同的编辑器
-  switch (definition.type) {
-    case "string":
-      return <StringEditor value={config.value} disabled={isInputConnected("input")} onChange={(v) => updateConfig(nodeId, { ...config, value: v })} />
-    case "number":
-      return <NumberEditor value={config.value} disabled={isInputConnected("input")} onChange={(v) => updateConfig(nodeId, { ...config, value: v })} />
-    case "json":
-      return <JsonEditor value={config.value} disabled={isInputConnected("input")} onChange={(v) => updateConfig(nodeId, { ...config, value: v })} />
-    case "file":
-      return <FileEditor disabled={isInputConnected("input")} onChange={(v) => updateConfig(nodeId, { ...config, file: v })} />
-    default:
-      return null
-  }
-}
-
-// String 编辑器 - 单行输入框
-function StringEditor({ value, disabled, onChange }: EditorProps<string>) {
-  return (
-    <div className="px-3 py-2 border-t border-outline-variant">
-      <input
-        type="text"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        placeholder="输入文本..."
-        className="w-full px-2 py-1 text-xs bg-surface-container-low rounded border border-outline-variant disabled:opacity-50"
-      />
-    </div>
-  )
-}
-
-// Number 编辑器 - 数字输入框
-function NumberEditor({ value, disabled, onChange }: EditorProps<number>) {
-  return (
-    <div className="px-3 py-2 border-t border-outline-variant">
-      <input
-        type="number"
-        value={value ?? 0}
-        onChange={(e) => onChange(Number(e.target.value))}
-        disabled={disabled}
-        className="w-full px-2 py-1 text-xs bg-surface-container-low rounded border border-outline-variant disabled:opacity-50"
-      />
-    </div>
-  )
-}
-
-// JSON 编辑器 - 多行文本框（语法高亮）
-function JsonEditor({ value, disabled, onChange }: EditorProps<string>) {
-  return (
-    <div className="px-3 py-2 border-t border-outline-variant">
-      <textarea
-        value={value ?? "{}"}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        rows={4}
-        placeholder='{"key": "value"}'
-        className="w-full px-2 py-1 text-xs font-mono bg-surface-container-low rounded border border-outline-variant disabled:opacity-50 resize-y"
-      />
-    </div>
-  )
-}
-
-// File 编辑器 - 上传区域 + 下载按钮
-function FileEditor({ disabled, onChange }: { disabled: boolean; onChange: (file: File | null) => void }) {
-  return (
-    <div className="px-3 py-2 border-t border-outline-variant space-y-2">
-      {!disabled ? (
-        <div className="border-2 border-dashed border-outline-variant rounded p-2 text-center">
-          <input type="file" onChange={(e) => onChange(e.target.files?.[0] ?? null)} className="hidden" id={`file-${nodeId}`} />
-          <label htmlFor={`file-${nodeId}`} className="cursor-pointer text-xs text-on-surface-variant">
-            点击或拖拽上传文件
-          </label>
-        </div>
-      ) : (
-        <div className="text-xs text-on-surface-variant">
-          {config.file?.name ?? "无文件"}
-        </div>
-      )}
-      <button onClick={handleDownload} className="w-full px-2 py-1 text-xs bg-primary text-on-primary rounded">
-        ⬇ 下载
-      </button>
     </div>
   )
 }
@@ -747,176 +637,34 @@ export function useConnectionValidator() {
 }
 ```
 
-## 9. 工具注册机制
-
-### 9.1 注册表接口
-
-```typescript
-// lib/canvas/registry.ts
-
-const nodeRegistry = new Map<string, NodeDefinition>()
-
-export function registerNode(definition: NodeDefinition): void {
-  nodeRegistry.set(definition.type, definition)
-}
-
-export function getNodeDefinition(type: string): NodeDefinition | undefined {
-  return nodeRegistry.get(type)
-}
-
-export function getAllNodes(): NodeDefinition[] {
-  return Array.from(nodeRegistry.values())
-}
-
-export function getNodesByCategory(category: string): NodeDefinition[] {
-  return Array.from(nodeRegistry.values()).filter((n) => n.category === category)
-}
-```
-
-### 9.2 工具注册入口
-
-```typescript
-// lib/adapters/index.ts
-
-import { registerBasicNodes } from "./basic"
-import { registerHashAdapter } from "./hash"
-import { registerEncodingAdapter } from "./encoding"
-// ... import all adapters
-
-export function registerAllAdapters(): void {
-  // 基础节点
-  registerBasicNodes()
-  
-  // 编码加密类
-  registerHashAdapter()
-  registerHmacAdapter()
-  registerCryptoAdapter()
-  registerEncodingAdapter()
-  registerClassicCipherAdapter()
-  registerJwtAdapter()
-  
-  // 数据格式类
-  registerJsonFormatAdapter()
-  registerProtobufAdapter()
-  registerJceAdapter()
-  
-  // 图片处理类
-  registerImageToBase64Adapter()
-  registerExifViewerAdapter()
-  registerImageCompressAdapter()
-  registerImageEditorAdapter()
-  registerQrcodeAdapter()
-  registerQrcodeDecodeAdapter()
-  registerMemeSplitterAdapter()
-  registerImageCoordinatesAdapter()
-  
-  // 文本处理类
-  registerTextStatsAdapter()
-  registerCaseConverterAdapter()
-  registerRegexAdapter()
-  registerDiffAdapter()
-  
-  // 开发工具类
-  registerHttpTesterAdapter()
-  registerCrontabAdapter()
-  registerDockerConverterAdapter()
-  registerWhoisAdapter()
-  
-  // 实用工具类
-  registerUuidAdapter()
-  registerTotpAdapter()
-  registerColorAdapter()
-  registerBaseConverterAdapter()
-  registerTemperatureConverterAdapter()
-  registerCurrencyAdapter()
-  registerBmiAdapter()
-  
-  // 查看器类
-  registerDeviceInfoAdapter()
-  registerOfficeViewerAdapter()
-  registerTimeAdapter()
-}
-```
-
-### 9.3 工具适配器模板
-
-```typescript
-// lib/adapters/hash.ts
-
-import { createHash } from "crypto"
-import { Hash } from "lucide-react"
-import type { ToolAdapter } from "./types"
-import { registerNode } from "../canvas/registry"
-
-export const hashAdapter: ToolAdapter = {
-  type: "hash",
-  category: "crypto",
-  label: "Hash",
-  icon: Hash,
-  inputs: [
-    { id: "data", name: "数据", dataType: "string", required: true },
-  ],
-  outputs: [
-    { id: "hash", name: "哈希值", dataType: "string" },
-  ],
-  config: [
-    { id: "algorithm", name: "算法", dataType: "string", defaultValue: "sha256",
-      options: [
-        { label: "MD5", value: "md5" },
-        { label: "SHA-1", value: "sha1" },
-        { label: "SHA-256", value: "sha256" },
-        { label: "SHA-512", value: "sha512" },
-      ]
-    },
-  ],
-  execute: async (inputs, config) => {
-    const hash = createHash(config.algorithm as string)
-    hash.update(String(inputs.data ?? ""))
-    return { hash: hash.digest("hex") }
-  },
-}
-
-export function registerHashAdapter(): void {
-  registerNode(hashAdapter)
-}
-```
-
----
-
-## 10. 实施步骤
+## 9. 实施步骤
 
 ### Phase 1: 基础框架
 
-1. 安装依赖: `@xyflow/react`, `zustand`
+1. 安装依赖: `reactflow`, `zustand`
 2. 创建 `lib/canvas/types.ts` 核心类型
 3. 创建 `lib/canvas/store.ts` Zustand store
 4. 创建 `components/canvas/Canvas.tsx` 基础画布
 5. 创建 `app/canvas/page.tsx` 页面入口
+6. 实现 4 个基础节点 (String/Number/JSON/File)
 
-### Phase 2: 基础节点（内联编辑）
+### Phase 2: 工具适配
 
-1. 实现 `StringNode` - 单行输入框，input 连接后禁用
-2. 实现 `NumberNode` - 数字输入框，input 连接后禁用
-3. 实现 `JsonNode` - 多行编辑器，input 连接后禁用
-4. 实现 `FileNode` - 上传区域 + 下载按钮，input 连接后禁用上传
+1. 创建 `lib/adapters/` 适配器框架
+2. 实现 `lib/canvas/registry.ts` 节点注册表
+3. 逐个工具创建适配器 (共 34 个)
+4. 实现工具节点通用壳 `ToolNode.tsx`
 
-### Phase 3: 工具注册与适配
-
-1. 实现 `lib/canvas/registry.ts` 节点注册表
-2. 创建 `lib/adapters/index.ts` 统一注册入口
-3. 逐个工具创建适配器（共 34 个）
-4. 确保所有工具出现在节点面板中
-
-### Phase 4: 连接与执行
+### Phase 3: 连接与执行
 
 1. 实现 `validation.ts` 连接验证
 2. 实现 `engine.ts` 拓扑排序执行
 3. 实现 JSON typename 警告对话框
 4. 实现节点间数据传播
 
-### Phase 5: 体验优化
+### Phase 4: 体验优化
 
-1. 实现 `NodePalette.tsx` 侧边栏面板（支持搜索）
+1. 实现 `NodePalette.tsx` 侧边栏面板
 2. 实现 `PropertyPanel.tsx` 属性面板
 3. localStorage 持久化
 4. 导入/导出功能
