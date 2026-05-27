@@ -15,6 +15,7 @@ test.describe("Canvas Page", () => {
   test("should display node palette with categories", async ({ page }) => {
     await expect(page.locator("h4:text('Basic')")).toBeVisible()
     await expect(page.locator("h4:text('Crypto')")).toBeVisible()
+    await expect(page.locator("h4:text('Data')")).toBeVisible()
     await expect(page.locator("h4:text('Utility')")).toBeVisible()
   })
 
@@ -125,5 +126,126 @@ test.describe("Canvas Page", () => {
 
     const edges = page.locator(".react-flow__edge")
     await expect(edges).toHaveCount(1, { timeout: 5000 })
+  })
+
+  test("should display inline editor for string node", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      if (store) {
+        store.getState().addNode({
+          id: "test-string-node",
+          type: "string",
+          position: { x: 300, y: 200 },
+          config: { value: "hello" },
+        })
+      }
+    })
+
+    await page.waitForTimeout(1000)
+
+    const node = page.locator(".react-flow__node").first()
+    await expect(node).toContainText("String")
+    
+    const input = node.locator("[data-testid='string-input']")
+    await expect(input).toBeVisible()
+    await expect(input).toHaveValue("hello")
+  })
+
+  test("should display inline editor for number node", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      if (store) {
+        store.getState().addNode({
+          id: "test-number-node",
+          type: "number",
+          position: { x: 300, y: 200 },
+          config: { value: 42 },
+        })
+      }
+    })
+
+    await page.waitForTimeout(1000)
+
+    const node = page.locator(".react-flow__node").first()
+    await expect(node).toContainText("Number")
+    
+    const input = node.locator("[data-testid='number-input']")
+    await expect(input).toBeVisible()
+    await expect(input).toHaveValue("42")
+  })
+
+  test("should display inline editor for json node", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      if (store) {
+        store.getState().addNode({
+          id: "test-json-node",
+          type: "json",
+          position: { x: 300, y: 200 },
+          config: { value: '{"key": "value"}' },
+        })
+      }
+    })
+
+    await page.waitForTimeout(1000)
+
+    const node = page.locator(".react-flow__node").first()
+    await expect(node).toContainText("JSON")
+    
+    const textarea = node.locator("[data-testid='json-textarea']")
+    await expect(textarea).toBeVisible()
+    await expect(textarea).toHaveValue('{"key": "value"}')
+  })
+
+  test("should disable inline editor when input is connected", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      if (store) {
+        const state = store.getState()
+        state.addNode({
+          id: "test-string-source",
+          type: "string",
+          position: { x: 200, y: 200 },
+          config: { value: "hello" },
+        })
+        state.addNode({
+          id: "test-string-target",
+          type: "string",
+          position: { x: 400, y: 200 },
+          config: { value: "" },
+        })
+        state.addEdge({
+          id: "test-edge",
+          source: "test-string-source",
+          sourcePort: "value",
+          target: "test-string-target",
+          targetPort: "input",
+        })
+      }
+    })
+
+    await page.waitForTimeout(1000)
+
+    const targetNode = page.locator(".react-flow__node").nth(1)
+    const input = targetNode.locator("[data-testid='string-input']")
+    await expect(input).toBeDisabled()
+  })
+
+  test("should display all 34 tools in palette", async ({ page }) => {
+    const expectedTools = [
+      "String", "Number", "JSON", "File",
+      "Hash", "HMAC", "Crypto", "Encoding", "Classic Cipher", "JWT",
+      "JSON Format", "Protobuf", "JCE",
+      "Image to Base64", "EXIF Viewer", "Image Compress", "Image Editor", 
+      "QRCode", "QRCode Decode", "Meme Splitter", "Image Coordinates",
+      "Text Stats", "Case Converter", "Regex", "Diff",
+      "HTTP Tester", "Crontab", "Docker Converter", "Whois",
+      "UUID", "TOTP", "Color", "Base Converter", "Temperature", "Currency", "BMI",
+      "Device Info", "Office Viewer", "Time"
+    ]
+
+    for (const tool of expectedTools) {
+      await expect(page.locator(`span:text('${tool}')`).first()).toBeVisible()
+    }
   })
 })
