@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 const CATEGORIES = [
   { id: "basic", label: "Basic" },
   { id: "crypto", label: "Crypto" },
+  { id: "data", label: "Data" },
   { id: "image", label: "Image" },
   { id: "text", label: "Text" },
   { id: "dev", label: "Dev" },

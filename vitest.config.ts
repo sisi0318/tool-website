@@ -6,12 +6,15 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', '.next'],
+    exclude: ['node_modules', '.next', 'e2e/**'],
     setupFiles: ['./vitest.setup.ts'],
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
     },
+  },
+  oxc: {
+    jsx: 'react-jsx',
   },
 });

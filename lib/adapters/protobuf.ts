@@ -1,0 +1,85 @@
+import { Binary } from "lucide-react"
+import type { ToolAdapter } from "./types"
+import { registerNode } from "../canvas/registry"
+
+export const protobufAdapter: ToolAdapter = {
+  type: "protobuf",
+  category: "data",
+  label: "Protobuf",
+  icon: Binary,
+  inputs: [
+    { id: "data", name: "Data", dataType: "string", required: true },
+  ],
+  outputs: [
+    { id: "decoded", name: "Decoded", dataType: "json" },
+  ],
+  config: [
+    {
+      id: "mode",
+      name: "Mode",
+      dataType: "string",
+      defaultValue: "decode",
+      options: [
+        { label: "Decode", value: "decode" },
+        { label: "Encode", value: "encode" },
+      ],
+    },
+  ],
+  async execute(inputs, config) {
+    const data = String(inputs.data ?? "")
+    const mode = String(config.mode ?? "decode")
+
+    if (mode === "decode") {
+      try {
+        const bytes = Buffer.from(data, "hex")
+        const result: Record<string, unknown> = {}
+        let i = 0
+        while (i < bytes.length) {
+          const tag = bytes[i]
+          const fieldNumber = tag >> 3
+          const wireType = tag & 0x07
+          i++
+          if (wireType === 0) {
+            let value = 0
+            let shift = 0
+            while (i < bytes.length && bytes[i] >= 0x80) {
+              value |= (bytes[i] & 0x7f) << shift
+              shift += 7
+              i++
+            }
+            if (i < bytes.length) {
+              value |= bytes[i] << shift
+              i++
+            }
+            result[`field_${fieldNumber}`] = value
+          } else if (wireType === 2) {
+            let length = 0
+            let shift = 0
+            while (i < bytes.length && bytes[i] >= 0x80) {
+              length |= (bytes[i] & 0x7f) << shift
+              shift += 7
+              i++
+            }
+            if (i < bytes.length) {
+              length |= bytes[i] << shift
+              i++
+            }
+            result[`field_${fieldNumber}`] = bytes.slice(i, i + length).toString("hex")
+            i += length
+          } else {
+            break
+          }
+        }
+        return { decoded: result }
+      } catch (error) {
+        throw new Error(`Protobuf decode error: ${error}`)
+      }
+    } else {
+      throw new Error("Protobuf encode requires schema definition")
+    }
+  },
+}
+
+export function registerProtobufAdapter(): void {
+  registerNode(protobufAdapter)
+}

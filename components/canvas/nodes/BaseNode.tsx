@@ -4,6 +4,7 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import type { NodeInstance, PortDefinition } from "@/lib/canvas/types"
+import { InlineEditor } from "./InlineEditor"
 
 interface BaseNodeProps {
   data: NodeInstance & { definition: NonNullable<ReturnType<typeof getNodeDefinition>> }
@@ -82,6 +83,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
             ))}
           </div>
         )}
+
+        <InlineEditor nodeId={node.id} definition={definition} />
 
         {definition.outputs.length > 0 && (
           <div className="space-y-1">
