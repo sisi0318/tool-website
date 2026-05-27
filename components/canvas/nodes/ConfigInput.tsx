@@ -13,7 +13,7 @@ interface ConfigInputProps {
 }
 
 export function ConfigInput({ field, value, onChange, disabled, allConfig }: ConfigInputProps) {
-  // 处理联动选项 - 仅用于显示/隐藏，不用于替换选项
+  // 处理联动选项 - 仅用于显示/隐藏
   if (field.dependsOn && field.dynamicOptions) {
     const dependentValue = allConfig[field.dependsOn]
     const dynamicOpts = field.dynamicOptions(String(dependentValue ?? ""))
@@ -76,8 +76,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         value={Number(value ?? field.defaultValue ?? 0)}
         onChange={(e) => onChange(Number(e.target.value))}
         disabled={disabled}
-        data-testid="number-input"
-        className="w-full px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+        className="w-full px-1 py-0.5 text-[10px] bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50"
       />
     )
   }
@@ -89,9 +88,20 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         value={String(value ?? field.defaultValue ?? "")}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        rows={3}
-        data-testid="textarea-input"
-        className="w-full px-2 py-1 text-xs font-mono bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 resize-y disabled:opacity-50"
+        rows={2}
+        className="w-full px-1 py-0.5 text-[10px] font-mono bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 resize-y disabled:opacity-50"
+      />
+    )
+  }
+
+  // bytes → 文件上传
+  if (field.dataType === "bytes") {
+    return (
+      <input
+        type="file"
+        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+        disabled={disabled}
+        className="w-full text-[10px] disabled:opacity-50"
       />
     )
   }
@@ -103,8 +113,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
       value={String(value ?? field.defaultValue ?? "")}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      data-testid="text-input"
-      className="w-full px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+      className="w-full px-1 py-0.5 text-[10px] bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50"
     />
   )
 }

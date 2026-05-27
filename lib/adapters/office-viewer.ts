@@ -7,13 +7,18 @@ export const officeViewerAdapter: ToolAdapter = {
   category: "viewer",
   label: "Office Viewer",
   icon: FileSpreadsheet,
-  inputs: [
-    { id: "file", name: "File", dataType: "bytes", required: true },
+  config: [
+    {
+      id: "file",
+      name: "File",
+      dataType: "bytes",
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "info", name: "Info", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
     const file = inputs.file as File | null
     if (!file) {

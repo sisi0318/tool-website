@@ -7,18 +7,31 @@ export const bmiAdapter: ToolAdapter = {
   category: "utility",
   label: "BMI",
   icon: Activity,
-  inputs: [
-    { id: "weight", name: "Weight (kg)", dataType: "number", required: true },
-    { id: "height", name: "Height (m)", dataType: "number", required: true },
+  config: [
+    {
+      id: "weight",
+      name: "Weight (kg)",
+      dataType: "number",
+      defaultValue: 70,
+      hasInput: true,
+      hasOutput: false,
+    },
+    {
+      id: "height",
+      name: "Height (m)",
+      dataType: "number",
+      defaultValue: 1.75,
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "bmi", name: "BMI", dataType: "number" },
     { id: "category", name: "Category", dataType: "string" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const weight = Number(inputs.weight ?? 0)
-    const height = Number(inputs.height ?? 0)
+    const weight = Number(inputs.weight ?? config.weight ?? 0)
+    const height = Number(inputs.height ?? config.height ?? 0)
 
     if (weight <= 0 || height <= 0) {
       throw new Error("Weight and height must be positive numbers")

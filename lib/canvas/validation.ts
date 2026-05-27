@@ -1,21 +1,17 @@
-import type { PortDefinition, Edge, ValidationResult } from "./types"
-import { validateJsonConnection } from "./types/json-meta"
+import type { ConfigField, Edge, ValidationResult } from "./types"
 
 const COMPATIBLE_TYPES: Record<string, string[]> = {
   string: ["string", "number"],
   number: ["string", "number"],
   json: ["json"],
   bytes: ["bytes"],
+  boolean: ["boolean"],
 }
 
 export function validateConnection(
-  source: PortDefinition,
-  target: PortDefinition
+  source: ConfigField,
+  target: ConfigField
 ): ValidationResult {
-  if (source.dataType === "json" && target.dataType === "json") {
-    return validateJsonConnection(source.jsonTypename, target.jsonTypename)
-  }
-
   const compatible = COMPATIBLE_TYPES[source.dataType]?.includes(target.dataType) ?? false
 
   if (compatible) {
@@ -31,12 +27,14 @@ export function validateConnection(
 
 export function canAcceptInput(
   existingEdges: Edge[],
-  sourcePort: PortDefinition,
-  targetPort: PortDefinition
+  sourcePortId: string,
+  targetNodeId: string,
+  targetPortId: string
 ): boolean {
-  const hasExistingInput = existingEdges.some((e) => e.targetPort === targetPort.id)
+  const hasExistingInput = existingEdges.some(
+    (e) => e.target === targetNodeId && e.targetPort === targetPortId
+  )
   if (hasExistingInput) return false
 
-  const result = validateConnection(sourcePort, targetPort)
-  return result.valid
+  return true
 }

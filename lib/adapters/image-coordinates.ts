@@ -7,13 +7,18 @@ export const imageCoordinatesAdapter: ToolAdapter = {
   category: "image",
   label: "Image Coordinates",
   icon: MousePointer,
-  inputs: [
-    { id: "file", name: "File", dataType: "bytes", required: true },
+  config: [
+    {
+      id: "file",
+      name: "File",
+      dataType: "bytes",
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "coordinates", name: "Coordinates", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
     const file = inputs.file as File | null
     if (!file) {

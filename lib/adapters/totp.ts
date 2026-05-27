@@ -7,16 +7,22 @@ export const totpAdapter: ToolAdapter = {
   category: "utility",
   label: "TOTP",
   icon: Fingerprint,
-  inputs: [
-    { id: "secret", name: "Secret", dataType: "string", required: true },
+  config: [
+    {
+      id: "secret",
+      name: "Secret",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "code", name: "Code", dataType: "string" },
     { id: "remaining", name: "Remaining", dataType: "number" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const secret = String(inputs.secret ?? "")
+    const secret = String(inputs.secret ?? config.secret ?? "")
 
     if (!secret) {
       throw new Error("Secret is required")

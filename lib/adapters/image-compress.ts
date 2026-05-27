@@ -7,20 +7,22 @@ export const imageCompressAdapter: ToolAdapter = {
   category: "image",
   label: "Image Compress",
   icon: Minimize2,
-  inputs: [
-    { id: "file", name: "File", dataType: "bytes", required: true },
-  ],
-  outputs: [
-    { id: "file", name: "File", dataType: "bytes" },
-    { id: "info", name: "Info", dataType: "json" },
-  ],
   config: [
+    {
+      id: "file",
+      name: "File",
+      dataType: "bytes",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "quality",
       name: "Quality",
       dataType: "number",
       defaultValue: 80,
       slider: { min: 10, max: 100, step: 5 },
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "outputFormat",
@@ -33,7 +35,13 @@ export const imageCompressAdapter: ToolAdapter = {
         { label: "WebP", value: "webp" },
         { label: "PNG", value: "png" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
+  ],
+  outputs: [
+    { id: "file", name: "File", dataType: "bytes" },
+    { id: "info", name: "Info", dataType: "json" },
   ],
   async execute(inputs, config) {
     const file = inputs.file as File | null
@@ -41,7 +49,7 @@ export const imageCompressAdapter: ToolAdapter = {
       throw new Error("No file provided")
     }
 
-    const quality = Number(config.quality ?? 80)
+    const quality = Number(inputs.quality ?? config.quality ?? 80)
     const originalSize = file.size
 
     return {

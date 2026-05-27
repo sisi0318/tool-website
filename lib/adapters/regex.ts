@@ -7,25 +7,30 @@ export const regexAdapter: ToolAdapter = {
   category: "text",
   label: "Regex",
   icon: Regex,
-  inputs: [
-    { id: "text", name: "Text", dataType: "string", required: true },
-  ],
-  outputs: [
-    { id: "matches", name: "Matches", dataType: "json" },
-    { id: "test", name: "Test", dataType: "string" },
-  ],
   config: [
+    {
+      id: "text",
+      name: "Text",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "pattern",
       name: "Pattern",
       dataType: "string",
       defaultValue: "",
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "flags",
       name: "Flags",
       dataType: "string",
       defaultValue: "g",
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "replacement",
@@ -33,13 +38,19 @@ export const regexAdapter: ToolAdapter = {
       dataType: "string",
       defaultValue: "",
       multiline: true,
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "matches", name: "Matches", dataType: "json" },
+    { id: "test", name: "Test", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const text = String(inputs.text ?? "")
-    const pattern = String(config.pattern ?? "")
-    const flags = String(config.flags ?? "g")
-    const replacement = String(config.replacement ?? "")
+    const text = String(inputs.text ?? config.text ?? "")
+    const pattern = String(inputs.pattern ?? config.pattern ?? "")
+    const flags = String(inputs.flags ?? config.flags ?? "g")
+    const replacement = String(inputs.replacement ?? config.replacement ?? "")
 
     if (!pattern) {
       return { matches: [], test: text }

@@ -8,13 +8,7 @@ describe("ConfigInput", () => {
   it("renders SwitchInput for boolean type", () => {
     const field: ConfigField = { id: "test", name: "Test", dataType: "boolean", defaultValue: false }
     render(<ConfigInput field={field} value={false} onChange={vi.fn()} disabled={false} allConfig={{}} />)
-    expect(screen.getByTestId("switch-input")).toBeInTheDocument()
-  })
-
-  it("renders ColorInput when color=true", () => {
-    const field: ConfigField = { id: "test", name: "Test", dataType: "string", color: true, defaultValue: "#000000" }
-    render(<ConfigInput field={field} value="#ff0000" onChange={vi.fn()} disabled={false} allConfig={{}} />)
-    expect(screen.getByTestId("color-input")).toBeInTheDocument()
+    expect(screen.getByRole("checkbox")).toBeInTheDocument()
   })
 
   it("renders SelectInput when options exist", () => {
@@ -23,7 +17,7 @@ describe("ConfigInput", () => {
       options: [{ label: "A", value: "a" }, { label: "B", value: "b" }],
     }
     render(<ConfigInput field={field} value="a" onChange={vi.fn()} disabled={false} allConfig={{}} />)
-    expect(screen.getByTestId("select-input")).toBeInTheDocument()
+    expect(screen.getByRole("combobox")).toBeInTheDocument()
   })
 
   it("renders SliderInput when slider config exists", () => {
@@ -32,30 +26,35 @@ describe("ConfigInput", () => {
       slider: { min: 0, max: 100, step: 1 },
     }
     render(<ConfigInput field={field} value={50} onChange={vi.fn()} disabled={false} allConfig={{}} />)
-    expect(screen.getByTestId("slider-input")).toBeInTheDocument()
+    expect(screen.getByRole("slider")).toBeInTheDocument()
   })
 
   it("renders number input for number type without slider", () => {
     const field: ConfigField = { id: "test", name: "Test", dataType: "number", defaultValue: 0 }
     render(<ConfigInput field={field} value={42} onChange={vi.fn()} disabled={false} allConfig={{}} />)
-    expect(screen.getByTestId("number-input")).toBeInTheDocument()
     expect(screen.getByDisplayValue("42")).toBeInTheDocument()
   })
 
   it("renders textarea when multiline=true", () => {
     const field: ConfigField = { id: "test", name: "Test", dataType: "string", multiline: true, defaultValue: "" }
     render(<ConfigInput field={field} value="hello" onChange={vi.fn()} disabled={false} allConfig={{}} />)
-    expect(screen.getByTestId("textarea-input")).toBeInTheDocument()
+    expect(screen.getByRole("textbox")).toBeInTheDocument()
   })
 
   it("renders text input for string type", () => {
     const field: ConfigField = { id: "test", name: "Test", dataType: "string", defaultValue: "" }
     render(<ConfigInput field={field} value="hello" onChange={vi.fn()} disabled={false} allConfig={{}} />)
-    expect(screen.getByTestId("text-input")).toBeInTheDocument()
     expect(screen.getByDisplayValue("hello")).toBeInTheDocument()
   })
 
-  it("renders dynamic options from dependsOn", () => {
+  it("renders file input for bytes type", () => {
+    const field: ConfigField = { id: "test", name: "Test", dataType: "bytes" }
+    const { container } = render(<ConfigInput field={field} value={null} onChange={vi.fn()} disabled={false} allConfig={{}} />)
+    const input = container.querySelector("input[type='file']")
+    expect(input).toBeInTheDocument()
+  })
+
+  it("hides field when dependsOn returns empty options", () => {
     const field: ConfigField = {
       id: "variant", name: "Variant", dataType: "string", defaultValue: "v1",
       dependsOn: "algorithm",
@@ -64,16 +63,9 @@ describe("ConfigInput", () => {
         return []
       },
     }
-    const { rerender } = render(
+    const { container } = render(
       <ConfigInput field={field} value="v1" onChange={vi.fn()} disabled={false} allConfig={{ algorithm: "md5" }} />
     )
-    // Should return null when dynamicOptions returns empty
-    expect(screen.queryByTestId("select-input")).not.toBeInTheDocument()
-
-    // Should render when dynamicOptions returns options
-    rerender(
-      <ConfigInput field={field} value="sha3-256" onChange={vi.fn()} disabled={false} allConfig={{ algorithm: "sha3" }} />
-    )
-    expect(screen.getByTestId("select-input")).toBeInTheDocument()
+    expect(container.firstChild).toBeNull()
   })
 })

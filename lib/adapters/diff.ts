@@ -7,17 +7,32 @@ export const diffAdapter: ToolAdapter = {
   category: "text",
   label: "Diff",
   icon: GitCompare,
-  inputs: [
-    { id: "text1", name: "Text 1", dataType: "string", required: true },
-    { id: "text2", name: "Text 2", dataType: "string", required: true },
+  config: [
+    {
+      id: "text1",
+      name: "Text 1",
+      dataType: "string",
+      defaultValue: "",
+      multiline: true,
+      hasInput: true,
+      hasOutput: false,
+    },
+    {
+      id: "text2",
+      name: "Text 2",
+      dataType: "string",
+      defaultValue: "",
+      multiline: true,
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "diff", name: "Diff", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const text1 = String(inputs.text1 ?? "")
-    const text2 = String(inputs.text2 ?? "")
+    const text1 = String(inputs.text1 ?? config.text1 ?? "")
+    const text2 = String(inputs.text2 ?? config.text2 ?? "")
 
     const lines1 = text1.split("\n")
     const lines2 = text2.split("\n")

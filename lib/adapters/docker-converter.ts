@@ -7,14 +7,15 @@ export const dockerConverterAdapter: ToolAdapter = {
   category: "dev",
   label: "Docker Converter",
   icon: Container,
-  inputs: [
-    { id: "command", name: "Command", dataType: "string", required: true },
-  ],
-  outputs: [
-    { id: "dockerfile", name: "Dockerfile", dataType: "string" },
-    { id: "compose", name: "Compose", dataType: "string" },
-  ],
   config: [
+    {
+      id: "command",
+      name: "Command",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "format",
       name: "Format",
@@ -24,25 +25,20 @@ export const dockerConverterAdapter: ToolAdapter = {
         { label: "Dockerfile", value: "dockerfile" },
         { label: "Docker Compose", value: "compose" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "dockerfile", name: "Dockerfile", dataType: "string" },
+    { id: "compose", name: "Compose", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const command = String(inputs.command ?? "")
-    const format = String(config.format ?? "dockerfile")
-
-    const dockerfile = `FROM ubuntu:latest
-RUN apt-get update && apt-get install -y ${command}
-CMD ["${command}"]`
-
-    const compose = `version: '3'
-services:
-  app:
-    image: ubuntu:latest
-    command: ${command}`
+    const command = String(inputs.command ?? config.command ?? "")
 
     return {
-      dockerfile,
-      compose,
+      dockerfile: `FROM ubuntu:latest\nRUN apt-get update && apt-get install -y ${command}\nCMD ["${command}"]`,
+      compose: `version: '3'\nservices:\n  app:\n    image: ubuntu:latest\n    command: ${command}`,
     }
   },
 }

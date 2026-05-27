@@ -11,7 +11,7 @@ describe("encodingAdapter", () => {
   it("定义正确", () => {
     expect(encodingAdapter.type).toBe("encoding")
     expect(encodingAdapter.category).toBe("crypto")
-    expect(encodingAdapter.inputs).toHaveLength(2)
+    expect(encodingAdapter.config).toHaveLength(3)
     expect(encodingAdapter.outputs).toHaveLength(1)
   })
 

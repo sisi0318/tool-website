@@ -19,25 +19,34 @@ export const baseConverterAdapter: ToolAdapter = {
   category: "utility",
   label: "Base Converter",
   icon: Binary,
-  inputs: [{ id: "value", name: "Value", dataType: "string", required: true }],
-  outputs: [
-    { id: "binary", name: "Binary", dataType: "string" },
-    { id: "octal", name: "Octal", dataType: "string" },
-    { id: "decimal", name: "Decimal", dataType: "string" },
-    { id: "hex", name: "Hex", dataType: "string" },
-  ],
   config: [
+    {
+      id: "value",
+      name: "Value",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "fromBase",
       name: "Input Base",
       dataType: "string",
       defaultValue: "10",
       options: BASES,
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "binary", name: "Binary", dataType: "string" },
+    { id: "octal", name: "Octal", dataType: "string" },
+    { id: "decimal", name: "Decimal", dataType: "string" },
+    { id: "hex", name: "Hex", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const value = String(inputs.value ?? "").trim()
-    const fromBase = Number(config.fromBase ?? 10)
+    const value = String(inputs.value ?? config.value ?? "").trim()
+    const fromBase = Number(inputs.fromBase ?? config.fromBase ?? 10)
 
     try {
       const decimal = parseInt(value, fromBase)

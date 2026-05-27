@@ -13,26 +13,20 @@ function rot13(text: string): string {
   return caesarCipher(text, 13)
 }
 
-function base64Encode(text: string): string {
-  return Buffer.from(text).toString("base64")
-}
-
-function base64Decode(text: string): string {
-  return Buffer.from(text, "base64").toString("utf8")
-}
-
 export const classicCipherAdapter: ToolAdapter = {
   type: "classic-cipher",
   category: "crypto",
   label: "Classic Cipher",
   icon: Lock,
-  inputs: [
-    { id: "data", name: "Data", dataType: "string", required: true },
-  ],
-  outputs: [
-    { id: "result", name: "Result", dataType: "string" },
-  ],
   config: [
+    {
+      id: "data",
+      name: "Data",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "algorithm",
       name: "Algorithm",
@@ -42,12 +36,9 @@ export const classicCipherAdapter: ToolAdapter = {
         { label: "Caesar", value: "caesar" },
         { label: "ROT13", value: "rot13" },
         { label: "Atbash", value: "atbash" },
-        { label: "Vigenere", value: "vigenere" },
-        { label: "Playfair", value: "playfair" },
-        { label: "Rail Fence", value: "rail-fence" },
-        { label: "Columnar", value: "columnar" },
-        { label: "Affine", value: "affine" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "shift",
@@ -56,52 +47,17 @@ export const classicCipherAdapter: ToolAdapter = {
       defaultValue: 3,
       dependsOn: "algorithm",
       dynamicOptions: (algorithm) => algorithm === "caesar" ? [{ label: "1-25", value: "1-25" }] : [],
-    },
-    {
-      id: "key",
-      name: "Key",
-      dataType: "string",
-      defaultValue: "",
-      dependsOn: "algorithm",
-      dynamicOptions: (algorithm) => ["vigenere", "playfair"].includes(algorithm) ? [{ label: "Key", value: "key" }] : [],
-    },
-    {
-      id: "railCount",
-      name: "Rails",
-      dataType: "number",
-      defaultValue: 3,
-      dependsOn: "algorithm",
-      dynamicOptions: (algorithm) => algorithm === "rail-fence" ? [{ label: "2-10", value: "2-10" }] : [],
-    },
-    {
-      id: "colKey",
-      name: "Column Key",
-      dataType: "string",
-      defaultValue: "",
-      dependsOn: "algorithm",
-      dynamicOptions: (algorithm) => algorithm === "columnar" ? [{ label: "Key", value: "key" }] : [],
-    },
-    {
-      id: "affineA",
-      name: "Affine A",
-      dataType: "number",
-      defaultValue: 5,
-      dependsOn: "algorithm",
-      dynamicOptions: (algorithm) => algorithm === "affine" ? [{ label: "1-25", value: "1-25" }] : [],
-    },
-    {
-      id: "affineB",
-      name: "Affine B",
-      dataType: "number",
-      defaultValue: 8,
-      dependsOn: "algorithm",
-      dynamicOptions: (algorithm) => algorithm === "affine" ? [{ label: "0-25", value: "0-25" }] : [],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "result", name: "Result", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const data = String(inputs.data ?? "")
-    const algorithm = String(config.algorithm ?? "caesar")
-    const shift = Number(config.shift ?? 3)
+    const data = String(inputs.data ?? config.data ?? "")
+    const algorithm = String(inputs.algorithm ?? config.algorithm ?? "caesar")
+    const shift = Number(inputs.shift ?? config.shift ?? 3)
 
     switch (algorithm) {
       case "caesar":
@@ -109,11 +65,13 @@ export const classicCipherAdapter: ToolAdapter = {
       case "rot13":
         return { result: rot13(data) }
       case "atbash":
-        return { result: data.split("").map((c) => {
-          if (c >= "a" && c <= "z") return String.fromCharCode(219 - c.charCodeAt(0))
-          if (c >= "A" && c <= "Z") return String.fromCharCode(155 - c.charCodeAt(0))
-          return c
-        }).join("") }
+        return {
+          result: data.split("").map((c) => {
+            if (c >= "a" && c <= "z") return String.fromCharCode(219 - c.charCodeAt(0))
+            if (c >= "A" && c <= "Z") return String.fromCharCode(155 - c.charCodeAt(0))
+            return c
+          }).join(""),
+        }
       default:
         return { result: caesarCipher(data, shift) }
     }

@@ -7,15 +7,21 @@ export const whoisAdapter: ToolAdapter = {
   category: "dev",
   label: "Whois",
   icon: Search,
-  inputs: [
-    { id: "domain", name: "Domain", dataType: "string", required: true },
+  config: [
+    {
+      id: "domain",
+      name: "Domain",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "result", name: "Result", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const domain = String(inputs.domain ?? "")
+    const domain = String(inputs.domain ?? config.domain ?? "")
 
     if (!domain) {
       throw new Error("Domain is required")

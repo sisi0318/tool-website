@@ -3,36 +3,11 @@ import { Handle, Position } from "@xyflow/react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
-import type { NodeInstance, PortDefinition } from "@/lib/canvas/types"
-import { ParameterRow } from "./ParameterRow"
+import type { NodeInstance, ConfigField } from "@/lib/canvas/types"
+import { ConfigInput } from "./ConfigInput"
 
 interface BaseNodeProps {
   data: NodeInstance & { definition: NonNullable<ReturnType<typeof getNodeDefinition>> }
-}
-
-function PortHandle({
-  port,
-  type,
-}: {
-  port: PortDefinition
-  type: "source" | "target"
-}) {
-  const color = TYPE_COLORS[port.dataType]
-  const isOutput = type === "source"
-
-  return (
-    <Handle
-      type={type}
-      position={isOutput ? Position.Right : Position.Left}
-      id={port.id}
-      style={{
-        background: color,
-        width: 10,
-        height: 10,
-        border: "2px solid white",
-      }}
-    />
-  )
 }
 
 function BaseNodeComponent({ data }: BaseNodeProps) {
@@ -48,9 +23,10 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
   const isSelected = selectedNodeId === node.id
   const Icon = definition.icon
 
-  // 分离端口关联参数和独立参数
-  const portFields = definition.config.filter((f) => f.portId)
-  const standaloneFields = definition.config.filter((f) => !f.portId)
+  // 检查输入端口是否已连接
+  const isInputConnected = (portId: string): boolean => {
+    return edges.some((e) => e.target === node.id && e.targetPort === portId)
+  }
 
   // 获取输入端口的上游值
   const getInputValue = (portId: string): unknown => {
@@ -60,14 +36,9 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
     return sourceOutputs?.[edge.sourcePort]
   }
 
-  // 检查输入端口是否已连接
-  const isInputConnected = (portId: string): boolean => {
-    return edges.some((e) => e.target === node.id && e.targetPort === portId)
-  }
-
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 min-w-[200px] max-w-[280px] ${
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 min-w-[280px] max-w-[400px] ${
         nodeErrors
           ? "border-red-500"
           : isSelected
@@ -76,6 +47,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
       }`}
       onClick={() => selectNode(node.id)}
     >
+      {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-lg">
         <Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
         <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -86,84 +58,115 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
         )}
       </div>
 
+      {/* Parameters */}
       <div className="py-1">
-        {/* 输入端口 + 关联参数 */}
-        {definition.inputs.map((port) => {
-          const field = portFields.find((f) => f.portId === port.id)
-          const color = TYPE_COLORS[port.dataType]
-          const connected = isInputConnected(port.id)
-          const upstreamValue = connected ? getInputValue(port.id) : undefined
+        {definition.config.map((field) => {
+          const connected = field.hasInput ? isInputConnected(field.id) : false
+          const upstreamValue = connected ? getInputValue(field.id) : undefined
+          const outputValue = field.hasOutput ? nodeOutputs?.[field.id] : undefined
+
           return (
-            <div key={port.id} className="flex items-center gap-2 px-3 py-1 relative">
-              <Handle
-                type="target"
-                position={Position.Left}
-                id={port.id}
-                style={{
-                  background: color,
-                  width: 10,
-                  height: 10,
-                  border: "2px solid white",
-                }}
-              />
-              <span className="text-xs text-gray-500 min-w-[40px]">{port.name}</span>
-              {field && (
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={connected 
-                      ? String(upstreamValue ?? "")
-                      : String(node.config[field.id] ?? field.defaultValue ?? "")}
-                    onChange={(e) => {
+            <div key={field.id} className="flex items-center gap-1 px-2 py-1">
+              {/* Input Port */}
+              <div className="w-6 flex justify-center">
+                {field.hasInput && (
+                  <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={field.id}
+                    style={{
+                      background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
+                      width: 8,
+                      height: 8,
+                      border: "2px solid white",
+                      position: "relative",
+                      left: 0,
+                      transform: "none",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Parameter Label + Input */}
+              <div className="flex-1 flex items-center gap-1 min-w-0">
+                <span className="text-[10px] text-gray-400 w-14 shrink-0 truncate" title={field.name}>
+                  {field.name}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <ConfigInput
+                    field={field}
+                    value={connected ? upstreamValue : node.config[field.id]}
+                    onChange={(v) => {
                       if (!connected) {
-                        updateConfig(node.id, { ...node.config, [field.id]: e.target.value })
+                        updateConfig(node.id, { ...node.config, [field.id]: v })
                       }
                     }}
                     disabled={connected}
-                    className="w-full px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-70 disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                    allConfig={node.config}
                   />
                 </div>
-              )}
+              </div>
+
+              {/* Output Port */}
+              <div className="w-6 flex justify-center">
+                {field.hasOutput && (
+                  <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={field.id}
+                    style={{
+                      background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
+                      width: 8,
+                      height: 8,
+                      border: "2px solid white",
+                      position: "relative",
+                      right: 0,
+                      transform: "none",
+                    }}
+                  />
+                )}
+              </div>
             </div>
           )
         })}
 
-        {/* 独立参数 */}
-        {standaloneFields.map((field) => (
-          <ParameterRow
-            key={field.id}
-            nodeId={node.id}
-            field={field}
-            value={node.config[field.id]}
-            onChange={(v) => updateConfig(node.id, { ...node.config, [field.id]: v })}
-            disabled={false}
-            allConfig={node.config}
-          />
-        ))}
-
-        {/* 输出端口 */}
-        {definition.outputs.map((port) => {
-          const color = TYPE_COLORS[port.dataType]
-          const outputValue = nodeOutputs?.[port.id]
-          return (
-            <div key={port.id} className="flex items-center justify-end gap-2 px-3 py-1 relative">
-              <span className="text-xs text-gray-500 min-w-[40px] text-right truncate max-w-[120px]" title={String(outputValue ?? "")}>
-                {outputValue !== undefined ? String(outputValue) : port.name}
-              </span>
-              <Handle
-                type="source"
-                position={Position.Right}
-                id={port.id}
-                style={{
-                  background: color,
-                  width: 10,
-                  height: 10,
-                  border: "2px solid white",
-                }}
-              />
-            </div>
-          )
-        })}
+        {/* Derived Outputs */}
+        {definition.outputs.length > 0 && (
+          <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
+            {definition.outputs.map((output) => {
+              const outputValue = nodeOutputs?.[output.id]
+              return (
+                <div key={output.id} className="flex items-center gap-1 px-2 py-1">
+                  <div className="w-6" />
+                  <div className="flex-1 flex items-center gap-1 min-w-0">
+                    <span className="text-[10px] text-gray-400 w-14 shrink-0 truncate" title={output.name}>
+                      {output.name}
+                    </span>
+                    <span className="text-[10px] text-gray-500 truncate" title={String(outputValue ?? "")}>
+                      {outputValue !== undefined ? String(outputValue) : ""}
+                    </span>
+                  </div>
+                  <div className="w-6 flex justify-center">
+                    <Handle
+                      type="source"
+                      position={Position.Right}
+                      id={output.id}
+                      style={{
+                        background: TYPE_COLORS[output.dataType] ?? "#94a3b8",
+                        width: 8,
+                        height: 8,
+                        border: "2px solid white",
+                        position: "relative",
+                        right: 0,
+                        transform: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {nodeErrors && (

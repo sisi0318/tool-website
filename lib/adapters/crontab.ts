@@ -7,16 +7,22 @@ export const crontabAdapter: ToolAdapter = {
   category: "dev",
   label: "Crontab",
   icon: Clock,
-  inputs: [
-    { id: "expression", name: "Expression", dataType: "string", required: true },
+  config: [
+    {
+      id: "expression",
+      name: "Expression",
+      dataType: "string",
+      defaultValue: "* * * * *",
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "parsed", name: "Parsed", dataType: "json" },
     { id: "nextRuns", name: "Next Runs", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const expression = String(inputs.expression ?? "")
+    const expression = String(inputs.expression ?? config.expression ?? "* * * * *")
 
     const parts = expression.trim().split(/\s+/)
     if (parts.length !== 5) {
@@ -29,11 +35,9 @@ export const crontabAdapter: ToolAdapter = {
       if (field === "*") {
         return Array.from({ length: max - min + 1 }, (_, i) => i + min)
       }
-
       if (field.includes(",")) {
         return field.flatMap((f) => parseField(f, min, max))
       }
-
       if (field.includes("/")) {
         const [range, step] = field.split("/")
         const start = range === "*" ? min : parseInt(range)
@@ -44,12 +48,10 @@ export const crontabAdapter: ToolAdapter = {
         }
         return values
       }
-
       if (field.includes("-")) {
         const [start, end] = field.split("-").map(Number)
         return Array.from({ length: end - start + 1 }, (_, i) => start + i)
       }
-
       return [parseInt(field)]
     }
 

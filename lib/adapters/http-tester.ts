@@ -7,15 +7,15 @@ export const httpTesterAdapter: ToolAdapter = {
   category: "dev",
   label: "HTTP Tester",
   icon: Globe,
-  inputs: [
-    { id: "url", name: "URL", dataType: "string", required: true },
-    { id: "body", name: "Body", dataType: "string" },
-  ],
-  outputs: [
-    { id: "response", name: "Response", dataType: "json" },
-    { id: "status", name: "Status", dataType: "number" },
-  ],
   config: [
+    {
+      id: "url",
+      name: "URL",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "method",
       name: "Method",
@@ -28,6 +28,8 @@ export const httpTesterAdapter: ToolAdapter = {
         { label: "DELETE", value: "DELETE" },
         { label: "PATCH", value: "PATCH" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "headers",
@@ -35,13 +37,28 @@ export const httpTesterAdapter: ToolAdapter = {
       dataType: "string",
       defaultValue: "{}",
       multiline: true,
+      hasInput: true,
+      hasOutput: true,
+    },
+    {
+      id: "body",
+      name: "Body",
+      dataType: "string",
+      defaultValue: "",
+      multiline: true,
+      hasInput: true,
+      hasOutput: false,
     },
   ],
+  outputs: [
+    { id: "response", name: "Response", dataType: "json" },
+    { id: "status", name: "Status", dataType: "number" },
+  ],
   async execute(inputs, config) {
-    const url = String(inputs.url ?? "")
-    const method = String(config.method ?? "GET")
-    const body = inputs.body ? String(inputs.body) : undefined
-    const headersStr = String(config.headers ?? "{}")
+    const url = String(inputs.url ?? config.url ?? "")
+    const method = String(inputs.method ?? config.method ?? "GET")
+    const body = inputs.body ? String(inputs.body) : config.body ? String(config.body) : undefined
+    const headersStr = String(inputs.headers ?? config.headers ?? "{}")
 
     if (!url) {
       throw new Error("URL is required")

@@ -7,13 +7,15 @@ export const currencyAdapter: ToolAdapter = {
   category: "utility",
   label: "Currency",
   icon: DollarSign,
-  inputs: [
-    { id: "amount", name: "Amount", dataType: "number", required: true },
-  ],
-  outputs: [
-    { id: "result", name: "Result", dataType: "json" },
-  ],
   config: [
+    {
+      id: "amount",
+      name: "Amount",
+      dataType: "number",
+      defaultValue: 0,
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "from",
       name: "From",
@@ -26,6 +28,8 @@ export const currencyAdapter: ToolAdapter = {
         { label: "JPY", value: "JPY" },
         { label: "CNY", value: "CNY" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "to",
@@ -39,12 +43,17 @@ export const currencyAdapter: ToolAdapter = {
         { label: "JPY", value: "JPY" },
         { label: "CNY", value: "CNY" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "result", name: "Result", dataType: "json" },
+  ],
   async execute(inputs, config) {
-    const amount = Number(inputs.amount ?? 0)
-    const from = String(config.from ?? "USD")
-    const to = String(config.to ?? "EUR")
+    const amount = Number(inputs.amount ?? config.amount ?? 0)
+    const from = String(inputs.from ?? config.from ?? "USD")
+    const to = String(inputs.to ?? config.to ?? "EUR")
 
     const rates: Record<string, number> = {
       USD: 1,

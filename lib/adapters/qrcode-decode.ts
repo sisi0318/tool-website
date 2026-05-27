@@ -7,13 +7,18 @@ export const qrcodeDecodeAdapter: ToolAdapter = {
   category: "image",
   label: "QRCode Decode",
   icon: ScanLine,
-  inputs: [
-    { id: "file", name: "File", dataType: "bytes", required: true },
+  config: [
+    {
+      id: "file",
+      name: "File",
+      dataType: "bytes",
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "data", name: "Data", dataType: "string" },
   ],
-  config: [],
   async execute(inputs, config) {
     const file = inputs.file as File | null
     if (!file) {

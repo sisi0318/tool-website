@@ -7,19 +7,22 @@ export const imageEditorAdapter: ToolAdapter = {
   category: "image",
   label: "Image Editor",
   icon: Crop,
-  inputs: [
-    { id: "file", name: "File", dataType: "bytes", required: true },
-  ],
-  outputs: [
-    { id: "file", name: "File", dataType: "bytes" },
-  ],
   config: [
+    {
+      id: "file",
+      name: "File",
+      dataType: "bytes",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "brightness",
       name: "Brightness",
       dataType: "number",
       defaultValue: 100,
       slider: { min: 0, max: 200, step: 1 },
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "contrast",
@@ -27,6 +30,8 @@ export const imageEditorAdapter: ToolAdapter = {
       dataType: "number",
       defaultValue: 100,
       slider: { min: 0, max: 200, step: 1 },
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "saturation",
@@ -34,13 +39,20 @@ export const imageEditorAdapter: ToolAdapter = {
       dataType: "number",
       defaultValue: 100,
       slider: { min: 0, max: 200, step: 1 },
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "grayscale",
       name: "Grayscale",
       dataType: "boolean",
       defaultValue: false,
+      hasInput: true,
+      hasOutput: true,
     },
+  ],
+  outputs: [
+    { id: "file", name: "File", dataType: "bytes" },
   ],
   async execute(inputs, config) {
     const file = inputs.file as File | null

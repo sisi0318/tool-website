@@ -1,14 +1,5 @@
 export type DataType = "string" | "number" | "json" | "bytes" | "boolean"
 
-export interface PortDefinition {
-  id: string
-  name: string
-  dataType: DataType
-  required?: boolean
-  defaultValue?: unknown
-  jsonTypename?: string
-}
-
 export interface SliderConfig {
   min: number
   max: number
@@ -26,7 +17,14 @@ export interface ConfigField {
   color?: boolean
   dependsOn?: string
   dynamicOptions?: (dependentValue: string) => Array<{ label: string; value: string }>
-  portId?: string
+  hasInput?: boolean   // Whether this parameter has an input port on the left
+  hasOutput?: boolean  // Whether this parameter has an output port on the right
+}
+
+export interface DerivedOutput {
+  id: string
+  name: string
+  dataType: DataType
 }
 
 export interface NodeDefinition {
@@ -34,9 +32,8 @@ export interface NodeDefinition {
   category: "basic" | "crypto" | "image" | "text" | "dev" | "utility" | "viewer"
   label: string
   icon: React.ComponentType<{ className?: string }>
-  inputs: PortDefinition[]
-  outputs: PortDefinition[]
   config: ConfigField[]
+  outputs: DerivedOutput[]   // Computed outputs (like Hash result)
   execute: (inputs: Record<string, unknown>, config: Record<string, unknown>) => Promise<Record<string, unknown>>
 }
 
