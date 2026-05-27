@@ -20,7 +20,7 @@ export const qrcodeDecodeAdapter: ToolAdapter = {
     { id: "data", name: "Data", dataType: "string" },
   ],
   async execute(inputs, config) {
-    const file = inputs.file as File | null
+    const file = (inputs.file ?? config.file) as File | null
     if (!file) {
       throw new Error("No file provided")
     }

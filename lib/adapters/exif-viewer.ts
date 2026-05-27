@@ -36,7 +36,7 @@ export const exifViewerAdapter: ToolAdapter = {
     { id: "exif", name: "EXIF Data", dataType: "json" },
   ],
   async execute(inputs, config) {
-    const file = inputs.file as File | null
+    const file = (inputs.file ?? config.file) as File | null
     if (!file) {
       throw new Error("No file provided")
     }

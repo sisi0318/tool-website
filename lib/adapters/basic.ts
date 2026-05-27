@@ -92,7 +92,7 @@ export const fileNode: ToolAdapter = {
   ],
   outputs: [],
   async execute(inputs, config) {
-    return { file: inputs.file ?? null }
+    return { file: (inputs.file ?? config.file) ?? null }
   },
 }
 
