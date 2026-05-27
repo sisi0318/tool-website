@@ -7,13 +7,14 @@ export const exifViewerAdapter: ToolAdapter = {
   category: "image",
   label: "EXIF Viewer",
   icon: Eye,
-  inputs: [
-    { id: "file", name: "File", dataType: "bytes", required: true },
-  ],
-  outputs: [
-    { id: "exif", name: "EXIF Data", dataType: "json" },
-  ],
   config: [
+    {
+      id: "file",
+      name: "File",
+      dataType: "bytes",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "category",
       name: "Category",
@@ -27,7 +28,12 @@ export const exifViewerAdapter: ToolAdapter = {
         { label: "DateTime", value: "datetime" },
         { label: "Technical", value: "technical" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
+  ],
+  outputs: [
+    { id: "exif", name: "EXIF Data", dataType: "json" },
   ],
   async execute(inputs, config) {
     const file = inputs.file as File | null

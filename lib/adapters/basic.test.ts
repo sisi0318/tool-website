@@ -11,8 +11,10 @@ describe("stringNode", () => {
   it("定义正确", () => {
     expect(stringNode.type).toBe("string")
     expect(stringNode.category).toBe("basic")
-    expect(stringNode.outputs).toHaveLength(1)
-    expect(stringNode.outputs[0].dataType).toBe("string")
+    expect(stringNode.config).toHaveLength(1)
+    expect(stringNode.config[0].dataType).toBe("string")
+    expect(stringNode.config[0].hasInput).toBe(true)
+    expect(stringNode.config[0].hasOutput).toBe(true)
   })
 
   it("execute 返回配置值", async () => {
@@ -24,7 +26,9 @@ describe("stringNode", () => {
 describe("numberNode", () => {
   it("定义正确", () => {
     expect(numberNode.type).toBe("number")
-    expect(numberNode.outputs[0].dataType).toBe("number")
+    expect(numberNode.config[0].dataType).toBe("number")
+    expect(numberNode.config[0].hasInput).toBe(true)
+    expect(numberNode.config[0].hasOutput).toBe(true)
   })
 
   it("execute 返回数字", async () => {

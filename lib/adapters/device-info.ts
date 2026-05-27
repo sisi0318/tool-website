@@ -7,11 +7,10 @@ export const deviceInfoAdapter: ToolAdapter = {
   category: "viewer",
   label: "Device Info",
   icon: Smartphone,
-  inputs: [],
+  config: [],
   outputs: [
     { id: "info", name: "Info", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
     if (typeof window === "undefined") {
       return {

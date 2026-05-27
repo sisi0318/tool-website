@@ -8,14 +8,23 @@ export const hmacAdapter: ToolAdapter = {
   category: "crypto",
   label: "HMAC",
   icon: Key,
-  inputs: [
-    { id: "data", name: "Data", dataType: "string", required: true },
-    { id: "key", name: "Key", dataType: "string", required: true },
-  ],
-  outputs: [
-    { id: "hmac", name: "HMAC", dataType: "string" },
-  ],
   config: [
+    {
+      id: "data",
+      name: "Data",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
+    {
+      id: "key",
+      name: "Key",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "algorithm",
       name: "Algorithm",
@@ -24,25 +33,12 @@ export const hmacAdapter: ToolAdapter = {
       options: [
         { label: "MD5", value: "md5" },
         { label: "SHA-1", value: "sha1" },
-        { label: "SHA-224", value: "sha224" },
         { label: "SHA-256", value: "sha256" },
         { label: "SHA-384", value: "sha384" },
         { label: "SHA-512", value: "sha512" },
-        { label: "SHA3-256", value: "sha3-256" },
-        { label: "SHA3-512", value: "sha3-512" },
-        { label: "RIPEMD-160", value: "ripemd160" },
       ],
-    },
-    {
-      id: "keyFormat",
-      name: "Key Format",
-      dataType: "string",
-      defaultValue: "raw",
-      options: [
-        { label: "Raw", value: "raw" },
-        { label: "Hex", value: "hex" },
-        { label: "Base64", value: "base64" },
-      ],
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "outputFormat",
@@ -53,17 +49,23 @@ export const hmacAdapter: ToolAdapter = {
         { label: "Hex", value: "hex" },
         { label: "Base64", value: "base64" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "hmac", name: "HMAC", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const data = String(inputs.data ?? "")
-    const key = String(inputs.key ?? "")
-    const algorithm = String(config.algorithm ?? "sha256")
+    const data = String(inputs.data ?? config.data ?? "")
+    const key = String(inputs.key ?? config.key ?? "")
+    const algorithm = String(inputs.algorithm ?? config.algorithm ?? "sha256")
+    const outputFormat = String(inputs.outputFormat ?? config.outputFormat ?? "hex")
 
     try {
       const hmac = createHmac(algorithm, key)
       hmac.update(data)
-      return { hmac: hmac.digest("hex") }
+      return { hmac: hmac.digest(outputFormat === "base64" ? "base64" : "hex") }
     } catch (error) {
       throw new Error(`HMAC error: ${error}`)
     }

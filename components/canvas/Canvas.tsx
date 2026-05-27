@@ -87,15 +87,27 @@ export function Canvas() {
       const targetDef = getNodeDefinition(targetNode.type)
       if (!sourceDef || !targetDef) return
 
-      const sourcePort = sourceDef.outputs.find(
-        (p) => p.id === connection.sourceHandle
+      // Find source config field (has hasOutput=true) or derived output
+      const sourceField = sourceDef.config.find(
+        (f) => f.id === connection.sourceHandle && f.hasOutput
       )
-      const targetPort = targetDef.inputs.find(
-        (p) => p.id === connection.targetHandle
+      const sourceOutput = sourceDef.outputs.find(
+        (o) => o.id === connection.sourceHandle
       )
-      if (!sourcePort || !targetPort) return
+      const targetField = targetDef.config.find(
+        (f) => f.id === connection.targetHandle && f.hasInput
+      )
 
-      const result = validateConnection(sourcePort, targetPort)
+      if ((!sourceField && !sourceOutput) || !targetField) return
+
+      // Create the source field-like object for validation
+      const sourceForValidation = sourceField ?? {
+        id: sourceOutput!.id,
+        name: sourceOutput!.name,
+        dataType: sourceOutput!.dataType,
+      }
+
+      const result = validateConnection(sourceForValidation, targetField)
       if (!result.valid) return
 
       if (result.level === "warning") {

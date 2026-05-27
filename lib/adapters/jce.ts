@@ -7,13 +7,15 @@ export const jceAdapter: ToolAdapter = {
   category: "data",
   label: "JCE",
   icon: Database,
-  inputs: [
-    { id: "data", name: "Data", dataType: "string", required: true },
-  ],
-  outputs: [
-    { id: "decoded", name: "Decoded", dataType: "json" },
-  ],
   config: [
+    {
+      id: "data",
+      name: "Data",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "mode",
       name: "Mode",
@@ -23,11 +25,16 @@ export const jceAdapter: ToolAdapter = {
         { label: "Decode", value: "decode" },
         { label: "Encode", value: "encode" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "decoded", name: "Decoded", dataType: "json" },
+  ],
   async execute(inputs, config) {
-    const data = String(inputs.data ?? "")
-    const mode = String(config.mode ?? "decode")
+    const data = String(inputs.data ?? config.data ?? "")
+    const mode = String(inputs.mode ?? config.mode ?? "decode")
 
     if (mode === "decode") {
       try {

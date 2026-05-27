@@ -7,8 +7,15 @@ export const caseConverterAdapter: ToolAdapter = {
   category: "text",
   label: "Case Converter",
   icon: CaseSensitive,
-  inputs: [
-    { id: "text", name: "Text", dataType: "string", required: true },
+  config: [
+    {
+      id: "text",
+      name: "Text",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "upper", name: "UPPER", dataType: "string" },
@@ -18,9 +25,8 @@ export const caseConverterAdapter: ToolAdapter = {
     { id: "snake", name: "snake_case", dataType: "string" },
     { id: "kebab", name: "kebab-case", dataType: "string" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const text = String(inputs.text ?? "")
+    const text = String(inputs.text ?? config.text ?? "")
 
     const toCamelCase = (str: string): string => {
       return str

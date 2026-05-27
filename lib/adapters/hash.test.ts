@@ -11,24 +11,24 @@ describe("hashAdapter", () => {
   it("定义正确", () => {
     expect(hashAdapter.type).toBe("hash")
     expect(hashAdapter.category).toBe("crypto")
-    expect(hashAdapter.inputs).toHaveLength(1)
-    expect(hashAdapter.outputs).toHaveLength(2)
+    expect(hashAdapter.config).toHaveLength(4)
+    expect(hashAdapter.outputs).toHaveLength(1)
+    expect(hashAdapter.outputs[0].id).toBe("hash")
   })
 
   it("SHA-256 哈希计算", async () => {
-    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "sha256" })
+    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "sha256", outputFormat: "hex" })
     expect(result.hash).toBeDefined()
-    expect(result.algorithm).toBe("sha256")
     expect(result.hash).toHaveLength(64)
   })
 
   it("MD5 哈希计算", async () => {
-    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "md5" })
+    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "md5", outputFormat: "hex" })
     expect(result.hash).toHaveLength(32)
   })
 
   it("SHA-1 哈希计算", async () => {
-    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "sha1" })
+    const result = await hashAdapter.execute({ data: "hello" }, { algorithm: "sha1", outputFormat: "hex" })
     expect(result.hash).toHaveLength(40)
   })
 

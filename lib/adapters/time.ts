@@ -7,13 +7,6 @@ export const timeAdapter: ToolAdapter = {
   category: "viewer",
   label: "Time",
   icon: Clock3,
-  inputs: [],
-  outputs: [
-    { id: "timestamp", name: "Timestamp", dataType: "number" },
-    { id: "iso", name: "ISO", dataType: "string" },
-    { id: "formatted", name: "Formatted", dataType: "string" },
-    { id: "parts", name: "Parts", dataType: "json" },
-  ],
   config: [
     {
       id: "timezone",
@@ -24,10 +17,17 @@ export const timeAdapter: ToolAdapter = {
         { label: "UTC", value: "UTC" },
         { label: "Local", value: "local" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "timestamp", name: "Timestamp", dataType: "number" },
+    { id: "iso", name: "ISO", dataType: "string" },
+    { id: "formatted", name: "Formatted", dataType: "string" },
+    { id: "parts", name: "Parts", dataType: "json" },
+  ],
   async execute(inputs, config) {
-    const timezone = String(config.timezone ?? "UTC")
     const now = new Date()
 
     return {

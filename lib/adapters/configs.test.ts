@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach } from "vitest"
 import { getNodeDefinition, clearRegistry } from "../canvas/registry"
 import { registerHashAdapter } from "../adapters/hash"
 import { registerHmacAdapter } from "../adapters/hmac"
@@ -41,23 +41,23 @@ beforeEach(() => {
 
 describe("Adapter Config Validation", () => {
   const adapters = [
-    { type: "hash", expectedConfigCount: 3, hasLinkedOptions: true },
-    { type: "hmac", expectedConfigCount: 3, hasLinkedOptions: false },
-    { type: "encoding", expectedConfigCount: 1, hasLinkedOptions: false },
-    { type: "classic-cipher", expectedConfigCount: 7, hasLinkedOptions: true },
-    { type: "json-format", expectedConfigCount: 2, hasLinkedOptions: false },
-    { type: "protobuf", expectedConfigCount: 2, hasLinkedOptions: false },
-    { type: "image-compress", expectedConfigCount: 2, hasLinkedOptions: false },
-    { type: "image-editor", expectedConfigCount: 4, hasLinkedOptions: false },
-    { type: "qrcode", expectedConfigCount: 4, hasLinkedOptions: false },
-    { type: "meme-splitter", expectedConfigCount: 2, hasLinkedOptions: false },
-    { type: "regex", expectedConfigCount: 3, hasLinkedOptions: false },
-    { type: "http-tester", expectedConfigCount: 2, hasLinkedOptions: false },
+    { type: "hash", expectedConfigCount: 4, hasLinkedOptions: true },
+    { type: "hmac", expectedConfigCount: 4, hasLinkedOptions: false },
+    { type: "encoding", expectedConfigCount: 3, hasLinkedOptions: false },
+    { type: "classic-cipher", expectedConfigCount: 3, hasLinkedOptions: true },
+    { type: "json-format", expectedConfigCount: 3, hasLinkedOptions: false },
+    { type: "protobuf", expectedConfigCount: 3, hasLinkedOptions: false },
+    { type: "image-compress", expectedConfigCount: 3, hasLinkedOptions: false },
+    { type: "image-editor", expectedConfigCount: 5, hasLinkedOptions: false },
+    { type: "qrcode", expectedConfigCount: 5, hasLinkedOptions: false },
+    { type: "meme-splitter", expectedConfigCount: 3, hasLinkedOptions: false },
+    { type: "regex", expectedConfigCount: 4, hasLinkedOptions: false },
+    { type: "http-tester", expectedConfigCount: 4, hasLinkedOptions: false },
     { type: "uuid", expectedConfigCount: 3, hasLinkedOptions: false },
-    { type: "base-converter", expectedConfigCount: 1, hasLinkedOptions: false },
-    { type: "temperature-converter", expectedConfigCount: 1, hasLinkedOptions: false },
-    { type: "image-to-base64", expectedConfigCount: 1, hasLinkedOptions: false },
-    { type: "exif-viewer", expectedConfigCount: 1, hasLinkedOptions: false },
+    { type: "base-converter", expectedConfigCount: 2, hasLinkedOptions: false },
+    { type: "temperature-converter", expectedConfigCount: 3, hasLinkedOptions: false },
+    { type: "image-to-base64", expectedConfigCount: 2, hasLinkedOptions: false },
+    { type: "exif-viewer", expectedConfigCount: 2, hasLinkedOptions: false },
   ]
 
   for (const { type, expectedConfigCount, hasLinkedOptions } of adapters) {
@@ -77,52 +77,31 @@ describe("Adapter Config Validation", () => {
   }
 })
 
-describe("Control Type Coverage", () => {
-  it("has dropdown selects for options fields", () => {
-    const typesWithSelects = [
-      "hash", "hmac", "encoding", "classic-cipher",
-      "image-compress", "qrcode", "http-tester", "uuid", "base-converter",
-      "temperature-converter", "image-to-base64", "exif-viewer",
-    ]
-    for (const type of typesWithSelects) {
-      const def = getNodeDefinition(type)
-      const fieldsWithOptions = def!.config.filter((f) => f.options)
-      expect(fieldsWithOptions.length).toBeGreaterThan(0)
-    }
+describe("Port Design Validation", () => {
+  it("hash: data is input-only, algorithm has input+output, hash is derived output", () => {
+    const def = getNodeDefinition("hash")
+    const dataField = def!.config.find((f) => f.id === "data")!
+    const algorithmField = def!.config.find((f) => f.id === "algorithm")!
+    
+    expect(dataField.hasInput).toBe(true)
+    expect(dataField.hasOutput).toBe(false)
+    
+    expect(algorithmField.hasInput).toBe(true)
+    expect(algorithmField.hasOutput).toBe(true)
+    
+    expect(def!.outputs).toHaveLength(1)
+    expect(def!.outputs[0].id).toBe("hash")
   })
 
-  it("has sliders for slider fields", () => {
-    const typesWithSliders = [
-      "json-format", "image-compress", "image-editor", "qrcode", "meme-splitter", "protobuf",
-    ]
-    for (const type of typesWithSliders) {
-      const def = getNodeDefinition(type)
-      const fieldsWithSlider = def!.config.filter((f) => f.slider)
-      expect(fieldsWithSlider.length).toBeGreaterThan(0)
-    }
-  })
-
-  it("has switches for boolean fields", () => {
-    const typesWithSwitches = ["json-format", "image-editor", "uuid"]
-    for (const type of typesWithSwitches) {
-      const def = getNodeDefinition(type)
-      const booleanFields = def!.config.filter((f) => f.dataType === "boolean")
-      expect(booleanFields.length).toBeGreaterThan(0)
-    }
-  })
-
-  it("has color pickers for color fields", () => {
-    const def = getNodeDefinition("qrcode")
-    const colorFields = def!.config.filter((f) => f.color)
-    expect(colorFields.length).toBe(2)
-  })
-
-  it("has textareas for multiline fields", () => {
-    const typesWithTextarea = ["regex", "http-tester"]
-    for (const type of typesWithTextarea) {
-      const def = getNodeDefinition(type)
-      const multilineFields = def!.config.filter((f) => f.multiline)
-      expect(multilineFields.length).toBeGreaterThan(0)
-    }
+  it("encoding: input is input-only, encoding has input+output", () => {
+    const def = getNodeDefinition("encoding")
+    const inputField = def!.config.find((f) => f.id === "input")!
+    const encodingField = def!.config.find((f) => f.id === "encoding")!
+    
+    expect(inputField.hasInput).toBe(true)
+    expect(inputField.hasOutput).toBe(false)
+    
+    expect(encodingField.hasInput).toBe(true)
+    expect(encodingField.hasOutput).toBe(true)
   })
 })

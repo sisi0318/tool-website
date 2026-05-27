@@ -18,18 +18,23 @@ export const hashAdapter: ToolAdapter = {
   category: "crypto",
   label: "Hash",
   icon: Hash,
-  inputs: [{ id: "data", name: "Data", dataType: "string", required: true }],
-  outputs: [
-    { id: "hash", name: "Hash", dataType: "string" },
-    { id: "algorithm", name: "Algorithm", dataType: "string" },
-  ],
   config: [
+    {
+      id: "data",
+      name: "Data",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "algorithm",
       name: "Algorithm",
       dataType: "string",
       defaultValue: "sha256",
       options: ALGORITHMS,
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "variant",
@@ -49,6 +54,8 @@ export const hashAdapter: ToolAdapter = {
         }
         return []
       },
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "outputFormat",
@@ -59,17 +66,23 @@ export const hashAdapter: ToolAdapter = {
         { label: "Hex", value: "hex" },
         { label: "Base64", value: "base64" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "hash", name: "Hash", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const data = String(inputs.data ?? "")
-    const algorithm = String(config.algorithm ?? "sha256")
+    const data = String(inputs.data ?? config.data ?? "")
+    const algorithm = String(inputs.algorithm ?? config.algorithm ?? "sha256")
+    const outputFormat = String(inputs.outputFormat ?? config.outputFormat ?? "hex")
 
     try {
       const hash = createHash(algorithm)
       hash.update(data)
-      const result = hash.digest("hex")
-      return { hash: result, algorithm }
+      const result = hash.digest(outputFormat === "base64" ? "base64" : "hex")
+      return { hash: result }
     } catch (error) {
       throw new Error(`Hash error: ${error}`)
     }

@@ -7,15 +7,22 @@ export const textStatsAdapter: ToolAdapter = {
   category: "text",
   label: "Text Stats",
   icon: FileText,
-  inputs: [
-    { id: "text", name: "Text", dataType: "string", required: true },
+  config: [
+    {
+      id: "text",
+      name: "Text",
+      dataType: "string",
+      defaultValue: "",
+      multiline: true,
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "stats", name: "Stats", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const text = String(inputs.text ?? "")
+    const text = String(inputs.text ?? config.text ?? "")
 
     const chars = text.length
     const words = text.trim() ? text.trim().split(/\s+/).length : 0

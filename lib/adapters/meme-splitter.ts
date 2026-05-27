@@ -7,19 +7,22 @@ export const memeSplitterAdapter: ToolAdapter = {
   category: "image",
   label: "Meme Splitter",
   icon: Scissors,
-  inputs: [
-    { id: "file", name: "File", dataType: "bytes", required: true },
-  ],
-  outputs: [
-    { id: "parts", name: "Parts", dataType: "json" },
-  ],
   config: [
+    {
+      id: "file",
+      name: "File",
+      dataType: "bytes",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "rows",
       name: "Rows",
       dataType: "number",
       defaultValue: 4,
       slider: { min: 1, max: 10, step: 1 },
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "cols",
@@ -27,7 +30,12 @@ export const memeSplitterAdapter: ToolAdapter = {
       dataType: "number",
       defaultValue: 6,
       slider: { min: 1, max: 10, step: 1 },
+      hasInput: true,
+      hasOutput: true,
     },
+  ],
+  outputs: [
+    { id: "parts", name: "Parts", dataType: "json" },
   ],
   async execute(inputs, config) {
     const file = inputs.file as File | null
@@ -35,8 +43,8 @@ export const memeSplitterAdapter: ToolAdapter = {
       throw new Error("No file provided")
     }
 
-    const rows = Number(config.rows ?? 2)
-    const cols = Number(config.cols ?? 1)
+    const rows = Number(inputs.rows ?? config.rows ?? 4)
+    const cols = Number(inputs.cols ?? config.cols ?? 6)
 
     return {
       parts: {

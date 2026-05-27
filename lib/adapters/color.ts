@@ -7,17 +7,24 @@ export const colorAdapter: ToolAdapter = {
   category: "utility",
   label: "Color",
   icon: Palette,
-  inputs: [
-    { id: "color", name: "Color", dataType: "string", required: true },
+  config: [
+    {
+      id: "color",
+      name: "Color",
+      dataType: "string",
+      defaultValue: "#000000",
+      color: true,
+      hasInput: true,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "hex", name: "HEX", dataType: "string" },
     { id: "rgb", name: "RGB", dataType: "json" },
     { id: "hsl", name: "HSL", dataType: "json" },
   ],
-  config: [],
   async execute(inputs, config) {
-    const color = String(inputs.color ?? "#000000")
+    const color = String(inputs.color ?? config.color ?? "#000000")
 
     const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
@@ -44,15 +51,9 @@ export const colorAdapter: ToolAdapter = {
         const d = max - min
         s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
         switch (max) {
-          case r:
-            h = ((g - b) / d + (g < b ? 6 : 0)) / 6
-            break
-          case g:
-            h = ((b - r) / d + 2) / 6
-            break
-          case b:
-            h = ((r - g) / d + 4) / 6
-            break
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break
+          case g: h = ((b - r) / d + 2) / 6; break
+          case b: h = ((r - g) / d + 4) / 6; break
         }
       }
 

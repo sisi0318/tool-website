@@ -61,24 +61,44 @@ export const encodingAdapter: ToolAdapter = {
   category: "crypto",
   label: "Encoding",
   icon: ArrowLeftRight,
-  inputs: [
-    { id: "input", name: "Input", dataType: "string", required: true },
-    { id: "mode", name: "Mode", dataType: "string" },
-  ],
-  outputs: [{ id: "output", name: "Output", dataType: "string" }],
   config: [
+    {
+      id: "input",
+      name: "Input",
+      dataType: "string",
+      defaultValue: "",
+      hasInput: true,
+      hasOutput: false,
+    },
     {
       id: "encoding",
       name: "Encoding",
       dataType: "string",
       defaultValue: "base64",
       options: ENCODING_TYPES,
+      hasInput: true,
+      hasOutput: true,
+    },
+    {
+      id: "mode",
+      name: "Mode",
+      dataType: "string",
+      defaultValue: "encode",
+      options: [
+        { label: "Encode", value: "encode" },
+        { label: "Decode", value: "decode" },
+      ],
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "output", name: "Output", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    const input = String(inputs.input ?? "")
-    const encoding = String(config.encoding ?? "base64")
-    const mode = String(inputs.mode ?? "encode")
+    const input = String(inputs.input ?? config.input ?? "")
+    const encoding = String(inputs.encoding ?? config.encoding ?? "base64")
+    const mode = String(inputs.mode ?? config.mode ?? "encode")
 
     try {
       if (mode === "decode") {

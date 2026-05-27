@@ -8,8 +8,6 @@ export const uuidAdapter: ToolAdapter = {
   category: "utility",
   label: "UUID",
   icon: Fingerprint,
-  inputs: [],
-  outputs: [{ id: "uuid", name: "UUID", dataType: "string" }],
   config: [
     {
       id: "version",
@@ -20,22 +18,38 @@ export const uuidAdapter: ToolAdapter = {
         { label: "v4 (Random)", value: "v4" },
         { label: "v1 (Time-based)", value: "v1" },
       ],
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "uppercase",
       name: "Uppercase",
       dataType: "boolean",
       defaultValue: false,
+      hasInput: true,
+      hasOutput: true,
     },
     {
       id: "withHyphens",
       name: "Hyphens",
       dataType: "boolean",
       defaultValue: true,
+      hasInput: true,
+      hasOutput: true,
     },
   ],
+  outputs: [
+    { id: "uuid", name: "UUID", dataType: "string" },
+  ],
   async execute(inputs, config) {
-    return { uuid: randomUUID() }
+    const uppercase = inputs.uppercase ?? config.uppercase ?? false
+    const withHyphens = inputs.withHyphens ?? config.withHyphens ?? true
+
+    let uuid = randomUUID()
+    if (!withHyphens) uuid = uuid.replace(/-/g, "")
+    if (uppercase) uuid = uuid.toUpperCase()
+
+    return { uuid }
   },
 }
 
