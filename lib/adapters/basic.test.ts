@@ -40,7 +40,7 @@ describe("numberNode", () => {
 describe("jsonNode", () => {
   it("execute 解析 JSON", async () => {
     const result = await jsonNode.execute({}, { value: '{"key":"value"}' })
-    expect(result).toEqual({ value: { key: "value" } })
+    expect(result).toEqual({ parsed: { key: "value" } })
   })
 
   it("execute 无效 JSON 抛出错误", async () => {
