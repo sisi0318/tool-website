@@ -112,19 +112,19 @@ describe("Adapter Execute Functions", () => {
     it("json: returns parsed object from config string", async () => {
       const def = getNodeDefinition("json")!
       const result = await def.execute({}, { value: '{"key":"value"}' })
-      expect(result).toEqual({ value: { key: "value" } })
+      expect(result).toEqual({ parsed: { key: "value" } })
     })
 
-    it("json: returns object from inputs", async () => {
+    it("json: returns parsed object from inputs", async () => {
       const def = getNodeDefinition("json")!
-      const result = await def.execute({ value: { a: 1 } }, {})
-      expect(result).toEqual({ value: { a: 1 } })
+      const result = await def.execute({ value: '{"a":1}' }, {})
+      expect(result).toEqual({ parsed: { a: 1 } })
     })
 
     it("json: parses string input to object", async () => {
       const def = getNodeDefinition("json")!
       const result = await def.execute({ value: '{"x":2}' }, {})
-      expect(result).toEqual({ value: { x: 2 } })
+      expect(result).toEqual({ parsed: { x: 2 } })
     })
 
     it("json: throws on invalid JSON in config", async () => {
