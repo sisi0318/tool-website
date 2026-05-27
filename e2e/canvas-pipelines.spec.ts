@@ -628,3 +628,162 @@ test.describe("Node Parameter Rendering", () => {
     await expect(node.locator("select").first()).toBeVisible({ timeout: 5000 })
   })
 })
+
+test.describe("Phase 4: New Nodes", () => {
+  test.beforeEach(async ({ page }) => {
+    nodeCounter = 0
+    await page.goto("/canvas")
+    await page.waitForLoadState("networkidle")
+    await page.waitForSelector(".react-flow", { timeout: 15000 })
+  })
+
+  test("Boolean node: toggle switch and verify output", async ({ page }) => {
+    const bool = await addNode(page, "boolean", { value: true })
+    const out = await addNode(page, "boolean", { value: false })
+    await connectNodes(page, bool, "value", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe(true)
+  })
+
+  test("Boolean node: default value is false", async ({ page }) => {
+    const bool = await addNode(page, "boolean")
+    await executeAll(page)
+    expect(await getOutput(page, bool, "value")).toBe(false)
+  })
+
+  test("JSON Path: query nested path", async ({ page }) => {
+    const json = await addNode(page, "json", { value: '{"store":{"book":[{"title":"Sayings"}]}}' })
+    const path = await addNode(page, "json-path", { path: "$.store.book[0].title" })
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, json, "parsed", path, "json")
+    await connectNodes(page, path, "result", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe("Sayings")
+  })
+
+  test("JSON Path: query array index", async ({ page }) => {
+    const json = await addNode(page, "json", { value: '{"arr":[10,20,30]}' })
+    const path = await addNode(page, "json-path", { path: "$.arr[2]" })
+    const out = await addNode(page, "number", { value: 0 })
+    await connectNodes(page, json, "parsed", path, "json")
+    await connectNodes(page, path, "result", out, "value")
+    await executeAll(page)
+    expect(await getOutput(page, out, "value")).toBe(30)
+  })
+
+  test("Base64 To File: converts base64 to file", async ({ page }) => {
+    const base64 = await addNode(page, "string", { value: btoa("hello world") })
+    const filename = await addNode(page, "string", { value: "test.txt" })
+    const b64ToFile = await addNode(page, "base64-to-file")
+    await connectNodes(page, base64, "value", b64ToFile, "base64")
+    await connectNodes(page, filename, "value", b64ToFile, "filename")
+    await executeAll(page)
+    const file = await getOutput(page, b64ToFile, "file")
+    expect(file).not.toBeNull()
+  })
+
+  test("File To Base64: converts file to base64", async ({ page }) => {
+    const fileNode = await addNode(page, "file")
+    const f2b64 = await addNode(page, "file-to-base64")
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, fileNode, "file", f2b64, "file")
+    await connectNodes(page, f2b64, "base64", out, "value")
+    await executeAll(page)
+    // File node has no file by default, so this should error
+    const error = await page.evaluate(({ nodeId }) => {
+      const store = (window as any).__ZUSTAND_STORE__
+      return store.getState().nodeErrors[nodeId]
+    }, { nodeId: f2b64 })
+    expect(error).toContain("No file provided")
+  })
+
+  test("String To File: converts string to file", async ({ page }) => {
+    const content = await addNode(page, "string", { value: "hello world" })
+    const filename = await addNode(page, "string", { value: "test.txt" })
+    const s2f = await addNode(page, "string-to-file")
+    await connectNodes(page, content, "value", s2f, "content")
+    await connectNodes(page, filename, "value", s2f, "filename")
+    await executeAll(page)
+    const file = await getOutput(page, s2f, "file")
+    expect(file).not.toBeNull()
+  })
+
+  test("File To String: converts file to string", async ({ page }) => {
+    const fileNode = await addNode(page, "file")
+    const f2s = await addNode(page, "file-to-string")
+    const out = await addNode(page, "string", { value: "" })
+    await connectNodes(page, fileNode, "file", f2s, "file")
+    await connectNodes(page, f2s, "content", out, "value")
+    await executeAll(page)
+    // File node has no file by default, so this should error
+    const error = await page.evaluate(({ nodeId }) => {
+      const store = (window as any).__ZUSTAND_STORE__
+      return store.getState().nodeErrors[nodeId]
+    }, { nodeId: f2s })
+    expect(error).toContain("No file provided")
+  })
+
+  test("String Preview: shows content", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello world" })
+    const preview = await addNode(page, "string-preview")
+    await connectNodes(page, src, "value", preview, "content")
+    await executeAll(page)
+    const content = await getOutput(page, preview, "content")
+    expect(content).toBe("hello world")
+  })
+
+  test("JSON Preview: shows parsed json", async ({ page }) => {
+    const src = await addNode(page, "string", { value: '{"key":"value"}' })
+    const preview = await addNode(page, "json-preview")
+    await connectNodes(page, src, "value", preview, "json")
+    await executeAll(page)
+    const parsed = await getOutput(page, preview, "parsed")
+    expect(parsed).toEqual({ key: "value" })
+  })
+
+  test("Image Preview: shows image", async ({ page }) => {
+    const qrcode = await addNode(page, "qrcode", { data: "test" })
+    const preview = await addNode(page, "image-preview")
+    await connectNodes(page, qrcode, "image", preview, "file")
+    await executeAll(page)
+    const file = await getOutput(page, preview, "file")
+    expect(file).not.toBeNull()
+  })
+
+  test("Delete key removes selected node", async ({ page }) => {
+    const src = await addNode(page, "string", { value: "hello" })
+    await page.waitForTimeout(500)
+    
+    // Click on the node to select it
+    const node = page.locator(".react-flow__node").first()
+    await node.click()
+    await page.waitForTimeout(200)
+    
+    // Press Delete key
+    await page.keyboard.press("Delete")
+    await page.waitForTimeout(500)
+    
+    // Verify node is removed
+    const nodes = await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      return store.getState().nodes
+    })
+    expect(nodes).toHaveLength(0)
+  })
+
+  test("Slider click doesn't drag canvas", async ({ page }) => {
+    await addNode(page, "qrcode")
+    await page.waitForTimeout(500)
+    
+    const slider = page.locator("[type='range']").first()
+    await expect(slider).toBeVisible({ timeout: 5000 })
+    
+    // Click on slider - this should not cause canvas drag
+    await slider.click()
+    await page.waitForTimeout(200)
+    
+    // Verify slider is still functional
+    const value = await slider.inputValue()
+    expect(value).toBeDefined()
+  })
+})

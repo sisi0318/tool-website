@@ -32,6 +32,9 @@ export function Canvas() {
     addNode,
     addEdge: addStoreEdge,
     updateNodePosition,
+    removeNode,
+    removeEdge,
+    selectedNodeId,
   } = useCanvasStore()
   const { screenToFlowPosition } = useReactFlow()
 
@@ -39,7 +42,7 @@ export function Canvas() {
     () =>
       storeNodes.map((node) => {
         const definition = getNodeDefinition(node.type)
-        const isBasic = ["string", "number", "json", "file"].includes(node.type)
+        const isBasic = ["string", "number", "json", "file", "boolean"].includes(node.type)
         return {
           id: node.id,
           type: isBasic ? "base" : "tool",
@@ -74,6 +77,39 @@ export function Canvas() {
   useEffect(() => {
     setEdges(flowEdges)
   }, [flowEdges, setEdges])
+
+  // Delete key removes selected node
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const target = e.target as HTMLElement
+        if (
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable
+        ) {
+          return
+        }
+
+        if (selectedNodeId) {
+          removeNode(selectedNodeId)
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedNodeId, removeNode])
+
+  // Edge delete callback
+  const onEdgesDelete = useCallback(
+    (deletedEdges: any[]) => {
+      for (const edge of deletedEdges) {
+        removeEdge(edge.id)
+      }
+    },
+    [removeEdge]
+  )
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -180,6 +216,7 @@ export function Canvas() {
         onConnect={onConnect}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onEdgesDelete={onEdgesDelete}
         nodeTypes={nodeTypes}
         fitView
       >

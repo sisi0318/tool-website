@@ -1,4 +1,4 @@
-import { Type, Hash, FileJson, File } from "lucide-react"
+import { Type, Hash, FileJson, File, ToggleLeft } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 
@@ -94,9 +94,31 @@ export const fileNode: ToolAdapter = {
   },
 }
 
+export const booleanNode: ToolAdapter = {
+  type: "boolean",
+  category: "basic",
+  label: "Boolean",
+  icon: ToggleLeft,
+  config: [
+    {
+      id: "value",
+      name: "Value",
+      dataType: "boolean",
+      defaultValue: false,
+      hasInput: true,
+      hasOutput: true,
+    },
+  ],
+  outputs: [],
+  async execute(inputs, config) {
+    return { value: Boolean(inputs.value ?? config.value ?? false) }
+  },
+}
+
 export function registerBasicNodes(): void {
   registerNode(stringNode)
   registerNode(numberNode)
   registerNode(jsonNode)
   registerNode(fileNode)
+  registerNode(booleanNode)
 }
