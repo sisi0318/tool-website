@@ -53,17 +53,9 @@ export const jsonNode: ToolAdapter = {
     {
       id: "value",
       name: "Value",
-      dataType: "string",
-      defaultValue: "{}",
+      dataType: "json",
+      defaultValue: {},
       multiline: true,
-      hasInput: true,
-      hasOutput: true,
-    },
-    {
-      id: "typename",
-      name: "Typename",
-      dataType: "string",
-      defaultValue: "",
       hasInput: true,
       hasOutput: true,
     },
@@ -71,7 +63,9 @@ export const jsonNode: ToolAdapter = {
   outputs: [],
   async execute(inputs, config) {
     if (inputs.value !== undefined) {
-      return { value: inputs.value }
+      const val = inputs.value
+      if (typeof val === "object") return { value: val }
+      try { return { value: JSON.parse(String(val)) } } catch { return { value: val } }
     }
     try {
       const parsed = JSON.parse(String(config.value ?? "{}"))

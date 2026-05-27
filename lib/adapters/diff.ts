@@ -28,7 +28,10 @@ export const diffAdapter: ToolAdapter = {
     },
   ],
   outputs: [
-    { id: "diff", name: "Diff", dataType: "json" },
+    { id: "added", name: "Added", dataType: "number" },
+    { id: "removed", name: "Removed", dataType: "number" },
+    { id: "unchanged", name: "Unchanged", dataType: "number" },
+    { id: "changes", name: "Changes", dataType: "json" },
   ],
   async execute(inputs, config) {
     const text1 = String(inputs.text1 ?? config.text1 ?? "")
@@ -47,22 +50,16 @@ export const diffAdapter: ToolAdapter = {
       if (line1 === line2) {
         changes.push({ type: "same", line: line1 ?? "", lineNum: i + 1 })
       } else {
-        if (line1 !== undefined) {
-          changes.push({ type: "remove", line: line1, lineNum: i + 1 })
-        }
-        if (line2 !== undefined) {
-          changes.push({ type: "add", line: line2, lineNum: i + 1 })
-        }
+        if (line1 !== undefined) changes.push({ type: "remove", line: line1, lineNum: i + 1 })
+        if (line2 !== undefined) changes.push({ type: "add", line: line2, lineNum: i + 1 })
       }
     }
 
     return {
-      diff: {
-        changes,
-        added: changes.filter((c) => c.type === "add").length,
-        removed: changes.filter((c) => c.type === "remove").length,
-        unchanged: changes.filter((c) => c.type === "same").length,
-      },
+      added: changes.filter((c) => c.type === "add").length,
+      removed: changes.filter((c) => c.type === "remove").length,
+      unchanged: changes.filter((c) => c.type === "same").length,
+      changes,
     }
   },
 }

@@ -2,6 +2,14 @@ import { DollarSign } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 
+const RATES: Record<string, number> = {
+  USD: 1,
+  EUR: 0.92,
+  GBP: 0.79,
+  JPY: 149.5,
+  CNY: 7.24,
+}
+
 export const currencyAdapter: ToolAdapter = {
   type: "currency",
   category: "utility",
@@ -48,33 +56,18 @@ export const currencyAdapter: ToolAdapter = {
     },
   ],
   outputs: [
-    { id: "result", name: "Result", dataType: "json" },
+    { id: "converted", name: "Converted", dataType: "number" },
+    { id: "rate", name: "Rate", dataType: "number" },
   ],
   async execute(inputs, config) {
     const amount = Number(inputs.amount ?? config.amount ?? 0)
     const from = String(inputs.from ?? config.from ?? "USD")
     const to = String(inputs.to ?? config.to ?? "EUR")
 
-    const rates: Record<string, number> = {
-      USD: 1,
-      EUR: 0.92,
-      GBP: 0.79,
-      JPY: 149.5,
-      CNY: 7.24,
-    }
+    const rate = RATES[to] / RATES[from]
+    const converted = Math.round(amount * rate * 100) / 100
 
-    const usdAmount = amount / rates[from]
-    const converted = usdAmount * rates[to]
-
-    return {
-      result: {
-        amount,
-        from,
-        to,
-        converted: Math.round(converted * 100) / 100,
-        rate: rates[to] / rates[from],
-      },
-    }
+    return { converted, rate: Math.round(rate * 10000) / 10000 }
   },
 }
 
