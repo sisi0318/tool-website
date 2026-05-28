@@ -17,6 +17,7 @@ export interface ConfigField {
   color?: boolean
   dependsOn?: string
   dynamicOptions?: (dependentValue: string) => Array<{ label: string; value: string }>
+  visible?: (config: Record<string, unknown>) => boolean
   hasInput?: boolean   // Whether this parameter has an input port on the left
   hasOutput?: boolean  // Whether this parameter has an output port on the right
 }
