@@ -13,10 +13,11 @@ interface ConfigInputProps {
 }
 
 export function ConfigInput({ field, value, onChange, disabled, allConfig }: ConfigInputProps) {
-  // 处理联动选项 - 仅用于显示/隐藏
+  // 处理联动选项 - 用于显示/隐藏和动态选项
+  let dynamicOpts: Array<{ label: string; value: string }> | null = null
   if (field.dependsOn && field.dynamicOptions) {
     const dependentValue = allConfig[field.dependsOn]
-    const dynamicOpts = field.dynamicOptions(String(dependentValue ?? ""))
+    dynamicOpts = field.dynamicOptions(String(dependentValue ?? ""))
     if (dynamicOpts.length === 0) return null
   }
 
@@ -36,6 +37,18 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
     return (
       <ColorInput
         value={String(value ?? field.defaultValue ?? "#000000")}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    )
+  }
+
+  // 有 dynamicOptions → 动态下拉单选
+  if (dynamicOpts) {
+    return (
+      <SelectInput
+        options={dynamicOpts}
+        value={String(value ?? field.defaultValue ?? "")}
         onChange={onChange}
         disabled={disabled}
       />
