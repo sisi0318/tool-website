@@ -14,6 +14,11 @@ interface ConfigInputProps {
 }
 
 export function ConfigInput({ field, value, onChange, disabled, allConfig }: ConfigInputProps) {
+  // 处理 visible 函数 - 控制字段可见性
+  if (field.visible && !field.visible(allConfig)) {
+    return null
+  }
+
   // 处理联动选项 - 用于显示/隐藏和动态选项
   let dynamicOpts: Array<{ label: string; value: string }> | null = null
   if (field.dependsOn && field.dynamicOptions) {

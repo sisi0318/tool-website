@@ -32,8 +32,7 @@ export const cryptoAdapter: ToolAdapter = {
       defaultValue: "",
       hasInput: true,
       hasOutput: true,
-      dependsOn: "mode",
-      dynamicOptions: (mode) => mode === "ECB" ? [] : [{ label: "16 bytes", value: "16" }],
+      visible: (config) => config.mode !== "ECB",
     },
     {
       id: "algorithm",
