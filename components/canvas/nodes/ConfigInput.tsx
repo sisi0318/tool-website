@@ -1,5 +1,6 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import type { ConfigField } from "@/lib/canvas/types"
+import { useTranslations } from "@/hooks/use-translations"
 import { SelectInput } from "./SelectInput"
 import { SliderInput } from "./SliderInput"
 import { SwitchInput } from "./SwitchInput"
@@ -14,28 +15,29 @@ interface ConfigInputProps {
 }
 
 export function ConfigInput({ field, value, onChange, disabled, allConfig }: ConfigInputProps) {
-  // 处理 visible 函数 - 控制字段可见性
+  const t = useTranslations("canvas")
+  const dependentValue = field.dependsOn ? allConfig[field.dependsOn] : undefined
+  const dynamicOpts = field.dependsOn && field.dynamicOptions
+    ? field.dynamicOptions(String(dependentValue ?? ""))
+    : null
+
+  const currentValue = String(value ?? field.defaultValue ?? "")
+  const needsAutoUpdate = dynamicOpts && dynamicOpts.length > 0 && !dynamicOpts.some(opt => opt.value === currentValue)
+  const effectiveValue = needsAutoUpdate && dynamicOpts ? dynamicOpts[0].value : currentValue
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+
+  useEffect(() => {
+    if (needsAutoUpdate && dynamicOpts) {
+      onChangeRef.current(dynamicOpts[0].value)
+    }
+  }, [needsAutoUpdate, dependentValue])
+
   if (field.visible && !field.visible(allConfig)) {
     return null
   }
 
-  // 处理联动选项 - 用于显示/隐藏和动态选项
-  let dynamicOpts: Array<{ label: string; value: string }> | null = null
-  if (field.dependsOn && field.dynamicOptions) {
-    const dependentValue = allConfig[field.dependsOn]
-    dynamicOpts = field.dynamicOptions(String(dependentValue ?? ""))
-    if (dynamicOpts.length === 0) return null
-
-    // 如果当前值不在动态选项中，自动更新为第一个选项
-    const currentValue = String(value ?? field.defaultValue ?? "")
-    const valueExists = dynamicOpts.some(opt => opt.value === currentValue)
-    if (!valueExists && dynamicOpts.length > 0) {
-      useEffect(() => {
-        onChange(dynamicOpts![0].value)
-      }, [dependentValue])
-      return null
-    }
-  }
+  if (dynamicOpts && dynamicOpts.length === 0) return null
 
   // boolean → 开关
   if (field.dataType === "boolean") {
@@ -64,7 +66,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
     return (
       <SelectInput
         options={dynamicOpts}
-        value={String(value ?? field.defaultValue ?? "")}
+        value={effectiveValue}
         onChange={onChange}
         disabled={disabled}
       />
@@ -105,6 +107,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         value={Number(value ?? field.defaultValue ?? 0)}
         onChange={(e) => onChange(Number(e.target.value))}
         disabled={disabled}
+        aria-label={field.name}
         className="w-full px-1 py-0.5 text-[10px] bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50"
       />
     )
@@ -118,6 +121,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         rows={2}
+        aria-label={field.name}
         className="w-full px-1 py-0.5 text-[10px] font-mono bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 resize-y disabled:opacity-50"
       />
     )
@@ -125,11 +129,21 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
 
   // bytes → 文件上传
   if (field.dataType === "bytes") {
+    const MAX_FILE_SIZE = 50 * 1024 * 1024
     return (
       <input
         type="file"
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file && file.size > MAX_FILE_SIZE) {
+            alert(t("fileTooLarge").replace("{size}", (file.size / 1024 / 1024).toFixed(1)))
+            e.target.value = ""
+            return
+          }
+          onChange(file ?? null)
+        }}
         disabled={disabled}
+        aria-label={field.name}
         className="w-full text-[10px] disabled:opacity-50"
       />
     )
@@ -142,6 +156,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
       value={String(value ?? field.defaultValue ?? "")}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
+      aria-label={field.name}
       className="w-full px-1 py-0.5 text-[10px] bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50"
     />
   )

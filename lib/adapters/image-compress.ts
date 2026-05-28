@@ -49,15 +49,32 @@ export const imageCompressAdapter: ToolAdapter = {
       throw new Error("No file provided")
     }
 
-    const quality = Number(inputs.quality ?? config.quality ?? 80)
+    const quality = Number(inputs.quality ?? config.quality ?? 80) / 100
+    const format = String(inputs.outputFormat ?? config.outputFormat ?? "original")
     const originalSize = file.size
 
+    const bitmap = await createImageBitmap(file)
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+    const ctx = canvas.getContext("2d")!
+    ctx.drawImage(bitmap, 0, 0)
+    bitmap.close()
+
+    const mimeType = format === "original"
+      ? (file.type === "image/png" ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg")
+      : `image/${format}`
+
+    const blob = await canvas.convertToBlob({ type: mimeType, quality })
+    const ext = mimeType.split("/")[1]
+    const outFile = new File([blob], file.name.replace(/\.[^.]+$/, `.${ext}`), { type: mimeType })
+
     return {
-      file,
+      file: outFile,
       info: {
         originalSize,
-        quality,
-        note: "Client-side compression requires canvas API. File passed through unchanged.",
+        compressedSize: outFile.size,
+        ratio: `${((1 - outFile.size / originalSize) * 100).toFixed(1)}%`,
+        dimensions: `${canvas.width}x${canvas.height}`,
+        format: mimeType,
       },
     }
   },

@@ -35,6 +35,8 @@ export function Canvas() {
     removeNode,
     removeEdge,
     selectedNodeId,
+    undo,
+    redo,
   } = useCanvasStore()
   const { screenToFlowPosition } = useReactFlow()
 
@@ -78,32 +80,34 @@ export function Canvas() {
     setEdges(flowEdges)
   }, [flowEdges, setEdges])
 
-  // Delete key removes selected node
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Delete" || e.key === "Backspace") {
-        const target = e.target as HTMLElement
-        if (
-          target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable
-        ) {
-          return
-        }
+      const target = e.target as HTMLElement
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
 
-        if (selectedNodeId) {
-          removeNode(selectedNodeId)
-        }
+      if ((e.key === "Delete" || e.key === "Backspace") && !isInput && selectedNodeId) {
+        removeNode(selectedNodeId)
+        return
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+        return
+      }
+
+      if ((e.ctrlKey || e.metaKey) && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
+        e.preventDefault()
+        redo()
       }
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [selectedNodeId, removeNode])
+  }, [selectedNodeId, removeNode, undo, redo])
 
-  // Edge delete callback
   const onEdgesDelete = useCallback(
-    (deletedEdges: any[]) => {
+    (deletedEdges: { id: string }[]) => {
       for (const edge of deletedEdges) {
         removeEdge(edge.id)
       }
@@ -170,7 +174,7 @@ export function Canvas() {
     (changes: any[]) => {
       onNodesChange(changes)
       for (const change of changes) {
-        if (change.type === "position" && change.position) {
+        if (change.type === "position" && change.position && !change.dragging) {
           updateNodePosition(change.id, change.position)
         }
       }

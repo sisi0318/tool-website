@@ -47,7 +47,7 @@ describe("workflow", () => {
 
     it("returns true when overwriting existing", () => {
       saveWorkflow("test", { nodes: [], edges: [] })
-      const result = saveWorkflow("test", { nodes: [{ id: "1" } as any], edges: [] })
+      const result = saveWorkflow("test", { nodes: [{ id: "1", type: "string", position: { x: 0, y: 0 }, config: {} }], edges: [] })
       expect(result).toBe(true)
     })
 
@@ -60,9 +60,26 @@ describe("workflow", () => {
 
   describe("loadWorkflow", () => {
     it("loads saved workflow", () => {
-      const data = { nodes: [{ id: "1" } as any], edges: [] }
+      const data = { nodes: [{ id: "1", type: "string", position: { x: 0, y: 0 }, config: {} }], edges: [] }
       saveWorkflow("test", data)
       expect(loadWorkflow("test")).toEqual(data)
+    })
+
+    it("filters out invalid nodes on load", () => {
+      const data = { nodes: [{ id: "bad" }], edges: [] }
+      saveWorkflow("test", data as any)
+      const loaded = loadWorkflow("test")
+      expect(loaded!.nodes).toEqual([])
+    })
+
+    it("filters out edges referencing missing nodes", () => {
+      const data = {
+        nodes: [{ id: "1", type: "string", position: { x: 0, y: 0 }, config: {} }],
+        edges: [{ id: "e1", source: "1", sourcePort: "out", target: "missing", targetPort: "in" }],
+      }
+      saveWorkflow("test", data as any)
+      const loaded = loadWorkflow("test")
+      expect(loaded!.edges).toEqual([])
     })
 
     it("returns null for non-existent workflow", () => {

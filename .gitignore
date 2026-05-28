@@ -20,3 +20,4 @@ public/worker-*.js
 # Playwright
 test-results/
 playwright-report/
+tsconfig.tsbuildinfo

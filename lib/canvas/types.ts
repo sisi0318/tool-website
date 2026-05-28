@@ -30,7 +30,7 @@ export interface DerivedOutput {
 
 export interface NodeDefinition {
   type: string
-  category: "basic" | "crypto" | "image" | "text" | "dev" | "utility" | "viewer"
+  category: "basic" | "crypto" | "data" | "image" | "text" | "dev" | "utility" | "viewer"
   label: string
   icon: React.ComponentType<{ className?: string }>
   config: ConfigField[]

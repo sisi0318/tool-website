@@ -8,8 +8,9 @@ describe("topologicalSort", () => {
       { id: "a", type: "string", position: { x: 0, y: 0 }, config: {} },
       { id: "b", type: "number", position: { x: 0, y: 0 }, config: {} },
     ]
-    const result = topologicalSort(nodes, [])
-    expect(result.map((n) => n.id)).toEqual(["a", "b"])
+    const { sorted, hasCycle } = topologicalSort(nodes, [])
+    expect(sorted.map((n) => n.id)).toEqual(["a", "b"])
+    expect(hasCycle).toBe(false)
   })
 
   it("有依赖的节点按拓扑序返回", () => {
@@ -20,11 +21,12 @@ describe("topologicalSort", () => {
     const edges: Edge[] = [
       { id: "e1", source: "a", sourcePort: "out", target: "b", targetPort: "data" },
     ]
-    const result = topologicalSort(nodes, edges)
-    expect(result.map((n) => n.id)).toEqual(["a", "b"])
+    const { sorted, hasCycle } = topologicalSort(nodes, edges)
+    expect(sorted.map((n) => n.id)).toEqual(["a", "b"])
+    expect(hasCycle).toBe(false)
   })
 
-  it("环形依赖时只返回无环部分", () => {
+  it("环形依赖时只返回无环部分并标记", () => {
     const nodes: NodeInstance[] = [
       { id: "a", type: "x", position: { x: 0, y: 0 }, config: {} },
       { id: "b", type: "x", position: { x: 0, y: 0 }, config: {} },
@@ -33,7 +35,8 @@ describe("topologicalSort", () => {
       { id: "e1", source: "a", sourcePort: "o", target: "b", targetPort: "i" },
       { id: "e2", source: "b", sourcePort: "o", target: "a", targetPort: "i" },
     ]
-    const result = topologicalSort(nodes, edges)
-    expect(result.length).toBe(0)
+    const { sorted, hasCycle } = topologicalSort(nodes, edges)
+    expect(sorted.length).toBe(0)
+    expect(hasCycle).toBe(true)
   })
 })

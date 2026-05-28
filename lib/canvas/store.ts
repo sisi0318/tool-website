@@ -3,6 +3,21 @@ import type { NodeInstance, Edge } from "./types"
 import { getNodeDefinition } from "./registry"
 import { topologicalSort } from "./engine"
 
+const nodeExecVersion = new Map<string, number>()
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+const SAVE_DEBOUNCE_MS = 300
+const MAX_HISTORY = 50
+
+function debouncedSave(saveFn: () => void) {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(saveFn, SAVE_DEBOUNCE_MS)
+}
+
+interface Snapshot {
+  nodes: NodeInstance[]
+  edges: Edge[]
+}
+
 interface CanvasState {
   nodes: NodeInstance[]
   edges: Edge[]
@@ -21,13 +36,22 @@ interface CanvasState {
 
   selectNode: (nodeId: string | null) => void
 
-  executeNode: (nodeId: string) => Promise<void>
+  executeNode: (nodeId: string, visited?: Set<string>) => Promise<void>
   executeAll: () => Promise<void>
+
+  pushHistory: () => void
+  undo: () => void
+  redo: () => void
+  canUndo: boolean
+  canRedo: boolean
 
   saveToLocalStorage: () => void
   loadFromLocalStorage: () => void
   clearCanvas: () => void
 }
+
+const undoStack: Snapshot[] = []
+const redoStack: Snapshot[] = []
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   nodes: [],
@@ -36,69 +60,136 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   nodeErrors: {},
   nodeRunning: {},
   selectedNodeId: null,
+  canUndo: false,
+  canRedo: false,
 
-  addNode: (node) =>
+  pushHistory: () => {
+    const { nodes, edges } = get()
+    undoStack.push({ nodes: structuredClone(nodes), edges: structuredClone(edges) })
+    if (undoStack.length > MAX_HISTORY) undoStack.shift()
+    redoStack.length = 0
+    set({ canUndo: true, canRedo: false })
+  },
+
+  undo: () => {
+    if (undoStack.length === 0) return
+    const { nodes, edges } = get()
+    redoStack.push({ nodes: structuredClone(nodes), edges: structuredClone(edges) })
+    const snapshot = undoStack.pop()!
+    set({
+      nodes: snapshot.nodes,
+      edges: snapshot.edges,
+      canUndo: undoStack.length > 0,
+      canRedo: true,
+    })
+    debouncedSave(() => get().saveToLocalStorage())
+  },
+
+  redo: () => {
+    if (redoStack.length === 0) return
+    const { nodes, edges } = get()
+    undoStack.push({ nodes: structuredClone(nodes), edges: structuredClone(edges) })
+    const snapshot = redoStack.pop()!
+    set({
+      nodes: snapshot.nodes,
+      edges: snapshot.edges,
+      canUndo: true,
+      canRedo: redoStack.length > 0,
+    })
+    debouncedSave(() => get().saveToLocalStorage())
+  },
+
+  addNode: (node) => {
+    get().pushHistory()
     set((state) => {
-      setTimeout(() => get().saveToLocalStorage(), 0)
+      debouncedSave(() => get().saveToLocalStorage())
       return { nodes: [...state.nodes, node] }
-    }),
+    })
+  },
 
-  removeNode: (nodeId) =>
+  removeNode: (nodeId) => {
+    get().pushHistory()
+    const affectedTargets = get().edges
+      .filter((e) => e.source === nodeId)
+      .map((e) => e.target)
     set((state) => {
-      setTimeout(() => get().saveToLocalStorage(), 0)
+      nodeExecVersion.delete(nodeId)
+      debouncedSave(() => get().saveToLocalStorage())
+      const { [nodeId]: _o, ...restOutputs } = state.nodeOutputs
+      const { [nodeId]: _e, ...restErrors } = state.nodeErrors
+      const { [nodeId]: _r, ...restRunning } = state.nodeRunning
       return {
         nodes: state.nodes.filter((n) => n.id !== nodeId),
         edges: state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
-        nodeOutputs: Object.fromEntries(
-          Object.entries(state.nodeOutputs).filter(([k]) => k !== nodeId)
-        ),
-        nodeErrors: Object.fromEntries(
-          Object.entries(state.nodeErrors).filter(([k]) => k !== nodeId)
-        ),
-        nodeRunning: Object.fromEntries(
-          Object.entries(state.nodeRunning).filter(([k]) => k !== nodeId)
-        ),
+        nodeOutputs: restOutputs,
+        nodeErrors: restErrors,
+        nodeRunning: restRunning,
         selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
       }
-    }),
+    })
+    for (const targetId of affectedTargets) {
+      setTimeout(() => get().executeNode(targetId), 0)
+    }
+  },
 
-  updateNodePosition: (nodeId, position) =>
-    set((state) => {
-      setTimeout(() => get().saveToLocalStorage(), 0)
-      return {
-        nodes: state.nodes.map((n) =>
-          n.id === nodeId ? { ...n, position } : n
-        ),
-      }
-    }),
+  updateNodePosition: (nodeId, position) => {
+    const nodes = get().nodes
+    const idx = nodes.findIndex((n) => n.id === nodeId)
+    if (idx === -1) return
+    const node = nodes[idx]
+    if (node.position.x === position.x && node.position.y === position.y) return
+    nodes[idx] = { ...node, position }
+    set({ nodes: [...nodes] })
+    debouncedSave(() => get().saveToLocalStorage())
+  },
 
   updateNodeConfig: (nodeId, config) => {
+    const version = (nodeExecVersion.get(nodeId) ?? 0) + 1
+    nodeExecVersion.set(nodeId, version)
     set((state) => ({
       nodes: state.nodes.map((n) =>
         n.id === nodeId ? { ...n, config } : n
       ),
     }))
-    setTimeout(() => get().saveToLocalStorage(), 0)
-    // Auto-execute the node and downstream nodes
-    setTimeout(() => get().executeNode(nodeId), 0)
+    debouncedSave(() => get().saveToLocalStorage())
+    setTimeout(() => {
+      if (nodeExecVersion.get(nodeId) === version) {
+        get().executeNode(nodeId)
+      }
+    }, 0)
   },
 
-  addEdge: (edge) =>
+  addEdge: (edge) => {
+    get().pushHistory()
     set((state) => {
-      setTimeout(() => get().saveToLocalStorage(), 0)
+      debouncedSave(() => get().saveToLocalStorage())
       return { edges: [...state.edges, edge] }
-    }),
+    })
+    setTimeout(() => get().executeNode(edge.target), 0)
+  },
 
-  removeEdge: (edgeId) =>
+  removeEdge: (edgeId) => {
+    get().pushHistory()
+    const removedEdge = get().edges.find((e) => e.id === edgeId)
     set((state) => {
-      setTimeout(() => get().saveToLocalStorage(), 0)
+      debouncedSave(() => get().saveToLocalStorage())
       return { edges: state.edges.filter((e) => e.id !== edgeId) }
-    }),
+    })
+    if (removedEdge) {
+      setTimeout(() => get().executeNode(removedEdge.target), 0)
+    }
+  },
 
   selectNode: (nodeId) =>
     set({ selectedNodeId: nodeId }),
 
-  executeNode: async (nodeId) => {
+  executeNode: async (nodeId, visited) => {
+    const v = visited ?? new Set<string>()
+    if (v.has(nodeId)) return
+    v.add(nodeId)
+
+    const version = nodeExecVersion.get(nodeId) ?? 0
+
     const state = get()
     const node = state.nodes.find((n) => n.id === nodeId)
     if (!node) return
@@ -123,18 +214,26 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     try {
       const outputs = await definition.execute(inputs, node.config)
+
+      if ((nodeExecVersion.get(nodeId) ?? 0) !== version) return
+
       set((s) => ({
         nodeOutputs: { ...s.nodeOutputs, [nodeId]: outputs },
         nodeRunning: { ...s.nodeRunning, [nodeId]: false },
       }))
 
-      const downstreamEdges = state.edges.filter((e) => e.source === nodeId)
+      const downstreamEdges = get().edges.filter((e) => e.source === nodeId)
       for (const edge of downstreamEdges) {
-        await get().executeNode(edge.target)
+        await get().executeNode(edge.target, v)
       }
     } catch (error) {
+      if ((nodeExecVersion.get(nodeId) ?? 0) !== version) return
+
       set((s) => ({
-        nodeErrors: { ...s.nodeErrors, [nodeId]: String(error) },
+        nodeErrors: {
+          ...s.nodeErrors,
+          [nodeId]: error instanceof Error ? error.message : String(error),
+        },
         nodeRunning: { ...s.nodeRunning, [nodeId]: false },
       }))
     }
@@ -142,9 +241,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   executeAll: async () => {
     const state = get()
-    const sorted = topologicalSort(state.nodes, state.edges)
+    const { sorted, hasCycle } = topologicalSort(state.nodes, state.edges)
+    if (hasCycle) {
+      console.warn("Canvas contains cycles — skipped cyclic nodes")
+    }
+    const visited = new Set<string>()
     for (const node of sorted) {
-      await get().executeNode(node.id)
+      await get().executeNode(node.id, visited)
     }
   },
 
@@ -160,8 +263,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const saved = localStorage.getItem("canvas-state")
     if (saved) {
       try {
-        const { nodes, edges } = JSON.parse(saved)
-        set({ nodes: nodes ?? [], edges: edges ?? [] })
+        const parsed = JSON.parse(saved)
+        if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return
+        const nodes = parsed.nodes.filter(
+          (n: any) => n && typeof n.id === "string" && typeof n.type === "string" && n.position
+        )
+        const nodeIds = new Set(nodes.map((n: NodeInstance) => n.id))
+        const edges = parsed.edges.filter(
+          (e: any) =>
+            e &&
+            typeof e.id === "string" &&
+            nodeIds.has(e.source) &&
+            nodeIds.has(e.target) &&
+            typeof e.sourcePort === "string" &&
+            typeof e.targetPort === "string"
+        )
+        set({ nodes, edges })
+        setTimeout(() => get().executeAll(), 0)
       } catch {}
     }
   },
@@ -175,6 +293,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       nodeRunning: {},
       selectedNodeId: null,
     })
-    setTimeout(() => get().saveToLocalStorage(), 0)
+    debouncedSave(() => get().saveToLocalStorage())
   },
 }))

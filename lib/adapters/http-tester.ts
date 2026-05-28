@@ -65,6 +65,18 @@ export const httpTesterAdapter: ToolAdapter = {
     }
 
     try {
+      const parsed = new URL(url)
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error(`Unsupported protocol: ${parsed.protocol}`)
+      }
+    } catch (e) {
+      if (e instanceof TypeError) {
+        throw new Error(`Invalid URL: ${url}`)
+      }
+      throw e
+    }
+
+    try {
       const headers: Record<string, string> = JSON.parse(headersStr)
       const options: RequestInit = {
         method,

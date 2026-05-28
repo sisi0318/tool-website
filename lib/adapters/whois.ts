@@ -21,17 +21,24 @@ export const whoisAdapter: ToolAdapter = {
     { id: "result", name: "Result", dataType: "json" },
   ],
   async execute(inputs, config) {
-    const domain = String(inputs.domain ?? config.domain ?? "")
+    const domain = String(inputs.domain ?? config.domain ?? "").trim()
 
     if (!domain) {
       throw new Error("Domain is required")
     }
 
-    return {
-      result: {
-        domain,
-        note: "Whois lookup requires server-side API. Domain name returned.",
-      },
+    try {
+      const response = await fetch(`/api/whois?domain=${encodeURIComponent(domain)}`)
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error ?? `Lookup failed (${response.status})`)
+      }
+      return { result: await response.json() }
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        throw new Error("Network error — cannot reach whois API")
+      }
+      throw error
     }
   },
 }

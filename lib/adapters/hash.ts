@@ -5,14 +5,14 @@ import { registerNode } from "../canvas/registry"
 import { SHA3, Keccak, SHAKE } from "sha3"
 
 const CATEGORIES = [
-  { label: "MD", value: "md" },
-  { label: "SHA1", value: "sha1" },
-  { label: "SHA2", value: "sha2" },
-  { label: "SHA3", value: "sha3" },
-  { label: "RIPEMD", value: "ripemd" },
+  { label: "MD5", value: "md" },
+  { label: "SHA-1", value: "sha1" },
+  { label: "SHA-2", value: "sha2" },
+  { label: "SHA-3", value: "sha3" },
+  { label: "RIPEMD-160", value: "ripemd" },
   { label: "BLAKE2", value: "blake2" },
   { label: "SM3", value: "sm3" },
-  { label: "CRC", value: "crc" },
+  { label: "CRC32", value: "crc" },
 ]
 
 const ALGORITHM_MAP: Record<string, Array<{ label: string; value: string }>> = {

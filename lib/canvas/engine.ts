@@ -1,6 +1,9 @@
 import type { NodeInstance, Edge } from "./types"
 
-export function topologicalSort(nodes: NodeInstance[], edges: Edge[]): NodeInstance[] {
+export function topologicalSort(
+  nodes: NodeInstance[],
+  edges: Edge[]
+): { sorted: NodeInstance[]; hasCycle: boolean } {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]))
   const inDegree = new Map<string, number>()
   const adjacency = new Map<string, string[]>()
@@ -22,10 +25,10 @@ export function topologicalSort(nodes: NodeInstance[], edges: Edge[]): NodeInsta
     if (degree === 0) queue.push(id)
   }
 
-  const result: NodeInstance[] = []
+  const sorted: NodeInstance[] = []
   while (queue.length > 0) {
     const id = queue.shift()!
-    result.push(nodeMap.get(id)!)
+    sorted.push(nodeMap.get(id)!)
     for (const neighbor of adjacency.get(id) ?? []) {
       const newDegree = (inDegree.get(neighbor) ?? 1) - 1
       inDegree.set(neighbor, newDegree)
@@ -33,7 +36,7 @@ export function topologicalSort(nodes: NodeInstance[], edges: Edge[]): NodeInsta
     }
   }
 
-  return result
+  return { sorted, hasCycle: sorted.length < nodes.length }
 }
 
 export function propagateOutputs(
@@ -42,7 +45,7 @@ export function propagateOutputs(
   nodeOutputs: Record<string, Record<string, unknown>>
 ): Record<string, Record<string, unknown>> {
   const result = { ...nodeOutputs }
-  const sorted = topologicalSort(nodes, edges)
+  const { sorted } = topologicalSort(nodes, edges)
 
   for (const node of sorted) {
     const incomingEdges = edges.filter((e) => e.target === node.id)

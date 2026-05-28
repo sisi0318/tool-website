@@ -440,7 +440,8 @@ export default function ProtobufTool({ params }: ProtobufToolProps) {
 
   // Parse Protobuf data
   const parseProtobuf = useCallback(async () => {
-    if (!inputData) {
+    const requiredInput = mode === "decode" ? inputData : jsonInput
+    if (!requiredInput) {
       setError(t("noInput"))
       return
     }
@@ -457,7 +458,8 @@ export default function ProtobufTool({ params }: ProtobufToolProps) {
         if (schemaMode === "schema" && root && selectedMessageType) {
           // Parse using schema
           const Message = root.lookupType(selectedMessageType)
-          decoded = Message.decode(buffer).toJSON()
+          const msg = Message.decode(buffer)
+          decoded = Message.toObject(msg, { longs: Number, enums: String, defaults: true })
         } else {
           // Parse without schema
           decoded = decodeProtobuf(buffer)
@@ -505,61 +507,60 @@ export default function ProtobufTool({ params }: ProtobufToolProps) {
     const result: Record<string, any> = {}
 
     while (reader.pos < reader.len) {
-      const tag = reader.uint32()
-      const fieldNumber = tag >>> 3
-      const wireType = tag & 7
+      try {
+        const tag = reader.uint32()
+        const fieldNumber = tag >>> 3
+        const wireType = tag & 7
 
-      let value: any
+        let value: any
 
-      // Decode based on wire type
-      switch (wireType) {
-        case 0: // Varint
-          value = reader.uint64()
-          break
-        case 1: // Fixed64
-          value = reader.fixed64()
-          break
-        case 2: // Length-delimited (string, bytes, embedded message, packed repeated)
-          const bytes = reader.bytes()
-
-          // Try to decode as string
-          try {
-            const str = new TextDecoder().decode(bytes)
-            if (/^[\x20-\x7E\s]*$/.test(str)) {
-              // Printable ASCII string
-              value = str
-            } else {
-              // Try to decode as nested message
+        switch (wireType) {
+          case 0: // Varint
+            value = Number(reader.uint64().toString())
+            break
+          case 1: // Fixed64
+            value = Number(reader.fixed64().toString())
+            break
+          case 2: { // Length-delimited
+            const bytes = reader.bytes()
+            try {
+              const str = new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+              if (!/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(str) && str.length > 0) {
+                value = str
+              } else {
+                try {
+                  value = decodeProtobuf(bytes)
+                } catch {
+                  value = Buffer.from(bytes).toString("base64")
+                }
+              }
+            } catch {
               try {
                 value = decodeProtobuf(bytes)
-              } catch (e) {
-                // Store as base64 if can't be decoded further
+              } catch {
                 value = Buffer.from(bytes).toString("base64")
               }
             }
-          } catch (e) {
-            // Store as base64 if not a valid UTF-8 string
-            value = Buffer.from(bytes).toString("base64")
+            break
           }
-          break
-        case 5: // Fixed32
-          value = reader.fixed32()
-          break
-        default:
-          // Skip unknown wire types
-          reader.skipType(wireType)
-          continue
-      }
-
-      // Store in result
-      if (result[fieldNumber] !== undefined) {
-        // Handle repeated fields
-        if (!Array.isArray(result[fieldNumber])) {
-          result[fieldNumber] = [result[fieldNumber]]
+          case 5: // Fixed32
+            value = reader.fixed32()
+            break
+          default:
+            reader.skipType(wireType)
+            continue
         }
-        result[fieldNumber].push(value)
-      } else {
-        result[fieldNumber] = value
+
+        if (result[fieldNumber] !== undefined) {
+          if (!Array.isArray(result[fieldNumber])) {
+            result[fieldNumber] = [result[fieldNumber]]
+          }
+          result[fieldNumber].push(value)
+        } else {
+          result[fieldNumber] = value
+        }
+      } catch {
+        break
       }
     }
 
@@ -625,6 +626,7 @@ export default function ProtobufTool({ params }: ProtobufToolProps) {
       }
     } else {
       setOutputData("")
+      setError(null)
     }
   }, [inputData, jsonInput, mode, parseProtobuf])
 

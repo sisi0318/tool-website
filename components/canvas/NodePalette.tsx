@@ -3,23 +3,27 @@
 import { useState, useMemo } from "react"
 import { getAllNodes } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
+import { useTranslations } from "@/hooks/use-translations"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { WorkflowNewButton } from "./workflow/WorkflowNewButton"
 import { WorkflowSaveButton } from "./workflow/WorkflowSaveButton"
 import { WorkflowLoadButton } from "./workflow/WorkflowLoadButton"
 
-const CATEGORIES = [
-  { id: "basic", label: "Basic" },
-  { id: "crypto", label: "Crypto" },
-  { id: "data", label: "Data" },
-  { id: "image", label: "Image" },
-  { id: "text", label: "Text" },
-  { id: "dev", label: "Dev" },
-  { id: "utility", label: "Utility" },
-  { id: "viewer", label: "Viewer" },
-]
+const CATEGORY_IDS = ["basic", "crypto", "data", "image", "text", "dev", "utility", "viewer"] as const
+
+const CATEGORY_KEYS: Record<string, string> = {
+  basic: "categoryBasic",
+  crypto: "categoryCrypto",
+  data: "categoryData",
+  image: "categoryImage",
+  text: "categoryText",
+  dev: "categoryDev",
+  utility: "categoryUtility",
+  viewer: "categoryViewer",
+}
 
 export function NodePalette() {
+  const t = useTranslations("canvas")
   const addNode = useCanvasStore((s) => s.addNode)
   const [workflowExpanded, setWorkflowExpanded] = useState(true)
   const [nodesExpanded, setNodesExpanded] = useState(true)
@@ -28,8 +32,8 @@ export function NodePalette() {
     const allNodes = getAllNodes()
     const grouped: Record<string, typeof allNodes> = {}
 
-    for (const cat of CATEGORIES) {
-      grouped[cat.id] = allNodes.filter((n) => n.category === cat.id)
+    for (const id of CATEGORY_IDS) {
+      grouped[id] = allNodes.filter((n) => n.category === id)
     }
 
     return grouped
@@ -49,7 +53,7 @@ export function NodePalette() {
           className="w-full flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <span className="text-xs text-gray-500">{workflowExpanded ? "▼" : "▶"}</span>
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Workflow</h3>
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t("workflow")}</h3>
         </button>
         {workflowExpanded && (
           <div className="p-2 space-y-1 border-b border-gray-200 dark:border-gray-700">
@@ -67,19 +71,19 @@ export function NodePalette() {
           className="w-full flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <span className="text-xs text-gray-500">{nodesExpanded ? "▼" : "▶"}</span>
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Nodes</h3>
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t("nodes")}</h3>
         </button>
         {nodesExpanded && (
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-3">
-              {CATEGORIES.map((cat) => {
-                const nodes = nodesByCategory[cat.id]
+              {CATEGORY_IDS.map((catId) => {
+                const nodes = nodesByCategory[catId]
                 if (!nodes || nodes.length === 0) return null
 
                 return (
-                  <div key={cat.id}>
+                  <div key={catId}>
                     <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase px-2 mb-1">
-                      {cat.label}
+                      {t(CATEGORY_KEYS[catId])}
                     </h4>
                     <div className="space-y-1">
                       {nodes.map((node) => {

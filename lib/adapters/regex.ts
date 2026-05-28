@@ -56,14 +56,30 @@ export const regexAdapter: ToolAdapter = {
       return { matches: [], test: text }
     }
 
+    if (pattern.length > 1000) {
+      throw new Error("Pattern too long (max 1000 characters)")
+    }
+
+    let regex: RegExp
     try {
-      const regex = new RegExp(pattern, flags)
+      regex = new RegExp(pattern, flags)
+    } catch (error) {
+      throw new Error(`Invalid regex: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    try {
       const matches: string[] = []
       let match: RegExpExecArray | null
+      const maxMatches = 10000
+      let count = 0
 
       while ((match = regex.exec(text)) !== null) {
         matches.push(match[0])
         if (!flags.includes("g")) break
+        if (match[0].length === 0) {
+          regex.lastIndex++
+        }
+        if (++count >= maxMatches) break
       }
 
       const replaced = replacement ? text.replace(regex, replacement) : text
@@ -73,7 +89,7 @@ export const regexAdapter: ToolAdapter = {
         test: replaced,
       }
     } catch (error) {
-      throw new Error(`Regex error: ${error}`)
+      throw new Error(`Regex execution failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   },
 }

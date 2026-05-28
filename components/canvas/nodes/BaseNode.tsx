@@ -1,4 +1,4 @@
-import { memo } from "react"
+import { memo, useMemo } from "react"
 import { Handle, Position } from "@xyflow/react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
@@ -15,22 +15,21 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
   const nodeOutputs = useCanvasStore((s) => s.nodeOutputs[node.id])
   const nodeErrors = useCanvasStore((s) => s.nodeErrors[node.id])
   const nodeRunning = useCanvasStore((s) => s.nodeRunning[node.id])
-  const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
+  const isSelected = useCanvasStore((s) => s.selectedNodeId === node.id)
   const selectNode = useCanvasStore((s) => s.selectNode)
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
   const edges = useCanvasStore((s) => s.edges)
 
-  const isSelected = selectedNodeId === node.id
   const Icon = definition.icon
 
-  // 检查输入端口是否已连接
-  const isInputConnected = (portId: string): boolean => {
-    return edges.some((e) => e.target === node.id && e.targetPort === portId)
-  }
+  const incomingEdges = useMemo(() => edges.filter((e) => e.target === node.id), [edges, node.id])
+  const connectedPorts = useMemo(
+    () => new Map(incomingEdges.map((e) => [e.targetPort, e])),
+    [incomingEdges]
+  )
 
-  // 获取输入端口的上游值
   const getInputValue = (portId: string): unknown => {
-    const edge = edges.find((e) => e.target === node.id && e.targetPort === portId)
+    const edge = connectedPorts.get(portId)
     if (!edge) return undefined
     const sourceOutputs = useCanvasStore.getState().nodeOutputs[edge.source]
     return sourceOutputs?.[edge.sourcePort]
@@ -61,7 +60,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
       {/* Parameters */}
       <div className="py-1">
         {definition.config.map((field) => {
-          const connected = field.hasInput ? isInputConnected(field.id) : false
+          const connected = field.hasInput ? connectedPorts.has(field.id) : false
           const upstreamValue = connected ? getInputValue(field.id) : undefined
           const outputValue = field.hasOutput ? nodeOutputs?.[field.id] : undefined
 

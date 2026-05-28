@@ -51,7 +51,24 @@ export function loadWorkflow(name: string): WorkflowData | null {
   const data = localStorage.getItem(getWorkflowKey(name))
   if (!data) return null
   try {
-    return JSON.parse(data)
+    const parsed = JSON.parse(data)
+    if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+      return null
+    }
+    const nodes = parsed.nodes.filter(
+      (n: any) => n && typeof n.id === "string" && typeof n.type === "string" && n.position
+    )
+    const nodeIds = new Set(nodes.map((n: NodeInstance) => n.id))
+    const edges = parsed.edges.filter(
+      (e: any) =>
+        e &&
+        typeof e.id === "string" &&
+        nodeIds.has(e.source) &&
+        nodeIds.has(e.target) &&
+        typeof e.sourcePort === "string" &&
+        typeof e.targetPort === "string"
+    )
+    return { nodes, edges }
   } catch {
     return null
   }

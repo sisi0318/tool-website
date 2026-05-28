@@ -1,12 +1,46 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
-import { Input } from "@/components/ui/input"
+import { useTranslations } from "@/hooks/use-translations"
+import { Copy, Check } from "lucide-react"
 import { Label } from "@/components/ui/label"
+import { ConfigInput } from "./nodes/ConfigInput"
+
+function OutputField({ label, value }: { label: string; value: unknown }) {
+  const [copied, setCopied] = useState(false)
+  const text = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-gray-500">{label}</Label>
+        <button
+          onClick={handleCopy}
+          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          {copied
+            ? <Check className="w-3 h-3 text-green-500" />
+            : <Copy className="w-3 h-3" />}
+        </button>
+      </div>
+      <div className="px-2 py-1.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono break-all max-h-40 overflow-auto">
+        {text}
+      </div>
+    </div>
+  )
+}
 
 export function PropertyPanel() {
+  const t = useTranslations("canvas")
   const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
   const nodes = useCanvasStore((s) => s.nodes)
   const updateNodeConfig = useCanvasStore((s) => s.updateNodeConfig)
@@ -25,7 +59,7 @@ export function PropertyPanel() {
   if (!selectedNode || !definition) {
     return (
       <div className="w-72 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 flex items-center justify-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Select a node to edit</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("selectNodeToEdit")}</p>
       </div>
     )
   }
@@ -43,44 +77,23 @@ export function PropertyPanel() {
         {definition.config.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-              Config
+              {t("config")}
             </h4>
             {definition.config.map((field) => (
               <div key={field.id} className="space-y-1">
                 <Label className="text-xs">{field.name}</Label>
-                {field.options ? (
-                  <select
-                    className="w-full px-2 py-1 text-sm border rounded-md bg-white dark:bg-gray-800"
-                    value={String(selectedNode.config[field.id] ?? field.defaultValue ?? "")}
-                    onChange={(e) =>
-                      updateNodeConfig(selectedNode.id, {
-                        ...selectedNode.config,
-                        [field.id]: e.target.value,
-                      })
-                    }
-                  >
-                    {field.options.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    type={field.dataType === "number" ? "number" : "text"}
-                    value={String(selectedNode.config[field.id] ?? field.defaultValue ?? "")}
-                    onChange={(e) =>
-                      updateNodeConfig(selectedNode.id, {
-                        ...selectedNode.config,
-                        [field.id]:
-                          field.dataType === "number"
-                            ? Number(e.target.value)
-                            : e.target.value,
-                      })
-                    }
-                    className="h-8 text-sm"
-                  />
-                )}
+                <ConfigInput
+                  field={field}
+                  value={selectedNode.config[field.id]}
+                  onChange={(v) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...selectedNode.config,
+                      [field.id]: v,
+                    })
+                  }
+                  disabled={false}
+                  allConfig={selectedNode.config}
+                />
               </div>
             ))}
           </div>
@@ -89,15 +102,10 @@ export function PropertyPanel() {
         {outputs && Object.keys(outputs).length > 0 && (
           <div className="space-y-2">
             <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-              Outputs
+              {t("outputs")}
             </h4>
             {Object.entries(outputs).map(([key, value]) => (
-              <div key={key} className="space-y-1">
-                <Label className="text-xs text-gray-500">{key}</Label>
-                <div className="px-2 py-1.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono break-all">
-                  {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
-                </div>
-              </div>
+              <OutputField key={key} label={key} value={value} />
             ))}
           </div>
         )}

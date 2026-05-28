@@ -1,11 +1,11 @@
 import type { ConfigField, Edge, ValidationResult } from "./types"
 
 const COMPATIBLE_TYPES: Record<string, string[]> = {
-  string: ["string", "number"],
+  string: ["string", "number", "json", "boolean"],
   number: ["string", "number"],
-  json: ["json"],
+  json: ["json", "string"],
   bytes: ["bytes"],
-  boolean: ["boolean"],
+  boolean: ["boolean", "string"],
 }
 
 export function validateConnection(

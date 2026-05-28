@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Handle, Position } from "@xyflow/react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
@@ -20,12 +20,19 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const nodeOutputs = useCanvasStore((s) => s.nodeOutputs[data.id])
   const nodeErrors = useCanvasStore((s) => s.nodeErrors[data.id])
   const nodeRunning = useCanvasStore((s) => s.nodeRunning[data.id])
-  const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
+  const isSelected = useCanvasStore((s) => s.selectedNodeId === data.id)
   const selectNode = useCanvasStore((s) => s.selectNode)
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
   const executeNode = useCanvasStore((s) => s.executeNode)
   const edges = useCanvasStore((s) => s.edges)
   const autoExecutedRef = useRef(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  const incomingEdges = useMemo(() => edges.filter((e) => e.target === data.id), [edges, data.id])
+  const connectedPorts = useMemo(
+    () => new Map(incomingEdges.map((e) => [e.targetPort, e])),
+    [incomingEdges]
+  )
 
   useEffect(() => {
     if (definition && definition.config.length === 0 && !autoExecutedRef.current && !nodeOutputs && !nodeRunning) {
@@ -34,23 +41,25 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
     }
   }, [definition, data.id, nodeOutputs, nodeRunning, executeNode])
 
+  useEffect(() => {
+    if (data.type === "image-preview" && nodeOutputs?.file) {
+      const url = URL.createObjectURL(nodeOutputs.file as File)
+      setPreviewUrl(url)
+      return () => URL.revokeObjectURL(url)
+    }
+    setPreviewUrl(null)
+  }, [data.type, nodeOutputs?.file])
+
   if (!definition) return null
 
-  const isSelected = selectedNodeId === data.id
   const Icon = definition.icon
 
-  // 检查输入端口是否已连接
-  const isInputConnected = (portId: string): boolean => {
-    return edges.some((e) => e.target === data.id && e.targetPort === portId)
-  }
-
-  // 获取输入端口的上游值
-  const getInputValue = (portId: string): unknown => {
-    const edge = edges.find((e) => e.target === data.id && e.targetPort === portId)
+  const getInputValue = useCallback((portId: string): unknown => {
+    const edge = connectedPorts.get(portId)
     if (!edge) return undefined
     const sourceOutputs = useCanvasStore.getState().nodeOutputs[edge.source]
     return sourceOutputs?.[edge.sourcePort]
-  }
+  }, [connectedPorts])
 
   return (
     <div
@@ -77,7 +86,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       {/* Parameters */}
       <div className="py-1">
         {definition.config.map((field) => {
-          const connected = field.hasInput ? isInputConnected(field.id) : false
+          const connected = field.hasInput ? connectedPorts.has(field.id) : false
           const upstreamValue = connected ? getInputValue(field.id) : undefined
           const outputValue = field.hasOutput ? nodeOutputs?.[field.id] : undefined
 
@@ -188,22 +197,22 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       {/* Preview Content */}
       {(data.type === "string-preview" || data.type === "json-preview" || data.type === "image-preview") && (
         <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700">
-          {data.type === "string-preview" && nodeOutputs?.content && (
+          {data.type === "string-preview" && !!nodeOutputs?.content && (
             <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded max-h-32 overflow-auto">
               <pre className="text-[10px] whitespace-pre-wrap break-words">
                 {String(nodeOutputs.content)}
               </pre>
             </div>
           )}
-          {data.type === "json-preview" && nodeOutputs?.parsed && (
+          {data.type === "json-preview" && !!nodeOutputs?.parsed && (
             <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded max-h-48 overflow-auto">
               <JsonTreeViewer data={nodeOutputs.parsed} />
             </div>
           )}
-          {data.type === "image-preview" && nodeOutputs?.file && (
+          {data.type === "image-preview" && previewUrl && (
             <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded">
               <img
-                src={URL.createObjectURL(nodeOutputs.file as File)}
+                src={previewUrl}
                 alt="Preview"
                 className="max-w-full max-h-48 object-contain"
               />
