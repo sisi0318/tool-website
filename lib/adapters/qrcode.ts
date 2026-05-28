@@ -2,69 +2,67 @@ import { QrCode } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 
-function generateQRPattern(data: string, size: number): string {
+async function generateQRCode(data: string, size: number, errorCorrection: string, fgColor: string, bgColor: string): Promise<{ dataUri: string; file: File }> {
+  const { QRCodeSVG } = await import("qrcode.react")
+  const ReactDOM = await import("react-dom/client")
+
+  const container = document.createElement("div")
+  container.style.position = "absolute"
+  container.style.left = "-9999px"
+  container.style.top = "-9999px"
+  document.body.appendChild(container)
+
+  const root = ReactDOM.createRoot(container)
+  const qrElement = await import("react").then(React =>
+    React.createElement(QRCodeSVG, {
+      value: data,
+      size,
+      level: errorCorrection as "L" | "M" | "Q" | "H",
+      fgColor,
+      bgColor,
+    })
+  )
+
+  root.render(qrElement)
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  const svg = container.querySelector("svg")
+  if (!svg) {
+    root.unmount()
+    document.body.removeChild(container)
+    throw new Error("Failed to generate QR code SVG")
+  }
+
+  const svgData = new XMLSerializer().serializeToString(svg)
+  root.unmount()
+  document.body.removeChild(container)
+
   const canvas = document.createElement("canvas")
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext("2d")!
-  
-  ctx.fillStyle = "#FFFFFF"
-  ctx.fillRect(0, 0, size, size)
-  
-  const moduleSize = Math.floor(size / 25)
-  const modules: boolean[][] = []
-  
-  for (let i = 0; i < 25; i++) {
-    modules[i] = []
-    for (let j = 0; j < 25; j++) {
-      modules[i][j] = false
-    }
-  }
-  
-  for (let i = 0; i < 7; i++) {
-    modules[0][i] = true
-    modules[6][i] = true
-    modules[i][0] = true
-    modules[i][6] = true
-    modules[18][i] = true
-    modules[24][i] = true
-    modules[i][18] = true
-    modules[i][24] = true
-    modules[18 + i][0] = true
-    modules[18 + i][6] = true
-    modules[0][18 + i] = true
-    modules[6][18 + i] = true
-  }
-  
-  for (let i = 2; i < 5; i++) {
-    for (let j = 2; j < 5; j++) {
-      modules[i][j] = true
-      modules[i][j + 16] = true
-      modules[i + 16][j] = true
-    }
-  }
-  
-  let hash = 0
-  for (let i = 0; i < data.length; i++) {
-    hash = ((hash << 5) - hash + data.charCodeAt(i)) | 0
-  }
-  
-  for (let i = 8; i < 17; i++) {
-    for (let j = 8; j < 17; j++) {
-      modules[i][j] = ((hash >> ((i * 17 + j) % 30)) & 1) === 1
-    }
-  }
-  
-  ctx.fillStyle = "#000000"
-  for (let i = 0; i < 25; i++) {
-    for (let j = 0; j < 25; j++) {
-      if (modules[i][j]) {
-        ctx.fillRect(j * moduleSize, i * moduleSize, moduleSize, moduleSize)
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0)
+      const dataUri = canvas.toDataURL("image/png")
+
+      const base64 = dataUri.split(",")[1]
+      const binaryStr = atob(base64)
+      const bytes = new Uint8Array(binaryStr.length)
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i)
       }
+      const blob = new Blob([bytes], { type: "image/png" })
+      const file = new File([blob], `qrcode-${Date.now()}.png`, { type: "image/png" })
+
+      resolve({ dataUri, file })
     }
-  }
-  
-  return canvas.toDataURL("image/png")
+    img.onerror = () => reject(new Error("Failed to load QR code image"))
+    img.src = `data:image/svg+xml;base64,${btoa(svgData)}`
+  })
 }
 
 export const qrcodeAdapter: ToolAdapter = {
@@ -134,21 +132,13 @@ export const qrcodeAdapter: ToolAdapter = {
     }
 
     const size = Number(inputs.size ?? config.size ?? 200)
-    const dataUri = generateQRPattern(data, size)
-    
-    const base64 = dataUri.split(",")[1]
-    const binaryStr = atob(base64)
-    const bytes = new Uint8Array(binaryStr.length)
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i)
-    }
-    const blob = new Blob([bytes], { type: "image/png" })
-    const file = new File([blob], `qrcode-${Date.now()}.png`, { type: "image/png" })
+    const errorCorrection = String(inputs.errorCorrection ?? config.errorCorrection ?? "M")
+    const fgColor = String(inputs.fgColor ?? config.fgColor ?? "#000000")
+    const bgColor = String(inputs.bgColor ?? config.bgColor ?? "#FFFFFF")
 
-    return {
-      image: file,
-      dataUri,
-    }
+    const { dataUri, file } = await generateQRCode(data, size, errorCorrection, fgColor, bgColor)
+
+    return { image: file, dataUri }
   },
 }
 

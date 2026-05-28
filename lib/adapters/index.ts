@@ -1,12 +1,18 @@
 import { registerBasicNodes } from "./basic"
 import { registerHashAdapter } from "./hash"
+import { registerHashVerifyAdapter } from "./hash-verify"
 import { registerHmacAdapter } from "./hmac"
+import { registerHmacVerifyAdapter } from "./hmac-verify"
 import { registerCryptoAdapter } from "./crypto"
 import { registerEncodingAdapter } from "./encoding"
 import { registerClassicCipherAdapter } from "./classic-cipher"
 import { registerJwtAdapter } from "./jwt"
 import { registerJsonFormatAdapter } from "./json-format"
 import { registerJsonPathAdapter } from "./json-path"
+import { registerJsonStringifyAdapter } from "./json-stringify"
+import { registerJsonParseAdapter } from "./json-parse"
+import { registerJsonToYamlAdapter } from "./json-to-yaml"
+import { registerYamlToJsonAdapter } from "./yaml-to-json"
 import { registerProtobufAdapter } from "./protobuf"
 import { registerJceAdapter } from "./jce"
 import { registerImageToBase64Adapter } from "./image-to-base64"
@@ -51,17 +57,23 @@ export function registerAllAdapters(): void {
   // Basic (5)
   registerBasicNodes()
   
-  // Crypto (6)
+  // Crypto (8)
   registerHashAdapter()
+  registerHashVerifyAdapter()
   registerHmacAdapter()
+  registerHmacVerifyAdapter()
   registerCryptoAdapter()
   registerEncodingAdapter()
   registerClassicCipherAdapter()
   registerJwtAdapter()
   
-  // Data (8)
+  // Data (12)
   registerJsonFormatAdapter()
   registerJsonPathAdapter()
+  registerJsonStringifyAdapter()
+  registerJsonParseAdapter()
+  registerJsonToYamlAdapter()
+  registerYamlToJsonAdapter()
   registerProtobufAdapter()
   registerJceAdapter()
   registerBase64ToFileAdapter()

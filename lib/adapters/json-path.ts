@@ -35,7 +35,7 @@ export const jsonPathAdapter: ToolAdapter = {
     {
       id: "json",
       name: "JSON",
-      dataType: "string",
+      dataType: "json",
       defaultValue: "{}",
       multiline: true,
       hasInput: true,
@@ -51,21 +51,39 @@ export const jsonPathAdapter: ToolAdapter = {
     },
   ],
   outputs: [
-    { id: "result", name: "Result", dataType: "json" },
+    { id: "string", name: "String", dataType: "string" },
+    { id: "number", name: "Number", dataType: "number" },
+    { id: "boolean", name: "Boolean", dataType: "boolean" },
+    { id: "object", name: "Object", dataType: "json" },
+    { id: "array", name: "Array", dataType: "json" },
+    { id: "type", name: "Type", dataType: "string" },
   ],
   async execute(inputs, config) {
-    const jsonStr = String(inputs.json ?? config.json ?? "{}")
+    const json = inputs.json ?? config.json ?? {}
     const path = String(inputs.path ?? config.path ?? "$")
 
     let parsed: unknown
-    try {
-      parsed = JSON.parse(jsonStr)
-    } catch {
-      throw new Error("Invalid JSON")
+    if (typeof json === "string") {
+      try {
+        parsed = JSON.parse(json)
+      } catch {
+        throw new Error("Invalid JSON")
+      }
+    } else {
+      parsed = json
     }
 
     const result = getByPath(parsed, path)
-    return { result }
+    const type = Array.isArray(result) ? "array" : (result === null ? "null" : typeof result)
+
+    return {
+      string: typeof result === "string" ? result : JSON.stringify(result),
+      number: typeof result === "number" ? result : Number(result) || 0,
+      boolean: typeof result === "boolean" ? result : Boolean(result),
+      object: typeof result === "object" && !Array.isArray(result) ? result : null,
+      array: Array.isArray(result) ? result : null,
+      type,
+    }
   },
 }
 
