@@ -17,3 +17,6 @@ public/sw.js.map
 public/workbox-*.js
 public/workbox-*.js.map
 public/worker-*.js
+# Playwright
+test-results/
+playwright-report/
