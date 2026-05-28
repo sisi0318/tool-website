@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import type { ConfigField } from "@/lib/canvas/types"
 import { SelectInput } from "./SelectInput"
 import { SliderInput } from "./SliderInput"
@@ -19,6 +20,16 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
     const dependentValue = allConfig[field.dependsOn]
     dynamicOpts = field.dynamicOptions(String(dependentValue ?? ""))
     if (dynamicOpts.length === 0) return null
+
+    // 如果当前值不在动态选项中，自动更新为第一个选项
+    const currentValue = String(value ?? field.defaultValue ?? "")
+    const valueExists = dynamicOpts.some(opt => opt.value === currentValue)
+    if (!valueExists && dynamicOpts.length > 0) {
+      useEffect(() => {
+        onChange(dynamicOpts![0].value)
+      }, [dependentValue])
+      return null
+    }
   }
 
   // boolean → 开关
