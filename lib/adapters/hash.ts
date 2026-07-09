@@ -1,5 +1,5 @@
 import { Hash } from "lucide-react"
-import { createHash } from "crypto"
+import CryptoJS from "crypto-js"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { SHA3, Keccak, SHAKE } from "sha3"
@@ -71,26 +71,30 @@ function crc32Bytes(bytes: Uint8Array): number {
   return (crc ^ -1) >>> 0
 }
 
-function getAlgoNameForCrypto(algorithm: string): string | null {
-  const map: Record<string, string> = {
-    md5: "md5",
-    sha1: "sha1",
-    "sha2-224": "sha224",
-    "sha2-256": "sha256",
-    "sha2-384": "sha384",
-    "sha2-512": "sha512",
-    "sha512-224": "sha512-224",
-    "sha512-256": "sha512-256",
-    ripemd160: "ripemd160",
+function calculateLocalHash(data: string, algorithm: string, outputFormat: string): string | null {
+  const hashers: Record<string, (message: string) => { toString: (encoder?: unknown) => string }> = {
+    md5: CryptoJS.MD5,
+    sha1: CryptoJS.SHA1,
+    "sha2-224": CryptoJS.SHA224,
+    "sha2-256": CryptoJS.SHA256,
+    "sha2-384": CryptoJS.SHA384,
+    "sha2-512": CryptoJS.SHA512,
+    ripemd160: CryptoJS.RIPEMD160,
   }
-  return map[algorithm] ?? null
+  const hasher = hashers[algorithm]
+  if (!hasher) return null
+
+  const result = hasher(data)
+  return result.toString(outputFormat === "base64" ? CryptoJS.enc.Base64 : CryptoJS.enc.Hex)
 }
 
 async function calculateHash(data: string, algorithm: string, outputFormat: string): Promise<string> {
   if (algorithm === "crc32") {
     const bytes = new TextEncoder().encode(data)
     const result = crc32Bytes(bytes).toString(16).padStart(8, "0")
-    return outputFormat === "base64" ? Buffer.from(result, "hex").toString("base64") : result
+    if (outputFormat !== "base64") return result
+    const crcBytes = result.match(/.{2}/g)?.map((byte) => Number.parseInt(byte, 16)) ?? []
+    return btoa(String.fromCharCode(...crcBytes))
   }
 
   if (algorithm.startsWith("sha3-") || algorithm.startsWith("keccak-") || algorithm.startsWith("shake-")) {
@@ -109,12 +113,8 @@ async function calculateHash(data: string, algorithm: string, outputFormat: stri
     return outputFormat === "base64" ? hash.digest("base64") : hash.digest("hex")
   }
 
-  const cryptoAlgo = getAlgoNameForCrypto(algorithm)
-  if (cryptoAlgo) {
-    const hash = createHash(cryptoAlgo)
-    hash.update(data)
-    return outputFormat === "base64" ? hash.digest("base64") : hash.digest("hex")
-  }
+  const localResult = calculateLocalHash(data, algorithm, outputFormat)
+  if (localResult) return localResult
 
   const formData = new FormData()
   formData.append("algorithm", algorithm)

@@ -228,7 +228,7 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
     React.useEffect(() => {
       if (!scrollable || !scrollContainerRef.current) return;
       const activeTabEl = tabRefs.current.get(activeTab);
-      if (activeTabEl) {
+      if (activeTabEl && typeof activeTabEl.scrollIntoView === 'function') {
         activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
       }
     }, [activeTab, scrollable]);

@@ -1,7 +1,7 @@
 import { Key } from "lucide-react"
+import CryptoJS from "crypto-js"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
-import { createHmac } from "crypto"
 
 export const hmacAdapter: ToolAdapter = {
   type: "hmac",
@@ -63,9 +63,19 @@ export const hmacAdapter: ToolAdapter = {
     const outputFormat = String(inputs.outputFormat ?? config.outputFormat ?? "hex")
 
     try {
-      const hmac = createHmac(algorithm, key)
-      hmac.update(data)
-      return { hmac: hmac.digest(outputFormat === "base64" ? "base64" : "hex") }
+      const hashers: Record<string, (message: string, secret: string) => { toString: (encoder?: unknown) => string }> = {
+        md5: CryptoJS.HmacMD5,
+        sha1: CryptoJS.HmacSHA1,
+        sha256: CryptoJS.HmacSHA256,
+        sha384: CryptoJS.HmacSHA384,
+        sha512: CryptoJS.HmacSHA512,
+      }
+      const hasher = hashers[algorithm]
+      if (!hasher) throw new Error(`Unsupported algorithm: ${algorithm}`)
+      const result = hasher(data, key)
+      return {
+        hmac: result.toString(outputFormat === "base64" ? CryptoJS.enc.Base64 : CryptoJS.enc.Hex),
+      }
     } catch (error) {
       throw new Error(`HMAC error: ${error}`)
     }

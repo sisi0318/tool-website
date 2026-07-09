@@ -5,7 +5,6 @@ import type React from "react"
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
 import {
   Plus,
@@ -18,18 +17,16 @@ import {
   Key,
   TrendingUp,
   Share2,
-  ExternalLink,
   Clock,
   FileJson,
   Smartphone,
   Calculator,
-  ChevronDown,
   MoreVertical,
+  ArrowRight,
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { type SearchResult, createSearchableFeatures, searchFeatures } from "./search-utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { LanguageSwitcher } from "@/components/language-switcher"
 import { M3Tabs, type TabItem } from "@/components/m3/tabs"
 import { M3BottomSheet } from "@/components/m3/bottom-sheet"
 import { useBreakpoint } from "@/hooks/use-breakpoint"
@@ -538,7 +535,7 @@ export default function ToolsPage() {
       console.error("Error initializing searchable features:", error)
       setSearchableFeatures([])
     }
-  }, [])
+  }, [t])
 
   // 创建可分享的URL
   const createShareableUrl = useCallback(
@@ -784,41 +781,31 @@ export default function ToolsPage() {
   // 工具卡片组件 - M3 Expressive Style
   const ToolCard = useCallback(
     ({ id, name, icon, onClick }: { id: string; name: string; icon: React.ReactNode; onClick: () => void }) => (
-      <Card
-        className="
-          h-full card-elevated cursor-pointer group
-          hover:shadow-xl hover:-translate-y-2
-          transition-all duration-md-medium-2
-          ease-md-expressive
-          active:scale-[0.98] active:translate-y-0
-        "
+      <button
+        type="button"
         onClick={onClick}
+        className="group h-full w-full rounded-[var(--md-sys-shape-corner-extra-large)] text-left focus-visible:outline-none"
+        aria-label={name}
       >
-        <CardContent className="flex flex-col items-center justify-center p-6 h-full">
-          <div className="
-            mb-4 p-4
-            bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)]
-            text-[var(--md-sys-color-on-primary-container)]
-            rounded-[var(--md-sys-shape-corner-large)]
-            transition-all duration-md-medium-2
-            ease-md-expressive
-            group-hover:scale-110 group-hover:rotate-3
-            shadow-md group-hover:shadow-lg
-          ">
-            {icon}
-          </div>
-          <h3 className="
-            font-semibold text-center
-            text-[var(--md-sys-color-on-surface)]
-            group-hover:text-gradient
-            transition-colors duration-md-medium-2
-          ">
-            {name}
-          </h3>
-        </CardContent>
-      </Card>
+        <Card className="h-full min-h-[132px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 group-hover:-translate-y-1 group-hover:border-[var(--md-sys-color-primary)]/40 group-hover:shadow-xl group-focus-visible:ring-2 group-focus-visible:ring-[var(--md-sys-color-primary)] group-focus-visible:ring-offset-2">
+          <CardContent className="flex h-full items-center gap-4 p-4 sm:p-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-sm transition-transform duration-300 group-hover:scale-105">
+              {icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="line-clamp-2 font-semibold leading-6 text-[var(--md-sys-color-on-surface)] transition-colors group-hover:text-[var(--md-sys-color-primary)]">
+                {name}
+              </h3>
+              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+                {t("openTool")}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </button>
     ),
-    [],
+    [t],
   )
 
   // 从URL参数或本地存储中恢复标签页状态
@@ -1001,11 +988,30 @@ export default function ToolsPage() {
 
 
   return (
-    <div className="container mx-auto px-4 py-6 sm:py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      {tabs.length === 0 && (
+        <section className="mb-8 max-w-3xl">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--md-sys-color-primary)]">
+              {t("eyebrow")}
+            </p>
+            <span className="rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 py-1 text-xs font-bold text-[var(--md-sys-color-on-secondary-container)]">
+              {toolDefinitions.length} {t("countSuffix")}
+            </span>
+          </div>
+          <h1 className="mt-3 text-4xl font-bold tracking-[-0.035em] text-[var(--md-sys-color-on-surface)] sm:text-5xl">
+            {t("pageTitle")}
+          </h1>
+          <p className="mt-4 text-base leading-7 text-[var(--md-sys-color-on-surface-variant)] sm:text-lg">
+            {t("intro")}
+          </p>
+        </section>
+      )}
+
       {/* M3 Expressive Search Bar */}
       <div className="mb-6 sm:mb-8">
         <div className="relative">
-          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
             {/* M3 Expressive Search Bar with gradient border on focus */}
             <div
               className={`
@@ -1029,7 +1035,15 @@ export default function ToolsPage() {
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setSearchTerm("")
+                      setSearchResults([])
+                      setIsSearchFocused(false)
+                    }
+                  }}
                   placeholder={t("search.placeholder")}
+                  aria-label={t("search.placeholder")}
                   className="
                     flex-grow bg-transparent border-none outline-none
                     text-[var(--md-sys-color-on-surface)]
@@ -1039,10 +1053,12 @@ export default function ToolsPage() {
                 />
                 {searchTerm && (
                   <button
+                    type="button"
                     onClick={() => {
                       setSearchTerm("")
                       setSearchResults([])
                     }}
+                    aria-label={t("clearSearch")}
                     className="
                       p-1 rounded-full ml-2
                       hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
@@ -1054,11 +1070,10 @@ export default function ToolsPage() {
                 )}
               </div>
             </div>
-            <LanguageSwitcher />
           </div>
 
           {/* M3 Expressive Search Results Menu */}
-          {isSearchFocused && searchResults.length > 0 && (
+          {isSearchFocused && searchTerm.trim().length > 0 && (
             <div
               className="
                 search-results
@@ -1072,7 +1087,7 @@ export default function ToolsPage() {
                 duration-md-medium-2
               "
             >
-              {searchResults.map((result, index) => (
+              {searchResults.length > 0 ? searchResults.map((result, index) => (
                 <button
                   key={index}
                   className="
@@ -1107,7 +1122,14 @@ export default function ToolsPage() {
                     </div>
                   </div>
                 </button>
-              ))}
+              )) : (
+                <div className="flex flex-col items-center px-6 py-8 text-center">
+                  <Search className="h-6 w-6 text-[var(--md-sys-color-outline)]" />
+                  <p className="mt-3 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                    {t("noResults")}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1145,6 +1167,8 @@ export default function ToolsPage() {
                     <Tooltip open={shareTooltip.multiTab}>
                       <TooltipTrigger asChild>
                         <button
+                          type="button"
+                          aria-label={t("copyLink")}
                           className="
                             p-2 rounded-full
                             hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
@@ -1166,6 +1190,8 @@ export default function ToolsPage() {
                 <div className="relative">
                   <button
                     id="add-tab-button"
+                    type="button"
+                    aria-label={t("addTool")}
                     className="
                       p-2 rounded-full
                       hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
@@ -1255,7 +1281,7 @@ export default function ToolsPage() {
             {isCompact && activeTab && (
               <button
                 className="
-                  fixed bottom-20 right-4 z-40
+                  fixed bottom-28 right-4 z-40
                   p-3 rounded-full
                   bg-[var(--md-sys-color-secondary-container)]
                   text-[var(--md-sys-color-on-secondary-container)]
@@ -1265,7 +1291,7 @@ export default function ToolsPage() {
                   ease-md-emphasized
                 "
                 onClick={() => setShowToolOptionsSheet(true)}
-                aria-label="More options"
+                aria-label={t("moreOptions")}
               >
                 <MoreVertical className="h-6 w-6" />
               </button>
@@ -1274,13 +1300,7 @@ export default function ToolsPage() {
         </div>
       ) : (
         <div>
-          <h1 className="
-            text-3xl font-bold mb-8 text-center
-            text-[var(--md-sys-color-on-surface)]
-          ">
-            {t("pageTitle")}
-          </h1>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {toolDefinitions.map((tool) => (
               <ToolCard key={tool.id} id={tool.id} name={tool.title} icon={tool.icon} onClick={() => addTab(tool.id)} />
             ))}
@@ -1292,7 +1312,7 @@ export default function ToolsPage() {
       <M3BottomSheet
         open={showToolOptionsSheet}
         onClose={() => setShowToolOptionsSheet(false)}
-        title={t("addTool") || "Add Tool"}
+        title={t("addTool")}
       >
         <div className="grid grid-cols-2 gap-3">
           {toolDefinitions.map((tool) => (

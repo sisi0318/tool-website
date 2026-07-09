@@ -26,7 +26,7 @@ export default function CanvasContent() {
   }, [loadFromLocalStorage])
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="canvas-shell flex h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)]">
       <ReactFlowProvider>
         <div className={`${showPalette ? "flex" : "hidden"} lg:flex h-full`}>
           <NodePalette />
@@ -35,7 +35,8 @@ export default function CanvasContent() {
           <div className="lg:hidden absolute top-2 left-2 z-10 flex gap-1">
             <button
               onClick={() => setShowPalette((v) => !v)}
-              className="px-2 py-1 text-xs bg-gray-800 text-white rounded shadow"
+              aria-expanded={showPalette}
+              className="min-h-11 rounded-full bg-[var(--md-sys-color-inverse-surface)] px-4 text-xs font-semibold text-[var(--md-sys-color-inverse-on-surface)] shadow-lg"
             >
               {showPalette ? t("hidePalette") : t("palette")}
             </button>

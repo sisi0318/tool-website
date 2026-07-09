@@ -1,11 +1,13 @@
 {
     "name": "在线工具站",
     "short_name": "工具站",
-    "description": "一个实用的在线工具集合",
+    "description": "无需安装、打开即用的在线工具集合",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#ffffff",
+    "background_color": "#FDFDF5",
+    "theme_color": "#4A8135",
+    "lang": "zh-CN",
+    "categories": ["utilities", "productivity", "developer"],
     "icons": [
         {
             "src": "/placeholder-logo.png",

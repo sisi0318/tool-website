@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
 import { translations } from "@/lib/translations"
 
 // Create a context for translations
@@ -10,7 +10,26 @@ interface TranslationsContextType {
   t: (key: string) => string
 }
 
-const I18nContext = createContext<TranslationsContextType | undefined>(undefined)
+function resolveTranslation(locale: "zh" | "en", key: string) {
+  const keys = key.split(".")
+  let value: unknown = translations[locale]
+
+  for (const segment of keys) {
+    if (value && typeof value === "object" && segment in value) {
+      value = (value as Record<string, unknown>)[segment]
+    } else {
+      return key
+    }
+  }
+
+  return typeof value === "string" ? value : key
+}
+
+const I18nContext = createContext<TranslationsContextType>({
+  locale: "zh",
+  setLocale: () => undefined,
+  t: (key) => resolveTranslation("zh", key),
+})
 
 export function I18nProvider({
   children,
@@ -19,23 +38,21 @@ export function I18nProvider({
   children: ReactNode
   locale: string
 }) {
-  const [currentLocale, setCurrentLocale] = useState(locale)
+  const [currentLocale, setCurrentLocale] = useState<"zh" | "en">(locale === "en" ? "en" : "zh")
+
+  useEffect(() => {
+    const savedLocale = window.localStorage.getItem("locale")
+    if (savedLocale === "zh" || savedLocale === "en") {
+      setCurrentLocale(savedLocale)
+    }
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.lang = currentLocale
+  }, [currentLocale])
 
   const t = useCallback(
-    (key: string) => {
-      const keys = key.split(".")
-      let value = translations[currentLocale] || translations["zh"]
-
-      for (const k of keys) {
-        if (value && typeof value === "object" && k in value) {
-          value = value[k]
-        } else {
-          return key // If translation not found, return the original key
-        }
-      }
-
-      return typeof value === "string" ? value : key
-    },
+    (key: string) => resolveTranslation(currentLocale, key),
     [currentLocale],
   )
 
@@ -56,9 +73,5 @@ export function I18nProvider({
 }
 
 export const useI18n = () => {
-  const context = useContext(I18nContext)
-  if (!context) {
-    throw new Error("useI18n must be used within an I18nProvider")
-  }
-  return context
+  return useContext(I18nContext)
 }

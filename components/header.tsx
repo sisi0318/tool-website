@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MoonIcon, SunIcon, HomeIcon, Wrench } from "lucide-react"
+import { MoonIcon, SunIcon, Workflow, Wrench } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useTranslations } from "@/hooks/use-translations"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -72,7 +72,7 @@ M3IconButton.displayName = "M3IconButton"
  * Provides smooth icon transition between sun and moon states
  */
 function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const t = useTranslations("common")
   const [mounted, setMounted] = React.useState(false)
 
@@ -81,7 +81,7 @@ function ThemeToggle() {
   }, [])
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
+    setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
 
   if (!mounted) {
@@ -105,7 +105,7 @@ function ThemeToggle() {
             "absolute inset-0 h-6 w-6",
             "transition-all duration-md-medium-3",
             "ease-md-expressive",
-            theme === "dark"
+            resolvedTheme === "dark"
               ? "rotate-0 scale-100 opacity-100"
               : "rotate-180 scale-0 opacity-0"
           )}
@@ -116,7 +116,7 @@ function ThemeToggle() {
             "absolute inset-0 h-6 w-6",
             "transition-all duration-md-medium-3",
             "ease-md-expressive",
-            theme === "dark"
+            resolvedTheme === "dark"
               ? "-rotate-180 scale-0 opacity-0"
               : "rotate-0 scale-100 opacity-100"
           )}
@@ -181,7 +181,7 @@ export default function Header() {
       data-testid="m3-header"
       data-scrolled={isScrolled}
     >
-      <div className="container mx-auto px-4 h-full flex items-center justify-between">
+      <div className="container mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Leading: Logo and brand */}
         <Link
           href="/"
@@ -214,7 +214,7 @@ export default function Header() {
           {/* Brand name - M3 Title Large */}
           <span
             className={cn(
-              "hidden sm:inline font-semibold text-lg",
+              "inline text-base font-semibold sm:text-lg",
               "text-[var(--md-sys-color-on-surface)]",
               "group-hover:text-gradient",
               "transition-colors duration-md-short-4"
@@ -232,17 +232,14 @@ export default function Header() {
           <NavLink href="/tools" active={pathname.startsWith("/tools")}>
             {t("tools")}
           </NavLink>
+          <NavLink href="/canvas" active={pathname.startsWith("/canvas")}>
+            <Workflow className="h-4 w-4" />
+            {t("canvas")}
+          </NavLink>
         </nav>
 
         {/* Trailing: Actions */}
         <div className="flex items-center gap-1">
-          {/* Home button (mobile only) */}
-          <Link href="/" className="md:hidden">
-            <M3IconButton aria-label={t("home")}>
-              <HomeIcon className="h-6 w-6" />
-            </M3IconButton>
-          </Link>
-
           {/* Language switcher */}
           <LanguageSwitcher />
 
@@ -267,9 +264,10 @@ function NavLink({ href, active, children }: NavLinkProps) {
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={cn(
         // Base styles with 48dp touch target
-        "relative inline-flex items-center justify-center",
+        "relative inline-flex items-center justify-center gap-2",
         "min-h-[48px] px-5",
         "rounded-[var(--md-sys-shape-corner-full)]",
         // Typography - M3 Label Large
