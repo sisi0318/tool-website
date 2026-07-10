@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   openGraph: {
     title: "工具站 — 顺手完成每一件小事",
-    description: "30+ 个开发、文本、图片与编码工具，无需安装，打开即用。",
+    description: "40+ 个开发、文本、图片与编码工具，无需安装，打开即用。",
     type: "website",
     locale: "zh_CN",
     images: [
@@ -49,14 +49,14 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1731,
         height: 909,
-        alt: "工具站 — 30+ 个无需安装、打开即用的实用工具",
+        alt: "工具站 — 40+ 个无需安装、打开即用的实用工具",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "工具站 — 顺手完成每一件小事",
-    description: "30+ 个开发、文本、图片与编码工具，无需安装，打开即用。",
+    description: "40+ 个开发、文本、图片与编码工具，无需安装，打开即用。",
     images: ["/og.png"],
   },
   appleWebApp: {

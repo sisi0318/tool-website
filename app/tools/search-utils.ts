@@ -235,6 +235,66 @@ export function getTools(locale = "en"): Tool[] {
       keywords: ["diff", "compare", "text", "change", "added", "removed", "difference"],
       path: "/tools/diff",
     },
+    {
+      id: "data-detector",
+      ...getLocalizedToolText(t, "dataDetector", "Smart Data Detector", "Detect JSON, JWT, Base64, XML, timestamps, and more"),
+      keywords: ["detect", "identify", "json", "jwt", "base64", "xml", "timestamp", "uuid", "识别", "格式"],
+      path: "/tools/data-detector",
+    },
+    {
+      id: "compression",
+      ...getLocalizedToolText(t, "compression", "Compression", "Compress and decompress common formats"),
+      keywords: ["gzip", "zlib", "deflate", "brotli", "zip", "compress", "decompress", "压缩", "解压"],
+      path: "/tools/compression",
+    },
+    {
+      id: "xml",
+      ...getLocalizedToolText(t, "xmlTools", "XML Tools", "Format, validate, convert, and query XML"),
+      keywords: ["xml", "xpath", "format", "minify", "json", "validate", "格式化", "校验"],
+      path: "/tools/xml",
+    },
+    {
+      id: "csv",
+      ...getLocalizedToolText(t, "csvTools", "CSV / TSV Tools", "Convert delimited data and JSON"),
+      keywords: ["csv", "tsv", "table", "delimiter", "json", "spreadsheet", "表格", "分隔符"],
+      path: "/tools/csv",
+    },
+    {
+      id: "markdown",
+      ...getLocalizedToolText(t, "markdownTools", "Markdown Tools", "Preview and convert Markdown"),
+      keywords: ["markdown", "md", "html", "preview", "toc", "目录", "预览"],
+      path: "/tools/markdown",
+    },
+    {
+      id: "sql",
+      ...getLocalizedToolText(t, "sqlTools", "SQL Formatter", "Format or minify SQL for common database dialects"),
+      keywords: ["sql", "mysql", "postgresql", "sqlite", "formatter", "minify", "数据库", "格式化"],
+      path: "/tools/sql",
+    },
+    {
+      id: "json-schema",
+      ...getLocalizedToolText(t, "jsonSchemaTools", "JSON Schema", "Validate JSON or infer a schema"),
+      keywords: ["json schema", "validate", "infer", "ajv", "校验", "推导"],
+      path: "/tools/json-schema",
+    },
+    {
+      id: "subnet",
+      ...getLocalizedToolText(t, "subnetTools", "IP / CIDR Calculator", "Calculate IPv4 and IPv6 subnet ranges"),
+      keywords: ["ip", "cidr", "subnet", "ipv4", "ipv6", "netmask", "network", "网段", "子网"],
+      path: "/tools/subnet",
+    },
+    {
+      id: "certificate",
+      ...getLocalizedToolText(t, "certificateTools", "Certificate & Key Inspector", "Inspect X.509, PEM, CSR, JWK, and JWKS"),
+      keywords: ["x509", "certificate", "pem", "csr", "jwk", "jwks", "public key", "证书", "密钥"],
+      path: "/tools/certificate",
+    },
+    {
+      id: "hex-binary",
+      ...getLocalizedToolText(t, "hexBinaryTools", "Hex / Binary Viewer", "View hex dumps and identify file signatures"),
+      keywords: ["hex", "binary", "hexdump", "magic bytes", "file signature", "base64", "二进制", "文件头"],
+      path: "/tools/hex-binary",
+    },
   ]
 }
 
@@ -1290,6 +1350,23 @@ export function createSearchableFeatures(translations: any): SearchResult[] {
       featureName: "Text Diff",
       featureDescription: "Compare text and highlight added or removed lines",
     })
+  }
+
+  const extendedTools = [
+    ["dataDetector", "data-detector", "Data detection", "JSON JWT Base64 XML UUID timestamp format identify 智能识别"],
+    ["compression", "compression", "Compression", "GZip Zlib Deflate Brotli ZIP compress decompress 压缩 解压"],
+    ["xmlTools", "xml", "XML and XPath", "XML format validate XPath JSON conversion 格式化 校验"],
+    ["csvTools", "csv", "CSV and TSV", "CSV TSV delimiter JSON table spreadsheet 表格 分隔符"],
+    ["markdownTools", "markdown", "Markdown preview", "Markdown HTML preview table of contents 预览 目录"],
+    ["sqlTools", "sql", "SQL formatter", "SQL MySQL PostgreSQL SQLite format minify 数据库"],
+    ["jsonSchemaTools", "json-schema", "JSON Schema", "JSON Schema validate infer AJV 校验 推导"],
+    ["subnetTools", "subnet", "IP and CIDR", "IPv4 IPv6 subnet network netmask range 网段 子网"],
+    ["certificateTools", "certificate", "Certificate and keys", "X.509 PEM CSR JWK JWKS public key 证书 密钥"],
+    ["hexBinaryTools", "hex-binary", "Hex and binary", "hexdump binary magic bytes file signature Base64 二进制 文件头"],
+  ] as const
+  for (const [translationKey, toolId, featureName, featureDescription] of extendedTools) {
+    const toolName = translations?.[translationKey]?.name
+    if (toolName) features.push({ toolId, toolName, featureName, featureDescription })
   }
 
   return features

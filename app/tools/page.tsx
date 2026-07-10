@@ -27,6 +27,16 @@ import {
   Star,
   KeyRound,
   ImageDown,
+  ScanSearch,
+  Archive,
+  FileCode2,
+  Table2,
+  FileText,
+  Database,
+  Braces,
+  Network,
+  ShieldCheck,
+  Binary,
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { type SearchResult, createSearchableFeatures, searchFeatures } from "./search-utils"
@@ -76,6 +86,16 @@ const JceTool = dynamic(() => import("./jce/page"), { ssr: false })
 const DiffTool = dynamic(() => import("./diff/page"), { ssr: false })
 const PasswordGeneratorTool = dynamic(() => import("./password-generator/page"), { ssr: false })
 const ImageConvertTool = dynamic(() => import("./image-convert/page"), { ssr: false })
+const DataDetectorTool = dynamic(() => import("./data-detector/page"), { ssr: false })
+const CompressionTool = dynamic(() => import("./compression/page"), { ssr: false })
+const XmlTool = dynamic(() => import("./xml/page"), { ssr: false })
+const CsvTool = dynamic(() => import("./csv/page"), { ssr: false })
+const MarkdownTool = dynamic(() => import("./markdown/page"), { ssr: false })
+const SqlTool = dynamic(() => import("./sql/page"), { ssr: false })
+const JsonSchemaTool = dynamic(() => import("./json-schema/page"), { ssr: false })
+const SubnetTool = dynamic(() => import("./subnet/page"), { ssr: false })
+const CertificateTool = dynamic(() => import("./certificate/page"), { ssr: false })
+const HexBinaryTool = dynamic(() => import("./hex-binary/page"), { ssr: false })
 
 function createToolRenderer(Component: React.ComponentType) {
   return (params?: ToolRuntimeParams) => (
@@ -514,6 +534,66 @@ export default function ToolsPage() {
         getComponent: createToolRenderer(PasswordGeneratorTool),
       },
       {
+        id: "data-detector",
+        title: t("dataDetector.name"),
+        icon: <ScanSearch className="h-4 w-4" />,
+        getComponent: createToolRenderer(DataDetectorTool),
+      },
+      {
+        id: "compression",
+        title: t("compression.name"),
+        icon: <Archive className="h-4 w-4" />,
+        getComponent: createToolRenderer(CompressionTool),
+      },
+      {
+        id: "xml",
+        title: t("xmlTools.name"),
+        icon: <FileCode2 className="h-4 w-4" />,
+        getComponent: createToolRenderer(XmlTool),
+      },
+      {
+        id: "csv",
+        title: t("csvTools.name"),
+        icon: <Table2 className="h-4 w-4" />,
+        getComponent: createToolRenderer(CsvTool),
+      },
+      {
+        id: "markdown",
+        title: t("markdownTools.name"),
+        icon: <FileText className="h-4 w-4" />,
+        getComponent: createToolRenderer(MarkdownTool),
+      },
+      {
+        id: "sql",
+        title: t("sqlTools.name"),
+        icon: <Database className="h-4 w-4" />,
+        getComponent: createToolRenderer(SqlTool),
+      },
+      {
+        id: "json-schema",
+        title: t("jsonSchemaTools.name"),
+        icon: <Braces className="h-4 w-4" />,
+        getComponent: createToolRenderer(JsonSchemaTool),
+      },
+      {
+        id: "subnet",
+        title: t("subnetTools.name"),
+        icon: <Network className="h-4 w-4" />,
+        getComponent: createToolRenderer(SubnetTool),
+      },
+      {
+        id: "certificate",
+        title: t("certificateTools.name"),
+        icon: <ShieldCheck className="h-4 w-4" />,
+        getComponent: createToolRenderer(CertificateTool),
+      },
+      {
+        id: "hex-binary",
+        title: t("hexBinaryTools.name"),
+        icon: <Binary className="h-4 w-4" />,
+        getComponent: createToolRenderer(HexBinaryTool),
+      },
+      {
         id: "diff",
         title: t("diff.name"),
         icon: <GitCompareArrows className="h-4 w-4" />,
@@ -575,6 +655,16 @@ export default function ToolsPage() {
         diff: { name: t("diff.name") },
         passwordGenerator: { name: t("passwordGenerator.name") },
         imageConvert: { name: t("imageConvert.name") },
+        dataDetector: { name: t("dataDetector.name") },
+        compression: { name: t("compression.name") },
+        xmlTools: { name: t("xmlTools.name") },
+        csvTools: { name: t("csvTools.name") },
+        markdownTools: { name: t("markdownTools.name") },
+        sqlTools: { name: t("sqlTools.name") },
+        jsonSchemaTools: { name: t("jsonSchemaTools.name") },
+        subnetTools: { name: t("subnetTools.name") },
+        certificateTools: { name: t("certificateTools.name") },
+        hexBinaryTools: { name: t("hexBinaryTools.name") },
       }
 
       const validTranslations = Object.entries(translations).reduce(

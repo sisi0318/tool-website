@@ -50,6 +50,16 @@ import { registerStringToFileAdapter } from "./string-to-file"
 import { registerStringPreviewAdapter } from "./string-preview"
 import { registerJsonPreviewAdapter } from "./json-preview"
 import { registerImagePreviewAdapter } from "./image-preview"
+import { registerDataDetectorAdapter } from "./data-detector"
+import { registerCompressionAdapter } from "./compression"
+import { registerXmlAdapter } from "./xml"
+import { registerCsvAdapter } from "./csv"
+import { registerMarkdownAdapter } from "./markdown"
+import { registerSqlAdapter } from "./sql"
+import { registerJsonSchemaAdapter } from "./json-schema"
+import { registerSubnetAdapter } from "./subnet"
+import { registerCertificateAdapter } from "./certificate"
+import { registerHexBinaryAdapter } from "./hex-binary"
 import { registerNode } from "../canvas/registry"
 import type { ToolAdapter } from "./types"
 
@@ -91,6 +101,12 @@ export function registerAllAdapters(): void {
   safeRegister("file-to-base64", registerFileToBase64Adapter)
   safeRegister("file-to-string", registerFileToStringAdapter)
   safeRegister("string-to-file", registerStringToFileAdapter)
+  safeRegister("data-detector", registerDataDetectorAdapter)
+  safeRegister("compression", registerCompressionAdapter)
+  safeRegister("xml", registerXmlAdapter)
+  safeRegister("csv", registerCsvAdapter)
+  safeRegister("json-schema", registerJsonSchemaAdapter)
+  safeRegister("hex-binary", registerHexBinaryAdapter)
 
   // Image (8)
   safeRegister("image-to-base64", registerImageToBase64Adapter)
@@ -108,12 +124,15 @@ export function registerAllAdapters(): void {
   safeRegister("case-converter", registerCaseConverterAdapter)
   safeRegister("regex", registerRegexAdapter)
   safeRegister("diff", registerDiffAdapter)
+  safeRegister("markdown", registerMarkdownAdapter)
 
   // Dev (4)
   safeRegister("http-tester", registerHttpTesterAdapter)
   safeRegister("crontab", registerCrontabAdapter)
   safeRegister("docker-converter", registerDockerConverterAdapter)
   safeRegister("whois", registerWhoisAdapter)
+  safeRegister("sql", registerSqlAdapter)
+  safeRegister("subnet", registerSubnetAdapter)
 
   // Utility (7)
   safeRegister("uuid", registerUuidAdapter)
@@ -123,6 +142,7 @@ export function registerAllAdapters(): void {
   safeRegister("temperature-converter", registerTemperatureConverterAdapter)
   safeRegister("currency", registerCurrencyAdapter)
   safeRegister("bmi", registerBmiAdapter)
+  safeRegister("certificate", registerCertificateAdapter)
 
   // Viewer (6)
   safeRegister("device-info", registerDeviceInfoAdapter)
