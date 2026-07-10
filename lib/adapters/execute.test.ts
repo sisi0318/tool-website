@@ -44,6 +44,8 @@ import { registerStringToFileAdapter } from "../adapters/string-to-file"
 import { registerStringPreviewAdapter } from "../adapters/string-preview"
 import { registerJsonPreviewAdapter } from "../adapters/json-preview"
 import { registerImagePreviewAdapter } from "../adapters/image-preview"
+import { registerPasswordGeneratorAdapter } from "../adapters/password-generator"
+import { registerImageConvertAdapter } from "../adapters/image-convert"
 
 beforeEach(() => {
   clearRegistry()
@@ -91,6 +93,8 @@ beforeEach(() => {
   registerStringPreviewAdapter()
   registerJsonPreviewAdapter()
   registerImagePreviewAdapter()
+  registerPasswordGeneratorAdapter()
+  registerImageConvertAdapter()
 })
 
 describe("Adapter Execute Functions", () => {
@@ -352,6 +356,15 @@ describe("Adapter Execute Functions", () => {
       const def = getNodeDefinition("uuid")!
       const result = await def.execute({}, { withHyphens: false })
       expect(result.uuid).toMatch(/^[0-9a-f]{32}$/)
+    })
+  })
+
+  describe("Password Generator", () => {
+    it("generates a password and entropy estimate", async () => {
+      const def = getNodeDefinition("password-generator")!
+      const result = await def.execute({}, { length: 24, lowercase: true, uppercase: true, numbers: true, symbols: true })
+      expect(String(result.password)).toHaveLength(24)
+      expect(Number(result.entropy)).toBeGreaterThan(100)
     })
   })
 
@@ -660,6 +673,30 @@ describe("Adapter Execute Functions", () => {
       const result = await def.execute({}, { file: mockFile, quality: 80 })
       expect(result.file).toBeDefined()
       expect(result.info).toBeDefined()
+      expect(close).toHaveBeenCalledOnce()
+      vi.unstubAllGlobals()
+    })
+
+    it("image-convert: converts and resizes a file", async () => {
+      const close = vi.fn()
+      vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 1200, height: 600, close }))
+      vi.stubGlobal("OffscreenCanvas", class MockOffscreenCanvas {
+        width: number
+        height: number
+        constructor(width: number, height: number) { this.width = width; this.height = height }
+        getContext() { return { fillStyle: "", fillRect: vi.fn(), drawImage: vi.fn() } }
+        async convertToBlob(options: BlobPropertyBag) { return new Blob(["converted"], options) }
+      })
+
+      const def = getNodeDefinition("image-convert")!
+      const result = await def.execute({}, {
+        file: new File(["fake-data"], "test.png", { type: "image/png" }),
+        format: "webp",
+        quality: 80,
+        maxWidth: 600,
+      })
+      expect((result.file as File).name).toBe("test.webp")
+      expect(result.info).toMatchObject({ dimensions: "600x300", format: "image/webp" })
       expect(close).toHaveBeenCalledOnce()
       vi.unstubAllGlobals()
     })

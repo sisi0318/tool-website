@@ -3,15 +3,18 @@ import { Handle, Position } from "@xyflow/react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
+import { formatCanvasValue } from "@/lib/canvas/format-value"
 import type { ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
 import { JsonTreeViewer } from "./JsonTreeViewer"
+import { NodeRunButton } from "./NodeRunButton"
 
 interface ToolNodeProps {
   data: {
     id: string
     type: string
     config: Record<string, unknown>
+    selected?: boolean
   }
 }
 
@@ -20,8 +23,8 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const nodeOutputs = useCanvasStore((s) => s.nodeOutputs[data.id])
   const nodeErrors = useCanvasStore((s) => s.nodeErrors[data.id])
   const nodeRunning = useCanvasStore((s) => s.nodeRunning[data.id])
-  const isSelected = useCanvasStore((s) => s.selectedNodeId === data.id)
-  const selectNode = useCanvasStore((s) => s.selectNode)
+  const isPrimarySelected = useCanvasStore((s) => s.selectedNodeId === data.id)
+  const isSelected = Boolean(data.selected || isPrimarySelected)
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
   const executeNode = useCanvasStore((s) => s.executeNode)
   const edges = useCanvasStore((s) => s.edges)
@@ -37,7 +40,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   useEffect(() => {
     if (definition && definition.config.length === 0 && !autoExecutedRef.current && !nodeOutputs && !nodeRunning) {
       autoExecutedRef.current = true
-      executeNode(data.id)
+      executeNode(data.id, undefined, true, false)
     }
   }, [definition, data.id, nodeOutputs, nodeRunning, executeNode])
 
@@ -70,7 +73,6 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
           ? "border-blue-500"
           : "border-gray-200 dark:border-gray-700"
       }`}
-      onClick={() => selectNode(data.id)}
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-lg">
@@ -78,9 +80,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
         <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
           {definition.label}
         </span>
-        {nodeRunning && (
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse ml-auto" />
-        )}
+        <NodeRunButton nodeId={data.id} running={Boolean(nodeRunning)} hasError={Boolean(nodeErrors)} />
       </div>
 
       {/* Parameters */}
@@ -88,7 +88,6 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
         {definition.config.map((field) => {
           const connected = field.hasInput ? connectedPorts.has(field.id) : false
           const upstreamValue = connected ? getInputValue(field.id) : undefined
-          const outputValue = field.hasOutput ? nodeOutputs?.[field.id] : undefined
 
           return (
             <div key={field.id} className="flex items-center gap-1 px-2 py-1">
@@ -101,8 +100,8 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                     id={field.id}
                     style={{
                       background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
-                      width: 8,
-                      height: 8,
+                      width: 12,
+                      height: 12,
                       border: "2px solid white",
                       position: "relative",
                       left: -12,
@@ -141,8 +140,8 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                     id={field.id}
                     style={{
                       background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
-                      width: 8,
-                      height: 8,
+                      width: 12,
+                      height: 12,
                       border: "2px solid white",
                       position: "relative",
                       right: -12,
@@ -160,6 +159,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
           <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
             {definition.outputs.map((output) => {
               const outputValue = nodeOutputs?.[output.id]
+              const outputText = formatCanvasValue(outputValue)
               return (
                 <div key={output.id} className="flex items-center gap-1 px-2 py-1">
                   <div className="w-3" />
@@ -167,8 +167,8 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                     <span className="text-[10px] text-gray-400 w-14 shrink-0 truncate" title={output.name}>
                       {output.name}
                     </span>
-                    <span className="text-[10px] text-gray-500 truncate" title={String(outputValue ?? "")}>
-                      {outputValue !== undefined ? String(outputValue) : ""}
+                    <span className="text-[10px] text-gray-500 truncate" title={outputText}>
+                      {outputText}
                     </span>
                   </div>
                   <div className="w-3 flex justify-center">
@@ -178,8 +178,8 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                       id={output.id}
                       style={{
                         background: TYPE_COLORS[output.dataType] ?? "#94a3b8",
-                        width: 8,
-                        height: 8,
+                        width: 12,
+                        height: 12,
                         border: "2px solid white",
                         position: "relative",
                         right: -12,
@@ -223,7 +223,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
 
       {nodeErrors && (
         <div className="px-3 py-2 border-t border-red-200 bg-red-50 dark:bg-red-900/20 rounded-b-lg">
-          <p className="text-xs text-red-600 dark:text-red-400 truncate">{nodeErrors}</p>
+          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-red-600 dark:text-red-400">{nodeErrors}</p>
         </div>
       )}
     </div>

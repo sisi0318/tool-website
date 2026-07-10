@@ -11,6 +11,7 @@ export function WorkflowLoadButton() {
   const t = useTranslations("canvas")
   const [showDialog, setShowDialog] = useState(false)
   const [workflows, setWorkflows] = useState<string[]>([])
+  const replaceWorkflow = useCanvasStore((state) => state.replaceWorkflow)
 
   const handleOpen = useCallback(() => {
     setWorkflows(getWorkflowList())
@@ -25,17 +26,10 @@ export function WorkflowLoadButton() {
   const handleLoad = useCallback((name: string) => {
     const data = loadWorkflow(name)
     if (data) {
-      useCanvasStore.setState({
-        nodes: data.nodes,
-        edges: data.edges,
-        nodeOutputs: {},
-        nodeErrors: {},
-        nodeRunning: {},
-        selectedNodeId: null,
-      })
+      replaceWorkflow(data)
       setShowDialog(false)
     }
-  }, [])
+  }, [replaceWorkflow])
 
   if (showDialog) {
     return (

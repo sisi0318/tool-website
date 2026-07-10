@@ -6,6 +6,7 @@ export const httpTesterAdapter: ToolAdapter = {
   type: "http-tester",
   category: "dev",
   label: "HTTP Tester",
+  executionMode: "manual",
   icon: Globe,
   config: [
     {

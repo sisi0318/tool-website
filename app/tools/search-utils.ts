@@ -128,6 +128,13 @@ export function getTools(locale = "en"): Tool[] {
     },
     // UUID Generator
     {
+      id: "password-generator",
+      ...getLocalizedToolText(t, "passwordGenerator", "Password Generator", "Generate secure passwords and readable passphrases"),
+      keywords: ["password", "passphrase", "generator", "random", "secure", "entropy", "口令", "密码", "随机"],
+      path: "/tools/password-generator",
+    },
+    // UUID Generator
+    {
       id: "uuid",
       name: t.uuid?.title || "UUID Generator",
       description: t.uuid?.description || "Generate UUIDs of various versions",
@@ -149,6 +156,13 @@ export function getTools(locale = "en"): Tool[] {
       description: t.textStats?.description || "Count characters, words, sentences and more",
       keywords: ["text", "statistics", "count", "words", "characters", "sentences", "analyze", "chinese", "english"],
       path: "/tools/text-stats",
+    },
+    // Image Compress
+    {
+      id: "image-convert",
+      ...getLocalizedToolText(t, "imageConvert", "Image Converter", "Convert and resize images in batches"),
+      keywords: ["image", "convert", "format", "resize", "jpeg", "png", "webp", "avif", "batch", "图片", "格式转换"],
+      path: "/tools/image-convert",
     },
     // Image Compress
     {
@@ -1018,6 +1032,30 @@ export function createSearchableFeatures(translations: any): SearchResult[] {
   }
 
   // UUID Generator features
+  if (translations?.passwordGenerator?.name) {
+    features.push(
+      {
+        toolId: "password-generator",
+        toolName: translations.passwordGenerator.name,
+        featureName: "Secure Password",
+        featureDescription: "Generate cryptographically secure random passwords",
+      },
+      {
+        toolId: "password-generator",
+        toolName: translations.passwordGenerator.name,
+        featureName: "Passphrase",
+        featureDescription: "Generate readable multi-word passphrases",
+      },
+      {
+        toolId: "password-generator",
+        toolName: translations.passwordGenerator.name,
+        featureName: "Password Entropy",
+        featureDescription: "Estimate password strength in bits",
+      },
+    )
+  }
+
+  // UUID Generator features
   if (translations?.uuid?.name) {
     features.push(
       {
@@ -1121,6 +1159,30 @@ export function createSearchableFeatures(translations: any): SearchResult[] {
         toolName: translations.textStats.name,
         featureName: "English Analysis",
         featureDescription: "Analyze English text statistics",
+      },
+    )
+  }
+
+  // Image Compress features
+  if (translations?.imageConvert?.name) {
+    features.push(
+      {
+        toolId: "image-convert",
+        toolName: translations.imageConvert.name,
+        featureName: "Image Format Convert",
+        featureDescription: "Convert PNG, JPEG, WebP and AVIF images",
+      },
+      {
+        toolId: "image-convert",
+        toolName: translations.imageConvert.name,
+        featureName: "Batch Image Convert",
+        featureDescription: "Convert multiple images and download a ZIP",
+      },
+      {
+        toolId: "image-convert",
+        toolName: translations.imageConvert.name,
+        featureName: "Image Resize",
+        featureDescription: "Resize while preserving the aspect ratio",
       },
     )
   }

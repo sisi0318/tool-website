@@ -7,13 +7,97 @@ export interface WorkflowData {
   edges: Edge[]
 }
 
+export interface PortableWorkflow {
+  kind: "tool-website-workflow"
+  version: 1
+  name: string
+  exportedAt: string
+  workflow: WorkflowData
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+export function normalizeWorkflowData(value: unknown): WorkflowData | null {
+  if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.edges)) return null
+
+  const nodes: NodeInstance[] = value.nodes.flatMap((node) => {
+    if (!isRecord(node) || typeof node.id !== "string" || typeof node.type !== "string") return []
+    if (!isRecord(node.position) || typeof node.position.x !== "number" || typeof node.position.y !== "number") return []
+    return [{
+      id: node.id,
+      type: node.type,
+      position: { x: node.position.x, y: node.position.y },
+      config: isRecord(node.config) ? node.config : {},
+    }]
+  })
+  const nodeIds = new Set(nodes.map((node) => node.id))
+  const edges: Edge[] = value.edges.flatMap((edge) => {
+    if (
+      !isRecord(edge)
+      || typeof edge.id !== "string"
+      || typeof edge.source !== "string"
+      || typeof edge.target !== "string"
+      || !nodeIds.has(edge.source)
+      || !nodeIds.has(edge.target)
+      || typeof edge.sourcePort !== "string"
+      || typeof edge.targetPort !== "string"
+    ) return []
+    return [{
+      id: edge.id,
+      source: edge.source,
+      sourcePort: edge.sourcePort,
+      target: edge.target,
+      targetPort: edge.targetPort,
+    }]
+  })
+
+  return { nodes, edges }
+}
+
+export function serializeWorkflow(name: string, data: WorkflowData): string {
+  const portable: PortableWorkflow = {
+    kind: "tool-website-workflow",
+    version: 1,
+    name: name.trim() || "workflow",
+    exportedAt: new Date().toISOString(),
+    workflow: data,
+  }
+  return JSON.stringify(portable, null, 2)
+}
+
+export function parseWorkflowFile(contents: string): { name: string; data: WorkflowData } {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(contents)
+  } catch {
+    throw new Error("INVALID_JSON")
+  }
+
+  if (isRecord(parsed) && parsed.kind === "tool-website-workflow") {
+    if (parsed.version !== 1) throw new Error("UNSUPPORTED_VERSION")
+    const data = normalizeWorkflowData(parsed.workflow)
+    if (!data) throw new Error("INVALID_WORKFLOW")
+    return { name: typeof parsed.name === "string" ? parsed.name : "workflow", data }
+  }
+
+  const legacyData = normalizeWorkflowData(parsed)
+  if (!legacyData) throw new Error("INVALID_WORKFLOW")
+  return { name: "workflow", data: legacyData }
+}
+
 /**
  * 获取所有保存的 workflow 名字列表
  */
 export function getWorkflowList(): string[] {
   if (typeof window === "undefined") return []
-  const list = localStorage.getItem(WORKFLOW_LIST_KEY)
-  return list ? JSON.parse(list) : []
+  try {
+    const list: unknown = JSON.parse(localStorage.getItem(WORKFLOW_LIST_KEY) ?? "[]")
+    return Array.isArray(list) ? list.filter((name): name is string => typeof name === "string") : []
+  } catch {
+    return []
+  }
 }
 
 /**
@@ -51,24 +135,7 @@ export function loadWorkflow(name: string): WorkflowData | null {
   const data = localStorage.getItem(getWorkflowKey(name))
   if (!data) return null
   try {
-    const parsed = JSON.parse(data)
-    if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
-      return null
-    }
-    const nodes = parsed.nodes.filter(
-      (n: any) => n && typeof n.id === "string" && typeof n.type === "string" && n.position
-    )
-    const nodeIds = new Set(nodes.map((n: NodeInstance) => n.id))
-    const edges = parsed.edges.filter(
-      (e: any) =>
-        e &&
-        typeof e.id === "string" &&
-        nodeIds.has(e.source) &&
-        nodeIds.has(e.target) &&
-        typeof e.sourcePort === "string" &&
-        typeof e.targetPort === "string"
-    )
-    return { nodes, edges }
+    return normalizeWorkflowData(JSON.parse(data))
   } catch {
     return null
   }

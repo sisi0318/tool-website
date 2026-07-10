@@ -7,6 +7,7 @@ import { registerCryptoAdapter } from "./crypto"
 import { registerEncodingAdapter } from "./encoding"
 import { registerClassicCipherAdapter } from "./classic-cipher"
 import { registerJwtAdapter } from "./jwt"
+import { registerPasswordGeneratorAdapter } from "./password-generator"
 import { registerJsonFormatAdapter } from "./json-format"
 import { registerJsonPathAdapter } from "./json-path"
 import { registerJsonStringifyAdapter } from "./json-stringify"
@@ -18,6 +19,7 @@ import { registerJceAdapter } from "./jce"
 import { registerImageToBase64Adapter } from "./image-to-base64"
 import { registerExifViewerAdapter } from "./exif-viewer"
 import { registerImageCompressAdapter } from "./image-compress"
+import { registerImageConvertAdapter } from "./image-convert"
 import { registerImageEditorAdapter } from "./image-editor"
 import { registerQrcodeAdapter } from "./qrcode"
 import { registerQrcodeDecodeAdapter } from "./qrcode-decode"
@@ -74,6 +76,7 @@ export function registerAllAdapters(): void {
   safeRegister("encoding", registerEncodingAdapter)
   safeRegister("classic-cipher", registerClassicCipherAdapter)
   safeRegister("jwt", registerJwtAdapter)
+  safeRegister("password-generator", registerPasswordGeneratorAdapter)
 
   // Data (12)
   safeRegister("json-format", registerJsonFormatAdapter)
@@ -93,6 +96,7 @@ export function registerAllAdapters(): void {
   safeRegister("image-to-base64", registerImageToBase64Adapter)
   safeRegister("exif-viewer", registerExifViewerAdapter)
   safeRegister("image-compress", registerImageCompressAdapter)
+  safeRegister("image-convert", registerImageConvertAdapter)
   safeRegister("image-editor", registerImageEditorAdapter)
   safeRegister("qrcode", registerQrcodeAdapter)
   safeRegister("qrcode-decode", registerQrcodeDecodeAdapter)

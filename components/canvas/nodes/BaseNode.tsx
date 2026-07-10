@@ -3,11 +3,16 @@ import { Handle, Position } from "@xyflow/react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
+import { formatCanvasValue } from "@/lib/canvas/format-value"
 import type { NodeInstance, ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
+import { NodeRunButton } from "./NodeRunButton"
 
 interface BaseNodeProps {
-  data: NodeInstance & { definition: NonNullable<ReturnType<typeof getNodeDefinition>> }
+  data: NodeInstance & {
+    definition: NonNullable<ReturnType<typeof getNodeDefinition>>
+    selected?: boolean
+  }
 }
 
 function BaseNodeComponent({ data }: BaseNodeProps) {
@@ -15,8 +20,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
   const nodeOutputs = useCanvasStore((s) => s.nodeOutputs[node.id])
   const nodeErrors = useCanvasStore((s) => s.nodeErrors[node.id])
   const nodeRunning = useCanvasStore((s) => s.nodeRunning[node.id])
-  const isSelected = useCanvasStore((s) => s.selectedNodeId === node.id)
-  const selectNode = useCanvasStore((s) => s.selectNode)
+  const isPrimarySelected = useCanvasStore((s) => s.selectedNodeId === node.id)
+  const isSelected = Boolean(data.selected || isPrimarySelected)
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
   const edges = useCanvasStore((s) => s.edges)
 
@@ -44,7 +49,6 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
           ? "border-blue-500"
           : "border-gray-200 dark:border-gray-700"
       }`}
-      onClick={() => selectNode(node.id)}
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-lg">
@@ -52,9 +56,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
         <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
           {definition.label}
         </span>
-        {nodeRunning && (
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse ml-auto" />
-        )}
+        <NodeRunButton nodeId={node.id} running={Boolean(nodeRunning)} hasError={Boolean(nodeErrors)} />
       </div>
 
       {/* Parameters */}
@@ -62,7 +64,6 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
         {definition.config.map((field) => {
           const connected = field.hasInput ? connectedPorts.has(field.id) : false
           const upstreamValue = connected ? getInputValue(field.id) : undefined
-          const outputValue = field.hasOutput ? nodeOutputs?.[field.id] : undefined
 
           return (
             <div key={field.id} className="flex items-center gap-1 px-2 py-1">
@@ -75,8 +76,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                     id={field.id}
                     style={{
                       background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
-                      width: 8,
-                      height: 8,
+                      width: 12,
+                      height: 12,
                       border: "2px solid white",
                       position: "relative",
                       left: -12,
@@ -115,8 +116,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                     id={field.id}
                     style={{
                       background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
-                      width: 8,
-                      height: 8,
+                      width: 12,
+                      height: 12,
                       border: "2px solid white",
                       position: "relative",
                       right: -12,
@@ -134,6 +135,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
           <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
             {definition.outputs.map((output) => {
               const outputValue = nodeOutputs?.[output.id]
+              const outputText = formatCanvasValue(outputValue)
               return (
                 <div key={output.id} className="flex items-center gap-1 px-2 py-1">
                   <div className="w-3" />
@@ -141,8 +143,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                     <span className="text-[10px] text-gray-400 w-14 shrink-0 truncate" title={output.name}>
                       {output.name}
                     </span>
-                    <span className="text-[10px] text-gray-500 truncate" title={String(outputValue ?? "")}>
-                      {outputValue !== undefined ? String(outputValue) : ""}
+                    <span className="text-[10px] text-gray-500 truncate" title={outputText}>
+                      {outputText}
                     </span>
                   </div>
                   <div className="w-3 flex justify-center">
@@ -152,8 +154,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                       id={output.id}
                       style={{
                         background: TYPE_COLORS[output.dataType] ?? "#94a3b8",
-                        width: 8,
-                        height: 8,
+                        width: 12,
+                        height: 12,
                         border: "2px solid white",
                         position: "relative",
                         right: -12,
@@ -170,7 +172,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
 
       {nodeErrors && (
         <div className="px-3 py-2 border-t border-red-200 bg-red-50 dark:bg-red-900/20 rounded-b-lg">
-          <p className="text-xs text-red-600 dark:text-red-400 truncate">{nodeErrors}</p>
+          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-red-600 dark:text-red-400">{nodeErrors}</p>
         </div>
       )}
     </div>

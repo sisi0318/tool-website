@@ -17,6 +17,8 @@ import { registerBaseConverterAdapter } from "../adapters/base-converter"
 import { registerTemperatureConverterAdapter } from "../adapters/temperature-converter"
 import { registerImageToBase64Adapter } from "../adapters/image-to-base64"
 import { registerExifViewerAdapter } from "../adapters/exif-viewer"
+import { registerPasswordGeneratorAdapter } from "../adapters/password-generator"
+import { registerImageConvertAdapter } from "../adapters/image-convert"
 
 beforeEach(() => {
   clearRegistry()
@@ -37,6 +39,8 @@ beforeEach(() => {
   registerTemperatureConverterAdapter()
   registerImageToBase64Adapter()
   registerExifViewerAdapter()
+  registerPasswordGeneratorAdapter()
+  registerImageConvertAdapter()
 })
 
 describe("Adapter Config Validation", () => {
@@ -58,6 +62,8 @@ describe("Adapter Config Validation", () => {
     { type: "temperature-converter", expectedConfigCount: 3, hasLinkedOptions: false },
     { type: "image-to-base64", expectedConfigCount: 2, hasLinkedOptions: false },
     { type: "exif-viewer", expectedConfigCount: 2, hasLinkedOptions: false },
+    { type: "password-generator", expectedConfigCount: 6, hasLinkedOptions: false },
+    { type: "image-convert", expectedConfigCount: 5, hasLinkedOptions: false },
   ]
 
   for (const { type, expectedConfigCount, hasLinkedOptions } of adapters) {

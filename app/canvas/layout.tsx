@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import "@xyflow/react/dist/style.css"
 
 export const metadata: Metadata = {
   title: "Canvas - Tool Website",

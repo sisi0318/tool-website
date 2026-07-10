@@ -24,6 +24,9 @@ import {
   MoreVertical,
   ArrowRight,
   GitCompareArrows,
+  Star,
+  KeyRound,
+  ImageDown,
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { type SearchResult, createSearchableFeatures, searchFeatures } from "./search-utils"
@@ -33,6 +36,7 @@ import { M3BottomSheet } from "@/components/m3/bottom-sheet"
 import { useBreakpoint } from "@/hooks/use-breakpoint"
 import { useSwipe } from "@/hooks/use-swipe"
 import { ToolRuntimeParamsProvider, type ToolRuntimeParams } from "@/components/tool-runtime-params"
+import { useToolPreferences } from "@/hooks/use-tool-preferences"
 
 // 动态导入工具组件
 const HashCalculator = dynamic(() => import("./hash/page"), { ssr: false })
@@ -70,6 +74,8 @@ const CaseConverterTool = dynamic(() => import("./case-converter/page"), { ssr: 
 const TOTPTool = dynamic(() => import("./totp/page"), { ssr: false })
 const JceTool = dynamic(() => import("./jce/page"), { ssr: false })
 const DiffTool = dynamic(() => import("./diff/page"), { ssr: false })
+const PasswordGeneratorTool = dynamic(() => import("./password-generator/page"), { ssr: false })
+const ImageConvertTool = dynamic(() => import("./image-convert/page"), { ssr: false })
 
 function createToolRenderer(Component: React.ComponentType) {
   return (params?: ToolRuntimeParams) => (
@@ -496,6 +502,18 @@ export default function ToolsPage() {
         getComponent: createToolRenderer(JceTool),
       },
       {
+        id: "image-convert",
+        title: t("imageConvert.name"),
+        icon: <ImageDown className="h-4 w-4" />,
+        getComponent: createToolRenderer(ImageConvertTool),
+      },
+      {
+        id: "password-generator",
+        title: t("passwordGenerator.name"),
+        icon: <KeyRound className="h-4 w-4" />,
+        getComponent: createToolRenderer(PasswordGeneratorTool),
+      },
+      {
         id: "diff",
         title: t("diff.name"),
         icon: <GitCompareArrows className="h-4 w-4" />,
@@ -505,6 +523,25 @@ export default function ToolsPage() {
     [t],
   )
 
+
+  const toolIds = useMemo(() => toolDefinitions.map((tool) => tool.id), [toolDefinitions])
+  const { favoriteIds, recentIds, toggleFavorite, recordRecent } = useToolPreferences(toolIds)
+  const favoriteTools = useMemo(
+    () => favoriteIds.flatMap((id) => toolDefinitions.find((tool) => tool.id === id) ?? []),
+    [favoriteIds, toolDefinitions],
+  )
+  const recentTools = useMemo(
+    () => recentIds.flatMap((id) => toolDefinitions.find((tool) => tool.id === id) ?? []),
+    [recentIds, toolDefinitions],
+  )
+  const quickAccessTools = useMemo(() => {
+    const seen = new Set<string>()
+    return [...favoriteTools, ...recentTools].filter((tool) => {
+      if (seen.has(tool.id)) return false
+      seen.add(tool.id)
+      return true
+    }).slice(0, 8)
+  }, [favoriteTools, recentTools])
 
   // 初始化可搜索功能
   useEffect(() => {
@@ -536,6 +573,8 @@ export default function ToolsPage() {
         totp: { name: t("totp.name") },
         jce: { name: t("jce.name") },
         diff: { name: t("diff.name") },
+        passwordGenerator: { name: t("passwordGenerator.name") },
+        imageConvert: { name: t("imageConvert.name") },
       }
 
       const validTranslations = Object.entries(translations).reduce(
@@ -667,11 +706,12 @@ export default function ToolsPage() {
       setActiveTab(id)
       setTabCounter((prev) => prev + 1)
       setShowDropdown(false)
+      recordRecent(toolId)
 
       saveTabsToLocalStorage(updatedTabs, id)
       updateUrl(updatedTabs, id)
     },
-    [toolDefinitions, tabCounter, createShareableUrl, tabs, saveTabsToLocalStorage, updateUrl],
+    [toolDefinitions, tabCounter, createShareableUrl, tabs, saveTabsToLocalStorage, updateUrl, recordRecent],
   )
 
   // 复制分享链接到剪贴板
@@ -798,33 +838,58 @@ export default function ToolsPage() {
 
   // 工具卡片组件 - M3 Expressive Style
   const ToolCard = useCallback(
-    ({ id, name, icon, onClick }: { id: string; name: string; icon: React.ReactNode; onClick: () => void }) => (
-      <button
-        type="button"
-        onClick={onClick}
-        className="group h-full w-full rounded-[var(--md-sys-shape-corner-extra-large)] text-left focus-visible:outline-none"
-        aria-label={name}
-      >
-        <Card className="h-full min-h-[132px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 group-hover:-translate-y-1 group-hover:border-[var(--md-sys-color-primary)]/40 group-hover:shadow-xl group-focus-visible:ring-2 group-focus-visible:ring-[var(--md-sys-color-primary)] group-focus-visible:ring-offset-2">
-          <CardContent className="flex h-full items-center gap-4 p-4 sm:p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-sm transition-transform duration-300 group-hover:scale-105">
-              {icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="line-clamp-2 font-semibold leading-6 text-[var(--md-sys-color-on-surface)] transition-colors group-hover:text-[var(--md-sys-color-primary)]">
-                {name}
-              </h3>
-              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
-                {t("openTool")}
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </div>
-          </CardContent>
+    ({ id, name, icon, onClick }: { id: string; name: string; icon: React.ReactNode; onClick: () => void }) => {
+      const isFavorite = favoriteIds.includes(id)
+
+      return (
+        <Card className="group relative h-full min-h-[132px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--md-sys-color-primary)]/40 hover:shadow-xl">
+          <button
+            type="button"
+            onClick={onClick}
+            className="h-full w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--md-sys-color-primary)]"
+            aria-label={name}
+          >
+            <CardContent className="flex h-full items-center gap-4 p-4 pr-14 sm:p-5 sm:pr-16">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-sm transition-transform duration-300 group-hover:scale-105">
+                {icon}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="line-clamp-2 font-semibold leading-6 text-[var(--md-sys-color-on-surface)] transition-colors group-hover:text-[var(--md-sys-color-primary)]">
+                  {name}
+                </h3>
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("openTool")}
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </CardContent>
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleFavorite(id)}
+            aria-label={isFavorite ? t("removeFavorite") : t("addFavorite")}
+            aria-pressed={isFavorite}
+            className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-primary)]/[0.08] hover:text-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+          >
+            <Star className={`h-5 w-5 ${isFavorite ? "fill-current text-[var(--md-sys-color-primary)]" : ""}`} />
+          </button>
         </Card>
-      </button>
-    ),
-    [t],
+      )
+    },
+    [favoriteIds, t, toggleFavorite],
   )
+
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if (!(event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey))) return
+      event.preventDefault()
+      searchInputRef.current?.focus()
+      setIsSearchFocused(true)
+    }
+
+    window.addEventListener("keydown", focusSearch)
+    return () => window.removeEventListener("keydown", focusSearch)
+  }, [])
 
   // 从URL参数或本地存储中恢复标签页状态
   useEffect(() => {
@@ -1058,6 +1123,9 @@ export default function ToolsPage() {
                       setSearchTerm("")
                       setSearchResults([])
                       setIsSearchFocused(false)
+                    } else if (event.key === "Enter" && searchResults[0]) {
+                      event.preventDefault()
+                      openToolWithFeature(searchResults[0].toolId, searchResults[0].featureName)
                     }
                   }}
                   placeholder={t("search.placeholder")}
@@ -1086,12 +1154,17 @@ export default function ToolsPage() {
                     <X className="h-4 w-4 text-[var(--md-sys-color-on-surface-variant)]" />
                   </button>
                 )}
+                {!searchTerm && (
+                  <kbd className="ml-2 hidden items-center gap-1 rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-2 py-1 text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] sm:inline-flex">
+                    Ctrl K
+                  </kbd>
+                )}
               </div>
             </div>
           </div>
 
           {/* M3 Expressive Search Results Menu */}
-          {isSearchFocused && searchTerm.trim().length > 0 && (
+          {isSearchFocused && (searchTerm.trim().length > 0 || quickAccessTools.length > 0) && (
             <div
               className="
                 search-results
@@ -1105,7 +1178,27 @@ export default function ToolsPage() {
                 duration-md-medium-2
               "
             >
-              {searchResults.length > 0 ? searchResults.map((result, index) => (
+              {searchTerm.trim().length === 0 ? (
+                <div>
+                  <p className="px-3 pb-2 text-xs font-bold uppercase tracking-[0.14em] text-[var(--md-sys-color-on-surface-variant)]">
+                    {t("quickAccess")}
+                  </p>
+                  {quickAccessTools.map((tool) => (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-[var(--md-sys-shape-corner-medium)] p-3 text-left transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08]"
+                      onClick={() => addTab(tool.id)}
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
+                        {tool.icon}
+                      </span>
+                      <span className="font-medium text-[var(--md-sys-color-on-surface)]">{tool.title}</span>
+                      {favoriteIds.includes(tool.id) && <Star className="ml-auto h-4 w-4 fill-current text-[var(--md-sys-color-primary)]" />}
+                    </button>
+                  ))}
+                </div>
+              ) : searchResults.length > 0 ? searchResults.map((result, index) => (
                 <button
                   key={index}
                   className="
@@ -1318,6 +1411,44 @@ export default function ToolsPage() {
         </div>
       ) : (
         <div>
+          {(favoriteTools.length > 0 || recentTools.length > 0) && (
+            <div className="mb-8 grid gap-4 lg:grid-cols-2">
+              {favoriteTools.length > 0 && (
+                <section className="rounded-[var(--md-sys-shape-corner-extra-large)] border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-low)] p-5">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Star className="h-5 w-5 fill-current text-[var(--md-sys-color-primary)]" />
+                    <h2 className="font-bold text-[var(--md-sys-color-on-surface)]">{t("favorites")}</h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {favoriteTools.map((tool) => (
+                      <button key={tool.id} type="button" onClick={() => addTab(tool.id)} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-lowest)] px-4 text-sm font-semibold text-[var(--md-sys-color-on-surface)] shadow-sm hover:text-[var(--md-sys-color-primary)]">
+                        {tool.icon}{tool.title}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {recentTools.length > 0 && (
+                <section className="rounded-[var(--md-sys-shape-corner-extra-large)] border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-low)] p-5">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                    <h2 className="font-bold text-[var(--md-sys-color-on-surface)]">{t("recentTools")}</h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {recentTools.map((tool) => (
+                      <button key={tool.id} type="button" onClick={() => addTab(tool.id)} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-surface-container-lowest)] px-4 text-sm font-semibold text-[var(--md-sys-color-on-surface)] shadow-sm hover:text-[var(--md-sys-color-primary)]">
+                        {tool.icon}{tool.title}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold text-[var(--md-sys-color-on-surface)]">{t("allTools")}</h2>
+            <span className="hidden text-sm text-[var(--md-sys-color-on-surface-variant)] sm:inline">{t("favoriteHint")}</span>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {toolDefinitions.map((tool) => (
               <ToolCard key={tool.id} id={tool.id} name={tool.title} icon={tool.icon} onClick={() => addTab(tool.id)} />

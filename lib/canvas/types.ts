@@ -36,6 +36,8 @@ export interface NodeDefinition {
   type: string
   category: "basic" | "crypto" | "data" | "image" | "text" | "dev" | "utility" | "viewer"
   label: string
+  description?: string
+  executionMode?: "automatic" | "manual"
   icon: React.ComponentType<{ className?: string }>
   config: ConfigField[]
   outputs: DerivedOutput[]   // Computed outputs (like Hash result)
@@ -55,6 +57,18 @@ export interface Edge {
   sourcePort: string
   target: string
   targetPort: string
+}
+
+export type ExecutionLogStatus = "running" | "success" | "error" | "cancelled"
+
+export interface ExecutionLogEntry {
+  id: number
+  nodeId: string
+  nodeType: string
+  status: ExecutionLogStatus
+  startedAt: number
+  durationMs: number
+  error?: string
 }
 
 export interface ValidationResult {

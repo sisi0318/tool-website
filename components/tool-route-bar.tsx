@@ -26,6 +26,7 @@ const toolTranslationKeys: Record<string, string> = {
   hmac: "hmac.name",
   "http-tester": "httpTester.name",
   "image-compress": "imageCompress.name",
+  "image-convert": "imageConvert.name",
   "image-coordinates": "imageCoordinates.name",
   "image-editor": "imageEditor.name",
   "image-to-base64": "imageToBase64.name",
@@ -34,6 +35,7 @@ const toolTranslationKeys: Record<string, string> = {
   jwt: "jwt.name",
   "meme-splitter": "memeSplitter.name",
   "office-viewer": "officeViewer.name",
+  "password-generator": "passwordGenerator.name",
   protobuf: "protobuf.name",
   qrcode: "qrcode.name",
   "qrcode-decode": "qrcodeDecoder.name",
@@ -49,10 +51,10 @@ const toolTranslationKeys: Record<string, string> = {
 const workspaceTools = new Set([
   "base-converter", "bmi", "case-converter", "classic-cipher", "color", "crontab",
   "crypto", "currency", "device", "diff", "docker-converter", "encoding", "exif-viewer",
-  "hash", "hmac", "http-tester", "image-compress", "image-coordinates", "image-editor",
+  "hash", "hmac", "http-tester", "image-compress", "image-convert", "image-coordinates", "image-editor",
   "image-to-base64", "jce", "json", "jwt", "meme-splitter", "office-viewer",
   "protobuf", "qrcode", "qrcode-decode", "regex", "temperature-converter", "text-stats",
-  "time", "totp", "uuid", "whois",
+  "time", "totp", "uuid", "whois", "password-generator",
 ])
 
 export function ToolRouteBar() {
