@@ -23,6 +23,7 @@ import {
   Calculator,
   MoreVertical,
   ArrowRight,
+  GitCompareArrows,
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { type SearchResult, createSearchableFeatures, searchFeatures } from "./search-utils"
@@ -31,6 +32,7 @@ import { M3Tabs, type TabItem } from "@/components/m3/tabs"
 import { M3BottomSheet } from "@/components/m3/bottom-sheet"
 import { useBreakpoint } from "@/hooks/use-breakpoint"
 import { useSwipe } from "@/hooks/use-swipe"
+import { ToolRuntimeParamsProvider, type ToolRuntimeParams } from "@/components/tool-runtime-params"
 
 // 动态导入工具组件
 const HashCalculator = dynamic(() => import("./hash/page"), { ssr: false })
@@ -67,6 +69,15 @@ const ImageCoordinatesTool = dynamic(() => import("./image-coordinates/page"), {
 const CaseConverterTool = dynamic(() => import("./case-converter/page"), { ssr: false })
 const TOTPTool = dynamic(() => import("./totp/page"), { ssr: false })
 const JceTool = dynamic(() => import("./jce/page"), { ssr: false })
+const DiffTool = dynamic(() => import("./diff/page"), { ssr: false })
+
+function createToolRenderer(Component: React.ComponentType) {
+  return (params?: ToolRuntimeParams) => (
+    <ToolRuntimeParamsProvider params={params}>
+      <Component />
+    </ToolRuntimeParamsProvider>
+  )
+}
 
 // 标签页类型
 interface ToolTabType {
@@ -115,43 +126,43 @@ export default function ToolsPage() {
         id: "hash",
         title: t("hash.name"),
         icon: <Hash className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <HashCalculator params={params} />,
+        getComponent: createToolRenderer(HashCalculator),
       },
       {
         id: "crypto",
         title: t("crypto.name"),
         icon: <Lock className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <CryptoTool params={params} />,
+        getComponent: createToolRenderer(CryptoTool),
       },
       {
         id: "encoding",
         title: t("encoding.name"),
         icon: <Code className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <EncodingTool params={params} />,
+        getComponent: createToolRenderer(EncodingTool),
       },
       {
         id: "classic-cipher",
         title: t("classicCipher.name"),
         icon: <History className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <ClassicCipherTool params={params} />,
+        getComponent: createToolRenderer(ClassicCipherTool),
       },
       {
         id: "hmac",
         title: t("hmac.name"),
         icon: <Key className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <HmacTool params={params} />,
+        getComponent: createToolRenderer(HmacTool),
       },
       {
         id: "currency",
         title: t("currency.name"),
         icon: <TrendingUp className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <CurrencyTool params={params} />,
+        getComponent: createToolRenderer(CurrencyTool),
       },
       {
         id: "time",
         title: t("time.name"),
         icon: <Clock className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <TimeTool params={params} />,
+        getComponent: createToolRenderer(TimeTool),
       },
       {
         id: "qrcode",
@@ -165,13 +176,13 @@ export default function ToolsPage() {
             <path d="M14 14h2v2h-2z" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <QRCodeGenerator params={params} />,
+        getComponent: createToolRenderer(QRCodeGenerator),
       },
       {
         id: "json",
         title: t("json.name"),
         icon: <FileJson className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <JsonTool params={params} />,
+        getComponent: createToolRenderer(JsonTool),
       },
       {
         id: "color",
@@ -182,13 +193,13 @@ export default function ToolsPage() {
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <ColorPickerTool params={params} />,
+        getComponent: createToolRenderer(ColorPickerTool),
       },
       {
         id: "device",
         title: t("device.name"),
         icon: <Smartphone className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <DeviceInfoTool params={params} />,
+        getComponent: createToolRenderer(DeviceInfoTool),
       },
       {
         id: "protobuf",
@@ -200,13 +211,13 @@ export default function ToolsPage() {
             <path d="M2 12l10 5 10-5" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <ProtobufTool params={params} />,
+        getComponent: createToolRenderer(ProtobufTool),
       },
       {
         id: "base-converter",
         title: t("baseConverter.name"),
         icon: <Calculator className="h-4 w-4" />,
-        getComponent: (params?: Record<string, string>) => <BaseConverterTool params={params} />,
+        getComponent: createToolRenderer(BaseConverterTool),
       },
       {
         id: "temperature-converter",
@@ -217,7 +228,7 @@ export default function ToolsPage() {
             <path d="M12 9a1 1 0 0 0-1-1h0a1 1 0 0 0-1 1h0a1 1 0 0 0 1 1h0a1 1 0 0 0 1-1Z" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <TemperatureConverterPage params={params} />,
+        getComponent: createToolRenderer(TemperatureConverterPage),
       },
       {
         id: "docker-converter",
@@ -229,7 +240,7 @@ export default function ToolsPage() {
             <path d="M17 17v-2a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2h10Z" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <DockerConverterPage params={params} />,
+        getComponent: createToolRenderer(DockerConverterPage),
       },
       {
         id: "crontab",
@@ -244,7 +255,7 @@ export default function ToolsPage() {
             <path d="M18 16.5V18l1 1" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <CrontabTool params={params} />,
+        getComponent: createToolRenderer(CrontabTool),
       },
       {
         id: "image-to-base64",
@@ -256,7 +267,7 @@ export default function ToolsPage() {
             <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <ImageToBase64Tool params={params} />,
+        getComponent: createToolRenderer(ImageToBase64Tool),
       },
       {
         id: "exif-viewer",
@@ -269,7 +280,7 @@ export default function ToolsPage() {
             <path d="M8 21h13" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <ExifViewerTool params={params} />,
+        getComponent: createToolRenderer(ExifViewerTool),
       },
       {
         id: "bmi",
@@ -282,7 +293,7 @@ export default function ToolsPage() {
             <path d="M9 16h6"></path>
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <BMICalculator params={params} />,
+        getComponent: createToolRenderer(BMICalculator),
       },
       {
         id: "regex",
@@ -295,7 +306,7 @@ export default function ToolsPage() {
             <path d="M9 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2z"></path>
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <RegexTool params={params} />,
+        getComponent: createToolRenderer(RegexTool),
       },
       {
         id: "qrcode-decode",
@@ -313,7 +324,7 @@ export default function ToolsPage() {
             <path d="M21 16v3" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <QRCodeDecoder params={params} />,
+        getComponent: createToolRenderer(QRCodeDecoder),
       },
       {
         id: "http-tester",
@@ -325,7 +336,7 @@ export default function ToolsPage() {
             <line x1="9" x2="9" y1="3" y2="21" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <HTTPTester params={params} />,
+        getComponent: createToolRenderer(HTTPTester),
       },
       {
         id: "whois",
@@ -337,7 +348,7 @@ export default function ToolsPage() {
             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <WhoisPage params={params} />,
+        getComponent: createToolRenderer(WhoisPage),
       },
       {
         id: "uuid",
@@ -352,7 +363,7 @@ export default function ToolsPage() {
             <path d="M12 12h.01" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <UUIDGenerator params={params} />,
+        getComponent: createToolRenderer(UUIDGenerator),
       },
       {
         id: "jwt",
@@ -363,7 +374,7 @@ export default function ToolsPage() {
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <JWTParser params={params} />,
+        getComponent: createToolRenderer(JWTParser),
       },
       {
         id: "text-stats",
@@ -373,7 +384,7 @@ export default function ToolsPage() {
             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <TextStats params={params} />,
+        getComponent: createToolRenderer(TextStats),
       },
       {
         id: "image-compress",
@@ -387,7 +398,7 @@ export default function ToolsPage() {
             <path d="m8 11 3-3" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <ImageCompressTool params={params} />,
+        getComponent: createToolRenderer(ImageCompressTool),
       },
       {
         id: "image-editor",
@@ -403,7 +414,7 @@ export default function ToolsPage() {
             <path d="m22 17-5-5-5 5" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <ImageEditorTool params={params} />,
+        getComponent: createToolRenderer(ImageEditorTool),
       },
       {
         id: "office-viewer",
@@ -417,7 +428,7 @@ export default function ToolsPage() {
             <line x1="10" x2="8" y1="9" y2="9" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <OfficeViewerTool params={params} />,
+        getComponent: createToolRenderer(OfficeViewerTool),
       },
       {
         id: "meme-splitter",
@@ -431,7 +442,7 @@ export default function ToolsPage() {
             <path d="M15 3v18" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <MemeSplitterTool params={params} />,
+        getComponent: createToolRenderer(MemeSplitterTool),
       },
       {
         id: "image-coordinates",
@@ -445,7 +456,7 @@ export default function ToolsPage() {
             <line x1="12" x2="12" y1="22" y2="18" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <ImageCoordinatesTool params={params} />,
+        getComponent: createToolRenderer(ImageCoordinatesTool),
       },
       {
         id: "case-converter",
@@ -457,7 +468,7 @@ export default function ToolsPage() {
             <path d="M15 11h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <CaseConverterTool params={params} />,
+        getComponent: createToolRenderer(CaseConverterTool),
       },
       {
         id: "totp",
@@ -469,7 +480,7 @@ export default function ToolsPage() {
             <circle cx="12" cy="16" r="1" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <TOTPTool params={params} />,
+        getComponent: createToolRenderer(TOTPTool),
       },
       {
         id: "jce",
@@ -482,7 +493,13 @@ export default function ToolsPage() {
             <path d="M4 15h8" />
           </svg>
         ),
-        getComponent: (params?: Record<string, string>) => <JceTool params={params} />,
+        getComponent: createToolRenderer(JceTool),
+      },
+      {
+        id: "diff",
+        title: t("diff.name"),
+        icon: <GitCompareArrows className="h-4 w-4" />,
+        getComponent: createToolRenderer(DiffTool),
       },
     ],
     [t],
@@ -518,6 +535,7 @@ export default function ToolsPage() {
         caseConverter: { name: t("caseConverter.name") },
         totp: { name: t("totp.name") },
         jce: { name: t("jce.name") },
+        diff: { name: t("diff.name") },
       }
 
       const validTranslations = Object.entries(translations).reduce(

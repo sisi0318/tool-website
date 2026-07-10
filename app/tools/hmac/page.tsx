@@ -1,9 +1,7 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
@@ -15,13 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Copy, 
   Check, 
-  Upload, 
-  FileText, 
-  X, 
   Key,
-  ArrowLeftRight,
   ArrowRight,
-  ArrowLeft,
   Settings,
   Zap,
   RefreshCw,
@@ -33,34 +26,10 @@ import {
 
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-
-// 添加参数接口
-interface HmacPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
-// 哈希结果类型
-interface HmacResult {
-  algorithm: string
-  displayName: string
-  value: string
-  status?: "pending" | "calculating" | "completed" | "error"
-}
-
-// 文件信息类型
-interface FileInfo {
-  file: File
-  name: string
-  size: number
-  sizeFormatted: string
-}
 
 // 验证结果类型
 interface VerifyResultType {
@@ -68,47 +37,32 @@ interface VerifyResultType {
   matchedAlgorithm?: string
 }
 
-// 格式化文件大小
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes"
-
-  const k = 1024
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-}
-
-// 最大文件大小 (100MB)
-const MAX_FILE_SIZE = 100 * 1024 * 1024
-
 // HMAC支持的哈希算法
 const hmacAlgorithms = [
   { id: "md5", name: "MD5" },
-  { id: "sha1", name: "SHA1" },
-  { id: "sha224", name: "SHA224" },
-  { id: "sha256", name: "SHA256" },
-  { id: "sha384", name: "SHA384" },
-  { id: "sha512", name: "SHA512" },
+  { id: "sha1", name: "SHA-1" },
+  { id: "sha224", name: "SHA-224" },
+  { id: "sha256", name: "SHA-256" },
+  { id: "sha384", name: "SHA-384" },
+  { id: "sha512", name: "SHA-512" },
   { id: "sha3-224", name: "SHA3-224" },
   { id: "sha3-256", name: "SHA3-256" },
   { id: "sha3-384", name: "SHA3-384" },
   { id: "sha3-512", name: "SHA3-512" },
-  { id: "ripemd160", name: "RIPEMD160" },
+  { id: "ripemd160", name: "RIPEMD-160" },
 ]
 
-export default function HmacPage({ params }: HmacPageProps) {
+export default function HmacPage() {
   const t = useTranslations("hmac")
 
   // 基础状态
   const [algorithm, setAlgorithm] = useState("sha256")
-  const [showBatchMode, setShowBatchMode] = useState(false)
   const [showHmacInfo, setShowHmacInfo] = useState(false)
   
   // 实时计算状态
   const [leftInput, setLeftInput] = useState("")
   const [rightInput, setRightInput] = useState("")
-  const [leftType, setLeftType] = useState<"data" | "hmac">("data")
+  const [leftType] = useState<"data" | "hmac">("data")
   const [autoMode, setAutoMode] = useState(true)
   const [autoSwitch, setAutoSwitch] = useState(true)
   const [leftInputLength, setLeftInputLength] = useState(0)
@@ -240,14 +194,6 @@ export default function HmacPage({ params }: HmacPageProps) {
     }
   }
 
-  // 右侧输入变化处理
-  const handleRightInputChange = (value: string) => {
-    setRightInput(value)
-    setRightInputLength(value.length)
-    setError(prev => ({ ...prev, right: undefined }))
-    // HMAC是单向函数，不支持逆向计算
-  }
-
   // 手动转换
   const transformLeftToRight = () => {
     if (!leftInput || !hmacKey) return
@@ -261,25 +207,6 @@ export default function HmacPage({ params }: HmacPageProps) {
     } catch (error) {
       setError(prev => ({ ...prev, left: error instanceof Error ? error.message : "转换失败" }))
     }
-  }
-
-  const transformRightToLeft = () => {
-    // HMAC是单向函数，不支持逆向计算
-    setError(prev => ({ ...prev, right: "HMAC是单向函数，无法逆向计算原始数据" }))
-  }
-
-  // 交换输入内容
-  const swapInputs = () => {
-    const tempInput = leftInput
-    const tempLength = leftInputLength
-    
-    setLeftInput(rightInput)
-    setLeftInputLength(rightInputLength)
-    setRightInput(tempInput)
-    setRightInputLength(tempLength)
-    
-    // 交换类型
-    setLeftType(leftType === "data" ? "hmac" : "data")
   }
 
   // 清空所有内容
@@ -443,9 +370,7 @@ export default function HmacPage({ params }: HmacPageProps) {
         </h1>
       </div>
 
-      {/* 新界面：实时计算 */}
-      {!showBatchMode && (
-        <>
+      {/* HMAC 计算 */}
           {/* HMAC算法选择 */}
           <div className="mb-6">
             <Tabs value={algorithm} onValueChange={setAlgorithm} className="w-full">
@@ -489,32 +414,17 @@ export default function HmacPage({ params }: HmacPageProps) {
               {showHmacInfo && (
                 <Card className="mt-3 card-modern">
                   <CardContent className="py-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                        <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
-                          手动模式
-                        </Label>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="flex items-center space-x-2 rounded-lg bg-gray-100 p-3 dark:bg-gray-800">
                         <Switch id="auto-mode" checked={autoMode} onCheckedChange={setAutoMode} />
-                        <Label htmlFor="auto-mode" className="cursor-pointer text-sm text-blue-600">
-                          实时计算
+                        <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
+                          输入时实时计算
                         </Label>
                       </div>
-                      <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                        <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
-                          手动切换
-                        </Label>
+                      <div className="flex items-center space-x-2 rounded-lg bg-gray-100 p-3 dark:bg-gray-800">
                         <Switch id="auto-switch" checked={autoSwitch} onCheckedChange={setAutoSwitch} />
-                        <Label htmlFor="auto-switch" className="cursor-pointer text-sm text-green-600">
-                          智能切换
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                        <Label htmlFor="legacy-mode" className="cursor-pointer text-sm">
-                          新界面
-                        </Label>
-                        <Switch id="legacy-mode" checked={showBatchMode} onCheckedChange={setShowBatchMode} />
-                        <Label htmlFor="legacy-mode" className="cursor-pointer text-sm">
-                          批量模式
+                        <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
+                          切换算法时重新计算
                         </Label>
                       </div>
                     </div>
@@ -640,6 +550,7 @@ export default function HmacPage({ params }: HmacPageProps) {
                 <Textarea
                   value={leftInput}
                   onChange={(e) => handleLeftInputChange(e.target.value)}
+                  aria-label="待计算 HMAC 的数据"
                   placeholder={leftType === "data" ? "输入要计算HMAC的数据..." : "输入HMAC值进行验证..."}
                   rows={8}
                   className="font-mono text-sm resize-none"
@@ -657,45 +568,10 @@ export default function HmacPage({ params }: HmacPageProps) {
             <div className="flex lg:flex-col items-center justify-center gap-4">
               {/* 手动计算按钮 */}
               {!autoMode && (
-                <div className="flex lg:flex-col gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={transformLeftToRight}
-                          disabled={!leftInput || !hmacKey}
-                          variant="outline"
-                          size="sm"
-                          className="p-2"
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        计算HMAC
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={transformRightToLeft}
-                          disabled={true}
-                          variant="outline"
-                          size="sm"
-                          className="p-2 opacity-50"
-                        >
-                          <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        HMAC不可逆
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <Button onClick={transformLeftToRight} disabled={!leftInput || !hmacKey} size="sm">
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  计算 HMAC
+                </Button>
               )}
 
               {/* 算法类型指示 */}
@@ -713,45 +589,24 @@ export default function HmacPage({ params }: HmacPageProps) {
                   {autoSwitch && (
                     <div className="flex items-center gap-1 text-xs text-blue-600">
                       <RefreshCw className="h-3 w-3" />
-                      智能切换
+                      算法切换自动更新
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 交换和清空按钮 */}
+              {/* 清空按钮 */}
               <div className="flex lg:flex-col gap-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={swapInputs}
-                        variant="outline"
-                        size="sm"
-                        className="p-2"
-                      >
-                        <ArrowLeftRight className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>交换内容</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={clearAllInputs}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700 p-2"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>清空所有</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Button
+                  onClick={clearAllInputs}
+                  variant="outline"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700"
+                  disabled={!leftInput && !rightInput}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  清空
+                </Button>
               </div>
             </div>
 
@@ -770,7 +625,8 @@ export default function HmacPage({ params }: HmacPageProps) {
                 <div className="relative">
                   <Textarea
                     value={rightInput}
-                    onChange={(e) => handleRightInputChange(e.target.value)}
+                    readOnly
+                    aria-label="HMAC 计算结果"
                     placeholder={leftType === "data" ? "HMAC计算结果将在这里显示..." : "验证结果将在这里显示..."}
                     rows={8}
                     className="font-mono text-sm resize-none pr-10"
@@ -781,6 +637,7 @@ export default function HmacPage({ params }: HmacPageProps) {
                         <Button
                           onClick={() => copyToClipboard(rightInput, "right")}
                           disabled={!rightInput}
+                          aria-label={copied.right ? "已复制 HMAC 结果" : "复制 HMAC 结果"}
                           variant="ghost"
                           size="sm"
                           className="absolute top-2 right-2 p-1 h-6 w-6"
@@ -842,17 +699,6 @@ export default function HmacPage({ params }: HmacPageProps) {
               </div>
             </CardContent>
           </Card>
-
-
-        </>
-      )}
-
-      {/* 批量模式 - 暂时保留简化版本 */}
-      {showBatchMode && (
-        <div className="text-center p-8">
-          <p className="text-gray-500">批量模式正在重构中...</p>
-        </div>
-      )}
     </div>
   )
 }

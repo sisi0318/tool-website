@@ -23,6 +23,7 @@ import {
   ExternalLink, Activity, Zap, BarChart3, Eye, Trash2, Settings
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 
 // RDAP查询结果接口
 interface RdapData {
@@ -200,8 +201,9 @@ async function getRdapBaseUrl(domain: string): Promise<string | null> {
   }
 }
 
-export default function RdapQueryPage({ params }: { params?: Record<string, string> }) {
+export default function RdapQueryPage() {
   const t = useTranslations("whois")
+  const params = useToolRuntimeParams()
   const { toast } = useToast()
   
   // 基本状态

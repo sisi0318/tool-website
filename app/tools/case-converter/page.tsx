@@ -6,14 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { 
-  Copy, Trash2, ArrowRightLeft, Type,
+  Copy, Trash2, ArrowRightLeft, Type, FileText,
   CaseSensitive, CaseUpper, CaseLower
 } from "lucide-react"
 import { M3Chip } from "@/components/m3/chip"
-
-interface CaseConverterProps {
-  params?: Record<string, string>
-}
 
 type CaseType = 
   | 'uppercase' 
@@ -35,7 +31,7 @@ interface CaseOption {
   icon: React.ReactNode
 }
 
-export default function CaseConverterPage({ params }: CaseConverterProps) {
+export default function CaseConverterPage() {
   const { toast } = useToast()
   const [inputText, setInputText] = useState("")
   const [outputText, setOutputText] = useState("")
@@ -157,6 +153,12 @@ export default function CaseConverterPage({ params }: CaseConverterProps) {
     setOutputText("")
   }, [])
 
+  const loadExample = useCallback(() => {
+    const example = "helloWorld API response_example"
+    setInputText(example)
+    setOutputText(convertCase(example, selectedCase))
+  }, [convertCase, selectedCase])
+
   // 交换输入输出
   const swapText = useCallback(() => {
     setInputText(outputText)
@@ -215,14 +217,21 @@ export default function CaseConverterPage({ params }: CaseConverterProps) {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-[var(--md-sys-color-on-surface)]">输入文本</CardTitle>
-                <Button variant="ghost" size="sm" onClick={clearAll}>
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  清空
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={loadExample}>
+                    <FileText className="h-4 w-4 mr-1" />
+                    示例
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={clearAll}>
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    清空
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <Textarea
+                aria-label="输入文本"
                 placeholder="在此输入要转换的文本..."
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
@@ -253,9 +262,10 @@ export default function CaseConverterPage({ params }: CaseConverterProps) {
             </CardHeader>
             <CardContent>
               <Textarea
+                aria-label="转换结果"
                 value={outputText}
                 readOnly
-                className="min-h-[200px] resize-none bg-[var(--md-sys-color-surface-variant)]"
+                className="min-h-[200px] resize-none bg-[var(--md-sys-color-surface-container-low)]"
                 placeholder="转换结果将显示在这里..."
               />
               <div className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">

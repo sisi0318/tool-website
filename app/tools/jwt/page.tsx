@@ -13,12 +13,6 @@ import { Copy, Check, AlertCircle, CheckCircle, Clock, Key } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-interface JWTPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 interface DecodedJWT {
   header: Record<string, any> | null
   payload: Record<string, any> | null
@@ -160,7 +154,7 @@ function getExpiryStatus(exp?: number): { status: "valid" | "expired" | "none"; 
   }
 }
 
-export default function JWTPage({ params }: JWTPageProps) {
+export default function JWTPage() {
   const t = useTranslations("jwt")
 
   const [token, setToken] = useState("")

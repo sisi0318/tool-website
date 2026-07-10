@@ -7,13 +7,10 @@ import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, Calculator, Info } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AlertTriangle, Calculator, Info, RotateCcw } from "lucide-react"
 
-interface BMICalculatorProps {
-  params?: Record<string, string>
-}
-
-export default function BMICalculator({ params }: BMICalculatorProps) {
+export default function BMICalculator() {
   const [activeTab, setActiveTab] = useState("metric")
 
   // 公制单位
@@ -98,15 +95,24 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
     setWeightLbs(validValue)
   }
 
+  const resetValues = () => {
+    setActiveTab("metric")
+    setHeightCm(170)
+    setWeightKg(70)
+    setHeightFt(5)
+    setHeightIn(7)
+    setWeightLbs(154)
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* 页面标题 */}
       <div className="text-center space-y-4 mb-8">
-        <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
+        <h1 className="flex items-center justify-center gap-2 text-3xl font-bold text-[var(--md-sys-color-on-surface)]">
           <Calculator className="h-8 w-8" />
           BMI 计算器
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-[var(--md-sys-color-on-surface-variant)]">
           计算您的身体质量指数 (Body Mass Index)
         </p>
       </div>
@@ -121,9 +127,13 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
         </AlertDescription>
       </Alert>
 
-      <Card className="mb-6">
-        <CardHeader>
+      <Card className="card-elevated mb-6">
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>身体数据输入</CardTitle>
+          <Button variant="ghost" size="sm" onClick={resetValues}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            恢复默认值
+          </Button>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -151,6 +161,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
                       className="flex-1"
                     />
                     <Input
+                      aria-label="身高（厘米）"
                       type="number"
                       value={heightCm}
                       onChange={(e) => {
@@ -181,6 +192,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
                       className="flex-1"
                     />
                     <Input
+                      aria-label="体重（千克）"
                       type="number"
                       value={weightKg}
                       onChange={(e) => {
@@ -210,6 +222,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
                       </div>
                       <div className="flex items-center gap-4">
                         <Slider
+                          aria-label="身高（英尺）"
                           min={3}
                           max={8}
                           step={1}
@@ -218,6 +231,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
                           className="flex-1"
                         />
                         <Input
+                          aria-label="身高（英尺）"
                           type="number"
                           value={heightFt}
                           onChange={(e) => {
@@ -237,6 +251,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
                       </div>
                       <div className="flex items-center gap-4">
                         <Slider
+                          aria-label="身高（英寸）"
                           min={0}
                           max={11}
                           step={1}
@@ -245,6 +260,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
                           className="flex-1"
                         />
                         <Input
+                          aria-label="身高（英寸）"
                           type="number"
                           value={heightIn}
                           onChange={(e) => {
@@ -277,6 +293,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
                       className="flex-1"
                     />
                     <Input
+                      aria-label="体重（磅）"
                       type="number"
                       value={weightLbs}
                       onChange={(e) => {
@@ -296,7 +313,7 @@ export default function BMICalculator({ params }: BMICalculatorProps) {
       </Card>
 
       {/* BMI 结果 */}
-      <Card>
+      <Card className="card-elevated">
         <CardHeader>
           <CardTitle>BMI 计算结果</CardTitle>
         </CardHeader>

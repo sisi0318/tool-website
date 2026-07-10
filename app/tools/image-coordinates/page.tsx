@@ -30,10 +30,6 @@ import {
   Plus,
 } from "lucide-react"
 
-interface ImageCoordinatesProps {
-  params?: Record<string, string>
-}
-
 type CoordinateFormat = "pixel" | "percent" | "permille" | "permyriad"
 
 interface Coordinate {
@@ -49,7 +45,7 @@ interface SavedPoint {
   color: string
 }
 
-export default function ImageCoordinatesPage({}: ImageCoordinatesProps) {
+export default function ImageCoordinatesPage() {
   // 图片状态
   const [imageUrl, setImageUrl] = useState<string>("")
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)

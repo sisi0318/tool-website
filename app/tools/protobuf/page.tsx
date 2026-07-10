@@ -18,11 +18,7 @@ import { useTranslations } from "@/hooks/use-translations"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, ArrowLeftRight, Upload, Settings, ChevronUp, ChevronDown, Zap, Eye, Code, FileText, Database, Shield, Check } from "lucide-react"
 import * as protobuf from "protobufjs"
 
-interface ProtobufToolProps {
-  params?: Record<string, string>
-}
-
-export default function ProtobufTool({ params }: ProtobufToolProps) {
+export default function ProtobufTool() {
   const t = useTranslations("protobuf")
   
   // 设置状态

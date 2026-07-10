@@ -33,11 +33,7 @@ interface CompressedImage {
   newHeight: number | null
 }
 
-interface ImageCompressProps {
-  params?: Record<string, string>
-}
-
-export default function ImageCompressPage({ params }: ImageCompressProps) {
+export default function ImageCompressPage() {
   const { toast } = useToast()
 
   // 状态管理

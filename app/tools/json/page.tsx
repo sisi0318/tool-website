@@ -14,13 +14,11 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import yaml from "js-yaml"
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 
-interface JsonToolProps {
-  params?: Record<string, string>
-}
-
-export default function JsonTool({ params }: JsonToolProps) {
+export default function JsonTool() {
   const t = useTranslations("json")
+  const params = useToolRuntimeParams()
   
   // 基础状态
   const [showJsonSettings, setShowJsonSettings] = useState(false)

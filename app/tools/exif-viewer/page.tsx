@@ -52,11 +52,7 @@ interface ExifCategory {
   color: string
 }
 
-interface ExifViewerProps {
-  params?: Record<string, string>
-}
-
-export default function ExifViewerPage({ params }: ExifViewerProps) {
+export default function ExifViewerPage() {
   const { toast } = useToast()
 
   // 状态管理

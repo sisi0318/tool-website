@@ -461,11 +461,7 @@ const EXAMPLE_HEX = "0001160568656c6c6f213039320001869f"
 
 // ==================== Component ====================
 
-interface JceToolProps {
-  params?: Record<string, string>
-}
-
-export default function JceTool({ params }: JceToolProps) {
+export default function JceTool() {
   const t = useTranslations("jce")
 
   const [showSettings, setShowSettings] = useState(false)

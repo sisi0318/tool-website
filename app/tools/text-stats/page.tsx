@@ -9,12 +9,6 @@ import { useTranslations } from "@/hooks/use-translations"
 import { Copy, Check, Trash2, FileText } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface TextStatsPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 interface TextStatistics {
   characters: number
   charactersNoSpaces: number
@@ -148,7 +142,7 @@ function calculateWordFrequency(text: string, limit: number = 10): WordFrequency
     .map(([word, count]) => ({ word, count }))
 }
 
-export default function TextStatsPage({ params }: TextStatsPageProps) {
+export default function TextStatsPage() {
   const t = useTranslations("textStats")
 
   const [text, setText] = useState("")

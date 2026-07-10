@@ -28,6 +28,10 @@ export interface DerivedOutput {
   dataType: DataType
 }
 
+export interface PortDefinition extends DerivedOutput {
+  jsonTypename?: string
+}
+
 export interface NodeDefinition {
   type: string
   category: "basic" | "crypto" | "data" | "image" | "text" | "dev" | "utility" | "viewer"

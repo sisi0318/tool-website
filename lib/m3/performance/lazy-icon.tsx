@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
 
 /**
  * M3 Lazy Icon Component
@@ -52,7 +53,7 @@ function IconPlaceholder({ size = 24, className }: { size?: number; className?: 
 /**
  * Cache for loaded icons to prevent re-fetching
  */
-const iconCache = new Map<string, React.ComponentType<React.SVGAttributes<SVGSVGElement>>>();
+const iconCache = new Map<string, LucideIcon>();
 
 /**
  * M3 Lazy Icon Component
@@ -73,7 +74,7 @@ const LazyIcon = React.forwardRef<SVGSVGElement, LazyIconProps>(
     },
     ref
   ) => {
-    const [IconComponent, setIconComponent] = React.useState<React.ComponentType<React.SVGAttributes<SVGSVGElement>> | null>(
+    const [IconComponent, setIconComponent] = React.useState<LucideIcon | null>(
       () => iconCache.get(name) || null
     );
     const [isLoading, setIsLoading] = React.useState(!iconCache.has(name));
@@ -100,7 +101,7 @@ const LazyIcon = React.forwardRef<SVGSVGElement, LazyIconProps>(
             .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
             .join('');
 
-          const Icon = (icons as Record<string, React.ComponentType<React.SVGAttributes<SVGSVGElement>>>)[pascalName];
+          const Icon = (icons as unknown as Record<string, LucideIcon>)[pascalName];
 
           if (Icon && isMounted) {
             iconCache.set(name, Icon);
@@ -195,7 +196,7 @@ export async function preloadIcons(iconNames: string[]): Promise<void> {
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join('');
       
-      const Icon = (icons as Record<string, React.ComponentType<React.SVGAttributes<SVGSVGElement>>>)[pascalName];
+      const Icon = (icons as unknown as Record<string, LucideIcon>)[pascalName];
       
       if (Icon) {
         iconCache.set(name, Icon);

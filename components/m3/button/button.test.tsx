@@ -20,7 +20,8 @@ describe('M3Button Component', () => {
       const button = screen.getByRole('button', { name: /filled button/i });
       
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('bg-[var(--md-sys-color-primary)]');
+      expect(button).toHaveClass('bg-gradient-to-br');
+      expect(button).toHaveClass('from-[var(--md-sys-color-primary)]');
       expect(button).toHaveClass('text-[var(--md-sys-color-on-primary)]');
     });
 
@@ -29,7 +30,7 @@ describe('M3Button Component', () => {
       const button = screen.getByRole('button', { name: /outlined button/i });
       
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('border');
+      expect(button).toHaveClass('border-2');
       expect(button).toHaveClass('border-[var(--md-sys-color-outline)]');
       expect(button).toHaveClass('text-[var(--md-sys-color-primary)]');
     });
@@ -48,7 +49,8 @@ describe('M3Button Component', () => {
       const button = screen.getByRole('button', { name: /elevated button/i });
       
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('bg-[var(--md-sys-color-surface-container-low)]');
+      expect(button).toHaveClass('bg-gradient-to-br');
+      expect(button).toHaveClass('from-[var(--md-sys-color-surface-container-low)]');
       expect(button).toHaveClass('shadow-md');
     });
 
@@ -57,7 +59,8 @@ describe('M3Button Component', () => {
       const button = screen.getByRole('button', { name: /tonal button/i });
       
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('bg-[var(--md-sys-color-secondary-container)]');
+      expect(button).toHaveClass('bg-gradient-to-br');
+      expect(button).toHaveClass('from-[var(--md-sys-color-secondary-container)]');
       expect(button).toHaveClass('text-[var(--md-sys-color-on-secondary-container)]');
     });
 
@@ -65,7 +68,7 @@ describe('M3Button Component', () => {
       render(<M3Button>Default Button</M3Button>);
       const button = screen.getByRole('button', { name: /default button/i });
       
-      expect(button).toHaveClass('bg-[var(--md-sys-color-primary)]');
+      expect(button).toHaveClass('from-[var(--md-sys-color-primary)]');
     });
   });
 
@@ -74,26 +77,26 @@ describe('M3Button Component', () => {
       render(<M3Button size="small">Small Button</M3Button>);
       const button = screen.getByRole('button', { name: /small button/i });
       
-      expect(button).toHaveClass('h-9');
-      expect(button).toHaveClass('px-3');
-      expect(button).toHaveClass('rounded-[var(--md-sys-shape-corner-small)]');
+      expect(button).toHaveClass('h-10');
+      expect(button).toHaveClass('px-4');
+      expect(button).toHaveClass('rounded-[var(--md-sys-shape-corner-medium)]');
     });
 
     it('renders medium size with correct styles', () => {
       render(<M3Button size="medium">Medium Button</M3Button>);
       const button = screen.getByRole('button', { name: /medium button/i });
       
-      expect(button).toHaveClass('h-10');
-      expect(button).toHaveClass('px-6');
-      expect(button).toHaveClass('rounded-[var(--md-sys-shape-corner-medium)]');
+      expect(button).toHaveClass('h-11');
+      expect(button).toHaveClass('px-7');
+      expect(button).toHaveClass('rounded-[var(--md-sys-shape-corner-large)]');
     });
 
     it('renders large size with correct styles', () => {
       render(<M3Button size="large">Large Button</M3Button>);
       const button = screen.getByRole('button', { name: /large button/i });
       
-      expect(button).toHaveClass('h-12');
-      expect(button).toHaveClass('px-8');
+      expect(button).toHaveClass('h-14');
+      expect(button).toHaveClass('px-9');
     });
   });
 
@@ -218,9 +221,9 @@ describe('M3Button Component', () => {
       // Ripple should exist initially
       expect(button.querySelector('.animate-ripple')).toBeInTheDocument();
       
-      // Fast-forward time to after ripple animation (600ms) wrapped in act
+      // Fast-forward time to after ripple animation (800ms) wrapped in act
       await act(async () => {
-        vi.advanceTimersByTime(600);
+        vi.advanceTimersByTime(800);
       });
       
       // Ripple should be removed

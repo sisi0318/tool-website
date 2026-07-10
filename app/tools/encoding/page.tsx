@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect, useMemo } from "react"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useRef, useEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
@@ -13,7 +12,6 @@ import {
   Check,
   Trash2,
   ArrowRight,
-  ArrowLeft,
   Settings,
   Zap,
   RefreshCw,
@@ -26,16 +24,9 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { M3Card } from "@/components/m3/card"
-import { M3Tabs, type TabItem } from "@/components/m3/tabs"
-import { M3Button } from "@/components/m3/button" // Assuming exist or use Button with className
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 
 // 添加参数接口
-interface EncodingPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 // 编码类型
 const encodingTypes = [
   { id: "base64", name: "Base64" },
@@ -56,8 +47,9 @@ const encodingTypes = [
   { id: "quoted", name: "Quoted-Printable" },
 ]
 
-export default function EncodingPage({ params }: EncodingPageProps) {
+export default function EncodingPage() {
   const t = useTranslations("encoding")
+  const params = useToolRuntimeParams()
 
   // 状态
   const [encodingType, setEncodingType] = useState("base64")
@@ -90,7 +82,6 @@ export default function EncodingPage({ params }: EncodingPageProps) {
   const encodeInputRef = useRef<HTMLTextAreaElement>(null)
   const decodeInputRef = useRef<HTMLTextAreaElement>(null)
   const leftInputRef = useRef<HTMLTextAreaElement>(null)
-  const rightInputRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({})
 
   // 新的转换函数
@@ -148,8 +139,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
       return input // 相同类型直接返回
     } catch (error) {
       console.error("Transform error:", error)
-      const side = fromType === "text" ? "left" : "right"
-      setError(prev => ({ ...prev, [side]: "转换失败，请检查输入格式" }))
+      setError((prev) => ({ ...prev, left: "转换失败，请检查输入格式" }))
       return ""
     }
   }
@@ -170,21 +160,6 @@ export default function EncodingPage({ params }: EncodingPageProps) {
     }
   }
 
-  const handleRightInputChange = (value: string) => {
-    setRightInput(value)
-    setRightInputLength(value.length)
-
-    if (autoMode && value.trim()) {
-      const targetType = leftType === "text" ? "text" : "encoded"
-      const result = performTransform(value, leftType === "text" ? "encoded" : "text", targetType)
-      setLeftInput(result)
-      setLeftInputLength(result.length)
-    } else if (!value.trim()) {
-      setLeftInput("")
-      setLeftInputLength(0)
-    }
-  }
-
   // 手动转换
   const transformLeftToRight = () => {
     if (leftInput.trim()) {
@@ -192,15 +167,6 @@ export default function EncodingPage({ params }: EncodingPageProps) {
       const result = performTransform(leftInput, leftType, targetType)
       setRightInput(result)
       setRightInputLength(result.length)
-    }
-  }
-
-  const transformRightToLeft = () => {
-    if (rightInput.trim()) {
-      const targetType = leftType === "text" ? "text" : "encoded"
-      const result = performTransform(rightInput, leftType === "text" ? "encoded" : "text", targetType)
-      setLeftInput(result)
-      setLeftInputLength(result.length)
     }
   }
 
@@ -225,6 +191,40 @@ export default function EncodingPage({ params }: EncodingPageProps) {
     setLeftInputLength(0)
     setRightInputLength(0)
     setError({})
+  }
+
+  const handleDirectionChange = (nextType: "text" | "encoded") => {
+    if (nextType === leftType) return
+
+    if (!showAllResults && rightInput.trim()) {
+      swapInputs()
+      setError({})
+      return
+    }
+
+    setLeftType(nextType)
+    setError({})
+
+    if (showAllResults) {
+      setEncodeInput("")
+      setDecodeInput("")
+      setEncodeInputLength(0)
+      setDecodeInputLength(0)
+      setAllEncodeResults([])
+      setAllDecodeResults([])
+      return
+    }
+
+    if (autoMode && leftInput.trim()) {
+      const targetType = nextType === "text" ? "encoded" : "text"
+      const result = performTransform(leftInput, nextType, targetType)
+      setRightInput(result)
+      setRightInputLength(result.length)
+      return
+    }
+
+    setRightInput("")
+    setRightInputLength(0)
   }
 
   // 获取编码格式说明
@@ -2022,142 +2022,152 @@ export default function EncodingPage({ params }: EncodingPageProps) {
     setDecodeInputLength(decodeInput.length)
   }, [])
 
-  // M3 Tabs items
-  const tabItems: TabItem[] = React.useMemo(() => encodingTypes.map(t => ({
-    id: t.id,
-    label: t.name,
-  })), [])
-
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
       {/* 标题和模式切换 */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4">
+      <div className="mb-6 text-center">
+        <h1 className="mb-2 text-3xl font-bold text-[var(--md-sys-color-on-surface)]">
           编解码工具
         </h1>
-        <div className="flex justify-center items-center gap-4 mb-4 flex-wrap">
-          <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
-            <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
-              手动模式
-            </Label>
-            <Switch id="auto-mode" checked={autoMode} onCheckedChange={setAutoMode} />
-            <Label htmlFor="auto-mode" className="cursor-pointer text-sm text-blue-600">
-              实时转换
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
-            <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
-              手动切换
-            </Label>
-            <Switch id="auto-switch" checked={autoSwitch} onCheckedChange={setAutoSwitch} />
-            <Label htmlFor="auto-switch" className="cursor-pointer text-sm text-green-600">
-              智能切换
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
-            <Label htmlFor="legacy-mode" className="cursor-pointer text-sm">
-              新界面
-            </Label>
-            <Switch id="legacy-mode" checked={showAllResults} onCheckedChange={setShowAllResults} />
-            <Label htmlFor="legacy-mode" className="cursor-pointer text-sm">
-              批量模式
-            </Label>
-          </div>
+        <p className="mx-auto mb-5 max-w-2xl text-sm text-[var(--md-sys-color-on-surface-variant)]">
+          先选择转换范围和方向，再输入内容。常用操作保持在首屏，高级行为集中到设置中。
+        </p>
+        <div
+          className="inline-flex rounded-full bg-[var(--md-sys-color-surface-container)] p-1"
+          role="group"
+          aria-label="转换范围"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant={!showAllResults ? "default" : "ghost"}
+            className="rounded-full px-5"
+            aria-pressed={!showAllResults}
+            onClick={() => setShowAllResults(false)}
+          >
+            单一格式
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={showAllResults ? "default" : "ghost"}
+            className="rounded-full px-5"
+            aria-pressed={showAllResults}
+            onClick={() => setShowAllResults(true)}
+          >
+            全部格式
+          </Button>
         </div>
       </div>
 
       {/* 新界面：左右侧转换 */}
       {!showAllResults && (
         <>
-          {/* 编码类型选择 */}
-          {/* 编码类型选择 */}
-          <div className="mb-6">
-            {/* 移动端：下拉选择 */}
-            <div className="md:hidden mb-4">
-              <Label className="mb-2 block text-sm font-medium text-[var(--md-sys-color-on-surface-variant)]">选择编码格式</Label>
-              <Select value={encodingType} onValueChange={setEncodingType}>
-                <SelectTrigger className="w-full input-modern h-12 bg-[var(--md-sys-color-surface-container-high)] border-none">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{encodingTypes.find(t => t.id === encodingType)?.name}</span>
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {encodingTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <M3Card variant="outlined" className="mb-6 overflow-hidden">
+            <div className="grid gap-5 p-4 md:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)] md:p-5">
+              <div>
+                <Label className="mb-2 block text-sm font-medium">转换方向</Label>
+                <div
+                  className="grid grid-cols-2 rounded-xl bg-[var(--md-sys-color-surface-container)] p-1"
+                  role="group"
+                  aria-label="转换方向"
+                >
+                  <Button
+                    type="button"
+                    variant={leftType === "text" ? "default" : "ghost"}
+                    className="rounded-lg"
+                    aria-pressed={leftType === "text"}
+                    onClick={() => handleDirectionChange("text")}
+                  >
+                    编码
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={leftType === "encoded" ? "default" : "ghost"}
+                    className="rounded-lg"
+                    aria-pressed={leftType === "encoded"}
+                    onClick={() => handleDirectionChange("encoded")}
+                  >
+                    解码
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block text-sm font-medium" htmlFor="encoding-format">
+                  编码格式
+                </Label>
+                <Select value={encodingType} onValueChange={setEncodingType}>
+                  <SelectTrigger id="encoding-format" className="h-10 w-full bg-[var(--md-sys-color-surface-container-high)]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {encodingTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="md:col-span-2">
+                <Label className="mb-2 block text-xs text-[var(--md-sys-color-on-surface-variant)]">常用格式</Label>
+                <div className="flex flex-wrap gap-2">
+                  {encodingTypes
+                    .filter((type) => ["base64", "url", "hex", "unicode", "html"].includes(type.id))
+                    .map((type) => (
+                      <Button
+                        key={type.id}
+                        type="button"
+                        size="sm"
+                        variant={encodingType === type.id ? "secondary" : "outline"}
+                        className="rounded-full"
+                        onClick={() => setEncodingType(type.id)}
+                      >
+                        {type.name}
+                      </Button>
+                    ))}
+                </div>
+              </div>
             </div>
 
-            {/* 桌面端：Scrollable Tabs */}
-            <div className="hidden md:block">
-              <M3Tabs
-                tabs={tabItems}
-                activeTab={encodingType}
-                onTabChange={setEncodingType}
-                scrollable
-                variant="secondary"
-                className="w-full"
-              />
-            </div>
-
-            {/* 编码说明折叠区域 */}
-            <div className="mt-4">
+            <div className="border-t border-[var(--md-sys-color-outline-variant)] px-4 py-2 md:px-5">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowEncodingInfo(!showEncodingInfo)}
-                className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                className="w-full justify-start text-[var(--md-sys-color-on-surface-variant)]"
+                aria-expanded={showEncodingInfo}
               >
-                <div className="flex items-center gap-2">
-                  {showEncodingInfo ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                  <Settings className="h-4 w-4" />
-                  <span>{encodingTypes.find(t => t.id === encodingType)?.name} 编码说明</span>
-                  {!showEncodingInfo && (
-                    <Badge variant="secondary" className="text-xs ml-auto">
-                      点击查看
-                    </Badge>
-                  )}
-                </div>
+                {showEncodingInfo ? <ChevronUp className="mr-2 h-4 w-4" /> : <ChevronDown className="mr-2 h-4 w-4" />}
+                {encodingTypes.find((type) => type.id === encodingType)?.name} 格式说明与示例
               </Button>
 
               {showEncodingInfo && (
-                <Card className="mt-3 card-modern">
-                  <CardContent className="py-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* 编码说明 */}
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                          <Settings className="h-4 w-4 text-green-600" />
-                          格式说明
-                        </h4>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                          {getEncodingDescription(encodingType)}
-                        </div>
-                      </div>
-
-                      {/* 示例 */}
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-blue-600" />
-                          转换示例
-                        </h4>
-                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
-                          {getEncodingExample(encodingType)}
-                        </div>
-                      </div>
+                <div className="grid gap-6 px-2 py-4 lg:grid-cols-2">
+                  <div className="space-y-3">
+                    <h4 className="flex items-center gap-2 font-semibold">
+                      <Settings className="h-4 w-4 text-green-600" />
+                      格式说明
+                    </h4>
+                    <div className="space-y-2 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                      {getEncodingDescription(encodingType)}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="flex items-center gap-2 font-semibold">
+                      <Zap className="h-4 w-4 text-blue-600" />
+                      转换示例
+                    </h4>
+                    <div className="space-y-2 rounded-xl bg-[var(--md-sys-color-surface-container)] p-3">
+                      {getEncodingExample(encodingType)}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
+          </M3Card>
 
           {/* 主转换区域 - M3 Optimized */}
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 mb-6">
@@ -2200,6 +2210,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                               className="h-7 w-7"
                               onClick={() => copyToClipboard(leftInput, "left")}
                               disabled={!leftInput.trim()}
+                              aria-label={copied.left ? "已复制输入内容" : "复制输入内容"}
                             >
                               {copied.left ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                             </Button>
@@ -2215,6 +2226,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                   ref={leftInputRef}
                   value={leftInput}
                   onChange={(e) => handleLeftInputChange(e.target.value)}
+                  aria-label={leftType === "text" ? "待编码文本" : "待解码文本"}
                   placeholder={leftType === "text" ? "输入要编码的文本..." : "输入要解码的文本..."}
                   rows={8}
                   className="font-mono text-sm resize-none bg-[var(--md-sys-color-surface)] border-[var(--md-sys-color-outline-variant)] focus:border-[var(--md-sys-color-primary)] flex-grow"
@@ -2263,56 +2275,46 @@ export default function EncodingPage({ params }: EncodingPageProps) {
             </M3Card>
 
             {/* 中间控制区域 */}
-            <div className="flex flex-row lg:flex-col items-center justify-center gap-4 py-0 lg:py-2 shrink-0">
-              <div className="flex lg:flex-col gap-3 items-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={autoMode ? undefined : transformLeftToRight}
-                        disabled={!leftInput.trim() && !autoMode}
-                        className={`rounded-full w-10 h-10 p-0 shadow-sm transition-all ${autoMode
-                            ? "bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] cursor-default"
-                            : "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
-                          }`}
-                      >
-                        {autoMode ? <Zap className="h-5 w-5" /> : <ArrowRight className="h-5 w-5 lg:rotate-0 rotate-90" />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{autoMode ? "实时转换开启中" : "点击转换"}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={swapInputs}
-                        variant="outline"
-                        className="rounded-full w-10 h-10 p-0 border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)]"
-                      >
-                        <ArrowLeftRight className="h-4 w-4 text-[var(--md-sys-color-on-surface-variant)]" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>交换内容</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={clearAllInputs}
-                        variant="ghost"
-                        className="rounded-full w-10 h-10 p-0 text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>清空所有</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+            <div className="flex shrink-0 flex-row items-center justify-center gap-2 lg:w-28 lg:flex-col">
+              {autoMode ? (
+                <div className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-primary-container)] px-3 text-xs font-medium text-[var(--md-sys-color-on-primary-container)]">
+                  <Zap className="h-4 w-4" />
+                  实时
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={transformLeftToRight}
+                  disabled={!leftInput.trim()}
+                >
+                  <ArrowRight className="mr-1.5 h-4 w-4 lg:rotate-0 rotate-90" />
+                  {leftType === "text" ? "编码" : "解码"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={swapInputs}
+                disabled={!rightInput.trim()}
+              >
+                <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+                反向
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="rounded-full text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]"
+                onClick={clearAllInputs}
+                disabled={!leftInput && !rightInput}
+              >
+                <Trash2 className="mr-1.5 h-4 w-4" />
+                清空
+              </Button>
             </div>
 
             {/* 右侧输出 */}
@@ -2338,6 +2340,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                               className="h-7 w-7"
                               onClick={() => copyToClipboard(rightInput, "right")}
                               disabled={!rightInput.trim()}
+                              aria-label={copied.right ? "已复制转换结果" : "复制转换结果"}
                             >
                               {copied.right ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                             </Button>
@@ -2350,12 +2353,12 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                 </div>
 
                 <Textarea
-                  ref={rightInputRef}
                   value={rightInput}
-                  onChange={(e) => handleRightInputChange(e.target.value)}
+                  readOnly
+                  aria-label={leftType === "text" ? "编码结果" : "解码结果"}
                   placeholder={leftType === "text" ? "编码结果将在这里显示..." : "解码结果将在这里显示..."}
                   rows={8}
-                  className="font-mono text-sm resize-none bg-transparent border-[var(--md-sys-color-outline-variant)] focus:border-[var(--md-sys-color-primary)] flex-grow"
+                  className="flex-grow resize-none border-[var(--md-sys-color-outline-variant)] bg-transparent font-mono text-sm focus:border-[var(--md-sys-color-primary)]"
                 />
 
                 {error.right && (
@@ -2411,7 +2414,19 @@ export default function EncodingPage({ params }: EncodingPageProps) {
             </CardHeader>
             {showSettings && (
               <CardContent className="pb-4">
-                <div className="flex flex-wrap gap-4 items-center">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="flex items-center space-x-2">
+                    <Switch id="auto-mode" checked={autoMode} onCheckedChange={setAutoMode} />
+                    <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
+                      输入时实时转换
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch id="auto-switch" checked={autoSwitch} onCheckedChange={setAutoSwitch} />
+                    <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
+                      切换格式时重新转换
+                    </Label>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="multiline"
@@ -2421,18 +2436,6 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                     <Label htmlFor="multiline" className="cursor-pointer text-sm">
                       多行处理模式
                     </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Label className="text-sm">输入类型:</Label>
-                    <Select value={leftType} onValueChange={(value: "text" | "encoded") => setLeftType(value)}>
-                      <SelectTrigger className="w-32 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text">原文</SelectItem>
-                        <SelectItem value="encoded">编码文本</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </CardContent>
@@ -2446,212 +2449,108 @@ export default function EncodingPage({ params }: EncodingPageProps) {
       {
         showAllResults && (
           <div className="space-y-6">
-            {/* 编码格式选择器 */}
-            <Card className="card-modern">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-blue-600" />
-                  编码格式选择
+            <Card className="overflow-hidden border-[var(--md-sys-color-outline-variant)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Zap className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  全部格式转换
                 </CardTitle>
+                <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                  输入一次即可生成所有支持格式的结果，适合比较格式或识别未知编码。
+                </p>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-                  {encodingTypes.map((type) => (
-                    <Button
-                      key={type.id}
-                      variant={encodingType === type.id ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setEncodingType(type.id)}
-                      className="text-xs h-8"
-                    >
-                      {type.name}
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 编码说明和示例 - 可折叠 */}
-            <Card className="card-modern">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-green-600" />
-                    {encodingTypes.find(t => t.id === encodingType)?.name} 编码说明
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowEncodingInfo(!showEncodingInfo)}
-                    className="text-gray-600 dark:text-gray-400"
-                  >
-                    {showEncodingInfo ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4 mr-1" />
-                        <Badge variant="secondary" className="text-xs">
-                          点击查看
-                        </Badge>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              {showEncodingInfo && (
-                <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 编码说明 */}
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                        <Settings className="h-4 w-4 text-green-600" />
-                        格式说明
-                      </h4>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                        {getEncodingDescription(encodingType)}
-                      </div>
-                    </div>
-
-                    {/* 示例 */}
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-blue-600" />
-                        转换示例
-                      </h4>
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
-                        {getEncodingExample(encodingType)}
-                      </div>
+              <CardContent className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium">转换方向</Label>
+                    <div className="grid grid-cols-2 rounded-xl bg-[var(--md-sys-color-surface-container)] p-1" role="group" aria-label="全部格式转换方向">
+                      <Button
+                        type="button"
+                        variant={leftType === "text" ? "default" : "ghost"}
+                        className="rounded-lg"
+                        aria-pressed={leftType === "text"}
+                        onClick={() => handleDirectionChange("text")}
+                      >
+                        全部编码
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={leftType === "encoded" ? "default" : "ghost"}
+                        className="rounded-lg"
+                        aria-pressed={leftType === "encoded"}
+                        onClick={() => handleDirectionChange("encoded")}
+                      >
+                        尝试解码
+                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              )}
-            </Card>
-
-            {/* 输入区域 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 编码输入 */}
-              <Card className="card-modern">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500" />
-                    原文输入
-                    <Badge variant="outline" className="text-xs ml-auto">
-                      {encodeInputLength} 字符
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    id="encode-input"
-                    ref={encodeInputRef}
-                    value={encodeInput}
-                    onChange={(e) => {
-                      setEncodeInput(e.target.value)
-                      setEncodeInputLength(e.target.value.length)
-                    }}
-                    placeholder="输入要编码的文本..."
-                    rows={6}
-                    className="font-mono text-sm resize-none"
-                  />
-                  {error.left && (
-                    <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                      <span className="w-1 h-1 bg-red-500 rounded-full" />
-                      {error.left}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* 解码输入 */}
-              <Card className="card-modern">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" />
-                    编码输入
-                    <Badge variant="outline" className="text-xs ml-auto">
-                      {decodeInputLength} 字符
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    id="decode-input"
-                    ref={decodeInputRef}
-                    value={decodeInput}
-                    onChange={(e) => {
-                      setDecodeInput(e.target.value)
-                      setDecodeInputLength(e.target.value.length)
-                    }}
-                    placeholder="输入要解码的文本..."
-                    rows={6}
-                    className="font-mono text-sm resize-none"
-                  />
-                  {error.right && (
-                    <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
-                      <span className="w-1 h-1 bg-red-500 rounded-full" />
-                      {error.right}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* 控制区域 */}
-            <Card className="card-modern">
-              <CardContent className="py-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex items-end">
+                    <div className="flex min-h-10 items-center space-x-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] px-3">
                       <Checkbox
-                        id="multiline-batch"
+                        id="multiline-all-formats"
                         checked={multiline}
                         onCheckedChange={(checked) => setMultiline(checked as boolean)}
                       />
-                      <Label htmlFor="multiline-batch" className="cursor-pointer text-sm">
-                        多行处理模式
+                      <Label htmlFor="multiline-all-formats" className="cursor-pointer text-sm">
+                        每行单独处理
                       </Label>
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <Button
-                      onClick={handleEncode}
-                      className="flex-1 sm:flex-none bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
-                      size="sm"
-                    >
-                      <Zap className="h-4 w-4 mr-2" />
-                      批量编码
-                    </Button>
-                    <Button
-                      onClick={handleDecode}
-                      className="flex-1 sm:flex-none bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                      size="sm"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      批量解码
-                    </Button>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" onClick={clearAll} size="sm" className="text-red-500 hover:text-red-700">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>清空所有内容</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <Label htmlFor="all-formats-input">
+                      {leftType === "text" ? "原文输入" : "编码文本输入"}
+                    </Label>
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {leftType === "text" ? encodeInputLength : decodeInputLength} 字符
+                    </Badge>
                   </div>
+                  <Textarea
+                    id="all-formats-input"
+                    ref={leftType === "text" ? encodeInputRef : decodeInputRef}
+                    value={leftType === "text" ? encodeInput : decodeInput}
+                    onChange={(event) => {
+                      if (leftType === "text") {
+                        setEncodeInput(event.target.value)
+                        setEncodeInputLength(event.target.value.length)
+                      } else {
+                        setDecodeInput(event.target.value)
+                        setDecodeInputLength(event.target.value.length)
+                      }
+                    }}
+                    aria-label={leftType === "text" ? "全部格式编码输入" : "全部格式解码输入"}
+                    placeholder={leftType === "text" ? "输入要转换的原文..." : "粘贴编码文本，尝试使用全部格式解码..."}
+                    rows={7}
+                    className="resize-y font-mono text-sm"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    onClick={leftType === "text" ? handleEncode : handleDecode}
+                    disabled={leftType === "text" ? !encodeInput.trim() : !decodeInput.trim()}
+                  >
+                    {leftType === "text" ? <Zap className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                    {leftType === "text" ? "生成全部编码结果" : "尝试全部格式解码"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={clearAll} disabled={!encodeInput && !decodeInput}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    清空
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* 批量结果显示 */}
+            {/* 全部格式结果显示 */}
             {(allEncodeResults.length > 0 || allDecodeResults.length > 0) && (
               <Card className="card-modern">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Check className="h-5 w-5 text-green-600" />
-                    批量转换结果
+                    全部格式结果
                     <Badge variant="secondary" className="ml-auto">
                       {allEncodeResults.length + allDecodeResults.length} 个结果
                     </Badge>
@@ -2687,6 +2586,7 @@ export default function EncodingPage({ params }: EncodingPageProps) {
                                   onClick={() => copyToClipboard(result.result, `batch-${index}`)}
                                   className="flex-shrink-0"
                                   disabled={!result.result}
+                                  aria-label={copied[`batch-${index}`] ? `已复制 ${result.type} 结果` : `复制 ${result.type} 结果`}
                                 >
                                   {copied[`batch-${index}`] ?
                                     <Check className="h-4 w-4 text-green-500" /> :

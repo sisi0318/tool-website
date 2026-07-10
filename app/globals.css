@@ -701,6 +701,26 @@
  * ============================================ */
 @media (max-width: 640px) {
 
+  .tools-surface button {
+    min-height: 40px;
+  }
+
+  .tools-surface button[aria-label] {
+    min-width: 40px;
+  }
+
+  .tools-surface input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  .tools-surface textarea,
+  .tools-surface select {
+    min-height: 44px;
+  }
+
+  .tools-surface input,
+  .tools-surface textarea,
+  .tools-surface select {
+    scroll-margin-top: 9rem;
+  }
+
   /* Ensure content doesn't overflow */
   .overflow-fix {
     max-width: 100%;

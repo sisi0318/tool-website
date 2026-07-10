@@ -14,6 +14,7 @@ import { Copy, Check, Upload, FileText, X, Download, Lock, Unlock, RefreshCw } f
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 
 // 导入CryptoJS库
 import CryptoJS from "crypto-js"
@@ -27,12 +28,6 @@ interface FileInfo {
 }
 
 // Add the props interface at the beginning of the file, after the existing interfaces
-interface CryptoPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 // 格式化文件大小
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes"
@@ -245,8 +240,9 @@ const formatOutputData = (outputData: CryptoJS.lib.WordArray, format: string): s
 }
 
 // Change the component definition to accept params
-export default function CryptoPage({ params }: CryptoPageProps) {
+export default function CryptoPage() {
   const t = useTranslations("crypto")
+  const params = useToolRuntimeParams()
 
   // 通用状态
   const [operation, setOperation] = useState<"encrypt" | "decrypt">("encrypt")
@@ -942,7 +938,8 @@ export default function CryptoPage({ params }: CryptoPageProps) {
               outputBytes = stringToBytes(rawStr)
             }
 
-            const blob = new Blob([outputBytes], { type: "application/octet-stream" })
+            const outputBuffer = Uint8Array.from(outputBytes).buffer
+            const blob = new Blob([outputBuffer], { type: "application/octet-stream" })
             setFileOutput(blob)
           }
         } catch (error) {
@@ -1265,7 +1262,7 @@ export default function CryptoPage({ params }: CryptoPageProps) {
               className="rounded-r-none neumorphic-input dark:neumorphic-input-dark"
             />
             <Select value={keyFormat} onValueChange={setKeyFormat}>
-              <SelectTrigger className="w-24 rounded-l-none neumorphic-select dark:neumorphic-select-dark">
+              <SelectTrigger aria-label={t("keyFormat")} className="w-24 rounded-l-none neumorphic-select dark:neumorphic-select-dark">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1296,7 +1293,7 @@ export default function CryptoPage({ params }: CryptoPageProps) {
                 className="neumorphic-button dark:neumorphic-button-dark"
               >
                 <RefreshCw className="h-3 w-3 mr-1" />
-                {t("generateKey")}
+                {t("generateIV")}
               </Button>
             </div>
             <div className="flex">
@@ -1311,7 +1308,7 @@ export default function CryptoPage({ params }: CryptoPageProps) {
                 className="rounded-r-none neumorphic-input dark:neumorphic-input-dark"
               />
               <Select value={ivFormat} onValueChange={setIvFormat}>
-                <SelectTrigger className="w-24 rounded-l-none neumorphic-select dark:neumorphic-select-dark">
+                <SelectTrigger aria-label={t("ivFormat")} className="w-24 rounded-l-none neumorphic-select dark:neumorphic-select-dark">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1361,7 +1358,7 @@ export default function CryptoPage({ params }: CryptoPageProps) {
                   <div className="flex items-center space-x-2">
                     <Label htmlFor="input">{t("input")}</Label>
                     <Select value={inputFormat} onValueChange={setInputFormat}>
-                      <SelectTrigger className="w-24 h-8 neumorphic-select dark:neumorphic-select-dark">
+                      <SelectTrigger aria-label={t("inputFormat")} className="w-24 h-8 neumorphic-select dark:neumorphic-select-dark">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1405,7 +1402,7 @@ export default function CryptoPage({ params }: CryptoPageProps) {
                   <div className="flex items-center space-x-2">
                     <Label htmlFor="output">{t("output")}</Label>
                     <Select value={outputFormat} onValueChange={setOutputFormat}>
-                      <SelectTrigger className="w-24 h-8 neumorphic-select dark:neumorphic-select-dark">
+                      <SelectTrigger aria-label={t("outputFormat")} className="w-24 h-8 neumorphic-select dark:neumorphic-select-dark">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1434,6 +1431,7 @@ export default function CryptoPage({ params }: CryptoPageProps) {
                             size="sm"
                             onClick={copyToClipboard}
                             disabled={!output}
+                            aria-label={copied ? t("copied") : t("copy")}
                             className="neumorphic-button dark:neumorphic-button-dark"
                           >
                             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { getNodeDefinition, clearRegistry } from "../canvas/registry"
 import { registerBasicNodes } from "../adapters/basic"
 import { registerHashAdapter } from "../adapters/hash"
@@ -431,7 +431,7 @@ describe("Adapter Execute Functions", () => {
     it("detects changes between different texts", async () => {
       const def = getNodeDefinition("diff")!
       const result = await def.execute({ text1: "abc", text2: "abd" }, {})
-      expect(result.added + result.removed).toBeGreaterThan(0)
+      expect(Number(result.added) + Number(result.removed)).toBeGreaterThan(0)
     })
 
     it("detects unchanged lines", async () => {
@@ -479,7 +479,7 @@ describe("Adapter Execute Functions", () => {
       const def = getNodeDefinition("crypto")!
       const result = await def.execute({ data: "hello", key: "1234567890123456" }, { algorithm: "aes", mode: "CBC", operation: "encrypt", iv: "1234567890123456" })
       expect(typeof result.result).toBe("string")
-      expect(result.result.length).toBeGreaterThan(0)
+      expect(String(result.result).length).toBeGreaterThan(0)
     })
 
     it("throws on empty data", async () => {
@@ -635,11 +635,33 @@ describe("Adapter Execute Functions", () => {
     })
 
     it("image-compress: uses config.file fallback", async () => {
+      const close = vi.fn()
+      vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 4, height: 3, close }))
+      vi.stubGlobal("OffscreenCanvas", class MockOffscreenCanvas {
+        width: number
+        height: number
+
+        constructor(width: number, height: number) {
+          this.width = width
+          this.height = height
+        }
+
+        getContext() {
+          return { drawImage: vi.fn() }
+        }
+
+        async convertToBlob(options: BlobPropertyBag) {
+          return new Blob(["compressed"], options)
+        }
+      })
+
       const def = getNodeDefinition("image-compress")!
       const mockFile = new File(["fake-data"], "test.jpg", { type: "image/jpeg" })
       const result = await def.execute({}, { file: mockFile, quality: 80 })
       expect(result.file).toBeDefined()
       expect(result.info).toBeDefined()
+      expect(close).toHaveBeenCalledOnce()
+      vi.unstubAllGlobals()
     })
 
     it("image-editor: uses config.file fallback", async () => {

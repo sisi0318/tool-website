@@ -92,7 +92,7 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
     const titleId = React.useId();
     const [isAnimating, setIsAnimating] = React.useState(false);
     const [shouldRender, setShouldRender] = React.useState(open);
-    const sheetRef = React.useRef<HTMLDivElement>(null);
+    const sheetRef = React.useRef<HTMLDivElement | null>(null);
     const startY = React.useRef<number>(0);
     const currentY = React.useRef<number>(0);
 
@@ -190,7 +190,7 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
             if (typeof ref === 'function') {
               ref(node);
             } else if (ref) {
-              ref.current = node;
+              (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
             }
           }}
           className={cn(

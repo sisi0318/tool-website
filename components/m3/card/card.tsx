@@ -169,7 +169,7 @@ function useRipple() {
 function Ripple({ x, y, size }: { x: number; y: number; size: number }) {
   return (
     <span
-      className="absolute pointer-events-none rounded-full bg-[var(--md-sys-color-on-surface)] opacity-[0.08]"
+      className="animate-ripple absolute pointer-events-none rounded-full bg-[var(--md-sys-color-on-surface)] opacity-[0.08]"
       style={{
         left: x - size / 2,
         top: y - size / 2,

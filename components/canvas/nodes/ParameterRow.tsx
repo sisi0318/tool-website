@@ -24,18 +24,19 @@ export function ParameterRow({ nodeId, field, value, onChange, disabled, allConf
   }
 
   // 检查关联端口是否已连接
-  const isPortConnected = field.portId
-    ? edges.some((e) => e.target === nodeId && e.targetPort === field.portId)
+  const portId = field.hasInput ? field.id : undefined
+  const isPortConnected = portId
+    ? edges.some((e) => e.target === nodeId && e.targetPort === portId)
     : false
 
   return (
     <div className="flex items-center gap-2 px-3 py-1" data-testid="parameter-row">
       {/* 左侧端口 */}
-      {field.portId && (
+      {portId && (
         <Handle
           type="target"
           position={Position.Left}
-          id={field.portId}
+          id={portId}
           style={{ background: TYPE_COLORS[field.dataType as keyof typeof TYPE_COLORS] ?? "#94a3b8" }}
         />
       )}

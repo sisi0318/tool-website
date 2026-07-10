@@ -1,14 +1,15 @@
 "use client"
 
-import { useState, useCallback } from "react"
-// import { useDropzone } from "react-dropzone" // Need to check if this is available or implement custom
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Upload, FileText, FileSpreadsheet, FileIcon, X } from "lucide-react"
+import { Upload, FileText, FileSpreadsheet, X } from "lucide-react"
 import { renderAsync } from "docx-preview"
 import * as XLSX from "xlsx"
+import { useTranslations } from "@/hooks/use-translations"
 
 export default function DocViewerPage() {
+    const t = useTranslations("docViewer")
     const [file, setFile] = useState<File | null>(null)
     const [error, setError] = useState<string>("")
     const [loading, setLoading] = useState(false)
@@ -64,11 +65,11 @@ export default function DocViewerPage() {
                 setHtmlContent(html)
             }
             else {
-                setError("Unsupported file type. Please upload .docx or .xlsx")
+                setError(t("unsupported"))
             }
         } catch (err) {
             console.error(err)
-            setError("Failed to render file. It might be corrupted or encrypted.")
+            setError(t("renderError"))
         } finally {
             setLoading(false)
         }
@@ -77,19 +78,19 @@ export default function DocViewerPage() {
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-                    <FileText className="h-8 w-8 text-blue-600" />
-                    Document Viewer
+                <h1 className="mb-4 flex items-center justify-center gap-2 text-3xl font-bold text-[var(--md-sys-color-on-surface)]">
+                    <FileText className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
+                    {t("title")}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                    Secure, client-side preview for Word and Excel files. Your files never leave your browser.
+                <p className="text-[var(--md-sys-color-on-surface-variant)]">
+                    {t("description")}
                 </p>
             </div>
 
             <Card className="card-modern mb-8">
                 <CardContent className="pt-6">
                     <div
-                        className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-12 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                        className="cursor-pointer rounded-2xl border-2 border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-8 text-center transition-colors hover:border-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container)] sm:p-12"
                         onDragOver={onDragOver}
                         onDrop={onDrop}
                         onClick={() => document.getElementById('file-upload')?.click()}
@@ -100,17 +101,18 @@ export default function DocViewerPage() {
                             className="hidden"
                             accept=".docx,.xlsx,.xls"
                             onChange={handleFileSelect}
+                            aria-label={t("chooseFile")}
                         />
                         <div className="flex flex-col items-center gap-4">
-                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-full">
-                                <Upload className="h-8 w-8 text-blue-600" />
+                            <div className="rounded-full bg-[var(--md-sys-color-primary-container)] p-4">
+                                <Upload className="h-8 w-8 text-[var(--md-sys-color-on-primary-container)]" />
                             </div>
                             <div>
-                                <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                                    Click or drag file to this area to upload
+                                <p className="text-lg font-medium text-[var(--md-sys-color-on-surface)]">
+                                    {t("dropHint")}
                                 </p>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Supports .docx, .xlsx, .xls
+                                <p className="mt-1 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                                    {t("formats")}
                                 </p>
                             </div>
                         </div>
@@ -124,17 +126,22 @@ export default function DocViewerPage() {
                     <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
                         <CardTitle className="text-base flex items-center gap-2">
                             {file.name.endsWith('docx') ? (
-                                <FileText className="h-5 w-5 text-blue-600" />
+                                <FileText className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
                             ) : (
                                 <FileSpreadsheet className="h-5 w-5 text-green-600" />
                             )}
                             {file.name}
                         </CardTitle>
-                        <Button variant="ghost" size="icon" onClick={() => setFile(null)}>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setFile(null)}
+                            aria-label={t("removeFile")}
+                        >
                             <X className="h-4 w-4" />
                         </Button>
                     </CardHeader>
-                    <CardContent className="p-0 overflow-auto bg-white dark:bg-gray-900 min-h-[600px] relative">
+                    <CardContent className="relative min-h-[600px] overflow-auto bg-[var(--md-sys-color-surface-container-lowest)] p-0">
                         {loading && (
                             <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-black/50 z-10">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

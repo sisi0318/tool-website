@@ -8,23 +8,41 @@ export interface Tool {
   path: string
 }
 
+type SearchTranslationSection = {
+  title?: string
+  description?: string
+}
+
+function getLocalizedToolText(
+  sections: Record<string, SearchTranslationSection>,
+  key: string,
+  fallbackName: string,
+  fallbackDescription: string,
+) {
+  return {
+    name: sections[key]?.title || fallbackName,
+    description: sections[key]?.description || fallbackDescription,
+  }
+}
+
 export function getTools(locale = "en"): Tool[] {
-  const t = translations[locale as keyof typeof translations] || translations.en
+  const t = (translations[locale as keyof typeof translations] || translations.en) as unknown as Record<
+    string,
+    SearchTranslationSection
+  >
 
   return [
     // existing tools
     {
       id: "json",
-      name: t.json.title,
-      description: t.json.description,
+      ...getLocalizedToolText(t, "json", "JSON Tools", "Format, validate, and convert JSON data"),
       keywords: ["json", "format", "compress", "minify", "validate", "escape", "unescape", "unicode", "chinese"],
       path: "/tools/json",
     },
     // Add color picker tool
     {
       id: "color",
-      name: t.color.title,
-      description: t.color.description,
+      ...getLocalizedToolText(t, "color", "Color Picker", "Pick and convert color values"),
       keywords: ["color", "picker", "hex", "rgb", "hsl", "hwb", "lch", "cmyk", "css", "convert"],
       path: "/tools/color",
     },
@@ -32,8 +50,7 @@ export function getTools(locale = "en"): Tool[] {
     // Add temperature converter tool
     {
       id: "temperature-converter",
-      name: t.temperatureConverter.title,
-      description: t.temperatureConverter.description,
+      ...getLocalizedToolText(t, "temperatureConverter", "Temperature Converter", "Convert temperature units"),
       keywords: [
         "temperature",
         "convert",
@@ -51,8 +68,7 @@ export function getTools(locale = "en"): Tool[] {
     // Add Docker converter tool
     {
       id: "docker-converter",
-      name: t.dockerConverter.title,
-      description: t.dockerConverter.description,
+      ...getLocalizedToolText(t, "dockerConverter", "Docker Converter", "Convert docker run commands to Compose"),
       keywords: ["docker", "docker-compose", "container", "convert", "yml", "yaml", "command", "run"],
       path: "/tools/docker-converter",
     },
@@ -60,36 +76,31 @@ export function getTools(locale = "en"): Tool[] {
     // other tools
     {
       id: "crontab",
-      name: t.crontab.title,
-      description: t.crontab.description,
+      ...getLocalizedToolText(t, "crontab", "Crontab Generator", "Build and explain cron expressions"),
       keywords: ["cron", "crontab", "schedule", "job", "task", "linux", "unix", "expression", "generator"],
       path: "/tools/crontab",
     },
     {
       id: "image-to-base64",
-      name: t.imageToBase64.title,
-      description: t.imageToBase64.description,
+      ...getLocalizedToolText(t, "imageToBase64", "Image to Base64", "Convert images to Base64 data URLs"),
       keywords: ["image", "base64", "convert", "encoder", "data url", "inline", "embed"],
       path: "/tools/image-to-base64",
     },
     {
       id: "exif-viewer",
-      name: t.exifViewer.title,
-      description: t.exifViewer.description,
+      ...getLocalizedToolText(t, "exifViewer", "EXIF Viewer", "Inspect image metadata"),
       keywords: ["exif", "image", "metadata", "photo", "camera", "gps", "location", "viewer"],
       path: "/tools/exif-viewer",
     },
     {
       id: "bmi",
-      name: t.bmi.title,
-      description: t.bmi.description,
+      ...getLocalizedToolText(t, "bmi", "BMI Calculator", "Calculate body mass index"),
       keywords: ["bmi", "body mass index", "weight", "height", "calculator", "health", "fitness"],
       path: "/tools/bmi",
     },
     {
       id: "regex",
-      name: t.regex.title,
-      description: t.regex.description,
+      ...getLocalizedToolText(t, "regex", "Regex Tester", "Test regular expressions"),
       keywords: ["regex", "regular expression", "pattern", "match", "test", "validate", "search", "replace"],
       path: "/tools/regex",
     },
@@ -103,8 +114,7 @@ export function getTools(locale = "en"): Tool[] {
     },
     {
       id: "http-tester",
-      name: t.httpTester.title,
-      description: t.httpTester.description,
+      ...getLocalizedToolText(t, "httpTester", "HTTP Tester", "Build and inspect HTTP requests"),
       keywords: ["http", "tester", "request", "api", "rest", "client", "test"],
       path: "/tools/http-tester",
     },
@@ -203,6 +213,13 @@ export function getTools(locale = "en"): Tool[] {
       description: t.jce?.description || "Parse and encode JCE/Tars binary protocol data",
       keywords: ["jce", "tars", "tencent", "binary", "protocol", "parse", "decode", "encode", "struct", "serialize"],
       path: "/tools/jce",
+    },
+    {
+      id: "diff",
+      name: t.diff?.title || "Text Diff",
+      description: t.diff?.description || "Compare two texts and highlight changes",
+      keywords: ["diff", "compare", "text", "change", "added", "removed", "difference"],
+      path: "/tools/diff",
     },
   ]
 }
@@ -1202,6 +1219,15 @@ export function createSearchableFeatures(translations: any): SearchResult[] {
         featureDescription: "Tars/JCE binary serialization protocol",
       },
     )
+  }
+
+  if (translations?.diff?.name) {
+    features.push({
+      toolId: "diff",
+      toolName: translations.diff.name,
+      featureName: "Text Diff",
+      featureDescription: "Compare text and highlight added or removed lines",
+    })
   }
 
   return features

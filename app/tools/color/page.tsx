@@ -15,10 +15,6 @@ import { Switch } from "@/components/ui/switch"
 import { debounce } from "lodash"
 import { ColorPicker } from "@/components/ui/color-picker"
 
-interface ColorPickerProps {
-  params?: Record<string, string>
-}
-
 // Extended color names mapping
 const COLOR_NAMES: Record<string, string> = {
   "#000000": "black",
@@ -182,7 +178,7 @@ interface ColorFormat {
   copied: boolean
 }
 
-export default function ColorPickerPage({ params }: ColorPickerProps) {
+export default function ColorPickerPage() {
   const t = useTranslations("color")
 
   // 基础状态

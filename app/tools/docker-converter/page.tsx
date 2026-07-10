@@ -15,10 +15,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface DockerConverterProps {
-  params?: Record<string, string>
-}
-
 // 定义配置项接口
 interface ConfigItem {
   id: string
@@ -83,7 +79,7 @@ interface ParseResult {
   warnings: string[]
 }
 
-export default function DockerConverterPage({ params }: DockerConverterProps) {
+export default function DockerConverterPage() {
   const t = useTranslations("dockerConverter")
   const [dockerRunCommand, setDockerRunCommand] = useState("")
   const [dockerComposeYaml, setDockerComposeYaml] = useState("")

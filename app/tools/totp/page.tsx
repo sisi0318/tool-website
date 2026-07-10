@@ -21,10 +21,6 @@ interface TOTPAccount {
   period: number
 }
 
-interface TOTPProps {
-  params?: Record<string, string>
-}
-
 // Base32 解码
 function base32Decode(encoded: string): Uint8Array {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
@@ -122,7 +118,7 @@ function parseOtpauthUri(uri: string): Partial<TOTPAccount> | null {
   }
 }
 
-export default function TOTPPage({ params }: TOTPProps) {
+export default function TOTPPage() {
   const { toast } = useToast()
   const [accounts, setAccounts] = useState<TOTPAccount[]>([])
   const [codes, setCodes] = useState<Record<string, string>>({})

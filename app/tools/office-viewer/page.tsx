@@ -26,10 +26,6 @@ import {
 import * as XLSX from "xlsx"
 import mammoth from "mammoth"
 
-interface OfficeViewerProps {
-  params?: Record<string, string>
-}
-
 interface FileInfo {
   name: string
   size: number
@@ -42,7 +38,7 @@ interface ExcelSheet {
   data: string[][]
 }
 
-export default function OfficeViewerPage({}: OfficeViewerProps) {
+export default function OfficeViewerPage() {
   
   // 文件状态
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null)

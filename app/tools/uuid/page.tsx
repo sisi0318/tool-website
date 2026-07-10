@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,19 +12,25 @@ import { Copy, Check, RefreshCw, Trash2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
-interface UUIDPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 // UUID v4 生成函数
 function generateUUIDv4(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === "x" ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
+  const cryptoApi = typeof window !== "undefined" ? window.crypto : undefined
+  if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+    return cryptoApi.randomUUID()
+  }
+
+  const bytes = new Uint8Array(16)
+  if (cryptoApi?.getRandomValues) {
+    cryptoApi.getRandomValues(bytes)
+  } else {
+    for (let index = 0; index < bytes.length; index++) {
+      bytes[index] = Math.floor(Math.random() * 256)
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 // UUID v1-like 生成函数（基于时间戳，非标准实现）
@@ -47,7 +53,7 @@ function generateUUIDv1Like(): string {
 // 空 UUID
 const NIL_UUID = "00000000-0000-0000-0000-000000000000"
 
-export default function UUIDPage({ params }: UUIDPageProps) {
+export default function UUIDPage() {
   const t = useTranslations("uuid")
 
   const [version, setVersion] = useState<"v4" | "v1" | "nil">("v4")
@@ -111,6 +117,10 @@ export default function UUIDPage({ params }: UUIDPageProps) {
 
     setGeneratedUUIDs(uuids)
   }, [version, count, formatUUID])
+
+  useEffect(() => {
+    setGeneratedUUIDs([generateUUIDv4()])
+  }, [])
 
   // 复制单个 UUID
   const copyToClipboard = useCallback((text: string, key: string) => {

@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { useTranslations } from "@/hooks/use-translations"
 import {
   Upload,
   Download,
@@ -37,10 +36,6 @@ import {
   X,
   RefreshCw,
 } from "lucide-react"
-
-interface ImageEditorProps {
-  params?: Record<string, string>
-}
 
 interface ImageState {
   rotation: number
@@ -92,9 +87,7 @@ const cropPresets = [
   { label: "9:16", value: "9:16", icon: RectangleHorizontal },
 ]
 
-export default function ImageEditorPage({ params }: ImageEditorProps) {
-  const t = useTranslations()
-  
+export default function ImageEditorPage() {
   // 图片状态
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null)
   const [imageUrl, setImageUrl] = useState<string>("")

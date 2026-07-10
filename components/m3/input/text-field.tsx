@@ -261,7 +261,7 @@ const labelVariants = cva(
 
 
 export interface M3TextFieldProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'>,
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'disabled'>,
     VariantProps<typeof m3TextFieldVariants> {
   /** Label text displayed above or inside the input */
   label: string;
@@ -396,7 +396,7 @@ const M3TextField = React.forwardRef<HTMLInputElement, M3TextFieldProps>(
               onChange={handleChange}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              disabled={disabled}
+              disabled={disabled ?? false}
               aria-invalid={hasError}
               aria-describedby={displayText ? supportingTextId : undefined}
               className={cn(

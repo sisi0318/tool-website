@@ -191,7 +191,7 @@ function useRipple() {
 function Ripple({ x, y, size }: { x: number; y: number; size: number }) {
   return (
     <span
-      className="absolute pointer-events-none rounded-full bg-current opacity-[0.15] animate-[ripple_0.8s_ease-out_forwards]"
+      className="animate-ripple absolute pointer-events-none rounded-full bg-current opacity-[0.15]"
       style={{
         left: x - size / 2,
         top: y - size / 2,

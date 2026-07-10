@@ -202,11 +202,7 @@ function getStatusColor(status: number): string {
   return "bg-gray-500"
 }
 
-interface HTTPTesterProps {
-  params?: Record<string, string>
-}
-
-export default function HTTPTester({ params: routeParams }: HTTPTesterProps) {
+export default function HTTPTester() {
   const t = useTranslations("httpTester")
   const { toast } = useToast()
 

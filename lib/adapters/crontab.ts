@@ -36,7 +36,7 @@ export const crontabAdapter: ToolAdapter = {
         return Array.from({ length: max - min + 1 }, (_, i) => i + min)
       }
       if (field.includes(",")) {
-        return field.flatMap((f) => parseField(f, min, max))
+        return field.split(",").flatMap((part) => parseField(part, min, max))
       }
       if (field.includes("/")) {
         const [range, step] = field.split("/")

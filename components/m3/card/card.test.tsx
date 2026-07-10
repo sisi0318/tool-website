@@ -19,16 +19,18 @@ describe('M3Card Component', () => {
       render(<M3Card variant="elevated">Elevated Card</M3Card>);
       const card = screen.getByText('Elevated Card').closest('div');
       
-      expect(card?.parentElement).toHaveClass('bg-[var(--md-sys-color-surface-container-low)]');
+      expect(card?.parentElement).toHaveClass('bg-gradient-to-br');
+      expect(card?.parentElement).toHaveClass('from-[var(--md-sys-color-surface-container-low)]');
       expect(card?.parentElement).toHaveClass('text-[var(--md-sys-color-on-surface)]');
-      expect(card?.parentElement).toHaveClass('shadow-md');
+      expect(card?.parentElement).toHaveClass('shadow-lg');
     });
 
     it('renders filled variant with correct styles', () => {
       render(<M3Card variant="filled">Filled Card</M3Card>);
       const card = screen.getByText('Filled Card').closest('div');
       
-      expect(card?.parentElement).toHaveClass('bg-[var(--md-sys-color-surface-container-highest)]');
+      expect(card?.parentElement).toHaveClass('bg-gradient-to-br');
+      expect(card?.parentElement).toHaveClass('from-[var(--md-sys-color-surface-container-highest)]');
       expect(card?.parentElement).toHaveClass('text-[var(--md-sys-color-on-surface)]');
     });
 
@@ -37,7 +39,7 @@ describe('M3Card Component', () => {
       const card = screen.getByText('Outlined Card').closest('div');
       
       expect(card?.parentElement).toHaveClass('bg-[var(--md-sys-color-surface)]');
-      expect(card?.parentElement).toHaveClass('border');
+      expect(card?.parentElement).toHaveClass('border-2');
       expect(card?.parentElement).toHaveClass('border-[var(--md-sys-color-outline-variant)]');
     });
 
@@ -45,8 +47,8 @@ describe('M3Card Component', () => {
       render(<M3Card>Default Card</M3Card>);
       const card = screen.getByText('Default Card').closest('div');
       
-      expect(card?.parentElement).toHaveClass('bg-[var(--md-sys-color-surface-container-low)]');
-      expect(card?.parentElement).toHaveClass('shadow-md');
+      expect(card?.parentElement).toHaveClass('from-[var(--md-sys-color-surface-container-low)]');
+      expect(card?.parentElement).toHaveClass('shadow-lg');
     });
   });
 
@@ -117,9 +119,9 @@ describe('M3Card Component', () => {
       // Trigger mouse down
       fireEvent.mouseDown(card);
       
-      // State layer should have pressed opacity (0.12)
+      // State layer should have the stronger expressive pressed opacity (0.16)
       const stateLayer = card.querySelector('span[aria-hidden="true"]');
-      expect(stateLayer).toHaveStyle({ opacity: '0.12' });
+      expect(stateLayer).toHaveStyle({ opacity: '0.16' });
     });
 
     it('removes state layer on mouse leave', () => {
@@ -160,9 +162,9 @@ describe('M3Card Component', () => {
       // Ripple should exist initially
       expect(card.querySelector('.animate-ripple')).toBeInTheDocument();
       
-      // Fast-forward time to after ripple animation (600ms)
+      // Fast-forward time to after ripple animation (800ms)
       await act(async () => {
-        vi.advanceTimersByTime(600);
+        vi.advanceTimersByTime(800);
       });
       
       // Ripple should be removed
@@ -255,18 +257,18 @@ describe('M3Card Component', () => {
   });
 
   describe('Compound Variants', () => {
-    it('elevated interactive card has hover:shadow-lg', () => {
+    it('elevated interactive card has enhanced hover shadow', () => {
       render(<M3Card variant="elevated" interactive>Elevated Interactive</M3Card>);
       const card = screen.getByRole('button');
       
-      expect(card).toHaveClass('hover:shadow-lg');
+      expect(card).toHaveClass('hover:shadow-xl');
     });
 
-    it('filled interactive card has hover:shadow-sm', () => {
+    it('filled interactive card has a subtle hover shadow', () => {
       render(<M3Card variant="filled" interactive>Filled Interactive</M3Card>);
       const card = screen.getByRole('button');
       
-      expect(card).toHaveClass('hover:shadow-sm');
+      expect(card).toHaveClass('hover:shadow-md');
     });
   });
 });

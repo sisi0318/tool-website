@@ -12,10 +12,6 @@ import { Switch } from "@/components/ui/switch"
 import { Copy, Check, RefreshCw, Globe, Monitor, Cpu, Shield, Fingerprint, Battery, Smartphone, Settings, ChevronUp, ChevronDown, Zap, Eye, Wifi } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
 
-interface DevicePageProps {
-  params?: Record<string, string>
-}
-
 // 在文件顶部添加缓存相关的常量
 const CLIENT_CACHE_DURATION = 3 * 60 * 60 * 1000 // 3小时，单位毫秒
 const IP_CACHE_KEY = "device-info-ip-cache"
@@ -88,7 +84,7 @@ interface DeviceInfo {
   }
 }
 
-export default function DeviceInfoPage({ params }: DevicePageProps) {
+export default function DeviceInfoPage() {
   const t = useTranslations("device")
   
   // 设置状态

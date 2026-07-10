@@ -15,10 +15,6 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 
-interface CurrencyToolProps {
-  params?: Record<string, string>
-}
-
 // 本地存储键名
 const SELECTED_CURRENCIES_KEY = "currency_selected_currencies"
 const MULTI_CURRENCIES_KEY = "currency_multi_currencies"
@@ -75,7 +71,7 @@ interface RateCalculator {
   getAllRates: (baseCurrency: string) => Record<string, number>
 }
 
-export default function CurrencyConverterPage({ params }: CurrencyToolProps) {
+export default function CurrencyConverterPage() {
   const t = useTranslations("currency")
 
   // 基础状态

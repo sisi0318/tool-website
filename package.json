@@ -9,7 +9,8 @@
     "lint": "next lint",
     "start": "next start",
     "test": "vitest --run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

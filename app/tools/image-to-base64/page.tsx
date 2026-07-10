@@ -28,11 +28,7 @@ interface ProcessedImage {
   format: string
 }
 
-interface ImageToBase64Props {
-  params?: Record<string, string>
-}
-
-export default function ImageToBase64({ params }: ImageToBase64Props) {
+export default function ImageToBase64() {
   const { toast } = useToast()
 
   // 状态管理

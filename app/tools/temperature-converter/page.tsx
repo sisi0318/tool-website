@@ -12,11 +12,8 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTranslations } from "@/hooks/use-translations"
+import { useI18n } from "@/components/i18n-provider"
 import { Minus, Plus, Copy, Thermometer, Settings, ChevronUp, ChevronDown, Zap, Eye, Check, Snowflake, Sun, RefreshCw, ArrowLeftRight } from "lucide-react"
-
-interface TemperatureConverterProps {
-  params?: Record<string, string>
-}
 
 // Temperature scales and their conversion formulas
 const temperatureScales = [
@@ -132,9 +129,9 @@ const temperaturePresets = [
   { name: "地球核心", nameEn: "Earth Core", kelvin: 6000, icon: "🌍", category: "geology" },
 ]
 
-export default function TemperatureConverterPage({ params }: TemperatureConverterProps) {
+export default function TemperatureConverterPage() {
   const t = useTranslations("temperatureConverter")
-  const { language } = useTranslations()
+  const { locale: language } = useI18n()
 
   // 设置状态
   const [showTemperatureSettings, setShowTemperatureSettings] = useState(false)

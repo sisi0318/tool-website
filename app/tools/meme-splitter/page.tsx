@@ -26,10 +26,6 @@ import {
   Package,
 } from "lucide-react"
 
-interface MemeSplitterProps {
-  params?: Record<string, string>
-}
-
 interface GridCell {
   x: number
   y: number
@@ -50,7 +46,7 @@ interface ProcessStep {
   description: string
 }
 
-export default function MemeSplitterPage({}: MemeSplitterProps) {
+export default function MemeSplitterPage() {
   // 图片状态
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null)
   const [imageUrl, setImageUrl] = useState<string>("")

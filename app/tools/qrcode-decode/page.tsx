@@ -42,11 +42,7 @@ interface ImageEnhancement {
   grayscale: boolean
 }
 
-interface QRCodeDecoderProps {
-  params?: Record<string, string>
-}
-
-export default function QRCodeDecoder({ params }: QRCodeDecoderProps) {
+export default function QRCodeDecoder() {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -186,7 +182,7 @@ export default function QRCodeDecoder({ params }: QRCodeDecoderProps) {
   // 解码二维码 - 增强版本，多种策略尝试
   const decodeQRCode = useCallback(async (imageData: ImageData, fileName?: string): Promise<QRResult | null> => {
     // 多种解码策略
-    const strategies = [
+    const strategies: Array<NonNullable<Parameters<typeof jsQR>[3]>> = [
       // 策略1: 标准解码
       { inversionAttempts: "dontInvert" },
       // 策略2: 尝试反色

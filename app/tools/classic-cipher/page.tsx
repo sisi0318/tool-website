@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,10 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Copy, 
   Check, 
-  Upload, 
-  FileText, 
   X, 
-  Download,
   ArrowLeftRight,
   ArrowRight,
   ArrowLeft,
@@ -31,37 +26,10 @@ import {
   Trash2
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-
-// 文件信息类型
-interface FileInfo {
-  file: File
-  name: string
-  size: number
-  sizeFormatted: string
-}
-
-interface ClassicCipherProps {
-  params?: Record<string, string>
-}
-
-// 格式化文件大小
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes"
-
-  const k = 1024
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-}
-
-// 最大文件大小 (10MB)
-const MAX_FILE_SIZE = 10 * 1024 * 1024
 
 // 经典密码算法
 const classicAlgorithms = [
@@ -75,13 +43,11 @@ const classicAlgorithms = [
   { id: "affine", name: "仿射密码", category: "mathematical" },
 ]
 
-export default function ClassicCipherPage({ params }: ClassicCipherProps) {
+export default function ClassicCipherPage() {
   const t = useTranslations("classicCipher")
 
   // 基础状态
   const [algorithm, setAlgorithm] = useState("caesar")
-  const [operation, setOperation] = useState<"encrypt" | "decrypt">("encrypt")
-  const [showBatchMode, setShowBatchMode] = useState(false)
   const [showCipherInfo, setShowCipherInfo] = useState(false)
   
   // 实时转换状态
@@ -93,15 +59,6 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
   const [leftInputLength, setLeftInputLength] = useState(0)
   const [rightInputLength, setRightInputLength] = useState(0)
 
-  // 批量模式状态（保留原有功能）
-  const [inputMode, setInputMode] = useState<"text" | "file">("text")
-  const [input, setInput] = useState("")
-  const [output, setOutput] = useState("")
-  const [fileInfo, setFileInfo] = useState<FileInfo | null>(null)
-  const [fileOutput, setFileOutput] = useState<Blob | null>(null)
-  const [processing, setProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
-
   // 密码参数
   const [shift, setShift] = useState(3)
   const [key, setKey] = useState("")
@@ -112,10 +69,8 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
 
   // 通用状态
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
-  const [error, setError] = useState<{ left?: string; right?: string; batch?: string }>({})
+  const [error, setError] = useState<{ left?: string; right?: string }>({})
 
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 凯撒密码加密
@@ -564,24 +519,6 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
     }
   }
 
-  // 右侧输入变化处理
-  const handleRightInputChange = (value: string) => {
-    setRightInput(value)
-    setRightInputLength(value.length)
-    setError(prev => ({ ...prev, right: undefined }))
-
-    if (autoMode && value) {
-      try {
-        const rightType: "plaintext" | "ciphertext" = leftType === "plaintext" ? "ciphertext" : "plaintext"
-        const result = performTransform(value, rightType, leftType)
-        setLeftInput(result)
-        setLeftInputLength(result.length)
-      } catch (error) {
-        setError(prev => ({ ...prev, right: error instanceof Error ? error.message : "转换失败" }))
-      }
-    }
-  }
-
   // 手动转换
   const transformLeftToRight = () => {
     if (!leftInput) return
@@ -792,176 +729,6 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
     }
   }, [algorithm, shift, key, railCount, colKey, affineA, affineB, autoSwitch])
 
-  // 处理文本（批量模式）
-  const processText = () => {
-    if (!input) {
-      setError(prev => ({ ...prev, batch: "请输入要处理的文本" }))
-      return
-    }
-
-    setError(prev => ({ ...prev, batch: undefined }))
-    setProcessing(true)
-
-    try {
-      const result = processCipher(input, algorithm, operation === "encrypt")
-      setOutput(result)
-    } catch (error) {
-      console.error("Processing error:", error)
-      setError(prev => ({ ...prev, batch: error instanceof Error ? error.message : "处理失败" }))
-      setOutput("")
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  // 处理文件
-  const processFile = async () => {
-    if (!fileInfo) {
-      setError(prev => ({ ...prev, batch: "请选择要处理的文件" }))
-      return
-    }
-
-    setError(prev => ({ ...prev, batch: undefined }))
-    setProcessing(true)
-    setProgress(0)
-    setFileOutput(null)
-
-    try {
-      const file = fileInfo.file
-      const reader = new FileReader()
-
-      reader.onload = (e) => {
-        try {
-          const content = e.target?.result
-
-          if (typeof content === "string") {
-            const result = processCipher(content, algorithm, operation === "encrypt")
-
-            // 创建结果Blob
-            const blob = new Blob([result], { type: "text/plain" })
-            setFileOutput(blob)
-          }
-        } catch (error) {
-          console.error("File processing error:", error)
-          setError(prev => ({ ...prev, batch: error instanceof Error ? error.message : "文件处理失败" }))
-        } finally {
-          setProcessing(false)
-        }
-      }
-
-      reader.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100)
-          setProgress(percentComplete)
-        }
-      }
-
-      reader.onerror = () => {
-        setError(prev => ({ ...prev, batch: "文件读取失败" }))
-        setProcessing(false)
-      }
-
-      reader.readAsText(file)
-    } catch (error) {
-      console.error("File reading error:", error)
-      setError(prev => ({ ...prev, batch: error instanceof Error ? error.message : "文件读取失败" }))
-      setProcessing(false)
-    }
-  }
-
-  // 下载文件结果
-  const downloadResult = () => {
-    if (!fileOutput) return
-
-    const url = URL.createObjectURL(fileOutput)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${operation === "encrypt" ? "encrypted" : "decrypted"}_${fileInfo?.name || "result"}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  // 清空输入（批量模式）
-  const clearInput = () => {
-    setInput("")
-    setFileInfo(null)
-    setError(prev => ({ ...prev, batch: undefined }))
-
-    if (inputRef.current) {
-      inputRef.current.focus()
-    }
-  }
-
-  // 清空输出（批量模式）
-  const clearOutput = () => {
-    setOutput("")
-    setFileOutput(null)
-    setError(prev => ({ ...prev, batch: undefined }))
-  }
-
-  // 处理文件上传
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files && files.length > 0) {
-      const file = files[0]
-
-      // 检查文件大小
-      if (file.size > MAX_FILE_SIZE) {
-        setError(t("fileTooBig"))
-        return
-      }
-
-      setFileInfo({
-        file,
-        name: file.name,
-        size: file.size,
-        sizeFormatted: formatFileSize(file.size),
-      })
-
-      setFileOutput(null)
-      setError(null)
-    }
-
-    // 重置文件输入，以便可以再次选择同一个文件
-    if (e.target) {
-      e.target.value = ""
-    }
-  }
-
-  // 处理文件拖放
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0]
-
-      // 检查文件大小
-      if (file.size > MAX_FILE_SIZE) {
-        setError(t("fileTooBig"))
-        return
-      }
-
-      setFileInfo({
-        file,
-        name: file.name,
-        size: file.size,
-        sizeFormatted: formatFileSize(file.size),
-      })
-
-      setFileOutput(null)
-      setError(null)
-    }
-  }
-
-  // 防止默认拖放行为
-  const preventDefaults = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }
-
   return (
     <div className="container mx-auto px-4 py-4 max-w-6xl">
       {/* 页面标题和控制 */}
@@ -969,39 +736,22 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4">
           经典密码工具
         </h1>
-        <div className="flex justify-center items-center gap-4 mb-4 flex-wrap">
-          <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
-            <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
-              手动模式
-            </Label>
+        <div className="mb-4 flex flex-wrap items-center justify-center gap-3">
+          <div className="flex items-center space-x-2 rounded-lg bg-gray-100 p-2 dark:bg-gray-800">
             <Switch id="auto-mode" checked={autoMode} onCheckedChange={setAutoMode} />
-            <Label htmlFor="auto-mode" className="cursor-pointer text-sm text-blue-600">
-              实时转换
-              </Label>
-            </div>
-          <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
-            <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
-              手动切换
+            <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
+              输入时实时转换
             </Label>
+          </div>
+          <div className="flex items-center space-x-2 rounded-lg bg-gray-100 p-2 dark:bg-gray-800">
             <Switch id="auto-switch" checked={autoSwitch} onCheckedChange={setAutoSwitch} />
-            <Label htmlFor="auto-switch" className="cursor-pointer text-sm text-green-600">
-              智能切换
-              </Label>
-            </div>
-          <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
-            <Label htmlFor="legacy-mode" className="cursor-pointer text-sm">
-              新界面
+            <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
+              切换算法时重新转换
             </Label>
-            <Switch id="legacy-mode" checked={showBatchMode} onCheckedChange={setShowBatchMode} />
-            <Label htmlFor="legacy-mode" className="cursor-pointer text-sm">
-              批量模式
-            </Label>
-        </div>
+          </div>
         </div>
       </div>
-      {/* 新界面：左右侧转换 */}
-      {!showBatchMode && (
-        <>
+      {/* 经典密码转换 */}
           {/* 密码算法选择 */}
           <div className="mb-6">
             <Tabs value={algorithm} onValueChange={setAlgorithm} className="w-full">
@@ -1203,6 +953,7 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
                 <Textarea
                   value={leftInput}
                   onChange={(e) => handleLeftInputChange(e.target.value)}
+                  aria-label={leftType === "plaintext" ? "待加密明文" : "待解密密文"}
                   placeholder={leftType === "plaintext" ? "输入要加密的明文..." : "输入要解密的密文..."}
                   rows={8}
                   className="font-mono text-sm resize-none"
@@ -1230,6 +981,7 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
                           variant="outline"
                           size="sm"
                           className="p-2"
+                          aria-label={leftType === "plaintext" ? "加密" : "解密"}
                         >
                           <ArrowRight className="h-4 w-4" />
                     </Button>
@@ -1249,6 +1001,7 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
                           variant="outline"
                           size="sm"
                           className="p-2"
+                          aria-label={leftType === "plaintext" ? "将结果解密回输入" : "将结果加密回输入"}
                         >
                           <ArrowLeft className="h-4 w-4" />
                           </Button>
@@ -1292,6 +1045,7 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
                         variant="outline"
                         size="sm"
                         className="p-2"
+                        aria-label="交换输入与结果并反向转换"
                       >
                         <ArrowLeftRight className="h-4 w-4" />
                       </Button>
@@ -1308,6 +1062,7 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
                   variant="outline"
                   size="sm"
                         className="text-red-500 hover:text-red-700 p-2"
+                        aria-label="清空输入和结果"
                 >
                         <Trash2 className="h-4 w-4" />
                 </Button>
@@ -1333,7 +1088,8 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
                 <div className="relative">
                   <Textarea
                     value={rightInput}
-                    onChange={(e) => handleRightInputChange(e.target.value)}
+                    readOnly
+                    aria-label={leftType === "plaintext" ? "加密结果" : "解密结果"}
                     placeholder={leftType === "plaintext" ? "加密结果将在这里显示..." : "解密结果将在这里显示..."}
                     rows={8}
                     className="font-mono text-sm resize-none pr-10"
@@ -1347,6 +1103,7 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
                           variant="ghost"
                           size="sm"
                           className="absolute top-2 right-2 p-1 h-6 w-6"
+                          aria-label={copied.right ? "已复制结果" : "复制结果"}
                         >
                           {copied.right ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
                     </Button>
@@ -1372,15 +1129,6 @@ export default function ClassicCipherPage({ params }: ClassicCipherProps) {
               <strong>安全提示：</strong>经典密码算法主要用于教学和演示目的，不应用于保护敏感信息。现代应用请使用AES、RSA等现代加密算法。
             </AlertDescription>
           </Alert>
-        </>
-      )}
-
-      {/* 批量模式 - 暂时保留简化版本 */}
-      {showBatchMode && (
-        <div className="text-center p-8">
-          <p className="text-gray-500">批量模式正在重构中...</p>
-      </div>
-      )}
     </div>
   )
 }

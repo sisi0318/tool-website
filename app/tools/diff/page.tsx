@@ -9,12 +9,6 @@ import { useTranslations } from "@/hooks/use-translations"
 import { Copy, Check, Trash2, FileText, ArrowRightLeft, Eye, EyeOff } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface DiffPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 // Diff 类型
 type DiffType = "unchanged" | "added" | "removed"
 
@@ -144,7 +138,7 @@ function myersDiff(oldText: string, newText: string): DiffLine[] {
   return diff
 }
 
-export default function DiffPage({ params }: DiffPageProps) {
+export default function DiffPage() {
   const t = useTranslations("diff")
 
   const [oldText, setOldText] = useState("")

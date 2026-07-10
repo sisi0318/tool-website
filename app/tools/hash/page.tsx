@@ -18,14 +18,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 
 // 添加参数接口
-interface HashPageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 interface HashAlgorithm {
   id: string
   name: string
@@ -166,8 +161,9 @@ const algorithmDescriptions: Record<string, string> = {
 
 const serverBackedAlgorithms = new Set(["sha512", "blake2s256", "blake2b512", "sm3"])
 
-export default function HashPage({ params }: HashPageProps) {
+export default function HashPage() {
   const t = useTranslations("hash")
+  const params = useToolRuntimeParams()
 
   // 哈希计算器状态
   const [inputMode, setInputMode] = useState<"text" | "file">("text")
@@ -333,11 +329,17 @@ export default function HashPage({ params }: HashPageProps) {
     const algorithmObj = allAlgorithms.find((algo) => algo.id === algorithmId)
     if (!algorithmObj) return algorithmId
 
-    if (!algorithmSize) {
+    // Fixed-length algorithms such as MD5 and SHA1 must never inherit the
+    // size selected for a previously active configurable algorithm.
+    if (!algorithmSize || !algorithmObj.configurable) {
       return algorithmObj.name
     }
 
-    if (algorithmId === "sha2" || algorithmId === "sha3" || algorithmId === "keccak") {
+    if (algorithmId === "sha2") {
+      return `SHA-${algorithmSize}`
+    }
+
+    if (algorithmId === "sha3" || algorithmId === "keccak") {
       return `${algorithmObj.name}-${algorithmSize}`
     }
 
@@ -858,7 +860,7 @@ export default function HashPage({ params }: HashPageProps) {
 
   // 获取当前选中算法的显示名称
   const getCurrentAlgorithmDisplayName = () => {
-    return getAlgorithmDisplayName(algorithm, size)
+    return getAlgorithmDisplayName(algorithm, isCurrentAlgorithmConfigurable() ? size : undefined)
   }
 
   // 添加取消计算的函数
@@ -1098,15 +1100,21 @@ export default function HashPage({ params }: HashPageProps) {
         {hashResult && !showAllResults && (
           <div className="mt-4">
             <h3 className="text-lg font-medium mb-4">{t("result")}:</h3>
-            <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
-              <div className="flex items-center space-x-4">
-                <span className="font-medium min-w-24">{getCurrentAlgorithmDisplayName()}:</span>
-                <span className="font-mono text-sm break-all">{hashResult}</span>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-2xl bg-md-surface-container p-4">
+              <div className="min-w-0 space-y-2 sm:flex sm:items-start sm:gap-4 sm:space-y-0">
+                <span className="block shrink-0 font-medium sm:min-w-24">{getCurrentAlgorithmDisplayName()}:</span>
+                <span className="block min-w-0 break-all font-mono text-sm leading-6">{hashResult}</span>
               </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={() => copyToClipboard(hashResult)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      aria-label={copied["main"] ? t("copied") : t("copy")}
+                      onClick={() => copyToClipboard(hashResult)}
+                    >
                       {copied["main"] ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </TooltipTrigger>

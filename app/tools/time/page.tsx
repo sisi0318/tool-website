@@ -14,12 +14,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Input } from "@/components/ui/input"
 
 // Interface for the props
-interface TimePageProps {
-  params?: {
-    feature?: string
-  }
-}
-
 // Time zone configuration
 const timeZones = [
   { id: "UTC", name: "UTC", offset: 0 },
@@ -58,7 +52,7 @@ const DATE_FORMAT_STORAGE_KEY = "time_date_format"
 const SHOW_SECONDS_STORAGE_KEY = "time_show_seconds"
 const ACTIVE_TAB_STORAGE_KEY = "time_active_tab"
 
-export default function TimePage({ params }: TimePageProps) {
+export default function TimePage() {
   const t = useTranslations("time")
 
   // 基础状态
