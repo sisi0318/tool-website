@@ -21,7 +21,6 @@ import {
   FileJson,
   Smartphone,
   Calculator,
-  MoreVertical,
   ArrowRight,
   GitCompareArrows,
   Star,
@@ -1161,7 +1160,7 @@ export default function ToolsPage() {
 
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+    <div className={`container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 ${tabs.length > 0 ? "py-4 sm:py-6" : "py-6 sm:py-10"}`}>
       {tabs.length === 0 && (
         <section className="mb-8 max-w-3xl">
           <div className="flex flex-wrap items-center gap-3">
@@ -1182,7 +1181,7 @@ export default function ToolsPage() {
       )}
 
       {/* M3 Expressive Search Bar */}
-      <div className="mb-6 sm:mb-8">
+      <div className={tabs.length > 0 ? "mb-4 sm:mb-6" : "mb-6 sm:mb-8"}>
         <div className="relative">
             <div className="flex items-center gap-2 sm:gap-3">
             {/* M3 Expressive Search Bar with gradient border on focus */}
@@ -1200,7 +1199,7 @@ export default function ToolsPage() {
                 }
               `}
             >
-              <div className="flex items-center px-4 py-3">
+              <div className="flex items-center px-4 py-2 sm:py-3">
                 <Search className="h-5 w-5 text-[var(--md-sys-color-on-surface-variant)] mr-3 flex-shrink-0" />
                 <input
                   ref={searchInputRef}
@@ -1221,7 +1220,7 @@ export default function ToolsPage() {
                   placeholder={t("search.placeholder")}
                   aria-label={t("search.placeholder")}
                   className="
-                    flex-grow bg-transparent border-none outline-none
+                    workspace-search-input min-w-0 flex-grow bg-transparent border-none outline-none
                     text-[var(--md-sys-color-on-surface)]
                     placeholder:text-[var(--md-sys-color-on-surface-variant)]
                     text-base
@@ -1402,14 +1401,19 @@ export default function ToolsPage() {
                     "
                     onClick={(e) => {
                       e.stopPropagation()
-                      setShowDropdown(!showDropdown)
+                      if (isCompact) {
+                        setShowDropdown(false)
+                        setShowToolOptionsSheet(true)
+                      } else {
+                        setShowDropdown(!showDropdown)
+                      }
                     }}
                   >
                     <Plus className="h-5 w-5" />
                   </button>
 
                   {/* M3 Expressive Dropdown Menu */}
-                  {showDropdown && (
+                  {!isCompact && showDropdown && (
                     <div
                       ref={dropdownRef}
                       className="
@@ -1464,7 +1468,7 @@ export default function ToolsPage() {
             {/* Tab content container with swipe gesture support on mobile */}
             <div
               ref={tabContentRef}
-              className="mt-4"
+              className="mt-3 sm:mt-4"
               {...(isCompact ? swipeHandlers : {})}
               style={isCompact && isSwiping ? {
                 transform: `translateX(${swipeOffset * 0.3}px)`,
@@ -1477,26 +1481,6 @@ export default function ToolsPage() {
                 </div>
               ))}
             </div>
-
-            {/* Mobile: More options button */}
-            {isCompact && activeTab && (
-              <button
-                className="
-                  fixed bottom-28 right-4 z-40
-                  p-3 rounded-full
-                  bg-[var(--md-sys-color-secondary-container)]
-                  text-[var(--md-sys-color-on-secondary-container)]
-                  shadow-lg
-                  hover:shadow-xl
-                  transition-all duration-md-medium-2
-                  ease-md-emphasized
-                "
-                onClick={() => setShowToolOptionsSheet(true)}
-                aria-label={t("moreOptions")}
-              >
-                <MoreVertical className="h-6 w-6" />
-              </button>
-            )}
           </div>
         </div>
       ) : (
@@ -1552,6 +1536,7 @@ export default function ToolsPage() {
         open={showToolOptionsSheet}
         onClose={() => setShowToolOptionsSheet(false)}
         title={t("addTool")}
+        closeLabel={t("close")}
       >
         <div className="grid grid-cols-2 gap-3">
           {toolDefinitions.map((tool) => (

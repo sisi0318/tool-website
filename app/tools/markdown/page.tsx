@@ -71,7 +71,7 @@ export default function MarkdownPage() {
             <span>{t("sanitized")}</span>
           </div>
           <article
-            className="min-h-[26rem] overflow-auto rounded-2xl bg-[var(--md-sys-color-surface-container-low)] p-5 text-[var(--md-sys-color-on-surface)] [&_a]:text-[var(--md-sys-color-primary)] [&_blockquote]:border-l-4 [&_blockquote]:border-[var(--md-sys-color-outline-variant)] [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-[var(--md-sys-color-surface-container-high)] [&_code]:px-1 [&_h1]:mb-4 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-2xl [&_h2]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3"
+            className="min-h-64 overflow-auto rounded-2xl bg-[var(--md-sys-color-surface-container-low)] p-4 text-[var(--md-sys-color-on-surface)] sm:min-h-[26rem] sm:p-5 [&_a]:text-[var(--md-sys-color-primary)] [&_blockquote]:border-l-4 [&_blockquote]:border-[var(--md-sys-color-outline-variant)] [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-[var(--md-sys-color-surface-container-high)] [&_code]:px-1 [&_h1]:mb-4 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-2xl [&_h2]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3"
             dangerouslySetInnerHTML={{ __html: safePreview }}
           />
           <details className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] p-4">

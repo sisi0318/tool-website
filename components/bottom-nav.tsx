@@ -37,7 +37,7 @@ export function BottomNav() {
   ]
 
   return (
-    <div className="ptr-safe fixed inset-x-0 bottom-0 z-50 px-3 pb-3 md:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
       <nav
         aria-label={t("siteName")}
         className="mx-auto flex h-[4.75rem] w-full max-w-md items-center justify-around rounded-[1.75rem] border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container)]/95 px-2 shadow-[0_12px_40px_rgba(22,45,24,0.18)] backdrop-blur-xl"

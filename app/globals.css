@@ -684,7 +684,7 @@
 
 /* Padding for content to avoid being hidden behind floating bottom nav */
 .pb-nav-mobile {
-  padding-bottom: 6rem;
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   /* 80px nav + 16px padding approx */
 }
 
@@ -710,9 +710,12 @@
   }
 
   .tools-surface input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-  .tools-surface textarea,
   .tools-surface select {
     min-height: 44px;
+  }
+
+  .tools-surface .workspace-search-input {
+    min-height: 2rem;
   }
 
   .tools-surface input,

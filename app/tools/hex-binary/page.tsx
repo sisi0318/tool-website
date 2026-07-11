@@ -65,7 +65,7 @@ export default function HexBinaryPage() {
       inputPlaceholder={encoding === "text" ? t("textPlaceholder") : t("encodedPlaceholder")}
       controls={(
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>{t("inputEncoding")}</Label>
               <Select value={encoding} onValueChange={(value) => setEncoding(value as BinaryEncoding)}>

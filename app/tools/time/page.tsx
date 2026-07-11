@@ -586,24 +586,24 @@ export default function TimePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="current" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
+          <TabsTrigger value="current" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <Clock className="hidden h-4 w-4 sm:block" />
             {t("currentTime")}
           </TabsTrigger>
-          <TabsTrigger value="world" className="flex items-center gap-2">
-            <Globe className="h-4 w-4" />
+          <TabsTrigger value="world" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <Globe className="hidden h-4 w-4 sm:block" />
             {t("worldClock")}
           </TabsTrigger>
-          <TabsTrigger value="stopwatch" className="flex items-center gap-2">
-            <Timer className="h-4 w-4" />
+          <TabsTrigger value="stopwatch" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <Timer className="hidden h-4 w-4 sm:block" />
             {t("stopwatch")}
           </TabsTrigger>
-          <TabsTrigger value="timer" className="flex items-center gap-2">
-            <AlarmClock className="h-4 w-4" />
+          <TabsTrigger value="timer" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <AlarmClock className="hidden h-4 w-4 sm:block" />
             {t("timer")}
           </TabsTrigger>
-          <TabsTrigger value="timestamp" className="flex items-center gap-2">
+          <TabsTrigger value="timestamp" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -614,7 +614,7 @@ export default function TimePage() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-4 w-4"
+              className="hidden h-4 w-4 sm:block"
             >
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="12" y1="8" x2="12" y2="12"></line>

@@ -107,7 +107,7 @@ export function CanvasToolbar({
     <>
       <Panel position="top-center" className="!m-2 max-w-[calc(100%-1rem)]">
         <div
-          className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border border-gray-200 bg-white/95 p-1 shadow-lg backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
+          className="scrollbar-hide flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border border-gray-200 bg-white/95 p-1 shadow-lg backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
           role="toolbar"
           aria-label={t("canvasToolbar")}
         >

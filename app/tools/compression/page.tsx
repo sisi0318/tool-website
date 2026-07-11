@@ -59,8 +59,8 @@ export default function CompressionPage() {
     setOutput("")
   }
 
-  const selectControl = (label: string, value: string, onChange: (value: string) => void, items: Array<[string, string]>) => (
-    <div>
+  const selectControl = (label: string, value: string, onChange: (value: string) => void, items: Array<[string, string]>, className?: string) => (
+    <div className={className}>
       <Label>{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="mt-2 min-h-11"><SelectValue /></SelectTrigger>
@@ -91,14 +91,14 @@ export default function CompressionPage() {
       inputPlaceholder={operation === "compress" ? t("textPlaceholder") : t("encodedPlaceholder")}
       controls={(
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {selectControl(t("format"), format, (value) => setFormat(value as CompressionFormat), [
               ["gzip", "GZip"], ["zlib", "Zlib"], ["deflate", "Deflate"], ["brotli", "Brotli"], ["zip", "ZIP"],
-            ])}
+            ], "col-span-2 sm:col-span-1")}
             {selectControl(t("inputEncoding"), inputEncoding, (value) => setInputEncoding(value as BinaryEncoding), [["text", t("text")], ["base64", "Base64"], ["hex", "Hex"]])}
             {selectControl(t("outputEncoding"), outputEncoding, (value) => setOutputEncoding(value as BinaryEncoding), [["text", t("text")], ["base64", "Base64"], ["hex", "Hex"]])}
           </div>
-          <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
+          <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-3 sm:grid-cols-[1fr_9rem]">
             <div>
               <Label htmlFor="compression-filename">{t("filename")}</Label>
               <Input id="compression-filename" value={filename} onChange={(event) => setFilename(event.target.value)} className="mt-2 min-h-11" />

@@ -42,7 +42,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-md border-2 min-w-[280px] max-w-[400px] ${
+      className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-lg border-2 bg-white shadow-md dark:bg-gray-800 sm:max-w-[400px] ${
         nodeErrors
           ? "border-red-500"
           : isSelected

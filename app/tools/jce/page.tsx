@@ -794,17 +794,17 @@ export default function JceTool() {
 
                 {error && <div className="mt-2 text-sm text-red-500">{error}</div>}
 
-                <div className="flex justify-between mt-4">
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={clearAll}>
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-between">
+                  <div className="contents sm:flex sm:gap-2">
+                    <Button variant="outline" onClick={clearAll} className="w-full sm:w-auto">
                       {t("clearInput")}
                     </Button>
-                    <Button variant="outline" onClick={loadExample}>
+                    <Button variant="outline" onClick={loadExample} className="w-full sm:w-auto">
                       <BookOpen className="mr-2 h-4 w-4" />
                       {t("loadExample")}
                     </Button>
                   </div>
-                  <Button onClick={parseJce} disabled={isProcessing || !inputData}>
+                  <Button onClick={parseJce} disabled={isProcessing || !inputData} className="col-span-2 w-full sm:w-auto">
                     {isProcessing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -943,8 +943,8 @@ export default function JceTool() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-2">
-                    <Button variant="outline" onClick={clearAll} size="sm">
+                  <div className="grid grid-cols-2 items-center gap-2 pt-2 sm:flex sm:justify-between">
+                    <Button variant="outline" onClick={clearAll} size="sm" className="w-full sm:w-auto">
                       <X className="mr-2 h-4 w-4" />
                       {t("clearInput")}
                     </Button>
@@ -952,7 +952,7 @@ export default function JceTool() {
                       onClick={parseJce}
                       disabled={isProcessing || !jsonInput}
                       size="lg"
-                      className="px-6"
+                      className="w-full px-6 sm:w-auto"
                     >
                       {isProcessing ? (
                         <>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { JsonTreeView } from "@/components/json-tree-view"
+import { DeviceFingerprintPanel } from "@/components/tools/device-fingerprint-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Copy, Check, RefreshCw, Globe, Monitor, Cpu, Shield, Fingerprint, Battery, Smartphone, Settings, ChevronUp, ChevronDown, Zap, Eye, Wifi } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { collectDeviceFingerprint, type DeviceFingerprint } from "@/lib/device-fingerprint"
 
 // 在文件顶部添加缓存相关的常量
 const CLIENT_CACHE_DURATION = 3 * 60 * 60 * 1000 // 3小时，单位毫秒
@@ -76,12 +77,18 @@ interface DeviceInfo {
     touchScreen: boolean
     doNotTrack: boolean | null
   }
-  fingerprint: {
-    canvas: string
-    webGL: string
-    audio: string
-    fonts: string[]
-  }
+  fingerprint: DeviceFingerprint
+}
+
+interface IpGeoInfo {
+  ip?: string
+  isp?: string
+  country?: string
+  region?: string
+  city?: string
+  continent_code?: string
+  latitude?: string | number
+  longitude?: string | number
 }
 
 export default function DeviceInfoPage() {
@@ -100,11 +107,9 @@ export default function DeviceInfoPage() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [activeTab, setActiveTab] = useState("basic")
-  const [ipInfo, setIpInfo] = useState<any>(null)
   const [ipLoading, setIpLoading] = useState(true)
-  const [canvasFingerprint, setCanvasFingerprint] = useState<string>("")
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const ipFetchedRef = useRef(false) // 添加一个引用来跟踪IP信息是否已经获取
+  const collectionRunRef = useRef(0)
 
   // Copy timeout refs
   const copyTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({})
@@ -112,7 +117,6 @@ export default function DeviceInfoPage() {
   const [batteryStatus, setBatteryStatus] = useState<string>("Not available")
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null)
   const [batteryCharging, setBatteryCharging] = useState<boolean | null>(null)
-  const [navigatorFingerprint, setNavigatorFingerprint] = useState<string>("")
 
   // Function to detect browser
   const detectBrowser = () => {
@@ -371,307 +375,73 @@ export default function DeviceInfoPage() {
     }
   }
 
-  // Function to generate canvas fingerprint
-  const generateCanvasFingerprint = () => {
-    try {
-      const canvas = document.createElement("canvas")
-      canvas.width = 200
-      canvas.height = 50
-      const ctx = canvas.getContext("2d")
-
-      if (!ctx) return "Canvas not supported"
-
-      // Draw background
-      ctx.fillStyle = "rgb(255, 255, 255)"
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      // Draw text
-      ctx.fillStyle = "rgb(0, 0, 0)"
-      ctx.font = "18px Arial"
-      ctx.fillText("Canvas Fingerprint", 10, 30)
-
-      // Draw shapes
-      ctx.strokeStyle = "rgb(255, 0, 0)"
-      ctx.beginPath()
-      ctx.arc(160, 25, 20, 0, Math.PI * 2)
-      ctx.stroke()
-
-      // Get data URL and hash it
-      const dataURL = canvas.toDataURL()
-      return dataURL
-    } catch (e) {
-      return "Error generating canvas fingerprint"
-    }
-  }
-
-  // Function to generate WebGL fingerprint
-  const generateWebGLFingerprint = () => {
-    try {
-      const canvas = document.createElement("canvas")
-      const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null
-
-      if (!gl) return "WebGL not supported"
-
-      const info = {
-        vendor: gl.getParameter(gl.VENDOR),
-        renderer: gl.getParameter(gl.RENDERER),
-        version: gl.getParameter(gl.VERSION),
-        shadingLanguageVersion: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
-        extensions: gl.getSupportedExtensions(),
-      }
-
-      return JSON.stringify(info)
-    } catch (e) {
-      return "Error generating WebGL fingerprint"
-    }
-  }
-
-  // Function to generate audio fingerprint
-  const generateAudioFingerprint = () => {
-    try {
-      if (typeof AudioContext === "undefined" && typeof (window as any).webkitAudioContext === "undefined") {
-        return "Audio API not supported"
-      }
-
-      const audioContext = new (AudioContext || (window as any).webkitAudioContext)()
-      const oscillator = audioContext.createOscillator()
-      const analyser = audioContext.createAnalyser()
-      const gain = audioContext.createGain()
-
-      analyser.fftSize = 1024
-      gain.gain.value = 0 // Mute the sound
-
-      oscillator.type = "triangle"
-      oscillator.frequency.value = 440 // A4 note
-
-      oscillator.connect(analyser)
-      analyser.connect(gain)
-      gain.connect(audioContext.destination)
-
-      oscillator.start(0)
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount)
-      analyser.getByteFrequencyData(dataArray)
-
-      oscillator.stop()
-      audioContext.close()
-
-      return Array.from(dataArray).slice(0, 20).join(",")
-    } catch (e) {
-      return "Error generating audio fingerprint"
-    }
-  }
-
-  // Function to detect available fonts
-  const detectFonts = () => {
-    const baseFonts = ["monospace", "sans-serif", "serif"]
-    const fontList = [
-      "Arial",
-      "Arial Black",
-      "Arial Narrow",
-      "Calibri",
-      "Cambria",
-      "Cambria Math",
-      "Comic Sans MS",
-      "Consolas",
-      "Courier",
-      "Courier New",
-      "Georgia",
-      "Helvetica",
-      "Impact",
-      "Lucida Console",
-      "Lucida Sans Unicode",
-      "Microsoft Sans Serif",
-      "Palatino Linotype",
-      "Segoe UI",
-      "Tahoma",
-      "Times",
-      "Times New Roman",
-      "Trebuchet MS",
-      "Verdana",
-    ]
-
-    const testString = "mmmmmmmmmmlli"
-    const testSize = "72px"
-    const h = document.getElementsByTagName("body")[0]
-
-    const s = document.createElement("span")
-    s.style.fontSize = testSize
-    s.innerHTML = testString
-
-    const defaultWidth: { [key: string]: number } = {}
-    const defaultHeight: { [key: string]: number } = {}
-
-    for (const font of baseFonts) {
-      s.style.fontFamily = font
-      h.appendChild(s)
-      defaultWidth[font] = s.offsetWidth
-      defaultHeight[font] = s.offsetHeight
-      h.removeChild(s)
-    }
-
-    const result = []
-
-    for (const font of fontList) {
-      let detected = false
-      for (const baseFont of baseFonts) {
-        s.style.fontFamily = `'${font}', ${baseFont}`
-        h.appendChild(s)
-        const matched = s.offsetWidth !== defaultWidth[baseFont] || s.offsetHeight !== defaultHeight[baseFont]
-        h.removeChild(s)
-
-        if (matched) {
-          detected = true
-          break
-        }
-      }
-
-      if (detected) {
-        result.push(font)
-      }
-
-      if (result.length >= 10) break // Limit to 10 fonts for performance
-    }
-
-    return result
-  }
-
-  // Function to get fingerprint information
-  const getFingerprint = () => {
-    return {
-      canvas: generateCanvasFingerprint(),
-      webGL: generateWebGLFingerprint(),
-      audio: generateAudioFingerprint(),
-      fonts: detectFonts(),
-    }
-  }
-
-  // Replace the fetchIPInfo function with this new implementation that uses api-ipv4.ip.sb/geoip
-
   const fetchIPInfo = async () => {
+    const applyIpInfo = (data: IpGeoInfo | null) => {
+      setDeviceInfo((current) => current ? {
+        ...current,
+        network: {
+          ...current.network,
+          ip: data?.ip || "Unknown",
+          ipv6: "Not available",
+          isp: data?.isp || "Unknown",
+          country: data?.country || "Unknown",
+          region: data?.region || "Unknown",
+          city: data?.city || "Unknown",
+          continent: data?.continent_code || "Unknown",
+          coordinates: {
+            latitude: data?.latitude ?? "Unknown",
+            longitude: data?.longitude ?? "Unknown",
+          },
+        },
+      } : current)
+    }
+
     try {
       setIpLoading(true)
-
-      // 检查本地缓存
-      const cachedData = localStorage.getItem(IP_CACHE_KEY)
+      if (!enableCache) localStorage.removeItem(IP_CACHE_KEY)
+      const cachedData = enableCache ? localStorage.getItem(IP_CACHE_KEY) : null
       if (cachedData) {
         try {
-          const { data, timestamp } = JSON.parse(cachedData)
-          const now = Date.now()
-
-          // 如果缓存未过期，使用缓存数据
-          if (now - timestamp < CLIENT_CACHE_DURATION) {
-            console.log("Using cached IP info from localStorage")
-
-            // 标记IP信息已经获取
-            ipFetchedRef.current = true
-
-            setIpInfo(data)
-
-            if (deviceInfo) {
-              setDeviceInfo({
-                ...deviceInfo,
-                network: {
-                  ...deviceInfo.network,
-                  ip: data.ip || "Unknown",
-                  ipv6: "Not available",
-                  isp: data.isp || "Unknown",
-                  country: data.country || "Unknown",
-                  region: data.region || "Unknown",
-                  city: data.city || "Unknown",
-                  continent: data.continent_code || "Unknown",
-                  coordinates: {
-                    latitude: data.latitude || "Unknown",
-                    longitude: data.longitude || "Unknown",
-                  },
-                },
-              })
-            }
-
-            setIpLoading(false)
+          const { data, timestamp } = JSON.parse(cachedData) as { data: IpGeoInfo; timestamp: number }
+          if (Date.now() - timestamp < CLIENT_CACHE_DURATION) {
+            applyIpInfo(data)
             return
           }
-        } catch (e) {
-          console.error("Error parsing cached IP data:", e)
-          // 缓存解析错误，继续获取新数据
+        } catch {
+          localStorage.removeItem(IP_CACHE_KEY)
         }
       }
 
-      // 直接从 ip.sb API 获取 IP 信息
-      const response = await fetch("https://api-ipv4.ip.sb/geoip")
-      if (!response.ok) {
-        throw new Error(`IP info API responded with status: ${response.status}`)
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), 8000)
+      let response: Response
+      try {
+        response = await fetch("https://api-ipv4.ip.sb/geoip", { signal: controller.signal })
+      } finally {
+        window.clearTimeout(timeout)
       }
+      if (!response.ok) throw new Error(`IP info API responded with status: ${response.status}`)
 
-      const ipData = await response.json()
-      console.log("IP.sb API response:", ipData)
-
-      // 缓存结果到localStorage
-      localStorage.setItem(
-        IP_CACHE_KEY,
-        JSON.stringify({
-          data: ipData,
-          timestamp: Date.now(),
-        }),
-      )
-
-      // 标记IP信息已经获取
-      ipFetchedRef.current = true
-
-      setIpInfo(ipData)
-
-      if (deviceInfo) {
-        setDeviceInfo({
-          ...deviceInfo,
-          network: {
-            ...deviceInfo.network,
-            ip: ipData.ip || "Unknown",
-            ipv6: "Not available",
-            isp: ipData.isp || "Unknown",
-            country: ipData.country || "Unknown",
-            region: ipData.region || "Unknown",
-            city: ipData.city || "Unknown",
-            continent: ipData.continent_code || "Unknown",
-            coordinates: {
-              latitude: ipData.latitude || "Unknown",
-              longitude: ipData.longitude || "Unknown",
-            },
-          },
-        })
+      const ipData = await response.json() as IpGeoInfo
+      if (enableCache) {
+        localStorage.setItem(IP_CACHE_KEY, JSON.stringify({ data: ipData, timestamp: Date.now() }))
       }
-    } catch (error) {
-      console.error("Error fetching IP info:", error)
-
-      // Set basic IP info even if detailed info fails
-      if (deviceInfo) {
-        setDeviceInfo({
-          ...deviceInfo,
-          network: {
-            ...deviceInfo.network,
-            ip: "Unknown",
-            ipv6: "Not available",
-            isp: "Unknown",
-            country: "Unknown",
-            region: "Unknown",
-            city: "Unknown",
-            continent: "Unknown",
-            coordinates: {
-              latitude: "Unknown",
-              longitude: "Unknown",
-            },
-          },
-        })
-      }
+      applyIpInfo(ipData)
+    } catch {
+      applyIpInfo(null)
     } finally {
-      // 确保在所有情况下都设置ipLoading为false
+      ipFetchedRef.current = true
       setIpLoading(false)
     }
   }
 
   // Function to gather all device information
-  const gatherDeviceInfo = () => {
+  const gatherDeviceInfo = async () => {
+    const runId = ++collectionRunRef.current
     try {
       setLoading(true)
+      const fingerprint = await collectDeviceFingerprint()
+      if (runId !== collectionRunRef.current) return
 
       const info: DeviceInfo = {
         userAgent: navigator.userAgent,
@@ -682,22 +452,43 @@ export default function DeviceInfoPage() {
         network: getNetworkInfo(),
         language: getLanguageInfo(),
         features: checkFeatures(),
-        fingerprint: getFingerprint(),
+        fingerprint,
       }
 
       setDeviceInfo(info)
       setError(null)
     } catch (err) {
       console.error("Error gathering device info:", err)
-      setError("Failed to gather device information")
+      if (runId === collectionRunRef.current) setError("Failed to gather device information")
     } finally {
-      setLoading(false)
+      if (runId === collectionRunRef.current) setLoading(false)
     }
   }
 
   // Function to copy text to clipboard
-  const copyToClipboard = (text: string, key: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+  const copyToClipboard = async (text: string, key: string) => {
+    const legacyCopy = () => {
+      const textarea = document.createElement("textarea")
+      textarea.value = text
+      textarea.style.cssText = "position:fixed;opacity:0;pointer-events:none"
+      document.body.appendChild(textarea)
+      textarea.select()
+      const copied = document.execCommand("copy")
+      textarea.remove()
+      if (!copied) throw new Error("Copy command was rejected")
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text)
+        } catch {
+          legacyCopy()
+        }
+      } else {
+        legacyCopy()
+      }
+
       // Clear previous timeout
       if (copyTimeoutRef.current[key]) {
         clearTimeout(copyTimeoutRef.current[key]!)
@@ -709,14 +500,16 @@ export default function DeviceInfoPage() {
       copyTimeoutRef.current[key] = setTimeout(() => {
         setCopied((prev) => ({ ...prev, [key]: false }))
       }, 2000)
-    })
+    } catch {
+      setCopied((prev) => ({ ...prev, [key]: false }))
+    }
   }
 
   // Function to copy all device info as JSON
   const copyAllAsJson = () => {
     if (!deviceInfo) return
 
-    const jsonString = JSON.stringify(deviceInfo, null, 2)
+    const jsonString = JSON.stringify(deviceInfo, (key, value) => key === "previewUrl" ? undefined : value, 2)
     copyToClipboard(jsonString, "all")
   }
 
@@ -726,7 +519,7 @@ export default function DeviceInfoPage() {
     ipFetchedRef.current = false
     // 清除本地缓存
     localStorage.removeItem(IP_CACHE_KEY)
-    gatherDeviceInfo()
+    void gatherDeviceInfo()
   }
 
   // 获取电池信息
@@ -771,40 +564,10 @@ export default function DeviceInfoPage() {
     }
   }
 
-  // 生成导航器指纹
-  const generateNavigatorFingerprint = () => {
-    try {
-      const nav = navigator
-      const fingerprint = {
-        userAgent: nav.userAgent,
-        appName: nav.appName,
-        appVersion: nav.appVersion,
-        platform: nav.platform,
-        vendor: nav.vendor,
-        language: nav.language,
-        languages: nav.languages,
-        cookieEnabled: nav.cookieEnabled,
-        doNotTrack: nav.doNotTrack,
-        hardwareConcurrency: nav.hardwareConcurrency,
-        maxTouchPoints: nav.maxTouchPoints,
-        deviceMemory: (nav as any).deviceMemory,
-        plugins: Array.from((nav as any).plugins || []).map((p: any) => p.name),
-        mimeTypes: Array.from((nav as any).mimeTypes || []).map((m: any) => m.type),
-        webdriver: (nav as any).webdriver,
-        pdfViewerEnabled: (nav as any).pdfViewerEnabled,
-      }
-
-      setNavigatorFingerprint(JSON.stringify(fingerprint, null, 2))
-    } catch (e) {
-      setNavigatorFingerprint("Error generating navigator fingerprint")
-    }
-  }
-
   // Initialize on component mount
   useEffect(() => {
-    gatherDeviceInfo()
-    getBatteryInfo()
-    generateNavigatorFingerprint()
+    void gatherDeviceInfo()
+    void getBatteryInfo()
 
     // Clean up timeouts on unmount
     return () => {
@@ -813,6 +576,51 @@ export default function DeviceInfoPage() {
       })
     }
   }, [])
+
+  useEffect(() => {
+    if (!autoRefresh) return
+    const interval = window.setInterval(() => {
+      ipFetchedRef.current = false
+      void gatherDeviceInfo()
+    }, 60_000)
+    return () => window.clearInterval(interval)
+  }, [autoRefresh])
+
+  useEffect(() => {
+    if (!realTimeMonitoring) return
+
+    const updateLiveInfo = () => {
+      setDeviceInfo((current) => {
+        if (!current) return current
+        const liveNetwork = getNetworkInfo()
+        return {
+          ...current,
+          screen: getScreenInfo(),
+          network: {
+            ...current.network,
+            connectionType: liveNetwork.connectionType,
+            downlink: liveNetwork.downlink,
+            rtt: liveNetwork.rtt,
+            saveData: liveNetwork.saveData,
+          },
+        }
+      })
+    }
+
+    const connection = (navigator as any).connection
+    window.addEventListener("resize", updateLiveInfo)
+    window.addEventListener("orientationchange", updateLiveInfo)
+    window.addEventListener("online", updateLiveInfo)
+    window.addEventListener("offline", updateLiveInfo)
+    connection?.addEventListener?.("change", updateLiveInfo)
+    return () => {
+      window.removeEventListener("resize", updateLiveInfo)
+      window.removeEventListener("orientationchange", updateLiveInfo)
+      window.removeEventListener("online", updateLiveInfo)
+      window.removeEventListener("offline", updateLiveInfo)
+      connection?.removeEventListener?.("change", updateLiveInfo)
+    }
+  }, [realTimeMonitoring])
 
   // 添加新的 useEffect 来监听 deviceInfo 的变化
   useEffect(() => {
@@ -826,163 +634,116 @@ export default function DeviceInfoPage() {
     const displayValue = value === null ? "Not detected" : String(value)
 
     return (
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-100 dark:border-gray-800">
-        <div className="font-medium mb-1 sm:mb-0">{label}</div>
-        <div className="flex items-center">
-          <div
-            className="text-left sm:text-right mr-2 max-w-full sm:max-w-[200px] md:max-w-[300px] truncate"
-            title={displayValue}
-          >
-            {displayValue}
-          </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 flex-shrink-0"
-                  onClick={() => copyToClipboard(displayValue, copyKey)}
-                >
-                  {copied[copyKey] ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{copied[copyKey] ? t("copied") : t("copy")}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+      <div className="grid min-h-11 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_2.5rem] items-center gap-2 border-b border-gray-100 py-1.5 dark:border-gray-800">
+        <div className="min-w-0 text-xs font-medium text-gray-600 dark:text-gray-400">{label}</div>
+        <div className="min-w-0 truncate text-right text-sm" title={displayValue}>{displayValue}</div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-full"
+                onClick={() => copyToClipboard(displayValue, copyKey)}
+                aria-label={`复制${label}`}
+              >
+                {copied[copyKey] ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{copied[copyKey] ? t("copied") : t("copy")}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-4 max-w-7xl">
-      {/* 页面标题 */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <Smartphone className="h-8 w-8 text-blue-600" />
-          设备信息获取
-        </h1>
-      </div>
+    <div className="device-tool-page container mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-6">
+      <section className="mb-4 flex items-center gap-3 sm:mb-6 sm:justify-center">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/12 text-blue-700 dark:text-blue-300 sm:h-12 sm:w-12">
+          <Smartphone className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 sm:text-center">
+          <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-200 sm:text-3xl">设备信息检测</h1>
+          <p className="mt-0.5 text-xs leading-5 text-gray-600 dark:text-gray-400 sm:text-sm">
+            浏览器本地采集，快速查看环境与指纹信号
+          </p>
+        </div>
+      </section>
 
-      {/* 设备设置折叠区域 */}
-      <div className="mb-6">
+      <div className="mb-4 flex items-center gap-2">
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={() => setShowDeviceSettings(!showDeviceSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          aria-expanded={showDeviceSettings}
+          className="min-h-10 min-w-0 flex-1 justify-start gap-2 rounded-full px-3 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
         >
-          <div className="flex items-center gap-2">
-            {showDeviceSettings ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            <Settings className="h-4 w-4" />
-            <span>设备检测设置</span>
-            {!showDeviceSettings && (
-              <Badge variant="secondary" className="text-xs ml-auto">
-                点击查看
-              </Badge>
-            )}
-          </div>
+          <Settings className="h-4 w-4 shrink-0" />
+          <span className="truncate">检测设置</span>
+          {showDeviceSettings ? <ChevronUp className="ml-auto h-4 w-4 shrink-0" /> : <ChevronDown className="ml-auto h-4 w-4 shrink-0" />}
         </Button>
 
-        {showDeviceSettings && (
-          <Card className="mt-3 card-modern">
-            <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="auto-refresh" className="cursor-pointer text-sm">
-                    手动刷新
+        <Button
+          type="button"
+          onClick={refreshDeviceInfo}
+          disabled={loading}
+          className="min-h-10 shrink-0 gap-1.5 rounded-full px-3"
+          aria-label="重新检测设备信息"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <span>{loading ? "检测中" : "重新检测"}</span>
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={copyAllAsJson}
+          disabled={!deviceInfo || loading}
+          className="h-10 w-10 shrink-0 rounded-full"
+          aria-label={copied.all ? "设备信息已复制" : "复制全部设备信息"}
+        >
+          {copied.all ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {showDeviceSettings && (
+        <Card className="mb-4 rounded-2xl">
+          <CardContent className="p-3 sm:p-4">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-gray-100 px-3 py-2 dark:bg-gray-800">
+                  <Label htmlFor="auto-refresh" className="min-w-0 cursor-pointer text-sm">
+                    <span className="block font-medium">定时刷新</span>
+                    <span className="block text-xs text-gray-500">每 60 秒重新采集</span>
                   </Label>
                   <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
-                  <Label htmlFor="auto-refresh" className="cursor-pointer text-sm text-blue-600">
-                    自动刷新
-                  </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="enable-cache" className="cursor-pointer text-sm">
-                    禁用缓存
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-gray-100 px-3 py-2 dark:bg-gray-800">
+                  <Label htmlFor="enable-cache" className="min-w-0 cursor-pointer text-sm">
+                    <span className="block font-medium">网络信息缓存</span>
+                    <span className="block text-xs text-gray-500">保留 3 小时</span>
                   </Label>
                   <Switch id="enable-cache" checked={enableCache} onCheckedChange={setEnableCache} />
-                  <Label htmlFor="enable-cache" className="cursor-pointer text-sm text-green-600">
-                    启用缓存
-                  </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="detailed-info" className="cursor-pointer text-sm">
-                    简化信息
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-gray-100 px-3 py-2 dark:bg-gray-800">
+                  <Label htmlFor="detailed-info" className="min-w-0 cursor-pointer text-sm">
+                    <span className="block font-medium">指纹原始详情</span>
+                    <span className="block text-xs text-gray-500">默认折叠显示</span>
                   </Label>
                   <Switch id="detailed-info" checked={detailedInfo} onCheckedChange={setDetailedInfo} />
-                  <Label htmlFor="detailed-info" className="cursor-pointer text-sm text-purple-600">
-                    详细信息
-                  </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="real-time" className="cursor-pointer text-sm">
-                    静态模式
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-gray-100 px-3 py-2 dark:bg-gray-800">
+                  <Label htmlFor="real-time" className="min-w-0 cursor-pointer text-sm">
+                    <span className="block font-medium">环境变化监听</span>
+                    <span className="block text-xs text-gray-500">屏幕与网络状态</span>
                   </Label>
                   <Switch id="real-time" checked={realTimeMonitoring} onCheckedChange={setRealTimeMonitoring} />
-                  <Label htmlFor="real-time" className="cursor-pointer text-sm text-orange-600">
-                    实时监控
-                  </Label>
                 </div>
               </div>
             </CardContent>
           </Card>
-        )}
-      </div>
-
-      {/* 操作按钮区域 */}
-      <div className="flex flex-wrap gap-4 justify-center mb-6">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="default" 
-                size="lg"
-                onClick={refreshDeviceInfo} 
-                disabled={loading || ipLoading}
-                className="h-12 px-6"
-              >
-                <RefreshCw className={`h-5 w-5 mr-2 ${loading || ipLoading ? "animate-spin" : ""}`} />
-                {loading || ipLoading ? "检测中..." : "重新检测"}
-                {realTimeMonitoring && (
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    <Zap className="h-3 w-3 mr-1" />
-                    实时
-                  </Badge>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>刷新设备信息</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={copyAllAsJson} 
-                disabled={!deviceInfo || loading}
-                className="h-12 px-6"
-              >
-                {copied["all"] ? (
-                  <Check className="h-5 w-5 mr-2 text-green-500" />
-                ) : (
-                  <Copy className="h-5 w-5 mr-2" />
-                )}
-                {copied["all"] ? "已复制" : "复制全部"}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{copied["all"] ? "已复制到剪贴板" : "复制所有信息为JSON格式"}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+      )}
 
       {error ? (
         <Card className="card-modern">
@@ -997,60 +758,58 @@ export default function DeviceInfoPage() {
         </Card>
       ) : loading ? (
         <Card className="card-modern">
-          <CardContent className="text-center py-12">
-            <RefreshCw className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-            <div className="text-lg font-medium text-gray-800 dark:text-gray-200">正在检测设备信息...</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              {ipLoading ? "获取网络信息中..." : "收集设备数据中..."}
-            </div>
+          <CardContent className="py-10 text-center">
+            <RefreshCw className="mx-auto mb-4 h-10 w-10 animate-spin text-blue-600" />
+            <div className="font-medium text-gray-800 dark:text-gray-200">正在采集浏览器环境与指纹信号…</div>
+            <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">全部处理都在当前浏览器本地完成</div>
           </CardContent>
         </Card>
       ) : deviceInfo ? (
         <div className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="relative w-full mb-6">
-              <TabsList className="grid w-full grid-cols-6 h-14 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+            <div className="relative mb-4 w-full">
+              <TabsList aria-label="设备信息分类" className="scrollbar-hide flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:overflow-visible">
                 <TabsTrigger
                   value="basic"
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300 transition-all duration-200"
+                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900 dark:data-[state=active]:text-blue-300 sm:min-w-0 sm:flex-1"
                 >
-                  <Monitor className="h-5 w-5" />
-                  <span className="text-sm font-medium">基础信息</span>
+                  <Monitor className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">基础信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="network"
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-green-100 dark:data-[state=active]:bg-green-900 data-[state=active]:text-green-700 dark:data-[state=active]:text-green-300 transition-all duration-200"
+                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-green-100 data-[state=active]:text-green-700 dark:data-[state=active]:bg-green-900 dark:data-[state=active]:text-green-300 sm:min-w-0 sm:flex-1"
                 >
-                  <Wifi className="h-5 w-5" />
-                  <span className="text-sm font-medium">网络信息</span>
+                  <Wifi className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">网络信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="system"
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 transition-all duration-200"
+                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 dark:data-[state=active]:bg-purple-900 dark:data-[state=active]:text-purple-300 sm:min-w-0 sm:flex-1"
                 >
-                  <Cpu className="h-5 w-5" />
-                  <span className="text-sm font-medium">系统信息</span>
+                  <Cpu className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">系统信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="hardware"
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-orange-100 dark:data-[state=active]:bg-orange-900 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-300 transition-all duration-200"
+                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 dark:data-[state=active]:bg-orange-900 dark:data-[state=active]:text-orange-300 sm:min-w-0 sm:flex-1"
                 >
-                  <Battery className="h-5 w-5" />
-                  <span className="text-sm font-medium">硬件信息</span>
+                  <Battery className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">硬件信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="features"
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-red-100 dark:data-[state=active]:bg-red-900 data-[state=active]:text-red-700 dark:data-[state=active]:text-red-300 transition-all duration-200"
+                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-red-100 data-[state=active]:text-red-700 dark:data-[state=active]:bg-red-900 dark:data-[state=active]:text-red-300 sm:min-w-0 sm:flex-1"
                 >
-                  <Shield className="h-5 w-5" />
-                  <span className="text-sm font-medium">功能特性</span>
+                  <Shield className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">功能特性</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="fingerprint"
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-indigo-100 dark:data-[state=active]:bg-indigo-900 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-indigo-300 transition-all duration-200"
+                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-900 dark:data-[state=active]:text-indigo-300 sm:min-w-0 sm:flex-1"
                 >
-                  <Fingerprint className="h-5 w-5" />
-                  <span className="text-sm font-medium">设备指纹</span>
+                  <Fingerprint className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">设备指纹</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1069,7 +828,7 @@ export default function DeviceInfoPage() {
                       )}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-0 p-4 pt-0 sm:p-6 sm:pt-0">
                     {renderDataItem("用户代理", deviceInfo.userAgent, "userAgent")}
                     {renderDataItem("浏览器名称", deviceInfo.browser.name, "browserName")}
                     {renderDataItem("浏览器版本", deviceInfo.browser.version, "browserVersion")}
@@ -1085,7 +844,7 @@ export default function DeviceInfoPage() {
                       设备信息
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-0 p-4 pt-0 sm:p-6 sm:pt-0">
                     {renderDataItem("设备类型", deviceInfo.device.type, "deviceType")}
                     {renderDataItem("设备厂商", deviceInfo.device.vendor, "deviceVendor")}
                     {renderDataItem("设备型号", deviceInfo.device.model, "deviceModel")}
@@ -1154,7 +913,7 @@ export default function DeviceInfoPage() {
                       连接信息
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-0 p-4 pt-0 sm:p-6 sm:pt-0">
                     {renderDataItem("连接类型", deviceInfo.network.connectionType, "connectionType")}
                     {renderDataItem("下载速率", typeof deviceInfo.network.downlink === 'number' ? `${deviceInfo.network.downlink} Mbps` : deviceInfo.network.downlink, "downlink")}
                     {renderDataItem("网络延迟", typeof deviceInfo.network.rtt === 'number' ? `${deviceInfo.network.rtt} ms` : deviceInfo.network.rtt, "rtt")}
@@ -1173,7 +932,7 @@ export default function DeviceInfoPage() {
                       屏幕信息
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-0 p-4 pt-0 sm:p-6 sm:pt-0">
                     {renderDataItem(
                       "屏幕分辨率",
                       `${deviceInfo.screen.width} x ${deviceInfo.screen.height}`,
@@ -1193,7 +952,7 @@ export default function DeviceInfoPage() {
                       语言与时区
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-0 p-4 pt-0 sm:p-6 sm:pt-0">
                     {renderDataItem("首选语言", deviceInfo.language.language, "language")}
                     {renderDataItem("支持语言", deviceInfo.language.languages.join(", "), "languages")}
                     {renderDataItem("时区", deviceInfo.language.timeZone, "timeZone")}
@@ -1212,7 +971,7 @@ export default function DeviceInfoPage() {
                       处理器信息
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-0 p-4 pt-0 sm:p-6 sm:pt-0">
                     {renderDataItem(
                       "设备内存",
                       (navigator as any).deviceMemory ? `${(navigator as any).deviceMemory} GB` : "不可用",
@@ -1240,7 +999,7 @@ export default function DeviceInfoPage() {
                       )}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-0 p-4 pt-0 sm:p-6 sm:pt-0">
                     {renderDataItem("电池状态", batteryStatus, "batteryStatus")}
                     {renderDataItem(
                       "电池电量",
@@ -1309,164 +1068,13 @@ export default function DeviceInfoPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="fingerprint" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="card-modern">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Fingerprint className="h-5 w-5 text-indigo-600" />
-                      Canvas 指纹
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4 flex justify-center">
-                      <canvas
-                        ref={canvasRef}
-                        width="200"
-                        height="50"
-                        className="border-2 border-gray-200 dark:border-gray-700 rounded-lg"
-                      ></canvas>
-                    </div>
-                    <div className="text-xs font-mono break-all bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-3">
-                      {deviceInfo.fingerprint.canvas.length > 100
-                        ? deviceInfo.fingerprint.canvas.substring(0, 100) + "..."
-                        : deviceInfo.fingerprint.canvas}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(deviceInfo.fingerprint.canvas, "canvasFingerprint")}
-                      className="w-full"
-                    >
-                      {copied["canvasFingerprint"] ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      {copied["canvasFingerprint"] ? "已复制" : "复制指纹"}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="card-modern">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Cpu className="h-5 w-5 text-purple-600" />
-                      WebGL 指纹
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xs font-mono break-all bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-3">
-                      {deviceInfo.fingerprint.webGL.length > 100
-                        ? deviceInfo.fingerprint.webGL.substring(0, 100) + "..."
-                        : deviceInfo.fingerprint.webGL}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(deviceInfo.fingerprint.webGL, "webGLFingerprint")}
-                      className="w-full"
-                    >
-                      {copied["webGLFingerprint"] ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      {copied["webGLFingerprint"] ? "已复制" : "复制指纹"}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="card-modern">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-orange-600" />
-                      音频指纹
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xs font-mono break-all bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-3">
-                      {deviceInfo.fingerprint.audio}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(deviceInfo.fingerprint.audio, "audioFingerprint")}
-                      className="w-full"
-                    >
-                      {copied["audioFingerprint"] ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      {copied["audioFingerprint"] ? "已复制" : "复制指纹"}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="card-modern">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Monitor className="h-5 w-5 text-green-600" />
-                      字体指纹
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xs font-mono bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-3 max-h-40 overflow-y-auto">
-                      {deviceInfo.fingerprint.fonts.map((font, index) => (
-                        <div key={index} className="mb-1 px-2 py-1 bg-white dark:bg-gray-600 rounded text-center">
-                          {font}
-                        </div>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(deviceInfo.fingerprint.fonts.join(", "), "fontFingerprint")}
-                      className="w-full"
-                    >
-                      {copied["fontFingerprint"] ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      {copied["fontFingerprint"] ? "已复制" : "复制字体列表"}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="card-modern lg:col-span-2">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Globe className="h-5 w-5 text-red-600" />
-                      导航器指纹
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xs font-mono break-all bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-3 max-h-60 overflow-y-auto">
-                      {navigatorFingerprint}
-                    </div>
-                    {navigatorFingerprint && (
-                      <div className="mb-3">
-                        <JsonTreeView jsonText={navigatorFingerprint} indentSize={2} rootLabel="navigator" />
-                      </div>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(navigatorFingerprint, "navigatorFingerprint")}
-                      className="w-full"
-                    >
-                      {copied["navigatorFingerprint"] ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      {copied["navigatorFingerprint"] ? "已复制" : "复制完整指纹"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+            <TabsContent value="fingerprint" className="mt-0">
+              <DeviceFingerprintPanel
+                fingerprint={deviceInfo.fingerprint}
+                copied={copied}
+                showDetails={detailedInfo}
+                onCopy={copyToClipboard}
+              />
             </TabsContent>
           </Tabs>
         </div>

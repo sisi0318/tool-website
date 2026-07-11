@@ -76,12 +76,12 @@ export function UtilityWorkbench({
 
   return (
     <main className="mx-auto max-w-7xl px-1 py-2 sm:px-3">
-      <section className="mb-6 flex items-start gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+      <section className="mb-4 flex items-start gap-3 sm:mb-6">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] sm:h-12 sm:w-12">
           {icon}
         </span>
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)] sm:text-3xl">
             {title}
           </h1>
           <p className="mt-1 text-sm leading-6 text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
@@ -90,12 +90,12 @@ export function UtilityWorkbench({
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+      <div className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
         <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
-          <CardHeader>
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle>{t("inputSettings")}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
             <div>
               <Label htmlFor="utility-workbench-operation">{t("operation")}</Label>
               <Select value={operation} onValueChange={onOperationChange}>
@@ -125,7 +125,7 @@ export function UtilityWorkbench({
                 onChange={(event) => onInputChange(event.target.value)}
                 placeholder={inputPlaceholder ?? t("inputPlaceholder")}
                 spellCheck={false}
-                className="min-h-64 resize-y rounded-2xl font-mono text-sm leading-6"
+                className="min-h-40 resize-y rounded-2xl font-mono text-sm leading-6 sm:min-h-64"
               />
             </div>
 
@@ -135,17 +135,17 @@ export function UtilityWorkbench({
               </p>
             )}
 
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => void onRun()} disabled={running || !input.trim()} className="min-h-11 flex-1 gap-2 sm:flex-none">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <Button onClick={() => void onRun()} disabled={running || !input.trim()} className="col-span-2 min-h-11 w-full gap-2 sm:w-auto">
                 <Play className="h-4 w-4" />
                 {running ? t("processing") : (runLabel ?? t("run"))}
               </Button>
               {onSample && (
-                <Button type="button" variant="outline" onClick={onSample} className="min-h-11 gap-2">
+                <Button type="button" variant="outline" onClick={onSample} className="min-h-11 w-full gap-2 sm:w-auto">
                   <Sparkles className="h-4 w-4" />{t("sample")}
                 </Button>
               )}
-              <Button type="button" variant="ghost" onClick={onClear} className="min-h-11 gap-2">
+              <Button type="button" variant="ghost" onClick={onClear} className={`min-h-11 w-full gap-2 sm:w-auto ${onSample ? "" : "col-span-2"}`}>
                 <RotateCcw className="h-4 w-4" />{t("clear")}
               </Button>
             </div>
@@ -153,21 +153,21 @@ export function UtilityWorkbench({
         </Card>
 
         <Card className="min-w-0 rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
-          <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex-row items-center justify-between space-y-0 p-4 sm:p-6">
             <CardTitle>{outputLabel ?? t("output")}</CardTitle>
             <Button type="button" variant="outline" size="sm" onClick={copyOutput} disabled={!output} className="min-h-10 gap-2">
               {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
               {copied ? t("copied") : t("copy")}
             </Button>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
             {result ?? (
               <Textarea
                 value={output}
                 readOnly
                 placeholder={outputPlaceholder ?? t("outputPlaceholder")}
                 spellCheck={false}
-                className="min-h-[26rem] resize-y rounded-2xl bg-[var(--md-sys-color-surface-container-low)] font-mono text-sm leading-6"
+                className="min-h-48 resize-y rounded-2xl bg-[var(--md-sys-color-surface-container-low)] font-mono text-sm leading-6 sm:min-h-[26rem]"
               />
             )}
             {footer}

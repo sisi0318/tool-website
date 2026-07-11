@@ -29,6 +29,8 @@ export interface M3BottomSheetProps {
   className?: string;
   /** Title for the sheet */
   title?: string;
+  /** Accessible label for an optional visible close button */
+  closeLabel?: string;
   /** Accessible label for the sheet (used if no title) */
   'aria-label'?: string;
   /** ID of element that describes this sheet */
@@ -84,6 +86,7 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
       showDragHandle = true,
       className,
       title,
+      closeLabel,
       'aria-label': ariaLabel,
       'aria-describedby': ariaDescribedBy,
     },
@@ -217,18 +220,28 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
 
           {/* Title */}
           {title && (
-            <div className="px-6 pb-4 flex-shrink-0">
+            <div className="flex flex-shrink-0 items-center justify-between gap-3 px-6 pb-4">
               <h2 
                 id={titleId}
                 className="text-lg font-medium text-[var(--md-sys-color-on-surface)]"
               >
                 {title}
               </h2>
+              {closeLabel && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label={closeLabel}
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full text-2xl leading-none text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08]"
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
+              )}
             </div>
           )}
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 overflow-y-auto px-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
             {children}
           </div>
         </div>

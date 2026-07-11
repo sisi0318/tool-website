@@ -27,7 +27,7 @@ export function SelectionToolbar({
     <div
       role="toolbar"
       aria-label={t("selectionToolbar")}
-      className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-xl border border-gray-200 bg-white/95 p-1 shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
+      className="scrollbar-hide absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-xl border border-gray-200 bg-white/95 p-1 shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-900/95"
     >
       <span className="shrink-0 px-2 text-xs font-medium text-gray-500 dark:text-gray-400">
         {t("selectedNodes").replace("{count}", String(count))}

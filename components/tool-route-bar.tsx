@@ -13,10 +13,12 @@ const toolTranslationKeys: Record<string, string> = {
   "case-converter": "caseConverter.name",
   "classic-cipher": "classicCipher.name",
   color: "color.name",
+  compression: "compression.name",
   crontab: "crontab.name",
   crypto: "crypto.name",
   currency: "currency.name",
   device: "device.name",
+  "data-detector": "dataDetector.name",
   diff: "diff.name",
   "docker-converter": "dockerConverter.name",
   "doc-viewer": "docViewer.name",
@@ -46,6 +48,14 @@ const toolTranslationKeys: Record<string, string> = {
   totp: "totp.name",
   uuid: "uuid.name",
   whois: "whois.name",
+  xml: "xmlTools.name",
+  csv: "csvTools.name",
+  markdown: "markdownTools.name",
+  sql: "sqlTools.name",
+  "json-schema": "jsonSchemaTools.name",
+  subnet: "subnetTools.name",
+  certificate: "certificateTools.name",
+  "hex-binary": "hexBinaryTools.name",
 }
 
 const workspaceTools = new Set([
@@ -54,7 +64,8 @@ const workspaceTools = new Set([
   "hash", "hmac", "http-tester", "image-compress", "image-convert", "image-coordinates", "image-editor",
   "image-to-base64", "jce", "json", "jwt", "meme-splitter", "office-viewer",
   "protobuf", "qrcode", "qrcode-decode", "regex", "temperature-converter", "text-stats",
-  "time", "totp", "uuid", "whois", "password-generator",
+  "time", "totp", "uuid", "whois", "password-generator", "data-detector", "compression",
+  "xml", "csv", "markdown", "sql", "json-schema", "subnet", "certificate", "hex-binary",
 ])
 
 export function ToolRouteBar() {
@@ -97,17 +108,18 @@ export function ToolRouteBar() {
 
   return (
     <div className="sticky top-16 z-40 border-b border-[var(--md-sys-color-outline-variant)]/60 bg-[var(--md-sys-color-surface)]/92 backdrop-blur-xl">
-      <div className="container mx-auto flex min-h-14 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto flex min-h-12 max-w-7xl items-center gap-1 px-2 sm:min-h-14 sm:gap-2 sm:px-6 lg:px-8">
         <Link
           href="/tools"
-          className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)]"
+          aria-label={commonT("backToTools")}
+          className="inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)] sm:min-w-0 sm:justify-start sm:px-3"
         >
           <ArrowLeft className="h-4 w-4" />
           <span className="hidden sm:inline">{commonT("backToTools")}</span>
         </Link>
 
         <span className="mx-1 hidden h-5 w-px bg-[var(--md-sys-color-outline-variant)] sm:block" />
-        <strong className="min-w-0 flex-1 truncate text-sm text-[var(--md-sys-color-on-surface)]">
+        <strong className="min-w-0 flex-1 truncate text-xs text-[var(--md-sys-color-on-surface)] sm:text-sm">
           {toolName}
         </strong>
 
@@ -119,7 +131,8 @@ export function ToolRouteBar() {
         <button
           type="button"
           onClick={copyLink}
-          className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]"
+          aria-label={copied ? commonT("linkCopied") : commonT("copyToolLink")}
+          className="inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-full px-2 text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] md:min-w-0 md:px-3"
         >
           {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Clipboard className="h-4 w-4" />}
           <span className="hidden md:inline">{copied ? commonT("linkCopied") : commonT("copyToolLink")}</span>
@@ -128,7 +141,8 @@ export function ToolRouteBar() {
         {workspaceUrl && (
           <Link
             href={workspaceUrl}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 text-sm font-bold text-[var(--md-sys-color-on-secondary-container)] hover:brightness-95"
+            aria-label={commonT("openInWorkspace")}
+            className="inline-flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-full bg-[var(--md-sys-color-secondary-container)] px-2 text-sm font-bold text-[var(--md-sys-color-on-secondary-container)] hover:brightness-95 sm:min-w-0 sm:px-3"
           >
             <ExternalLink className="h-4 w-4" />
             <span className="hidden sm:inline">{commonT("openInWorkspace")}</span>

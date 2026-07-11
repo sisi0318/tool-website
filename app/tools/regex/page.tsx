@@ -435,25 +435,25 @@ export default function RegexTester() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
-            <TabsTrigger value="tester" className="flex items-center gap-2">
-              <TestTube2 className="h-4 w-4" />
+          <TabsList className="mb-6 grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
+            <TabsTrigger value="tester" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+              <TestTube2 className="hidden h-4 w-4 sm:block" />
               测试器
             </TabsTrigger>
-            <TabsTrigger value="replace" className="flex items-center gap-2">
-              <Replace className="h-4 w-4" />
+            <TabsTrigger value="replace" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+              <Replace className="hidden h-4 w-4 sm:block" />
               替换器
             </TabsTrigger>
-            <TabsTrigger value="examples" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
+            <TabsTrigger value="examples" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+              <BookOpen className="hidden h-4 w-4 sm:block" />
               示例库
             </TabsTrigger>
-            <TabsTrigger value="reference" className="flex items-center gap-2">
-              <Code className="h-4 w-4" />
+            <TabsTrigger value="reference" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+              <Code className="hidden h-4 w-4 sm:block" />
               语法参考
             </TabsTrigger>
-            <TabsTrigger value="tools" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+            <TabsTrigger value="tools" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+              <Settings className="hidden h-4 w-4 sm:block" />
               工具箱
             </TabsTrigger>
           </TabsList>
