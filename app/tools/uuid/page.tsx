@@ -251,18 +251,18 @@ export default function UUIDPage() {
         </div>
 
         {/* 生成按钮 */}
-        <div className="flex gap-3">
-          <Button onClick={generateUUIDs} className="flex-1">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
+          <Button onClick={generateUUIDs} className="col-span-2 w-full sm:flex-1">
             <RefreshCw className="h-4 w-4 mr-2" />
             {t("generate")}
           </Button>
           {generatedUUIDs.length > 0 && (
             <>
-              <Button variant="outline" onClick={copyAllUUIDs}>
+              <Button variant="outline" onClick={copyAllUUIDs} className="w-full sm:w-auto">
                 <Copy className="h-4 w-4 mr-2" />
                 {copied["all"] ? t("copied") : t("copyAll")}
               </Button>
-              <Button variant="outline" onClick={clearResults}>
+              <Button variant="outline" onClick={clearResults} className="w-full sm:w-auto">
                 <Trash2 className="h-4 w-4 mr-2" />
                 {t("clear")}
               </Button>
@@ -321,7 +321,7 @@ export default function UUIDPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => copyToClipboard(uuid, index.toString())}
-                            className="ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="ml-2 flex-shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                           >
                             {copied[index.toString()] ? (
                               <Check className="h-4 w-4 text-green-500" />

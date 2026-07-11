@@ -768,47 +768,47 @@ export default function DeviceInfoPage() {
         <div className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="relative mb-4 w-full">
-              <TabsList aria-label="设备信息分类" className="scrollbar-hide flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:overflow-visible">
+              <TabsList aria-label="设备信息分类" className="grid h-auto w-full grid-cols-3 gap-1 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:grid-cols-6">
                 <TabsTrigger
                   value="basic"
-                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900 dark:data-[state=active]:text-blue-300 sm:min-w-0 sm:flex-1"
+                  className="flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs transition-all duration-200 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900 dark:data-[state=active]:text-blue-300 sm:px-2"
                 >
-                  <Monitor className="h-4 w-4 shrink-0" />
+                  <Monitor className="hidden h-4 w-4 shrink-0 sm:block" />
                   <span className="font-medium">基础信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="network"
-                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-green-100 data-[state=active]:text-green-700 dark:data-[state=active]:bg-green-900 dark:data-[state=active]:text-green-300 sm:min-w-0 sm:flex-1"
+                  className="flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs transition-all duration-200 data-[state=active]:bg-green-100 data-[state=active]:text-green-700 dark:data-[state=active]:bg-green-900 dark:data-[state=active]:text-green-300 sm:px-2"
                 >
-                  <Wifi className="h-4 w-4 shrink-0" />
+                  <Wifi className="hidden h-4 w-4 shrink-0 sm:block" />
                   <span className="font-medium">网络信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="system"
-                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 dark:data-[state=active]:bg-purple-900 dark:data-[state=active]:text-purple-300 sm:min-w-0 sm:flex-1"
+                  className="flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs transition-all duration-200 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 dark:data-[state=active]:bg-purple-900 dark:data-[state=active]:text-purple-300 sm:px-2"
                 >
-                  <Cpu className="h-4 w-4 shrink-0" />
+                  <Cpu className="hidden h-4 w-4 shrink-0 sm:block" />
                   <span className="font-medium">系统信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="hardware"
-                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 dark:data-[state=active]:bg-orange-900 dark:data-[state=active]:text-orange-300 sm:min-w-0 sm:flex-1"
+                  className="flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs transition-all duration-200 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 dark:data-[state=active]:bg-orange-900 dark:data-[state=active]:text-orange-300 sm:px-2"
                 >
-                  <Battery className="h-4 w-4 shrink-0" />
+                  <Battery className="hidden h-4 w-4 shrink-0 sm:block" />
                   <span className="font-medium">硬件信息</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="features"
-                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-red-100 data-[state=active]:text-red-700 dark:data-[state=active]:bg-red-900 dark:data-[state=active]:text-red-300 sm:min-w-0 sm:flex-1"
+                  className="flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs transition-all duration-200 data-[state=active]:bg-red-100 data-[state=active]:text-red-700 dark:data-[state=active]:bg-red-900 dark:data-[state=active]:text-red-300 sm:px-2"
                 >
-                  <Shield className="h-4 w-4 shrink-0" />
+                  <Shield className="hidden h-4 w-4 shrink-0 sm:block" />
                   <span className="font-medium">功能特性</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="fingerprint"
-                  className="flex min-h-10 min-w-[5.5rem] shrink-0 snap-start items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs transition-all duration-200 data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-900 dark:data-[state=active]:text-indigo-300 sm:min-w-0 sm:flex-1"
+                  className="flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl px-1 py-2 text-xs transition-all duration-200 data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-900 dark:data-[state=active]:text-indigo-300 sm:px-2"
                 >
-                  <Fingerprint className="h-4 w-4 shrink-0" />
+                  <Fingerprint className="hidden h-4 w-4 shrink-0 sm:block" />
                   <span className="font-medium">设备指纹</span>
                 </TabsTrigger>
               </TabsList>

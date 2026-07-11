@@ -97,6 +97,24 @@ function unavailableSignal(status: Exclude<FingerprintSignalStatus, "ready">, no
   return { status, digest: null, note }
 }
 
+async function withSignalTimeout<T extends FingerprintSignal>(
+  task: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((resolve) => {
+        timeoutId = setTimeout(() => resolve(fallback), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
+}
+
 async function collectCanvasSignal(): Promise<FingerprintSignal> {
   try {
     const canvas = document.createElement("canvas")
@@ -323,11 +341,15 @@ async function collectNavigatorSignal(): Promise<FingerprintSignal> {
 
 export async function collectDeviceFingerprint(): Promise<DeviceFingerprint> {
   const [canvas, webGL, audio, fonts, navigatorSignal] = await Promise.all([
-    collectCanvasSignal(),
-    collectWebGLSignal(),
-    collectAudioSignal(),
-    collectFontSignal(),
-    collectNavigatorSignal(),
+    withSignalTimeout(collectCanvasSignal(), 2000, unavailableSignal("blocked", "Canvas 指纹采集超时")),
+    withSignalTimeout(collectWebGLSignal(), 2000, unavailableSignal("blocked", "WebGL 指纹采集超时")),
+    withSignalTimeout(collectAudioSignal(), 2500, unavailableSignal("blocked", "离线音频渲染超时")),
+    withSignalTimeout(
+      collectFontSignal(),
+      2000,
+      { ...unavailableSignal("blocked", "字体指纹采集超时"), values: [] },
+    ),
+    withSignalTimeout(collectNavigatorSignal(), 2000, unavailableSignal("blocked", "浏览器环境采集超时")),
   ])
   const signals = { canvas, webGL, audio, fonts, navigator: navigatorSignal }
   const readySignals = Object.values(signals).filter((signal) => Boolean(signal.digest)).length

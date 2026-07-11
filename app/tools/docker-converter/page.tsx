@@ -1190,11 +1190,11 @@ export default function DockerConverterPage() {
               </div>
 
               {/* 转换按钮 */}
-              <div className="flex gap-2">
+              <div className="grid gap-2 sm:flex">
                 <Button 
                   onClick={convertToDockerCompose}
                   disabled={!dockerRunCommand.trim() || isParsingCommand}
-                  className="flex items-center gap-2"
+                  className="w-full items-center gap-2 sm:w-auto"
                 >
                   {isParsingCommand ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
@@ -1205,6 +1205,7 @@ export default function DockerConverterPage() {
                 </Button>
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setDockerRunCommand("")
                     setDockerComposeYaml("")

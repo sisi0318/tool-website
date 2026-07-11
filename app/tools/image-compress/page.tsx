@@ -817,7 +817,8 @@ export default function ImageCompressPage() {
                               <Button
                                 variant="secondary"
                                 size="sm"
-                                className="absolute top-2 right-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                aria-label="预览原图"
+                                className="absolute right-2 top-2 h-8 w-8 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                                 onClick={() => {
                                   setPreviewImage(selectedImage.originalUrl)
                                   setPreviewTitle(`原图 - ${selectedImage.file.name}`)
@@ -843,7 +844,8 @@ export default function ImageCompressPage() {
                                   <Button
                                     variant="secondary"
                                     size="sm"
-                                    className="absolute top-2 right-2 h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    aria-label="预览压缩后的图片"
+                                    className="absolute right-2 top-2 h-8 w-8 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                                     onClick={() => {
                                       setPreviewImage(selectedImage.compressedUrl)
                                       setPreviewTitle(`压缩后 - ${selectedImage.file.name}`)

@@ -735,24 +735,26 @@ export default function ProtobufTool() {
             <TabsList className="grid w-full grid-cols-2 h-12 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
               <TabsTrigger 
                 value="schemaless" 
-                className="flex items-center justify-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 sm:gap-2 sm:px-3"
               >
                 <Zap className="h-4 w-4" />
-                <span className="text-sm">无 Schema 模式</span>
+                <span className="text-sm sm:hidden">无 Schema</span>
+                <span className="hidden text-sm sm:inline">无 Schema 模式</span>
                 {autoFormat && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="hidden text-xs sm:inline-flex">
                     自动
                   </Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger 
                 value="schema" 
-                className="flex items-center justify-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 sm:gap-2 sm:px-3"
               >
                 <Shield className="h-4 w-4" />
-                <span className="text-sm">Schema 模式</span>
+                <span className="text-sm sm:hidden">Schema</span>
+                <span className="hidden text-sm sm:inline">Schema 模式</span>
                 {strictMode && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="hidden text-xs sm:inline-flex">
                     严格
                   </Badge>
                 )}
@@ -763,22 +765,24 @@ export default function ProtobufTool() {
           {schemaMode === "schema" && (
             <Card className="mb-6 card-modern">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-green-600" />
-                  Schema 配置
-                  {realTimeValidation && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Eye className="h-3 w-3 mr-1" />
-                      实时验证
-                    </Badge>
-                  )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
+                    <FileText className="h-5 w-5 text-green-600" />
+                    Schema 配置
+                    {realTimeValidation && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Eye className="mr-1 h-3 w-3" />
+                        实时验证
+                      </Badge>
+                    )}
+                  </CardTitle>
                   {(protoFile || protoContent) && (
-                    <Button variant="outline" size="sm" onClick={removeProtoFile} className="ml-auto">
-                      <X className="h-4 w-4 mr-2" />
+                    <Button variant="outline" size="sm" onClick={removeProtoFile} className="w-full sm:ml-auto sm:w-auto">
+                      <X className="mr-2 h-4 w-4" />
                       移除 Schema
                     </Button>
                   )}
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
 
@@ -1029,30 +1033,32 @@ export default function ProtobufTool() {
             {/* Output Section */}
             <Card className="card-modern">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-green-600" />
-                  JSON 输出
-                  {autoFormat && (
-                    <Badge variant="secondary" className="text-xs">
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      自动格式化
-                    </Badge>
-                  )}
-                  <div className="flex space-x-2 ml-auto">
-                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
+                    <FileText className="h-5 w-5 text-green-600" />
+                    JSON 输出
+                    {autoFormat && (
+                      <Badge variant="secondary" className="text-xs">
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                        自动格式化
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
+                    <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
                       {copied.main ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
+                        <Check className="mr-2 h-4 w-4 text-green-500" />
                       ) : (
-                        <Copy className="h-4 w-4 mr-2" />
+                        <Copy className="mr-2 h-4 w-4" />
                       )}
                       {copied.main ? "已复制" : "复制"}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={downloadOutput} disabled={!outputData}>
-                      <Download className="h-4 w-4 mr-2" />
+                    <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={downloadOutput} disabled={!outputData}>
+                      <Download className="mr-2 h-4 w-4" />
                       下载
                     </Button>
                   </div>
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1181,30 +1187,32 @@ export default function ProtobufTool() {
             {/* Protobuf Output Section */}
             <Card className="card-modern">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Database className="h-5 w-5 text-purple-600" />
-                  Protobuf 输出
-                  {enableCompression && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Zap className="h-3 w-3 mr-1" />
-                      压缩
-                    </Badge>
-                  )}
-                  <div className="flex space-x-2 ml-auto">
-                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
+                    <Database className="h-5 w-5 text-purple-600" />
+                    Protobuf 输出
+                    {enableCompression && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Zap className="mr-1 h-3 w-3" />
+                        压缩
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
+                    <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
                       {copied.main ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
+                        <Check className="mr-2 h-4 w-4 text-green-500" />
                       ) : (
-                        <Copy className="h-4 w-4 mr-2" />
+                        <Copy className="mr-2 h-4 w-4" />
                       )}
                       {copied.main ? "已复制" : "复制"}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={downloadOutput} disabled={!outputData}>
-                      <Download className="h-4 w-4 mr-2" />
+                    <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={downloadOutput} disabled={!outputData}>
+                      <Download className="mr-2 h-4 w-4" />
                       下载
                     </Button>
                   </div>
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
