@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
-import { createHmac } from "crypto"
-import { SHA3 } from "sha3"
+import {
+  calculateHmac,
+  type HmacKeyFormat,
+  type HmacOutputFormat,
+} from "@/lib/hmac-tools"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -70,114 +73,55 @@ export default function HmacPage() {
 
   // 密钥和验证
   const [hmacKey, setHmacKey] = useState("")
-  const [keyFormat, setKeyFormat] = useState("raw")
+  const [keyFormat, setKeyFormat] = useState<HmacKeyFormat>("raw")
 
   const [verifyHash, setVerifyHash] = useState("")
   const [verifyResult, setVerifyResult] = useState<VerifyResultType | null>(null)
-  const [outputFormat, setOutputFormat] = useState("hex")
+  const [outputFormat, setOutputFormat] = useState<HmacOutputFormat>("hex")
 
   // 通用状态
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [error, setError] = useState<{ left?: string; right?: string; batch?: string }>({})
 
   const copyTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({})
+  const transformRequestRef = useRef(0)
 
   // 统一HMAC计算函数
-  const calculateHmacValue = (data: string, key: string, algorithmId: string): string => {
-    if (!data || !key) return ""
+  const calculateHmacValue = useCallback(
+    async (data: string, key: string, algorithmId: string): Promise<string> => {
+      if (!data || !key) return ""
 
-    try {
-      let keyBuffer: Buffer
-
-      // 处理密钥格式
-      if (keyFormat === "hex") {
-        keyBuffer = Buffer.from(key, "hex")
-      } else if (keyFormat === "base64") {
-        keyBuffer = Buffer.from(key, "base64")
-      } else {
-        keyBuffer = Buffer.from(key)
+      try {
+        return await calculateHmac({
+          data,
+          key,
+          algorithm: algorithmId,
+          keyFormat,
+          outputFormat,
+        })
+      } catch (error) {
+        throw new Error(`HMAC计算失败: ${error instanceof Error ? error.message : "未知错误"}`)
       }
-
-      let result = ""
-
-      // 处理SHA3算法
-      if (algorithmId.startsWith("sha3-")) {
-        const sizeStr = algorithmId.split("-")[1]
-        const size = Number.parseInt(sizeStr) as 224 | 256 | 384 | 512
-        const blockSize = 136 // SHA3-256的块大小
-
-        // 如果密钥长度大于块大小，先哈希密钥
-        let processedKey = keyBuffer
-        if (processedKey.length > blockSize) {
-          const keyHash = new SHA3(size)
-          keyHash.update(processedKey)
-          processedKey = Buffer.from(keyHash.digest())
-        }
-
-        // 填充密钥到块大小
-        if (processedKey.length < blockSize) {
-          const paddedKey = Buffer.alloc(blockSize)
-          processedKey.copy(paddedKey)
-          processedKey = paddedKey
-        }
-
-        // 创建内外填充
-        const outerPadding = Buffer.alloc(blockSize, 0x5c)
-        const innerPadding = Buffer.alloc(blockSize, 0x36)
-
-        // 计算内外密钥
-        const outerKey = Buffer.alloc(blockSize)
-        const innerKey = Buffer.alloc(blockSize)
-
-        for (let i = 0; i < blockSize; i++) {
-          outerKey[i] = processedKey[i] ^ outerPadding[i]
-          innerKey[i] = processedKey[i] ^ innerPadding[i]
-        }
-
-        // 计算内部哈希
-        const innerHash = new SHA3(size)
-        innerHash.update(innerKey)
-        innerHash.update(data)
-        const innerDigest = innerHash.digest()
-
-        // 计算外部哈希
-        const outerHash = new SHA3(size)
-        outerHash.update(outerKey)
-        outerHash.update(innerDigest)
-
-        result = outputFormat === "hex" ? outerHash.digest("hex") : outerHash.digest("base64")
-      } else {
-        // 使用Node.js的createHmac
-        const hmac = createHmac(algorithmId, keyBuffer)
-        hmac.update(data)
-        result = outputFormat === "hex" ? hmac.digest("hex") : hmac.digest("base64")
-      }
-
-      return result
-    } catch (error) {
-      throw new Error(`HMAC计算失败: ${error instanceof Error ? error.message : '未知错误'}`)
-    }
-  }
+    },
+    [keyFormat, outputFormat],
+  )
 
   // 实时转换处理
-  const performTransform = (fromText: string, fromType: "data" | "hmac", toType: "data" | "hmac") => {
-    if (!fromText || !hmacKey) {
-      return ""
-    }
-
-    try {
+  const performTransform = useCallback(
+    async (fromText: string, fromType: "data" | "hmac", toType: "data" | "hmac") => {
+      if (!fromText || !hmacKey) return ""
       if (fromType === "data" && toType === "hmac") {
         return calculateHmacValue(fromText, hmacKey, algorithm)
       }
       // HMAC到数据的逆转换通常不可行，因为HMAC是单向函数
       return fromText
-    } catch (error) {
-      throw error
-    }
-  }
+    },
+    [algorithm, calculateHmacValue, hmacKey],
+  )
 
   // 左侧输入变化处理
-  const handleLeftInputChange = (value: string) => {
+  const handleLeftInputChange = async (value: string) => {
+    const requestId = ++transformRequestRef.current
     setLeftInput(value)
     setLeftInputLength(value.length)
     setError(prev => ({ ...prev, left: undefined }))
@@ -185,9 +129,11 @@ export default function HmacPage() {
     if (autoMode && value && hmacKey) {
       try {
         const rightType: "data" | "hmac" = leftType === "data" ? "hmac" : "data"
-        const result = performTransform(value, leftType, rightType)
-        setRightInput(result)
-        setRightInputLength(result.length)
+        const result = await performTransform(value, leftType, rightType)
+        if (requestId === transformRequestRef.current) {
+          setRightInput(result)
+          setRightInputLength(result.length)
+        }
       } catch (error) {
         setError(prev => ({ ...prev, left: error instanceof Error ? error.message : "转换失败" }))
       }
@@ -195,15 +141,18 @@ export default function HmacPage() {
   }
 
   // 手动转换
-  const transformLeftToRight = () => {
+  const transformLeftToRight = async () => {
     if (!leftInput || !hmacKey) return
 
     try {
+      const requestId = ++transformRequestRef.current
       const rightType: "data" | "hmac" = leftType === "data" ? "hmac" : "data"
-      const result = performTransform(leftInput, leftType, rightType)
-      setRightInput(result)
-      setRightInputLength(result.length)
-      setError(prev => ({ ...prev, left: undefined, right: undefined }))
+      const result = await performTransform(leftInput, leftType, rightType)
+      if (requestId === transformRequestRef.current) {
+        setRightInput(result)
+        setRightInputLength(result.length)
+        setError(prev => ({ ...prev, left: undefined, right: undefined }))
+      }
     } catch (error) {
       setError(prev => ({ ...prev, left: error instanceof Error ? error.message : "转换失败" }))
     }
@@ -211,6 +160,7 @@ export default function HmacPage() {
 
   // 清空所有内容
   const clearAllInputs = () => {
+    transformRequestRef.current += 1
     setLeftInput("")
     setRightInput("")
     setLeftInputLength(0)
@@ -336,17 +286,28 @@ export default function HmacPage() {
 
   // 自动切换效果
   useEffect(() => {
+    let cancelled = false
+
     if (autoSwitch && leftInput && hmacKey) {
-      try {
-        const rightType: "data" | "hmac" = leftType === "data" ? "hmac" : "data"
-        const result = performTransform(leftInput, leftType, rightType)
-        setRightInput(result)
-        setRightInputLength(result.length)
-      } catch (error) {
-        // 自动切换时忽略错误
-      }
+      const requestId = ++transformRequestRef.current
+      void (async () => {
+        try {
+          const rightType: "data" | "hmac" = leftType === "data" ? "hmac" : "data"
+          const result = await performTransform(leftInput, leftType, rightType)
+          if (!cancelled && requestId === transformRequestRef.current) {
+            setRightInput(result)
+            setRightInputLength(result.length)
+          }
+        } catch {
+          // 自动切换时保留当前结果，手动计算仍会显示错误
+        }
+      })()
     }
-  }, [algorithm, hmacKey, keyFormat, outputFormat, autoSwitch])
+
+    return () => {
+      cancelled = true
+    }
+  }, [algorithm, hmacKey, keyFormat, outputFormat, autoSwitch, performTransform])
 
   // 当验证哈希变化时，验证HMAC
   useEffect(() => {
@@ -458,7 +419,10 @@ export default function HmacPage() {
                   <div className="flex justify-between items-center">
                     <Label htmlFor="hmac-key" className="text-sm">密钥</Label>
                     <div className="flex items-center gap-2">
-                      <Select value={keyFormat} onValueChange={setKeyFormat}>
+                      <Select
+                        value={keyFormat}
+                        onValueChange={(value) => setKeyFormat(value as HmacKeyFormat)}
+                      >
                         <SelectTrigger className="w-24 h-8">
                           <SelectValue />
                         </SelectTrigger>
@@ -518,7 +482,10 @@ export default function HmacPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="output-format" className="text-sm">输出格式</Label>
-                    <Select value={outputFormat} onValueChange={setOutputFormat}>
+                    <Select
+                      value={outputFormat}
+                      onValueChange={(value) => setOutputFormat(value as HmacOutputFormat)}
+                    >
                       <SelectTrigger id="output-format" className="h-8">
                         <SelectValue />
                       </SelectTrigger>

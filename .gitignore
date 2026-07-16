@@ -26,3 +26,4 @@ coverage/
 tsconfig.tsbuildinfo
 .claude/screenshots/*
 .next-e2e/*
+*.md

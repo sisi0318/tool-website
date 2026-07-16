@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
+import { bytesToCryptoWordArray, cryptoWordArrayToBytes } from "@/lib/crypto-js-bytes"
 
 // 导入CryptoJS库
 import CryptoJS from "crypto-js"
@@ -180,25 +181,6 @@ function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("")
-}
-
-// 将十六进制字符串转换为字节数组
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2)
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = Number.parseInt(hex.substring(i, i + 2), 16)
-  }
-  return bytes
-}
-
-// 将字符串转换为字节数组
-function stringToBytes(str: string): Uint8Array {
-  return new TextEncoder().encode(str)
-}
-
-// 将字节数组转换为字符串
-function bytesToString(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes)
 }
 
 // 格式化密钥长度到标准长度
@@ -448,7 +430,7 @@ export default function CryptoPage() {
   // 使用CryptoJS进行加密
   const encryptWithCryptoJS = useCallback(
     (
-      data: string,
+      data: CryptoJS.lib.WordArray,
       keyWordArray: CryptoJS.lib.WordArray,
       ivWordArray: CryptoJS.lib.WordArray | null,
     ): CryptoJS.lib.WordArray => {
@@ -482,18 +464,8 @@ export default function CryptoPage() {
           options.padding = CryptoJS.pad.NoPadding
         }
 
-        // Convert input data to WordArray based on format
-        let dataWordArray
-        if (inputFormat === "hex") {
-          dataWordArray = CryptoJS.enc.Hex.parse(data)
-        } else if (inputFormat === "base64") {
-          dataWordArray = CryptoJS.enc.Base64.parse(data)
-        } else {
-          dataWordArray = CryptoJS.enc.Utf8.parse(data)
-        }
-
         // Perform encryption
-        encrypted = CryptoJS.AES.encrypt(dataWordArray, keyWordArray, options)
+        encrypted = CryptoJS.AES.encrypt(data, keyWordArray, options)
       } else if (algorithm === "des") {
         // Rest of the function remains the same...
         if (mode === "CBC") {
@@ -568,7 +540,7 @@ export default function CryptoPage() {
       // 返回加密结果的WordArray
       return encrypted.ciphertext
     },
-    [algorithm, mode, inputFormat],
+    [algorithm, mode],
   )
 
   // 使用CryptoJS进行解密
@@ -704,24 +676,6 @@ export default function CryptoPage() {
     [algorithm, mode],
   )
 
-  // 模拟不支持的算法
-  const simulateEncryption = useCallback((data: string): CryptoJS.lib.WordArray => {
-    // 这只是一个模拟，实际上不执行任何加密
-    // 在实际应用中，你需要使用第三方库或服务器端实现这些算法
-
-    // 为了演示，我们只是返回一个随机的"加密"结果
-    const randomBytes = getRandomBytes(data.length + 16)
-    return CryptoJS.lib.WordArray.create(Array.from(randomBytes))
-  }, [])
-
-  // 模拟不支持的算法的解密
-  const simulateDecryption = useCallback((data: string): CryptoJS.lib.WordArray => {
-    // 同样，这只是一个模拟
-    // 返回一些随机数据作为"解密"结果
-    const randomBytes = getRandomBytes(Math.max(data.length / 2, 1))
-    return CryptoJS.lib.WordArray.create(Array.from(randomBytes))
-  }, [])
-
   // 处理文本
   const processText = useCallback(async () => {
     if (!input) {
@@ -758,34 +712,7 @@ export default function CryptoPage() {
           if (operation === "encrypt") {
             // 处理输入数据 - 加密
             const inputWordArray = processInputDataForEncryption(input, inputFormat)
-
-            // For AES, we need to handle the input differently
-            if (algorithm === "aes") {
-              const options: CryptoJS.lib.CipherCfg = {
-                iv: ivWordArray || CryptoJS.lib.WordArray.create(),
-                padding: CryptoJS.pad.Pkcs7,
-                mode:
-                  mode === "ECB"
-                    ? CryptoJS.mode.ECB
-                    : mode === "CFB"
-                      ? CryptoJS.mode.CFB
-                      : mode === "OFB"
-                        ? CryptoJS.mode.OFB
-                        : mode === "CTR"
-                          ? CryptoJS.mode.CTR
-                          : CryptoJS.mode.CBC,
-              }
-
-              // For stream modes, use NoPadding
-              if (mode === "CFB" || mode === "OFB" || mode === "CTR") {
-                options.padding = CryptoJS.pad.NoPadding
-              }
-
-              const encrypted = CryptoJS.AES.encrypt(inputWordArray, keyWordArray, options)
-              outputData = encrypted.ciphertext
-            } else {
-              outputData = encryptWithCryptoJS(input, keyWordArray, ivWordArray)
-            }
+            outputData = encryptWithCryptoJS(inputWordArray, keyWordArray, ivWordArray)
           } else {
             // 处理输入数据 - 解密
             const cipherParams = processInputDataForDecryption(input, inputFormat)
@@ -802,14 +729,8 @@ export default function CryptoPage() {
           )
         }
       } else {
-        // 对于不支持的算法，显示警告并使用模拟函数
         setNotSupportedWarning(t("algorithmNotSupported"))
-
-        if (operation === "encrypt") {
-          outputData = simulateEncryption(input)
-        } else {
-          outputData = simulateDecryption(input)
-        }
+        throw new Error(`${currentAlgo.name}: ${t("algorithmNotSupported")}`)
       }
 
       // 格式化输出
@@ -839,8 +760,6 @@ export default function CryptoPage() {
     processInputDataForDecryption,
     encryptWithCryptoJS,
     decryptWithCryptoJS,
-    simulateEncryption,
-    simulateDecryption,
     t,
     algorithm,
     mode,
@@ -866,7 +785,7 @@ export default function CryptoPage() {
         try {
           const content = e.target?.result
 
-          if (content) {
+          if (content instanceof ArrayBuffer) {
             // 检查密钥
             if (!key) {
               throw new Error(t("invalidKey"))
@@ -881,16 +800,7 @@ export default function CryptoPage() {
             const keyWordArray = processKeyInput(key, keyFormat)
             const ivWordArray = requiresIV() ? processIVInput(iv, ivFormat) : null
 
-            // 处理输入数据
-            let inputData: string
-            if (content instanceof ArrayBuffer) {
-              // 将ArrayBuffer转换为字符串
-              const bytes = new Uint8Array(content)
-              inputData = bytesToString(bytes)
-            } else {
-              // 如果是字符串，直接使用
-              inputData = content as string
-            }
+            const inputWordArray = bytesToCryptoWordArray(new Uint8Array(content))
 
             // 加密或解密
             let outputData: CryptoJS.lib.WordArray
@@ -900,45 +810,23 @@ export default function CryptoPage() {
             if (currentAlgo.cryptoJSSupport) {
               // 使用CryptoJS处理支持的算法
               if (operation === "encrypt") {
-                outputData = encryptWithCryptoJS(inputData, keyWordArray, ivWordArray)
+                outputData = encryptWithCryptoJS(inputWordArray, keyWordArray, ivWordArray)
               } else {
-                // 对于解密，我们需要先创建CipherParams对象
-                const ciphertext = CryptoJS.enc.Latin1.parse(inputData)
                 const cipherParams = CryptoJS.lib.CipherParams.create({
-                  ciphertext: ciphertext,
+                  ciphertext: inputWordArray,
                 })
                 outputData = decryptWithCryptoJS(cipherParams, keyWordArray, ivWordArray)
               }
             } else {
-              // 对于不支持的算法，显示警告并使用模拟函数
               setNotSupportedWarning(t("algorithmNotSupported"))
-
-              if (operation === "encrypt") {
-                outputData = simulateEncryption(inputData)
-              } else {
-                outputData = simulateDecryption(inputData)
-              }
+              throw new Error(`${currentAlgo.name}: ${t("algorithmNotSupported")}`)
             }
 
-            // 创建结果Blob
-            let outputBytes: Uint8Array
-            if (outputFormat === "hex") {
-              const hexStr = outputData.toString(CryptoJS.enc.Hex)
-              outputBytes = hexToBytes(hexStr)
-            } else if (outputFormat === "base64") {
-              const base64Str = outputData.toString(CryptoJS.enc.Base64)
-              const binary = atob(base64Str)
-              outputBytes = new Uint8Array(binary.length)
-              for (let i = 0; i < binary.length; i++) {
-                outputBytes[i] = binary.charCodeAt(i)
-              }
-            } else {
-              // raw
-              const rawStr = outputData.toString(CryptoJS.enc.Latin1)
-              outputBytes = stringToBytes(rawStr)
-            }
-
-            const outputBuffer = Uint8Array.from(outputBytes).buffer
+            const outputBytes = cryptoWordArrayToBytes(outputData)
+            const outputBuffer = outputBytes.buffer.slice(
+              outputBytes.byteOffset,
+              outputBytes.byteOffset + outputBytes.byteLength,
+            ) as ArrayBuffer
             const blob = new Blob([outputBuffer], { type: "application/octet-stream" })
             setFileOutput(blob)
           }
@@ -977,13 +865,10 @@ export default function CryptoPage() {
     processIVInput,
     keyFormat,
     ivFormat,
-    outputFormat,
     getCurrentAlgorithm,
     operation,
     encryptWithCryptoJS,
     decryptWithCryptoJS,
-    simulateEncryption,
-    simulateDecryption,
     t,
   ])
 

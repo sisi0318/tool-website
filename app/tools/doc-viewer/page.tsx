@@ -7,6 +7,7 @@ import { Upload, FileText, FileSpreadsheet, X } from "lucide-react"
 import { renderAsync } from "docx-preview"
 import * as XLSX from "xlsx"
 import { useTranslations } from "@/hooks/use-translations"
+import { sanitizeDocumentHtml } from "@/lib/sanitize-document-html"
 
 export default function DocViewerPage() {
     const t = useTranslations("docViewer")
@@ -62,7 +63,7 @@ export default function DocViewerPage() {
                 const sheetName = workbook.SheetNames[0]
                 const sheet = workbook.Sheets[sheetName]
                 const html = XLSX.utils.sheet_to_html(sheet)
-                setHtmlContent(html)
+                setHtmlContent(sanitizeDocumentHtml(html))
             }
             else {
                 setError(t("unsupported"))

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { sanitizeDocumentHtml } from "@/lib/sanitize-document-html"
 import {
   Upload,
   FileText,
@@ -89,7 +90,7 @@ export default function OfficeViewerPage() {
     try {
       const arrayBuffer = await file.arrayBuffer()
       const result = await mammoth.convertToHtml({ arrayBuffer })
-      setWordContent(result.value)
+      setWordContent(sanitizeDocumentHtml(result.value))
       if (result.messages.length > 0) {
         console.warn("Mammoth warnings:", result.messages)
       }

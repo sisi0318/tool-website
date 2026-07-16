@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
+import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
 import { 
   Search, Replace, Copy, Download, Upload, History, 
   Play, Pause, RotateCcw, Settings, BookOpen, 
@@ -284,34 +285,10 @@ export default function RegexTester() {
   }, [])
 
   // 高亮显示匹配项
-  const getHighlightedText = useMemo(() => {
-    if (!highlightMatches || !matches.length || !testText) return testText
-
-    let result = ""
-    let lastIndex = 0
-
-    const sortedMatches = [...matches].sort((a, b) => a.index - b.index)
-
-    sortedMatches.forEach((match, index) => {
-      // 添加匹配前的文本
-      result += testText.substring(lastIndex, match.index)
-      
-      // 添加高亮的匹配文本
-      const isSelected = selectedMatch === index
-      const highlightClass = isSelected 
-        ? "bg-blue-200 dark:bg-blue-800 border-2 border-blue-500" 
-        : "bg-yellow-200 dark:bg-yellow-800"
-      
-      result += `<mark class="${highlightClass} px-1 rounded cursor-pointer" data-match-index="${index}" title="匹配 ${index + 1}: 位置 ${match.index}">${match.match}</mark>`
-      
-      lastIndex = match.index + match.length
-    })
-
-    // 添加最后的文本
-    result += testText.substring(lastIndex)
-
-    return result
-  }, [testText, matches, highlightMatches, selectedMatch])
+  const highlightedTextSegments = useMemo(
+    () => buildRegexHighlightSegments(testText, highlightMatches ? matches : []),
+    [testText, matches, highlightMatches],
+  )
 
   // 自动执行测试
   useEffect(() => {
@@ -791,19 +768,26 @@ export default function RegexTester() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div 
-                    className="font-mono text-sm p-4 bg-gray-50 dark:bg-gray-800 rounded border whitespace-pre-wrap break-words"
-                    dangerouslySetInnerHTML={{ __html: getHighlightedText }}
-                    onClick={(e) => {
-                      const target = e.target as HTMLElement
-                      if (target.tagName === 'MARK') {
-                        const matchIndex = parseInt(target.dataset.matchIndex || '-1')
-                        if (matchIndex >= 0) {
-                          setSelectedMatch(matchIndex)
-                        }
-                      }
-                    }}
-                  />
+                  <div className="font-mono text-sm p-4 bg-gray-50 dark:bg-gray-800 rounded border whitespace-pre-wrap break-words">
+                    {highlightedTextSegments.map((segment, index) =>
+                      segment.type === "text" ? (
+                        <span key={`text-${index}`}>{segment.text}</span>
+                      ) : (
+                        <mark
+                          key={`match-${segment.matchIndex}-${segment.start}`}
+                          className={
+                            selectedMatch === segment.matchIndex
+                              ? "cursor-pointer rounded border-2 border-blue-500 bg-blue-200 px-1 dark:bg-blue-800"
+                              : "cursor-pointer rounded bg-yellow-200 px-1 dark:bg-yellow-800"
+                          }
+                          title={`匹配 ${segment.matchIndex + 1}: 位置 ${segment.start}`}
+                          onClick={() => setSelectedMatch(segment.matchIndex)}
+                        >
+                          {segment.text}
+                        </mark>
+                      ),
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}

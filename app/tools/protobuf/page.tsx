@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
+import { bytesToBase64, bytesToHex } from "@/lib/binary"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, ArrowLeftRight, Upload, Settings, ChevronUp, ChevronDown, Zap, Eye, Code, FileText, Database, Shield, Check } from "lucide-react"
 import * as protobuf from "protobufjs"
 
@@ -111,7 +112,7 @@ export default function ProtobufTool() {
       reader.onload = async (event) => {
         if (event.target?.result) {
           const buffer = event.target.result as ArrayBuffer
-          setInputData(Buffer.from(buffer).toString("hex"))
+          setInputData(bytesToHex(new Uint8Array(buffer)))
         }
       }
       reader.readAsArrayBuffer(selectedFile)
@@ -194,7 +195,7 @@ export default function ProtobufTool() {
         reader.onload = async (event) => {
           if (event.target?.result) {
             const buffer = event.target.result as ArrayBuffer
-            setInputData(Buffer.from(buffer).toString("hex"))
+            setInputData(bytesToHex(new Uint8Array(buffer)))
           }
         }
         reader.readAsArrayBuffer(droppedFile)
@@ -527,14 +528,14 @@ export default function ProtobufTool() {
                 try {
                   value = decodeProtobuf(bytes)
                 } catch {
-                  value = Buffer.from(bytes).toString("base64")
+                  value = bytesToBase64(bytes)
                 }
               }
             } catch {
               try {
                 value = decodeProtobuf(bytes)
               } catch {
-                value = Buffer.from(bytes).toString("base64")
+                value = bytesToBase64(bytes)
               }
             }
             break
