@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
+import { downloadBlob } from "@/lib/object-url"
 import { detectRdapQueryType } from "@/lib/whois-tools"
 
 // RDAP查询结果接口
@@ -753,13 +754,10 @@ export default function RdapQueryPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const blob = new Blob([rdapData!.raw || ''], { type: 'application/json' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = `rdap-${query}-${Date.now()}.json`
-                        a.click()
-                        URL.revokeObjectURL(url)
+                        downloadBlob(
+                          new Blob([rdapData!.raw || ''], { type: 'application/json' }),
+                          `rdap-${query}-${Date.now()}.json`,
+                        )
                       }}
                       className="gap-2"
                     >

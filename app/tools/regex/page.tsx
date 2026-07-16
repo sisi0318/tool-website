@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
+import { downloadBlob } from "@/lib/object-url"
 import { 
   Search, Replace, Copy, Download, Upload, History, 
   Play, Pause, RotateCcw, Settings, BookOpen, 
@@ -341,15 +342,10 @@ export default function RegexTester() {
       timestamp: new Date().toISOString()
     }
     
-    const blob = new Blob([JSON.stringify(testCase, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `regex-test-case-${Date.now()}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([JSON.stringify(testCase, null, 2)], { type: 'application/json' }),
+      `regex-test-case-${Date.now()}.json`,
+    )
     
     toast({
       title: "导出成功",

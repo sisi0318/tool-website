@@ -1,5 +1,7 @@
 import { useRef } from "react"
 
+import { downloadBlob } from "@/lib/object-url"
+
 interface FileEditorProps {
   disabled: boolean
   file: File | null
@@ -11,12 +13,7 @@ export function FileEditor({ disabled, file, onFileChange }: FileEditorProps) {
 
   const handleDownload = () => {
     if (!file) return
-    const url = URL.createObjectURL(file)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = file.name
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(file, file.name)
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

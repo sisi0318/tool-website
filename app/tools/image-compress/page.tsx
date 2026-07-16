@@ -8,7 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { useObjectUrlRegistry } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import {
+  triggerDownload,
+  withObjectUrl,
+} from "@/lib/object-url"
 import { 
   Upload, ImageIcon, Download, X, Trash2, 
   Settings, Zap, FileImage, CheckCircle2,
@@ -53,9 +58,25 @@ export default function ImageCompressPage() {
   const [previewTitle, setPreviewTitle] = useState<string>("")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
-  // 用于追踪设置变化，避免新上传图片触发全部重新压缩
-  const settingsRef = useRef({ quality, outputFormat, maxWidth, maxHeight })
+  const imagesRef = useRef<CompressedImage[]>([])
+  const mountedRef = useRef(true)
+  const objectUrls = useObjectUrlRegistry()
+  const releaseImageUrls = useCallback((image: CompressedImage) => {
+    objectUrls.revoke(image.originalUrl)
+    objectUrls.revoke(image.compressedUrl)
+  }, [objectUrls])
+
+  useEffect(() => {
+    imagesRef.current = images
+  }, [images])
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   // 支持的图片格式
   const supportedFormats = ['image/jpeg', 'image/png', 'image/webp']
@@ -86,84 +107,89 @@ export default function ImageCompressPage() {
     maxW?: number,
     maxH?: number
   ): Promise<{ blob: Blob; width: number; height: number; actualFormat: string }> => {
-    return new Promise((resolve, reject) => {
+    return withObjectUrl(file, (sourceUrl) => new Promise((resolve, reject) => {
       const img = new Image()
       img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let width = img.width
-        let height = img.height
+        try {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
 
-        // 调整尺寸
-        if (maxW && width > maxW) {
-          height = Math.round(height * (maxW / width))
-          width = maxW
+          // 调整尺寸
+          if (maxW && width > maxW) {
+            height = Math.round(height * (maxW / width))
+            width = maxW
+          }
+          if (maxH && height > maxH) {
+            width = Math.round(width * (maxH / height))
+            height = maxH
+          }
+
+          canvas.width = width
+          canvas.height = height
+
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            reject(new Error('无法创建canvas上下文'))
+            return
+          }
+
+          // 确定输出格式
+          let mimeType = file.type
+          if (format !== 'original') {
+            mimeType = `image/${format}`
+          }
+
+          // PNG 格式不支持质量压缩，自动转为 WebP 以获得更好的压缩
+          if (mimeType === 'image/png' && format === 'original') {
+            mimeType = 'image/webp'
+          }
+
+          // 提取实际格式名称
+          const actualFormat = mimeType.split('/')[1]
+
+          // 如果输出为 JPEG，需要填充白色背景
+          if (mimeType === 'image/jpeg') {
+            ctx.fillStyle = '#FFFFFF'
+            ctx.fillRect(0, 0, width, height)
+          }
+
+          ctx.drawImage(img, 0, 0, width, height)
+
+          // 对于 PNG 格式，quality 参数无效
+          // 对于 WebP/JPEG，使用用户设置的质量（注意：100% 可能导致文件变大）
+          const outputQuality = mimeType === 'image/png' ? undefined : quality / 100
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve({ blob, width, height, actualFormat })
+              } else {
+                reject(new Error('压缩失败'))
+              }
+            },
+            mimeType,
+            outputQuality
+          )
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error('压缩失败'))
         }
-        if (maxH && height > maxH) {
-          width = Math.round(width * (maxH / height))
-          height = maxH
-        }
-
-        canvas.width = width
-        canvas.height = height
-
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('无法创建canvas上下文'))
-          return
-        }
-
-        // 确定输出格式
-        let mimeType = file.type
-        if (format !== 'original') {
-          mimeType = `image/${format}`
-        }
-        
-        // PNG 格式不支持质量压缩，自动转为 WebP 以获得更好的压缩
-        if (mimeType === 'image/png' && format === 'original') {
-          mimeType = 'image/webp'
-        }
-        
-        // 提取实际格式名称
-        const actualFormat = mimeType.split('/')[1]
-        
-        // 如果输出为 JPEG，需要填充白色背景
-        if (mimeType === 'image/jpeg') {
-          ctx.fillStyle = '#FFFFFF'
-          ctx.fillRect(0, 0, width, height)
-        }
-
-        ctx.drawImage(img, 0, 0, width, height)
-
-        // 对于 PNG 格式，quality 参数无效
-        // 对于 WebP/JPEG，使用用户设置的质量（注意：100% 可能导致文件变大）
-        const outputQuality = mimeType === 'image/png' ? undefined : quality / 100
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve({ blob, width, height, actualFormat })
-            } else {
-              reject(new Error('压缩失败'))
-            }
-          },
-          mimeType,
-          outputQuality
-        )
       }
       img.onerror = () => reject(new Error('图片加载失败'))
-      img.src = URL.createObjectURL(file)
-    })
+      img.src = sourceUrl
+    }))
   }, [])
 
   // 处理单个文件
   const processFile = useCallback(async (file: File): Promise<CompressedImage> => {
     const imageId = Math.random().toString(36).substr(2, 9)
-    const originalUrl = URL.createObjectURL(file)
+    const originalUrl = objectUrls.create(file)
 
     // 获取原始图片尺寸
     const img = new Image()
-    await new Promise<void>((resolve) => {
-      img.onload = () => resolve()
+    const imageLoaded = await new Promise<boolean>((resolve) => {
+      img.onload = () => resolve(true)
+      img.onerror = () => resolve(false)
       img.src = originalUrl
     })
 
@@ -184,13 +210,23 @@ export default function ImageCompressPage() {
       newHeight: null,
     }
 
+    if (!imageLoaded) {
+      processedImage.error = '图片加载失败'
+      processedImage.isProcessing = false
+      return processedImage
+    }
+
     try {
       const maxW = maxWidth ? parseInt(maxWidth) : undefined
       const maxH = maxHeight ? parseInt(maxHeight) : undefined
       
       const { blob, width, height, actualFormat } = await compressImage(file, quality, outputFormat, maxW, maxH)
+      if (!mountedRef.current) {
+        processedImage.isProcessing = false
+        return processedImage
+      }
       
-      processedImage.compressedUrl = URL.createObjectURL(blob)
+      processedImage.compressedUrl = objectUrls.create(blob)
       processedImage.compressedSize = blob.size
       processedImage.newWidth = width
       processedImage.newHeight = height
@@ -228,6 +264,10 @@ export default function ImageCompressPage() {
         validFiles.map(file => processFile(file))
       )
 
+      if (!mountedRef.current) {
+        return
+      }
+
       setImages(prev => [...prev, ...processedImages])
       
       if (processedImages.length > 0) {
@@ -240,7 +280,9 @@ export default function ImageCompressPage() {
         description: `成功压缩 ${successCount} 张图片`,
       })
     } finally {
-      setIsProcessing(false)
+      if (mountedRef.current) {
+        setIsProcessing(false)
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -275,13 +317,19 @@ export default function ImageCompressPage() {
         files.map(file => processFile(file))
       )
 
+      if (!mountedRef.current) {
+        return
+      }
+
       setImages(prev => [...prev, ...processedImages])
       
       if (processedImages.length > 0) {
         setSelectedImageId(processedImages[0].id)
       }
     } finally {
-      setIsProcessing(false)
+      if (mountedRef.current) {
+        setIsProcessing(false)
+      }
     }
   }
 
@@ -299,24 +347,23 @@ export default function ImageCompressPage() {
       const maxH = maxHeight ? parseInt(maxHeight) : undefined
       
       const { blob, width, height, actualFormat } = await compressImage(image.file, quality, outputFormat, maxW, maxH)
+      if (!mountedRef.current) return
       
-      // 释放旧的压缩URL
-      if (image.compressedUrl) {
-        URL.revokeObjectURL(image.compressedUrl)
-      }
+      setImages(prev => prev.map(img => {
+        if (img.id !== imageId) return img
 
-      setImages(prev => prev.map(img => 
-        img.id === imageId ? {
+        objectUrls.revoke(img.compressedUrl)
+        return {
           ...img,
-          compressedUrl: URL.createObjectURL(blob),
+          compressedUrl: objectUrls.create(blob),
           compressedSize: blob.size,
           newWidth: width,
           newHeight: height,
           quality,
           format: actualFormat,
           isProcessing: false,
-        } : img
-      ))
+        }
+      }))
 
       toast({
         title: "重新压缩完成",
@@ -337,18 +384,10 @@ export default function ImageCompressPage() {
   const downloadImage = (image: CompressedImage) => {
     if (!image.compressedUrl) return
 
-    const link = document.createElement('a')
-    link.href = image.compressedUrl
-    
     // 使用实际输出格式作为扩展名
     const ext = image.format || 'jpg'
-    
     const baseName = image.file.name.replace(/\.[^/.]+$/, '')
-    link.download = `${baseName}_compressed.${ext}`
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    triggerDownload(image.compressedUrl, `${baseName}_compressed.${ext}`)
   }
 
   // 下载所有压缩后的图片
@@ -367,9 +406,12 @@ export default function ImageCompressPage() {
     setImages(prev => {
       const image = prev.find(img => img.id === id)
       if (image) {
-        URL.revokeObjectURL(image.originalUrl)
-        if (image.compressedUrl) {
-          URL.revokeObjectURL(image.compressedUrl)
+        releaseImageUrls(image)
+        if (
+          previewImage === image.originalUrl ||
+          previewImage === image.compressedUrl
+        ) {
+          setPreviewImage(null)
         }
       }
       
@@ -385,56 +427,42 @@ export default function ImageCompressPage() {
 
   // 清空所有图片
   const clearAllImages = () => {
-    images.forEach(img => {
-      URL.revokeObjectURL(img.originalUrl)
-      if (img.compressedUrl) {
-        URL.revokeObjectURL(img.compressedUrl)
-      }
-    })
+    images.forEach(releaseImageUrls)
     setImages([])
     setSelectedImageId(null)
+    setPreviewImage(null)
   }
 
   // 当压缩设置变化时，自动重新压缩所有图片
   useEffect(() => {
-    // 检查设置是否真的变化了
-    const prevSettings = settingsRef.current
-    const settingsChanged = 
-      prevSettings.quality !== quality ||
-      prevSettings.outputFormat !== outputFormat ||
-      prevSettings.maxWidth !== maxWidth ||
-      prevSettings.maxHeight !== maxHeight
-    
-    // 更新 ref
-    settingsRef.current = { quality, outputFormat, maxWidth, maxHeight }
-    
-    // 如果设置没变化或没有图片，不执行
-    if (!settingsChanged || images.length === 0) return
+    const currentImages = [...imagesRef.current]
+    if (currentImages.length === 0) return
+
+    let cancelled = false
     
     const recompressAll = async () => {
       const maxW = maxWidth ? parseInt(maxWidth) : undefined
       const maxH = maxHeight ? parseInt(maxHeight) : undefined
-      
-      // 获取当前图片列表的快照
-      const currentImages = [...images]
-      
+
       // 标记所有图片为处理中
-      setImages(prev => prev.map(img => ({ ...img, isProcessing: true })))
+      const imageIds = new Set(currentImages.map((image) => image.id))
+      setImages(prev => prev.map(img => (
+        imageIds.has(img.id) ? { ...img, isProcessing: true } : img
+      )))
       
       // 逐个重新压缩
       for (const image of currentImages) {
         try {
           const { blob, width, height, actualFormat } = await compressImage(image.file, quality, outputFormat, maxW, maxH)
+          if (cancelled) return
           
           setImages(prev => prev.map(img => {
             if (img.id === image.id) {
               // 释放旧的压缩URL
-              if (img.compressedUrl) {
-                URL.revokeObjectURL(img.compressedUrl)
-              }
+              objectUrls.revoke(img.compressedUrl)
               return {
                 ...img,
-                compressedUrl: URL.createObjectURL(blob),
+                compressedUrl: objectUrls.create(blob),
                 compressedSize: blob.size,
                 newWidth: width,
                 newHeight: height,
@@ -447,6 +475,7 @@ export default function ImageCompressPage() {
             return img
           }))
         } catch (error) {
+          if (cancelled) return
           setImages(prev => prev.map(img => 
             img.id === image.id ? {
               ...img,
@@ -460,8 +489,11 @@ export default function ImageCompressPage() {
     
     // 使用防抖，避免频繁重新压缩
     const timeoutId = setTimeout(recompressAll, 300)
-    return () => clearTimeout(timeoutId)
-  }, [quality, outputFormat, maxWidth, maxHeight, images, compressImage])
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+    }
+  }, [quality, outputFormat, maxWidth, maxHeight, compressImage, objectUrls])
 
   // 选中的图片
   const selectedImage = images.find(img => img.id === selectedImageId)

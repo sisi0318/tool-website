@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
+import { withObjectUrl } from "@/lib/object-url"
 import { 
   Clipboard, Download, Upload, X, ImageIcon, 
   FileImage, Eye, Trash2, RefreshCw, AlertCircle,
@@ -61,34 +62,38 @@ export default function ImageToBase64() {
 
   // 创建预览图片（用于缩略图，不影响原始编码）
   const createPreviewImage = useCallback((file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
+    return withObjectUrl(file, (url) => new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
       const img = new Image()
 
       img.onload = () => {
-        // 计算预览尺寸（最大300px）
-        const maxSize = 300
-        let { width, height } = img
-        
-        if (width > maxSize || height > maxSize) {
-          const ratio = Math.min(maxSize / width, maxSize / height)
-          width *= ratio
-          height *= ratio
-        }
+        try {
+          // 计算预览尺寸（最大300px）
+          const maxSize = 300
+          let { width, height } = img
 
-        canvas.width = width
-        canvas.height = height
-        ctx?.drawImage(img, 0, 0, width, height)
-        
-        // 使用较低质量生成预览
-        const previewDataUrl = canvas.toDataURL('image/jpeg', previewQuality)
-        resolve(previewDataUrl)
+          if (width > maxSize || height > maxSize) {
+            const ratio = Math.min(maxSize / width, maxSize / height)
+            width *= ratio
+            height *= ratio
+          }
+
+          canvas.width = width
+          canvas.height = height
+          ctx?.drawImage(img, 0, 0, width, height)
+
+          // 使用较低质量生成预览
+          const previewDataUrl = canvas.toDataURL('image/jpeg', previewQuality)
+          resolve(previewDataUrl)
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error('预览图片生成失败'))
+        }
       }
 
       img.onerror = () => reject(new Error('预览图片生成失败'))
-      img.src = URL.createObjectURL(file)
-    })
+      img.src = url
+    }))
   }, [previewQuality])
 
   // 支持的图片格式

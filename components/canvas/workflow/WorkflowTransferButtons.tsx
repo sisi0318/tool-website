@@ -6,6 +6,7 @@ import { Download, Upload } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { parseWorkflowFile, serializeWorkflow } from "@/lib/canvas/workflow"
+import { downloadBlob } from "@/lib/object-url"
 
 const MAX_WORKFLOW_FILE_SIZE = 2 * 1024 * 1024
 
@@ -23,12 +24,10 @@ export function WorkflowTransferButtons() {
 
   const exportWorkflow = () => {
     const contents = serializeWorkflow("workflow", { nodes, edges })
-    const url = URL.createObjectURL(new Blob([contents], { type: "application/json" }))
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `${safeFileName("workflow")}.tool-workflow.json`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([contents], { type: "application/json" }),
+      `${safeFileName("workflow")}.tool-workflow.json`,
+    )
     setMessage(t("workflowExported"))
   }
 

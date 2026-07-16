@@ -15,7 +15,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useObjectUrl } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import { downloadBlob } from "@/lib/object-url"
 import { 
   Upload, Image as ImageIcon, ScanLine, Copy, 
   Download, History, RefreshCw, Settings, 
@@ -72,6 +74,7 @@ export default function QRCodeDecoder() {
   // 设置状态
   const [batchMode, setBatchMode] = useState(false)
   const [maxFileSize] = useState(10 * 1024 * 1024) // 10MB
+  const previewUrl = useObjectUrl(batchMode ? null : files[selectedFileIndex])
 
   // 智能内容解析
   const parseQRContent = useCallback((data: string) => {
@@ -521,15 +524,10 @@ export default function QRCodeDecoder() {
       )
     ].join('\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `qr_decode_history_${new Date().toISOString().split('T')[0]}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([csvContent], { type: 'text/csv' }),
+      `qr_decode_history_${new Date().toISOString().split('T')[0]}.csv`,
+    )
 
     toast({
       title: "导出完成",
@@ -982,11 +980,13 @@ export default function QRCodeDecoder() {
                     <CardContent>
                       {!batchMode && files[selectedFileIndex] && (
                         <div className="space-y-3">
-                          <img
-                            src={URL.createObjectURL(files[selectedFileIndex])}
-                            alt="预览"
-                            className="w-full max-h-48 object-contain rounded border"
-                          />
+                          {previewUrl && (
+                            <img
+                              src={previewUrl}
+                              alt="预览"
+                              className="w-full max-h-48 object-contain rounded border"
+                            />
+                          )}
                           <div className="text-sm text-gray-600">
                             <div>文件: {files[selectedFileIndex].name}</div>
                             <div>大小: {(files[selectedFileIndex].size / 1024).toFixed(1)}KB</div>

@@ -16,6 +16,7 @@ import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { bytesToCryptoWordArray, cryptoWordArrayToBytes } from "@/lib/crypto-js-bytes"
+import { downloadBlob } from "@/lib/object-url"
 
 // 导入CryptoJS库
 import CryptoJS from "crypto-js"
@@ -876,14 +877,10 @@ export default function CryptoPage() {
   const downloadResult = useCallback(() => {
     if (!fileOutput) return
 
-    const url = URL.createObjectURL(fileOutput)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${operation === "encrypt" ? "encrypted" : "decrypted"}_${fileInfo?.name || "result"}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      fileOutput,
+      `${operation === "encrypt" ? "encrypted" : "decrypted"}_${fileInfo?.name || "result"}`,
+    )
   }, [fileOutput, operation, fileInfo])
 
   // 复制结果

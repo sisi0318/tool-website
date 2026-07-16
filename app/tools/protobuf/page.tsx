@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { useTranslations } from "@/hooks/use-translations"
 import { bytesToBase64, bytesToHex } from "@/lib/binary"
+import { downloadBlob } from "@/lib/object-url"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, ArrowLeftRight, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
 import * as protobuf from "protobufjs"
 
@@ -290,15 +291,10 @@ export default function ProtobufTool() {
   const downloadOutput = useCallback(() => {
     if (!outputData) return
 
-    const blob = new Blob([outputData], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = mode === "decode" ? "protobuf-decoded.json" : "protobuf-encoded.hex"
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([outputData], { type: "application/json" }),
+      mode === "decode" ? "protobuf-decoded.json" : "protobuf-encoded.hex",
+    )
   }, [outputData, mode])
 
   // Encode JSON to Protobuf

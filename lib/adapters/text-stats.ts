@@ -1,6 +1,7 @@
 import { FileText } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { calculateTextStatistics } from "../text-statistics"
 
 export const textStatsAdapter: ToolAdapter = {
   type: "text-stats",
@@ -28,15 +29,17 @@ export const textStatsAdapter: ToolAdapter = {
   ],
   async execute(inputs, config) {
     const text = String(inputs.text ?? config.text ?? "")
-
-    const characters = text.length
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0
-    const lines = text.split("\n").length
-    const sentences = text.trim() ? text.split(/[.!?]+/).filter((s) => s.trim()).length : 0
-    const paragraphs = text.trim() ? text.split(/\n\s*\n/).filter((p) => p.trim()).length : 0
+    const stats = calculateTextStatistics(text)
     const bytes = new TextEncoder().encode(text).length
 
-    return { characters, words, lines, sentences, paragraphs, bytes }
+    return {
+      characters: stats.characters,
+      words: stats.words,
+      lines: text.split("\n").length,
+      sentences: stats.sentences,
+      paragraphs: stats.paragraphs,
+      bytes,
+    }
   },
 }
 

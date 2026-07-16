@@ -12,6 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
 import { convertImageFile, type ImageOutputFormat } from "@/lib/image-convert"
+import {
+  createObjectUrl,
+  downloadBlob,
+  revokeObjectUrl,
+  revokeObjectUrls,
+} from "@/lib/object-url"
 
 interface ImageItem {
   id: string
@@ -34,19 +40,15 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }
 
-function downloadBlob(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement("a")
-  anchor.href = url
-  anchor.download = name
-  anchor.click()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+function releaseImageItem(item: ImageItem): void {
+  revokeObjectUrls([item.sourceUrl, item.resultUrl])
 }
 
 export default function ImageConvertPage() {
   const t = useTranslations("imageConvert")
   const inputRef = useRef<HTMLInputElement>(null)
   const itemsRef = useRef<ImageItem[]>([])
+  const mountedRef = useRef(true)
   const [items, setItems] = useState<ImageItem[]>([])
   const [format, setFormat] = useState<ImageOutputFormat>("webp")
   const [quality, setQuality] = useState(82)
@@ -57,79 +59,107 @@ export default function ImageConvertPage() {
   const [notice, setNotice] = useState("")
 
   useEffect(() => {
-    itemsRef.current = items
-  }, [items])
+    mountedRef.current = true
 
-  useEffect(() => () => {
-    itemsRef.current.forEach((item) => {
-      URL.revokeObjectURL(item.sourceUrl)
-      if (item.resultUrl) URL.revokeObjectURL(item.resultUrl)
-    })
+    return () => {
+      mountedRef.current = false
+      itemsRef.current.forEach(releaseImageItem)
+    }
   }, [])
+
+  const updateItems = (updater: (current: ImageItem[]) => ImageItem[]) => {
+    const next = updater(itemsRef.current)
+    itemsRef.current = next
+    setItems(next)
+  }
 
   const completed = useMemo(() => items.filter((item) => item.result), [items])
 
   const addFiles = (files: File[]) => {
     const images = files.filter((file) => file.type.startsWith("image/") && file.size <= MAX_FILE_SIZE)
     if (images.length !== files.length) setNotice(t("invalidFilesSkipped"))
-    const available = Math.max(0, MAX_FILES - items.length)
+    const available = Math.max(0, MAX_FILES - itemsRef.current.length)
     if (images.length > available) setNotice(t("fileLimit"))
     const next = images.slice(0, available).map((file) => ({
       id: crypto.randomUUID(),
       source: file,
-      sourceUrl: URL.createObjectURL(file),
+      sourceUrl: createObjectUrl(file),
       status: "ready" as const,
     }))
-    setItems((current) => [...current, ...next])
+    updateItems((current) => [...current, ...next])
   }
 
   const removeItem = (id: string) => {
-    setItems((current) => {
+    updateItems((current) => {
       const item = current.find((entry) => entry.id === id)
       if (item) {
-        URL.revokeObjectURL(item.sourceUrl)
-        if (item.resultUrl) URL.revokeObjectURL(item.resultUrl)
+        releaseImageItem(item)
       }
       return current.filter((entry) => entry.id !== id)
     })
   }
 
   const clearItems = () => {
-    items.forEach((item) => {
-      URL.revokeObjectURL(item.sourceUrl)
-      if (item.resultUrl) URL.revokeObjectURL(item.resultUrl)
-    })
-    setItems([])
+    itemsRef.current.forEach(releaseImageItem)
+    updateItems(() => [])
     setNotice("")
   }
 
   const convertAll = async () => {
-    if (items.length === 0 || processing) return
+    const itemsToConvert = [...itemsRef.current]
+    if (itemsToConvert.length === 0 || processing) return
     setProcessing(true)
     setNotice("")
 
-    for (const item of items) {
-      setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "processing", error: undefined } : entry))
-      try {
-        const converted = await convertImageFile(item.source, {
-          format,
-          quality: quality / 100,
-          maxWidth: Number(maxWidth) || undefined,
-          maxHeight: Number(maxHeight) || undefined,
-        })
-        const resultUrl = URL.createObjectURL(converted.file)
-        setItems((current) => current.map((entry) => {
-          if (entry.id !== item.id) return entry
-          if (entry.resultUrl) URL.revokeObjectURL(entry.resultUrl)
-          return { ...entry, status: "done", result: converted.file, resultUrl, width: converted.width, height: converted.height }
-        }))
-      } catch (error) {
-        const code = error instanceof Error ? error.message : "CONVERSION_FAILED"
-        const message = code === "FORMAT_NOT_SUPPORTED" ? t("formatUnsupported") : t("conversionFailed")
-        setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: message } : entry))
+    try {
+      for (const item of itemsToConvert) {
+        if (!mountedRef.current) return
+
+        updateItems((current) => current.map((entry) => (
+          entry.id === item.id
+            ? { ...entry, status: "processing", error: undefined }
+            : entry
+        )))
+
+        try {
+          const converted = await convertImageFile(item.source, {
+            format,
+            quality: quality / 100,
+            maxWidth: Number(maxWidth) || undefined,
+            maxHeight: Number(maxHeight) || undefined,
+          })
+          if (!mountedRef.current) return
+
+          updateItems((current) => current.map((entry) => {
+            if (entry.id !== item.id) return entry
+
+            revokeObjectUrl(entry.resultUrl)
+            return {
+              ...entry,
+              status: "done",
+              result: converted.file,
+              resultUrl: createObjectUrl(converted.file),
+              width: converted.width,
+              height: converted.height,
+            }
+          }))
+        } catch (error) {
+          if (!mountedRef.current) return
+
+          const code = error instanceof Error ? error.message : "CONVERSION_FAILED"
+          const message = code === "FORMAT_NOT_SUPPORTED" ? t("formatUnsupported") : t("conversionFailed")
+          updateItems((current) => current.map((entry) => (
+            entry.id === item.id
+              ? { ...entry, status: "error", error: message }
+              : entry
+          )))
+        }
+      }
+    } finally {
+      if (mountedRef.current) {
+        setProcessing(false)
       }
     }
-    setProcessing(false)
   }
 
   const downloadAll = async () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useMemo } from "react"
+import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,8 +13,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useObjectUrlRegistry } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
 import { formatExifDate } from "@/lib/exif-date"
+import { downloadBlob } from "@/lib/object-url"
 import { 
   Upload, ImageIcon, MapPin, Camera, Calendar, Info, X, Download, 
   ExternalLink, Search, Filter, Grid3X3, List, Eye, Copy, 
@@ -70,6 +72,16 @@ export default function ExifViewerPage() {
   const [exportFormat, setExportFormat] = useState<"json" | "csv" | "txt">("json")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mountedRef = useRef(true)
+  const objectUrls = useObjectUrlRegistry()
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   // 支持的图片格式
   const supportedFormats = ['image/jpeg', 'image/png', 'image/tiff', 'image/webp', 'image/bmp', 'image/gif']
@@ -77,7 +89,7 @@ export default function ExifViewerPage() {
   // 处理单个文件
   const processFile = useCallback(async (file: File): Promise<ProcessedImage> => {
     const imageId = Math.random().toString(36).substr(2, 9)
-    const imageUrl = URL.createObjectURL(file)
+    const imageUrl = objectUrls.create(file)
 
     const processedImage: ProcessedImage = {
       id: imageId,
@@ -113,7 +125,7 @@ export default function ExifViewerPage() {
       processedImage.isProcessing = false
       return processedImage
     }
-  }, [])
+  }, [objectUrls])
 
   // 处理文件选择
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,6 +158,10 @@ export default function ExifViewerPage() {
         validFiles.map(file => processFile(file))
       )
 
+      if (!mountedRef.current) {
+        return
+      }
+
       setImages(prev => [...prev, ...processedImages])
       
       // 自动选择第一张图片
@@ -158,7 +174,9 @@ export default function ExifViewerPage() {
         description: `成功处理 ${processedImages.length} 张图片`,
       })
     } finally {
-      setIsProcessing(false)
+      if (mountedRef.current) {
+        setIsProcessing(false)
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -193,19 +211,28 @@ export default function ExifViewerPage() {
         files.map(file => processFile(file))
       )
 
+      if (!mountedRef.current) {
+        return
+      }
+
       setImages(prev => [...prev, ...processedImages])
       
       if (processedImages.length > 0) {
         setSelectedImageId(processedImages[0].id)
       }
     } finally {
-      setIsProcessing(false)
+      if (mountedRef.current) {
+        setIsProcessing(false)
+      }
     }
   }
 
   // 删除图片
   const removeImage = (id: string) => {
     setImages(prev => {
+      const removedImage = prev.find(img => img.id === id)
+      objectUrls.revoke(removedImage?.imageUrl)
+
       const filtered = prev.filter(img => img.id !== id)
       if (selectedImageId === id && filtered.length > 0) {
         setSelectedImageId(filtered[0].id)
@@ -218,7 +245,7 @@ export default function ExifViewerPage() {
 
   // 清空所有图片
   const clearAllImages = () => {
-    images.forEach(img => URL.revokeObjectURL(img.imageUrl))
+    images.forEach((image) => objectUrls.revoke(image.imageUrl))
     setImages([])
     setSelectedImageId(null)
   }
@@ -456,15 +483,7 @@ export default function ExifViewerPage() {
         break
     }
 
-    const blob = new Blob([content], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(new Blob([content], { type: "text/plain" }), filename)
 
     toast({
       title: "导出完成",

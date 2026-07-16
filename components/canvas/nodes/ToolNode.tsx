@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef } from "react"
 import { Handle, Position } from "@xyflow/react"
+import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
@@ -29,7 +30,12 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const executeNode = useCanvasStore((s) => s.executeNode)
   const edges = useCanvasStore((s) => s.edges)
   const autoExecutedRef = useRef(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const previewSource = (
+    data.type === "image-preview" && nodeOutputs?.file instanceof Blob
+      ? nodeOutputs.file
+      : null
+  )
+  const previewUrl = useObjectUrl(previewSource)
 
   const incomingEdges = useMemo(() => edges.filter((e) => e.target === data.id), [edges, data.id])
   const connectedPorts = useMemo(
@@ -43,15 +49,6 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       executeNode(data.id, undefined, true, false)
     }
   }, [definition, data.id, nodeOutputs, nodeRunning, executeNode])
-
-  useEffect(() => {
-    if (data.type === "image-preview" && nodeOutputs?.file) {
-      const url = URL.createObjectURL(nodeOutputs.file as File)
-      setPreviewUrl(url)
-      return () => URL.revokeObjectURL(url)
-    }
-    setPreviewUrl(null)
-  }, [data.type, nodeOutputs?.file])
 
   if (!definition) return null
 

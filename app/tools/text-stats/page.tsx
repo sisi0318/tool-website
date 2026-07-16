@@ -1,146 +1,23 @@
 "use client"
 
 import type React from "react"
-import { useState, useMemo, useCallback, useRef } from "react"
+import {
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
-import { Copy, Check, Trash2, FileText } from "lucide-react"
+import { Check, Copy, FileText, Loader2, Trash2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
-interface TextStatistics {
-  characters: number
-  charactersNoSpaces: number
-  words: number
-  sentences: number
-  paragraphs: number
-  lines: number
-  chineseCharacters: number
-  englishWords: number
-  numbers: number
-  punctuation: number
-  spaces: number
-  readingTime: number // 分钟
-  speakingTime: number // 分钟
-}
-
-interface WordFrequency {
-  word: string
-  count: number
-}
-
-// 计算文本统计
-function calculateStats(text: string): TextStatistics {
-  if (!text) {
-    return {
-      characters: 0,
-      charactersNoSpaces: 0,
-      words: 0,
-      sentences: 0,
-      paragraphs: 0,
-      lines: 0,
-      chineseCharacters: 0,
-      englishWords: 0,
-      numbers: 0,
-      punctuation: 0,
-      spaces: 0,
-      readingTime: 0,
-      speakingTime: 0,
-    }
-  }
-
-  // 字符数
-  const characters = text.length
-  
-  // 不含空格的字符数
-  const charactersNoSpaces = text.replace(/\s/g, "").length
-  
-  // 空格数
-  const spaces = (text.match(/\s/g) || []).length
-  
-  // 中文字符数
-  const chineseCharacters = (text.match(/[\u4e00-\u9fa5]/g) || []).length
-  
-  // 英文单词数
-  const englishWords = (text.match(/[a-zA-Z]+/g) || []).length
-  
-  // 数字数
-  const numbers = (text.match(/\d/g) || []).length
-  
-  // 标点符号
-  const punctuation = (text.match(/[.,!?;:'"()[\]{}<>，。！？；：""''（）【】《》、]/g) || []).length
-  
-  // 总单词数（英文单词 + 中文字符）
-  const words = englishWords + chineseCharacters
-  
-  // 句子数（按句号、问号、感叹号分割）
-  const sentences = (text.match(/[.!?。！？]+/g) || []).length || (text.trim() ? 1 : 0)
-  
-  // 段落数（按空行分割）
-  const paragraphs = text.split(/\n\s*\n/).filter((p) => p.trim()).length || (text.trim() ? 1 : 0)
-  
-  // 行数
-  const lines = text.split("\n").length
-  
-  // 阅读时间（假设每分钟阅读 200 个中文字或 250 个英文单词）
-  const readingTime = Math.ceil((chineseCharacters / 200) + (englishWords / 250))
-  
-  // 朗读时间（假设每分钟朗读 150 个中文字或 150 个英文单词）
-  const speakingTime = Math.ceil((chineseCharacters / 150) + (englishWords / 150))
-
-  return {
-    characters,
-    charactersNoSpaces,
-    words,
-    sentences,
-    paragraphs,
-    lines,
-    chineseCharacters,
-    englishWords,
-    numbers,
-    punctuation,
-    spaces,
-    readingTime,
-    speakingTime,
-  }
-}
-
-// 计算词频
-function calculateWordFrequency(text: string, limit: number = 10): WordFrequency[] {
-  if (!text.trim()) return []
-  
-  const wordMap = new Map<string, number>()
-  
-  // 提取中文词汇（简单按字分割）
-  const chineseChars = text.match(/[\u4e00-\u9fa5]+/g) || []
-  chineseChars.forEach((word) => {
-    // 对于中文，我们按2-4字的词组来统计
-    if (word.length >= 2) {
-      for (let len = 2; len <= Math.min(4, word.length); len++) {
-        for (let i = 0; i <= word.length - len; i++) {
-          const subWord = word.slice(i, i + len)
-          wordMap.set(subWord, (wordMap.get(subWord) || 0) + 1)
-        }
-      }
-    }
-  })
-  
-  // 提取英文单词
-  const englishWords = text.toLowerCase().match(/[a-zA-Z]+/g) || []
-  englishWords.forEach((word) => {
-    if (word.length >= 2) {
-      wordMap.set(word, (wordMap.get(word) || 0) + 1)
-    }
-  })
-  
-  // 排序并取前N个
-  return Array.from(wordMap.entries())
-    .filter(([_, count]) => count >= 2) // 至少出现2次
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([word, count]) => ({ word, count }))
-}
+import {
+  calculateTextStatistics,
+  calculateWordFrequency,
+} from "@/lib/text-statistics"
 
 export default function TextStatsPage() {
   const t = useTranslations("textStats")
@@ -149,12 +26,21 @@ export default function TextStatsPage() {
   const [copied, setCopied] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const deferredText = useDeferredValue(text)
+  const isAnalyzing = deferredText !== text
 
   // 计算统计数据
-  const stats = useMemo(() => calculateStats(text), [text])
+  const stats = useMemo(
+    () => calculateTextStatistics(deferredText),
+    [deferredText],
+  )
   
   // 计算词频
-  const wordFrequency = useMemo(() => calculateWordFrequency(text), [text])
+  const wordFrequencyResult = useMemo(
+    () => calculateWordFrequency(deferredText),
+    [deferredText],
+  )
+  const wordFrequency = wordFrequencyResult.items
 
   // 复制统计结果
   const copyStats = useCallback(() => {
@@ -210,6 +96,12 @@ This is an example paragraph in English. It contains multiple sentences! How man
           <div className="flex items-center justify-between">
             <Label htmlFor="text">{t("inputLabel")}</Label>
             <div className="flex items-center gap-2">
+              {isAnalyzing && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {t("analyzing")}
+                </span>
+              )}
               <Button variant="ghost" size="sm" onClick={pasteExample}>
                 <FileText className="h-4 w-4 mr-1" />
                 {t("example")}
@@ -278,6 +170,14 @@ This is an example paragraph in English. It contains multiple sentences! How man
         {wordFrequency.length > 0 && (
           <div className="space-y-3">
             <Label>{t("wordFrequency")}</Label>
+            {wordFrequencyResult.truncated && (
+              <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+                {t("frequencyLimited").replace(
+                  "{count}",
+                  wordFrequencyResult.analyzedCharacters.toLocaleString(),
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               {wordFrequency.map(({ word, count }, index) => (
                 <div

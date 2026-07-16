@@ -19,6 +19,7 @@ import {
   Loader2, Zap, Eye, BookOpen,
 } from "lucide-react"
 import { decodeJceBase64, parseJceJson } from "@/lib/jce-tools"
+import { downloadBlob } from "@/lib/object-url"
 
 // ==================== JCE Protocol Constants ====================
 
@@ -493,17 +494,12 @@ export default function JceTool() {
 
   const downloadOutput = useCallback(() => {
     if (!outputData) return
-    const blob = new Blob([outputData], {
-      type: mode === "decode" ? "application/json" : "application/octet-stream",
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = mode === "decode" ? "jce-decoded.json" : "jce-encoded.hex"
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([outputData], {
+        type: mode === "decode" ? "application/json" : "application/octet-stream",
+      }),
+      mode === "decode" ? "jce-decoded.json" : "jce-encoded.hex",
+    )
   }, [outputData, mode])
 
   const handleFileChange = useCallback(

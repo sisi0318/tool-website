@@ -19,6 +19,7 @@ import {
   generateCronDescription,
   getNextExecutionTimes,
 } from "@/lib/crontab-tools"
+import { downloadBlob } from "@/lib/object-url"
 
 // ============ 时间线可视化组件 ============
 
@@ -581,13 +582,10 @@ export default function CrontabPage() {
       generatedAt: new Date().toISOString(),
     }
     
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `crontab-${expression.replace(/[^\w]/g, '_')}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(
+      new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' }),
+      `crontab-${expression.replace(/[^\w]/g, '_')}.json`,
+    )
     
     toast({
       title: "配置已导出",

@@ -17,6 +17,11 @@ import { Download, Copy, Check, Link, FileText, Phone, Mail, MapPin, Calendar, C
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  createObjectUrl,
+  downloadBlob,
+  revokeObjectUrl,
+} from "@/lib/object-url"
 import { buildPaymentQrValue } from "@/lib/qrcode-tools"
 
 // QR Code error correction levels
@@ -243,13 +248,13 @@ END:VEVENT`
     const svgClone = svg.cloneNode(true) as SVGSVGElement
     svgClone.querySelectorAll("image").forEach((image) => image.remove())
     const svgData = new XMLSerializer().serializeToString(svgClone)
-    const svgBlobUrl = URL.createObjectURL(new Blob([svgData], { type: "image/svg+xml;charset=utf-8" }))
+    const svgBlobUrl = createObjectUrl(new Blob([svgData], { type: "image/svg+xml;charset=utf-8" }))
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
     const img = new Image()
 
     img.onload = () => {
-      URL.revokeObjectURL(svgBlobUrl)
+      revokeObjectUrl(svgBlobUrl)
       canvas.width = size
       canvas.height = size
       if (!ctx) return
@@ -258,12 +263,7 @@ END:VEVENT`
       const finishDownload = () => {
         canvas.toBlob((blob) => {
           if (!blob) return
-          const pngUrl = URL.createObjectURL(blob)
-          const downloadLink = document.createElement("a")
-          downloadLink.download = `qrcode-${Date.now()}.png`
-          downloadLink.href = pngUrl
-          downloadLink.click()
-          setTimeout(() => URL.revokeObjectURL(pngUrl), 0)
+          downloadBlob(blob, `qrcode-${Date.now()}.png`)
         }, "image/png")
       }
 
@@ -284,7 +284,7 @@ END:VEVENT`
       logo.onerror = finishDownload
       logo.src = logoSource
     }
-    img.onerror = () => URL.revokeObjectURL(svgBlobUrl)
+    img.onerror = () => revokeObjectUrl(svgBlobUrl)
 
     img.src = svgBlobUrl
   }

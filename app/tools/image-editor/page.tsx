@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { useObjectUrl } from "@/hooks/use-object-url"
+import { downloadBlob } from "@/lib/object-url"
 import {
   Upload,
   Download,
@@ -92,7 +94,8 @@ const cropPresets = [
 export default function ImageEditorPage() {
   // 图片状态
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null)
-  const [imageUrl, setImageUrl] = useState<string>("")
+  const [sourceFile, setSourceFile] = useState<File | null>(null)
+  const imageUrl = useObjectUrl(sourceFile)
   const [fileName, setFileName] = useState<string>("")
   const [imageState, setImageState] = useState<ImageState>(defaultState)
   const imageStateRef = useRef<ImageState>(defaultState)
@@ -150,23 +153,43 @@ export default function ImageEditorPage() {
     }
   }, [history, historyIndex])
 
-  // 处理文件上传
-  const handleFileUpload = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) return
-    
-    const url = URL.createObjectURL(file)
+  useEffect(() => {
+    if (!imageUrl) return
+
+    let active = true
     const img = new Image()
+
     img.onload = () => {
+      if (!active) return
       setOriginalImage(img)
-      setImageUrl(url)
-      setFileName(file.name)
       setImageState(defaultState)
       setCropBox({ x: 0, y: 0, width: img.width, height: img.height })
       setHistory([{ state: defaultState, label: "原始图片" }])
       setHistoryIndex(0)
       setZoom(100)
     }
-    img.src = url
+    img.onerror = () => {
+      if (!active) return
+      setOriginalImage(null)
+      setSourceFile(null)
+      setFileName("")
+    }
+    img.src = imageUrl
+
+    return () => {
+      active = false
+      img.onload = null
+      img.onerror = null
+    }
+  }, [imageUrl])
+
+  // 处理文件上传
+  const handleFileUpload = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) return
+
+    setOriginalImage(null)
+    setFileName(file.name)
+    setSourceFile(file)
   }, [])
 
   // 拖放处理
@@ -400,13 +423,8 @@ export default function ImageEditorPage() {
     
     canvas.toBlob((blob) => {
       if (!blob) return
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
       const baseName = fileName.replace(/\.[^/.]+$/, "")
-      a.href = url
-      a.download = `${baseName}_edited.${outputFormat}`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, `${baseName}_edited.${outputFormat}`)
     }, mimeType, quality)
   }, [originalImage, imageState, outputFormat, outputQuality, fileName, getFilterString])
 
@@ -872,7 +890,7 @@ export default function ImageEditorPage() {
                   <div className="flex items-center justify-center min-h-[400px] p-4">
                     <div className="relative">
                       <img
-                        src={imageUrl}
+                        src={imageUrl || undefined}
                         alt="Preview"
                         className="max-w-full transition-all duration-200"
                         style={{

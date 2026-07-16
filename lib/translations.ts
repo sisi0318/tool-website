@@ -1177,6 +1177,8 @@ export const translations = {
       added: "新增",
       removed: "删除",
       unchanged: "未变化",
+      preciseFallback: "文本差异过大，已自动切换为快速对比以保持页面流畅。",
+      resultLimited: "结果较长，仅显示前 {count} 行；复制仍包含完整结果。",
     },
     docViewer: {
       title: "文档预览",
@@ -1325,6 +1327,8 @@ export const translations = {
       copyStatsTooltip: "复制所有统计数据到剪贴板",
       copied: "已复制",
       wordFrequency: "高频词汇",
+      analyzing: "分析中",
+      frequencyLimited: "文本较长，高频词仅分析前 {count} 个字符。",
     },
     utilityWorkbench: {
       inputSettings: "输入与设置",
@@ -2745,6 +2749,8 @@ export const translations = {
       added: "Added",
       removed: "Removed",
       unchanged: "Unchanged",
+      preciseFallback: "The change set is too large for precise mode, so quick diff is being used to keep the page responsive.",
+      resultLimited: "This result is long. Showing the first {count} lines; copying still includes the complete result.",
     },
     docViewer: {
       title: "Document Viewer",
@@ -2893,6 +2899,8 @@ export const translations = {
       copyStatsTooltip: "Copy all statistics to clipboard",
       copied: "Copied",
       wordFrequency: "Word Frequency",
+      analyzing: "Analyzing",
+      frequencyLimited: "For responsiveness, word frequency analyzes only the first {count} characters of long text.",
     },
     utilityWorkbench: {
       inputSettings: "Input & settings",

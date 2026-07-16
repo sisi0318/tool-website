@@ -1,142 +1,32 @@
 "use client"
 
 import type React from "react"
-import { useState, useMemo, useCallback, useRef } from "react"
+import {
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
-import { Copy, Check, Trash2, FileText, ArrowRightLeft, Eye, EyeOff } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowRightLeft,
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  FileText,
+  Loader2,
+  Trash2,
+} from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { computeLineDiff, type DiffLine } from "@/lib/text-diff"
 
-// Diff 类型
-type DiffType = "unchanged" | "added" | "removed"
-
-interface DiffLine {
-  type: DiffType
-  content: string
-  lineNumber?: number
-}
-
-// 简单的行对比算法
-function computeDiff(oldText: string, newText: string): DiffLine[] {
-  const oldLines = oldText.split("\n")
-  const newLines = newText.split("\n")
-  const diff: DiffLine[] = []
-  
-  // 创建行映射以便快速查找
-  const oldLineMap = new Map<string, number[]>()
-  const newLineMap = new Map<string, number[]>()
-  
-  oldLines.forEach((line, index) => {
-    if (!oldLineMap.has(line)) {
-      oldLineMap.set(line, [])
-    }
-    oldLineMap.get(line)?.push(index)
-  })
-  
-  newLines.forEach((line, index) => {
-    if (!newLineMap.has(line)) {
-      newLineMap.set(line, [])
-    }
-    newLineMap.get(line)?.push(index)
-  })
-  
-  let oldIndex = 0
-  let newIndex = 0
-  
-  // 简单的 diff 算法：逐行比较
-  while (oldIndex < oldLines.length || newIndex < newLines.length) {
-    const oldLine = oldIndex < oldLines.length ? oldLines[oldIndex] : null
-    const newLine = newIndex < newLines.length ? newLines[newIndex] : null
-    
-    // 行相同
-    if (oldLine === newLine) {
-      diff.push({ type: "unchanged", content: oldLine || "" })
-      oldIndex++
-      newIndex++
-      continue
-    }
-    
-    // 检查新行是否存在于旧文本中（可能是移动的行）
-    const existsInOld = oldLineMap.has(newLine || "")
-    const existsInNew = newLineMap.has(oldLine || "")
-    
-    // 如果新行不存在于旧文本中，则为新增行
-    if (newLine !== null && !existsInOld) {
-      diff.push({ type: "added", content: newLine })
-      newIndex++
-      continue
-    }
-    
-    // 如果旧行不存在于新文本中，则为删除行
-    if (oldLine !== null && !existsInNew) {
-      diff.push({ type: "removed", content: oldLine })
-      oldIndex++
-      continue
-    }
-    
-    // 默认情况：标记为删除和新增
-    if (oldLine !== null) {
-      diff.push({ type: "removed", content: oldLine })
-      oldIndex++
-    }
-    
-    if (newLine !== null) {
-      diff.push({ type: "added", content: newLine })
-      newIndex++
-    }
-  }
-  
-  return diff
-}
-
-// 更精确的 diff 算法（Myers 差异算法简化版）
-function myersDiff(oldText: string, newText: string): DiffLine[] {
-  const oldLines = oldText.split("\n")
-  const newLines = newText.split("\n")
-  
-  // 构建最长公共子序列矩阵
-  const m = oldLines.length
-  const n = newLines.length
-  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0))
-  
-  // 填充 DP 表
-  for (let i = 0; i <= m; i++) {
-    for (let j = 0; j <= n; j++) {
-      if (i === 0) {
-        dp[i][j] = j
-      } else if (j === 0) {
-        dp[i][j] = i
-      } else if (oldLines[i - 1] === newLines[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1]
-      } else {
-        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1])
-      }
-    }
-  }
-  
-  // 回溯构造 diff
-  const diff: DiffLine[] = []
-  let i = m
-  let j = n
-  
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      diff.unshift({ type: "unchanged", content: oldLines[i - 1] })
-      i--
-      j--
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] <= dp[i - 1][j])) {
-      diff.unshift({ type: "added", content: newLines[j - 1] })
-      j--
-    } else if (i > 0 && (j === 0 || dp[i - 1][j] <= dp[i][j - 1])) {
-      diff.unshift({ type: "removed", content: oldLines[i - 1] })
-      i--
-    }
-  }
-  
-  return diff
-}
+const MAX_RENDERED_DIFF_LINES = 2_000
 
 export default function DiffPage() {
   const t = useTranslations("diff")
@@ -150,17 +40,22 @@ export default function DiffPage() {
   const oldTextareaRef = useRef<HTMLTextAreaElement>(null)
   const newTextareaRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const deferredOldText = useDeferredValue(oldText)
+  const deferredNewText = useDeferredValue(newText)
+  const isCalculating = deferredOldText !== oldText || deferredNewText !== newText
 
   // 计算差异
-  const diff = useMemo(() => {
-    if (!oldText.trim() && !newText.trim()) {
-      return []
-    }
-    
-    return algorithm === "myers" 
-      ? myersDiff(oldText, newText)
-      : computeDiff(oldText, newText)
-  }, [oldText, newText, algorithm])
+  const diffResult = useMemo(
+    () => computeLineDiff(
+      deferredOldText,
+      deferredNewText,
+      algorithm === "myers" ? "precise" : "quick",
+    ),
+    [algorithm, deferredNewText, deferredOldText],
+  )
+  const diff = diffResult.lines
+  const renderedDiff = diff.slice(0, MAX_RENDERED_DIFF_LINES)
+  const resultLimited = renderedDiff.length < diff.length
 
   // 复制差异结果
   const copyDiff = useCallback(() => {
@@ -374,15 +269,34 @@ function add(a, b) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label>{t("differences")}</Label>
-            <div className="text-sm text-gray-500">
-              {diff.filter(d => d.type !== "unchanged").length} {t("changes")}
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              {isCalculating && <Loader2 className="h-4 w-4 animate-spin" />}
+              <span>
+                {diffResult.added + diffResult.removed} {t("changes")}
+              </span>
             </div>
           </div>
+
+          {algorithm === "myers" && diffResult.algorithmUsed === "quick" && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{t("preciseFallback")}</span>
+            </div>
+          )}
+
+          {resultLimited && (
+            <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+              {t("resultLimited").replace(
+                "{count}",
+                MAX_RENDERED_DIFF_LINES.toLocaleString(),
+              )}
+            </div>
+          )}
           
           <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
             {diff.length > 0 ? (
               <div className="max-h-96 overflow-y-auto">
-                {diff.map((line, index) => renderDiffLine(line, index))}
+                {renderedDiff.map((line, index) => renderDiffLine(line, index))}
               </div>
             ) : (
               <div className="p-8 text-center text-gray-500">

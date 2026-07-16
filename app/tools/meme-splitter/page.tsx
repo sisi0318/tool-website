@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Package,
 } from "lucide-react"
+import { downloadBlob } from "@/lib/object-url"
 
 interface GridCell {
   x: number
@@ -604,11 +605,7 @@ export default function MemeSplitterPage() {
       })
       
       const blob = await zip.generateAsync({ type: "blob" })
-      const link = document.createElement("a")
-      link.download = `${fileName.replace(/\.[^/.]+$/, "")}_切分.zip`
-      link.href = URL.createObjectURL(blob)
-      link.click()
-      URL.revokeObjectURL(link.href)
+      downloadBlob(blob, `${fileName.replace(/\.[^/.]+$/, "")}_切分.zip`)
     } catch (err) {
       // 如果 JSZip 不可用，逐个下载
       selected.forEach((index) => {

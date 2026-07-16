@@ -1,11 +1,11 @@
 import { ScanLine } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { withObjectUrl } from "../object-url"
 
 async function decodeQRFromImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return withObjectUrl(file, (url) => new Promise((resolve, reject) => {
     const img = new Image()
-    const url = URL.createObjectURL(file)
     
     img.onload = async () => {
       try {
@@ -22,7 +22,6 @@ async function decodeQRFromImage(file: File): Promise<string> {
             const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] })
             const results = await detector.detect(canvas)
             if (results.length > 0) {
-              URL.revokeObjectURL(url)
               resolve(results[0].rawValue)
               return
             }
@@ -32,25 +31,22 @@ async function decodeQRFromImage(file: File): Promise<string> {
         }
         
         const result = manualQRDecode(imageData)
-        URL.revokeObjectURL(url)
         if (result) {
           resolve(result)
         } else {
           reject(new Error("Could not decode QR code from image"))
         }
       } catch (error) {
-        URL.revokeObjectURL(url)
         reject(error)
       }
     }
     
     img.onerror = () => {
-      URL.revokeObjectURL(url)
       reject(new Error("Failed to load image"))
     }
     
     img.src = url
-  })
+  }))
 }
 
 function manualQRDecode(imageData: ImageData): string | null {

@@ -16,6 +16,7 @@ import { Slider } from "@/components/ui/slider"
 import yaml from "js-yaml"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { escapeJsonText, tryRepairCommonJson, unescapeJsonText } from "@/lib/json-text-tools"
+import { downloadBlob } from "@/lib/object-url"
 
 export default function JsonTool() {
   const t = useTranslations("json")
@@ -318,15 +319,7 @@ export default function JsonTool() {
 
   // 下载JSON文件
   const downloadJson = () => {
-    const blob = new Blob([jsonText], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "data.json"
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    downloadBlob(new Blob([jsonText], { type: "application/json" }), "data.json")
   }
 
   // 上传JSON文件
