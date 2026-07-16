@@ -21,4 +21,20 @@ describe("SQL tools", () => {
   it("does not merge operators into a comment token", () => {
     expect(minifySql("SELECT value - -1 FROM numbers")).toBe("SELECT value - -1 FROM numbers")
   })
+
+  it("does not interpret adjacent subtraction operators as a comment", () => {
+    expect(minifySql("SELECT a--b FROM numbers")).toBe("SELECT a--b FROM numbers")
+  })
+
+  it("uses backslash parity when finding the end of quoted values", () => {
+    expect(
+      minifySql(String.raw`SELECT 'it\'s -- text' FROM t -- remove
+WHERE id = 1`),
+    ).toBe(String.raw`SELECT 'it\'s -- text' FROM t WHERE id = 1`)
+
+    expect(
+      minifySql(String.raw`SELECT 'path\\' -- remove
+FROM t`),
+    ).toBe(String.raw`SELECT 'path\\' FROM t`)
+  })
 })

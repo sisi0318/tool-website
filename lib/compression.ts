@@ -34,6 +34,7 @@ export interface CompressionResult {
   outputBytes: number
   ratio: number
   files?: string[]
+  entries?: Record<string, string>
 }
 
 export function decodeBinaryInput(value: string, encoding: BinaryEncoding): Uint8Array {
@@ -68,6 +69,7 @@ export async function transformCompression(
   const level = Math.min(9, Math.max(0, Math.round(options.level ?? 6))) as FflateLevel
   let transformed: Uint8Array
   let files: string[] | undefined
+  let extractedEntries: Record<string, Uint8Array> | undefined
 
   if (options.format === "brotli") {
     transformed = await runBrotli(source, options.operation, options.level ?? 6)
@@ -98,22 +100,37 @@ export async function transformCompression(
         transformed = inflateSync(source)
         break
       case "zip": {
-        const entries = unzipSync(source)
-        files = Object.keys(entries)
+        extractedEntries = unzipSync(source)
+        files = Object.keys(extractedEntries)
         if (files.length === 0) throw new Error("ZIP archive is empty")
-        transformed = entries[files[0]]
+        transformed = extractedEntries[files[0]]
         break
       }
     }
   }
 
   const inputBytes = source.byteLength
-  const outputBytes = transformed.byteLength
+  const entries = extractedEntries
+    ? Object.fromEntries(
+        Object.entries(extractedEntries).map(([filename, bytes]) => [
+          filename,
+          encodeBinaryOutput(bytes, options.outputEncoding),
+        ]),
+      )
+    : undefined
+  const outputBytes = extractedEntries
+    ? Object.values(extractedEntries).reduce((total, bytes) => total + bytes.byteLength, 0)
+    : transformed.byteLength
+  const output = entries && files && files.length > 1
+    ? JSON.stringify(entries, null, 2)
+    : encodeBinaryOutput(transformed, options.outputEncoding)
+
   return {
-    output: encodeBinaryOutput(transformed, options.outputEncoding),
+    output,
     inputBytes,
     outputBytes,
     ratio: inputBytes === 0 ? 0 : outputBytes / inputBytes,
     files,
+    entries,
   }
 }

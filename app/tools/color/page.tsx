@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useTranslations } from "@/hooks/use-translations"
+import { rgbToLch } from "@/lib/color-conversion"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -351,21 +352,6 @@ export default function ColorPickerPage() {
     }
 
     return [Math.round(h * 360), Math.round(white * 100), Math.round(black * 100)]
-  }
-
-  // Convert RGB to LCH (approximation)
-  const rgbToLch = (r: number, g: number, b: number): [number, number, number] => {
-    // This is a simplified approximation
-    const [h, s, l] = rgbToHsl(r, g, b)
-    const lightness = l
-    const chroma = s * 1.5 // Simplified approximation
-    const hue = h
-
-    return [
-      Number.parseFloat((lightness * 0.8).toFixed(2)),
-      Number.parseFloat((chroma * 0.8).toFixed(2)),
-      Number.parseFloat(hue.toFixed(1)),
-    ]
   }
 
   // Convert RGB to CMYK

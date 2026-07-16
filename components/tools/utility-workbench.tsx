@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Check, Copy, Play, RotateCcw, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -66,13 +66,31 @@ export function UtilityWorkbench({
 }: UtilityWorkbenchProps) {
   const t = useTranslations("utilityWorkbench")
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState("")
+  const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const copyOutput = async () => {
     if (!output) return
-    await navigator.clipboard.writeText(output)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
+
+    if (copyFeedbackTimeoutRef.current) clearTimeout(copyFeedbackTimeoutRef.current)
+
+    try {
+      await navigator.clipboard.writeText(output)
+      setCopyError("")
+      setCopied(true)
+      copyFeedbackTimeoutRef.current = setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopied(false)
+      setCopyError(t("copyFailed"))
+      copyFeedbackTimeoutRef.current = setTimeout(() => setCopyError(""), 3000)
+    }
   }
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current) clearTimeout(copyFeedbackTimeoutRef.current)
+    }
+  }, [])
 
   return (
     <main className="mx-auto max-w-7xl px-1 py-2 sm:px-3">
@@ -130,7 +148,10 @@ export function UtilityWorkbench({
             </div>
 
             {error && (
-              <p role="alert" className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+              <p
+                role="alert"
+                className="rounded-2xl bg-[var(--md-sys-color-error-container)] px-4 py-3 text-sm text-[var(--md-sys-color-on-error-container)]"
+              >
                 {error}
               </p>
             )}
@@ -156,11 +177,19 @@ export function UtilityWorkbench({
           <CardHeader className="flex-row items-center justify-between space-y-0 p-4 sm:p-6">
             <CardTitle>{outputLabel ?? t("output")}</CardTitle>
             <Button type="button" variant="outline" size="sm" onClick={copyOutput} disabled={!output} className="min-h-10 gap-2">
-              {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
               {copied ? t("copied") : t("copy")}
             </Button>
           </CardHeader>
           <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+            {copyError && (
+              <p
+                role="alert"
+                className="rounded-2xl bg-[var(--md-sys-color-error-container)] px-4 py-3 text-sm text-[var(--md-sys-color-on-error-container)]"
+              >
+                {copyError}
+              </p>
+            )}
             {result ?? (
               <Textarea
                 value={output}

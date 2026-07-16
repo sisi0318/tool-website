@@ -45,6 +45,7 @@ interface ImageState {
   cropY: number
   cropWidth: number
   cropHeight: number
+  cropApplied: boolean
   brightness: number
   contrast: number
   saturation: number
@@ -67,6 +68,7 @@ const defaultState: ImageState = {
   cropY: 0,
   cropWidth: 100,
   cropHeight: 100,
+  cropApplied: false,
   brightness: 100,
   contrast: 100,
   saturation: 100,
@@ -93,6 +95,7 @@ export default function ImageEditorPage() {
   const [imageUrl, setImageUrl] = useState<string>("")
   const [fileName, setFileName] = useState<string>("")
   const [imageState, setImageState] = useState<ImageState>(defaultState)
+  const imageStateRef = useRef<ImageState>(defaultState)
   
   // 历史记录
   const [history, setHistory] = useState<HistoryItem[]>([])
@@ -117,6 +120,9 @@ export default function ImageEditorPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    imageStateRef.current = imageState
+  }, [imageState])
 
   // 添加历史记录
   const addToHistory = useCallback((newState: ImageState, label: string) => {
@@ -242,14 +248,20 @@ export default function ImageEditorPage() {
 
   // 更新滤镜
   const updateFilter = useCallback((key: keyof ImageState, value: number | boolean) => {
-    const newState = { ...imageState, [key]: value }
-    setImageState(newState)
-  }, [imageState])
+    setImageState((current) => {
+      const nextState = { ...current, [key]: value }
+      imageStateRef.current = nextState
+      return nextState
+    })
+  }, [])
 
   // 滤镜变化完成时添加历史
-  const commitFilter = useCallback((key: string, value: number | boolean) => {
-    addToHistory(imageState, `调整${key}`)
-  }, [imageState, addToHistory])
+  const commitFilter = useCallback((stateKey: keyof ImageState, label: string, value: number | boolean) => {
+    const committedState = { ...imageStateRef.current, [stateKey]: value }
+    imageStateRef.current = committedState
+    setImageState(committedState)
+    addToHistory(committedState, `调整${label}`)
+  }, [addToHistory])
 
 
   // 应用裁剪比例
@@ -290,6 +302,7 @@ export default function ImageEditorPage() {
       cropY: cropBox.y,
       cropWidth: cropBox.width,
       cropHeight: cropBox.height,
+      cropApplied: true,
     }
     setImageState(newState)
     addToHistory(newState, "裁剪图片")
@@ -340,7 +353,7 @@ export default function ImageEditorPage() {
     let finalHeight = isRotated90 ? originalImage.width : originalImage.height
 
     // 如果有裁剪
-    if (imageState.cropWidth !== 100 || imageState.cropHeight !== 100) {
+    if (imageState.cropApplied) {
       finalWidth = imageState.cropWidth
       finalHeight = imageState.cropHeight
     }
@@ -366,7 +379,7 @@ export default function ImageEditorPage() {
     const drawWidth = isRotated90 ? finalHeight : finalWidth
     const drawHeight = isRotated90 ? finalWidth : finalHeight
     
-    if (imageState.cropWidth !== 100 || imageState.cropHeight !== 100) {
+    if (imageState.cropApplied) {
       ctx.drawImage(
         originalImage,
         imageState.cropX, imageState.cropY,
@@ -659,7 +672,7 @@ export default function ImageEditorPage() {
                       <Slider
                         value={[imageState.brightness]}
                         onValueChange={([v]) => updateFilter("brightness", v)}
-                        onValueCommit={() => commitFilter("亮度", imageState.brightness)}
+                        onValueCommit={([v]) => commitFilter("brightness", "亮度", v)}
                         min={0}
                         max={200}
                         step={1}
@@ -675,7 +688,7 @@ export default function ImageEditorPage() {
                       <Slider
                         value={[imageState.contrast]}
                         onValueChange={([v]) => updateFilter("contrast", v)}
-                        onValueCommit={() => commitFilter("对比度", imageState.contrast)}
+                        onValueCommit={([v]) => commitFilter("contrast", "对比度", v)}
                         min={0}
                         max={200}
                         step={1}
@@ -691,7 +704,7 @@ export default function ImageEditorPage() {
                       <Slider
                         value={[imageState.saturation]}
                         onValueChange={([v]) => updateFilter("saturation", v)}
-                        onValueCommit={() => commitFilter("饱和度", imageState.saturation)}
+                        onValueCommit={([v]) => commitFilter("saturation", "饱和度", v)}
                         min={0}
                         max={200}
                         step={1}
@@ -707,7 +720,7 @@ export default function ImageEditorPage() {
                       <Slider
                         value={[imageState.blur]}
                         onValueChange={([v]) => updateFilter("blur", v)}
-                        onValueCommit={() => commitFilter("模糊", imageState.blur)}
+                        onValueCommit={([v]) => commitFilter("blur", "模糊", v)}
                         min={0}
                         max={20}
                         step={0.5}
@@ -721,8 +734,7 @@ export default function ImageEditorPage() {
                         <Switch
                           checked={imageState.grayscale}
                           onCheckedChange={(v) => {
-                            updateFilter("grayscale", v)
-                            commitFilter("灰度", v)
+                            commitFilter("grayscale", "灰度", v)
                           }}
                         />
                       </div>
@@ -731,8 +743,7 @@ export default function ImageEditorPage() {
                         <Switch
                           checked={imageState.sepia}
                           onCheckedChange={(v) => {
-                            updateFilter("sepia", v)
-                            commitFilter("复古", v)
+                            commitFilter("sepia", "复古", v)
                           }}
                         />
                       </div>
@@ -741,8 +752,7 @@ export default function ImageEditorPage() {
                         <Switch
                           checked={imageState.invert}
                           onCheckedChange={(v) => {
-                            updateFilter("invert", v)
-                            commitFilter("反色", v)
+                            commitFilter("invert", "反色", v)
                           }}
                         />
                       </div>

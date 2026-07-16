@@ -21,7 +21,6 @@ const toolTranslationKeys: Record<string, string> = {
   "data-detector": "dataDetector.name",
   diff: "diff.name",
   "docker-converter": "dockerConverter.name",
-  "doc-viewer": "docViewer.name",
   encoding: "encoding.name",
   "exif-viewer": "exifViewer.name",
   hash: "hash.name",

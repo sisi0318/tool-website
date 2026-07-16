@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
+import { getModularInverse } from "@/lib/classic-cipher-tools"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -261,6 +262,7 @@ export default function ClassicCipherPage() {
 
   // 仿射密码加密
   const affineEncrypt = (text: string, a: number, b: number): string => {
+    getModularInverse(a, 26)
     return text
       .split("")
       .map((char) => {
@@ -279,15 +281,7 @@ export default function ClassicCipherPage() {
 
   // 仿射密码解密
   const affineDecrypt = (text: string, a: number, b: number): string => {
-    // 找到a的模逆
-    const modInverse = (a: number, m: number): number => {
-      for (let i = 1; i < m; i++) {
-        if ((a * i) % m === 1) return i
-      }
-      return 1
-    }
-
-    const aInv = modInverse(a, 26)
+    const aInv = getModularInverse(a, 26)
     
     return text
       .split("")

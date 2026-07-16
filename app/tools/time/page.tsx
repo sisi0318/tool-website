@@ -58,7 +58,6 @@ export default function TimePage() {
   // 基础状态
   const [showTimeInfo, setShowTimeInfo] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
-  const [enableNotifications, setEnableNotifications] = useState(false)
 
   // State variables
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -98,6 +97,9 @@ export default function TimePage() {
 
   // Effect to update time every second
   useEffect(() => {
+    setCurrentTime(new Date())
+    if (!autoRefresh) return
+
     clockInterval.current = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
@@ -107,7 +109,7 @@ export default function TimePage() {
         clearInterval(clockInterval.current)
       }
     }
-  }, [])
+  }, [autoRefresh])
 
   // Load saved settings from localStorage
   useEffect(() => {
@@ -551,7 +553,7 @@ export default function TimePage() {
         {showTimeInfo && (
           <Card className="mt-3 card-modern">
             <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
                   <Label htmlFor="auto-refresh" className="cursor-pointer text-sm">
                     手动刷新
@@ -568,15 +570,6 @@ export default function TimePage() {
                   <Switch id="show-seconds" checked={showSeconds} onCheckedChange={setShowSeconds} />
                   <Label htmlFor="show-seconds" className="cursor-pointer text-sm text-green-600">
                     显示秒数
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="notifications" className="cursor-pointer text-sm">
-                    关闭通知
-                  </Label>
-                  <Switch id="notifications" checked={enableNotifications} onCheckedChange={setEnableNotifications} />
-                  <Label htmlFor="notifications" className="cursor-pointer text-sm text-purple-600">
-                    启用通知
                   </Label>
                 </div>
               </div>
@@ -649,14 +642,25 @@ export default function TimePage() {
                   <div className="text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-gray-400">
                     {formatDate(currentTime)}
                   </div>
-                  <div className="mt-4 flex justify-center">
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {!autoRefresh && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCurrentTime(new Date())}
+                        className="text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                        刷新时间
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={copyCurrentTime}
                       className="text-xs text-gray-500 hover:text-gray-700"
                     >
-                      {copied.current ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                      {copied["current"] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
                       复制当前时间
                     </Button>
                   </div>

@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
+import { formatExifDate } from "@/lib/exif-date"
 import { 
   Upload, ImageIcon, MapPin, Camera, Calendar, Info, X, Download, 
   ExternalLink, Search, Filter, Grid3X3, List, Eye, Copy, 
@@ -325,9 +326,9 @@ export default function ExifViewerPage() {
       GPSSpeed: { category: "location", label: "速度", important: false },
 
       // 日期时间
-      DateTimeOriginal: { category: "datetime", label: "拍摄时间", important: true, formatter: (v) => new Date(v).toLocaleString() },
-      DateTime: { category: "datetime", label: "修改时间", important: false, formatter: (v) => new Date(v).toLocaleString() },
-      CreateDate: { category: "datetime", label: "创建时间", important: false, formatter: (v) => new Date(v).toLocaleString() },
+      DateTimeOriginal: { category: "datetime", label: "拍摄时间", important: true, formatter: formatExifDate },
+      DateTime: { category: "datetime", label: "修改时间", important: false, formatter: formatExifDate },
+      CreateDate: { category: "datetime", label: "创建时间", important: false, formatter: formatExifDate },
       OffsetTime: { category: "datetime", label: "时区偏移", important: false },
       OffsetTimeOriginal: { category: "datetime", label: "原始时区偏移", important: false },
 
@@ -714,7 +715,7 @@ export default function ExifViewerPage() {
                               <Calendar className="h-4 w-4 mx-auto mb-1 text-green-500" />
                               <div className="text-xs text-gray-500">拍摄时间</div>
                               <div className="text-sm font-medium">
-                                {new Date(selectedImage.exifData.DateTimeOriginal).toLocaleDateString()}
+                                {formatExifDate(selectedImage.exifData.DateTimeOriginal, true)}
                               </div>
                             </div>
                           )}

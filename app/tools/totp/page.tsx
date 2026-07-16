@@ -11,6 +11,7 @@ import {
   QrCode, Eye, EyeOff, RefreshCw
 } from "lucide-react"
 import { M3CircularProgress } from "@/components/m3/progress"
+import { generateTotp, getTotpTimeRemaining, parseOtpauthUri } from "@/lib/totp-tools"
 
 interface TOTPAccount {
   id: string
@@ -21,108 +22,12 @@ interface TOTPAccount {
   period: number
 }
 
-// Base32 解码
-function base32Decode(encoded: string): Uint8Array {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-  const cleanedInput = encoded.toUpperCase().replace(/[^A-Z2-7]/g, '')
-  
-  let bits = ''
-  for (const char of cleanedInput) {
-    const val = alphabet.indexOf(char)
-    if (val === -1) continue
-    bits += val.toString(2).padStart(5, '0')
-  }
-  
-  const bytes = new Uint8Array(Math.floor(bits.length / 8))
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(bits.slice(i * 8, (i + 1) * 8), 2)
-  }
-  
-  return bytes
-}
-
-// HMAC-SHA1 实现
-async function hmacSha1(key: Uint8Array, message: Uint8Array): Promise<Uint8Array> {
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    key.buffer as ArrayBuffer,
-    { name: 'HMAC', hash: 'SHA-1' },
-    false,
-    ['sign']
-  )
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, message.buffer as ArrayBuffer)
-  return new Uint8Array(signature)
-}
-
-// 生成 TOTP
-async function generateTOTP(
-  secret: string,
-  period: number = 30,
-  digits: number = 6,
-  timestamp?: number
-): Promise<string> {
-  const time = timestamp ?? Math.floor(Date.now() / 1000)
-  const counter = Math.floor(time / period)
-  
-  // 将 counter 转换为 8 字节大端序
-  const counterBytes = new Uint8Array(8)
-  let temp = counter
-  for (let i = 7; i >= 0; i--) {
-    counterBytes[i] = temp & 0xff
-    temp = Math.floor(temp / 256)
-  }
-  
-  const keyBytes = base32Decode(secret)
-  const hmac = await hmacSha1(keyBytes, counterBytes)
-  
-  // 动态截断
-  const offset = hmac[hmac.length - 1] & 0x0f
-  const binary = 
-    ((hmac[offset] & 0x7f) << 24) |
-    ((hmac[offset + 1] & 0xff) << 16) |
-    ((hmac[offset + 2] & 0xff) << 8) |
-    (hmac[offset + 3] & 0xff)
-  
-  const otp = binary % Math.pow(10, digits)
-  return otp.toString().padStart(digits, '0')
-}
-
-// 解析 otpauth URI
-function parseOtpauthUri(uri: string): Partial<TOTPAccount> | null {
-  try {
-    const url = new URL(uri)
-    if (url.protocol !== 'otpauth:') return null
-    if (url.host !== 'totp') return null
-    
-    const path = decodeURIComponent(url.pathname.slice(1))
-    const params = url.searchParams
-    
-    let issuer = params.get('issuer') || ''
-    let name = path
-    
-    if (path.includes(':')) {
-      const [i, n] = path.split(':')
-      issuer = issuer || i
-      name = n
-    }
-    
-    return {
-      name,
-      issuer,
-      secret: params.get('secret') || '',
-      digits: parseInt(params.get('digits') || '6'),
-      period: parseInt(params.get('period') || '30'),
-    }
-  } catch {
-    return null
-  }
-}
-
 export default function TOTPPage() {
   const { toast } = useToast()
   const [accounts, setAccounts] = useState<TOTPAccount[]>([])
   const [codes, setCodes] = useState<Record<string, string>>({})
-  const [timeLeft, setTimeLeft] = useState(30)
+  const [timeLeft, setTimeLeft] = useState<Record<string, number>>({})
+  const lastCountersRef = useRef<Record<string, number>>({})
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
   
   // 添加账户表单
@@ -133,11 +38,11 @@ export default function TOTPPage() {
   const [importUri, setImportUri] = useState("")
 
   // 生成所有账户的验证码
-  const generateAllCodes = useCallback(async (accountList: TOTPAccount[]) => {
+  const generateAllCodes = useCallback(async (accountList: TOTPAccount[], timestamp?: number) => {
     const newCodes: Record<string, string> = {}
     for (const account of accountList) {
       try {
-        newCodes[account.id] = await generateTOTP(account.secret, account.period, account.digits)
+        newCodes[account.id] = await generateTotp(account.secret, account.period, account.digits, timestamp)
       } catch {
         newCodes[account.id] = '------'
       }
@@ -147,20 +52,32 @@ export default function TOTPPage() {
 
   // 定时更新验证码
   useEffect(() => {
-    if (accounts.length === 0) return
-    
-    let lastGenTime = 0
+    if (accounts.length === 0) {
+      setTimeLeft({})
+      lastCountersRef.current = {}
+      return
+    }
     
     const updateTimer = () => {
       const now = Math.floor(Date.now() / 1000)
-      const remaining = 30 - (now % 30)
-      setTimeLeft(remaining)
-      
-      // 每30秒周期开始时重新生成，或者首次加载
-      const currentPeriod = Math.floor(now / 30)
-      if (currentPeriod !== lastGenTime) {
-        lastGenTime = currentPeriod
-        generateAllCodes(accounts)
+      const nextTimeLeft: Record<string, number> = {}
+      const nextCounters: Record<string, number> = {}
+      let shouldRegenerate = false
+
+      for (const account of accounts) {
+        const period = Number.isInteger(account.period) && account.period > 0 ? account.period : 30
+        nextTimeLeft[account.id] = getTotpTimeRemaining(now, period)
+        nextCounters[account.id] = Math.floor(now / period)
+        if (lastCountersRef.current[account.id] !== nextCounters[account.id]) {
+          shouldRegenerate = true
+        }
+      }
+
+      setTimeLeft(nextTimeLeft)
+      lastCountersRef.current = nextCounters
+
+      if (shouldRegenerate) {
+        void generateAllCodes(accounts, now)
       }
     }
     
@@ -407,11 +324,11 @@ export default function TOTPPage() {
                       {/* 倒计时 */}
                       <div className="relative w-10 h-10 flex items-center justify-center">
                         <M3CircularProgress
-                          value={(timeLeft / 30) * 100}
+                          value={((timeLeft[account.id] ?? account.period) / Math.max(account.period, 1)) * 100}
                           size="default"
                         />
                         <span className="absolute text-xs font-medium text-[var(--md-sys-color-on-surface)]">
-                          {timeLeft}
+                          {timeLeft[account.id] ?? account.period}
                         </span>
                       </div>
 

@@ -48,7 +48,19 @@ export function minifySql(input: string): string {
       continue
     }
 
-    if (character === "-" && next === "-") {
+    const previous = input[index - 1]
+    const afterCommentToken = input[index + 2]
+    const startsLineComment =
+      character === "-" &&
+      next === "-" &&
+      (
+        index === 0 ||
+        /\s/.test(previous) ||
+        /\s/.test(afterCommentToken ?? "") ||
+        previous === ";"
+      )
+
+    if (startsLineComment) {
       index += 2
       while (index < input.length && input[index] !== "\n" && input[index] !== "\r") index += 1
       pendingSpace = true
@@ -78,7 +90,13 @@ export function minifySql(input: string): string {
           index += 1
           continue
         }
-        if (closing !== "]" && quoted.at(-2) === "\\") continue
+        if (closing !== "]") {
+          let backslashCount = 0
+          for (let cursor = index - 2; cursor >= 0 && input[cursor] === "\\"; cursor -= 1) {
+            backslashCount += 1
+          }
+          if (backslashCount % 2 === 1) continue
+        }
         closed = true
         break
       }

@@ -26,15 +26,26 @@ function extractPemBlocks(input: string): PemBlock[] {
   const expression = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/g
   for (const match of input.matchAll(expression)) {
     const label = match[1]
-    const body = match[2]
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line && !line.includes(":"))
-      .join("")
+    const bodyLines = match[2].split(/\r?\n/).map((line) => line.trim())
+    const body: string[] = []
+    let readingHeaders = true
+    let sawHeader = false
+    for (const line of bodyLines) {
+      if (!line) {
+        if (sawHeader) readingHeaders = false
+        continue
+      }
+      if (readingHeaders && /^(?:Proc-Type|DEK-Info):\s*/i.test(line)) {
+        sawHeader = true
+        continue
+      }
+      readingHeaders = false
+      body.push(line)
+    }
     blocks.push({
       label,
       pem: match[0],
-      bytes: base64ToBytes(body),
+      bytes: base64ToBytes(body.join("")),
       encrypted: label.includes("ENCRYPTED") || /Proc-Type:\s*4,ENCRYPTED/i.test(match[2]),
     })
   }
@@ -60,6 +71,22 @@ function summarizeJwk(jwk: Record<string, unknown>) {
     hasPrivateMaterial: privateFields.length > 0,
     privateFields,
   }
+}
+
+function assertValidJwk(jwk: Record<string, unknown>): void {
+  const kty = jwk.kty
+  if (typeof kty !== "string" || !["RSA", "EC", "OKP", "oct"].includes(kty)) {
+    throw new Error("JWK must include a supported kty value: RSA, EC, OKP, or oct")
+  }
+
+  const requiredFields: Record<string, string[]> = {
+    RSA: ["n", "e"],
+    EC: ["crv", "x", "y"],
+    OKP: ["crv", "x"],
+    oct: ["k"],
+  }
+  const missing = requiredFields[kty].filter((field) => typeof jwk[field] !== "string" || !jwk[field])
+  if (missing.length > 0) throw new Error(`JWK ${kty} key is missing required field(s): ${missing.join(", ")}`)
 }
 
 function algorithmSummary(algorithm: Algorithm | undefined): Record<string, unknown> | null {
@@ -157,7 +184,9 @@ export async function inspectCryptoMaterial(input: string): Promise<CryptoMateri
     const keys = Array.isArray(object.keys) ? object.keys : [object]
     const summaries = keys.map((key) => {
       if (!key || typeof key !== "object" || Array.isArray(key)) throw new Error("Invalid JWK entry")
-      return summarizeJwk(key as Record<string, unknown>)
+      const jwk = key as Record<string, unknown>
+      assertValidJwk(jwk)
+      return summarizeJwk(jwk)
     })
     const hasPrivate = summaries.some((summary) => summary.hasPrivateMaterial)
     return {

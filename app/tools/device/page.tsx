@@ -16,6 +16,7 @@ import { collectDeviceFingerprint, type DeviceFingerprint } from "@/lib/device-f
 // 在文件顶部添加缓存相关的常量
 const CLIENT_CACHE_DURATION = 3 * 60 * 60 * 1000 // 3小时，单位毫秒
 const IP_CACHE_KEY = "device-info-ip-cache"
+const IP_CACHE_PREFERENCE_KEY = "device-info-ip-cache-enabled"
 
 interface DeviceInfo {
   userAgent: string
@@ -522,6 +523,16 @@ export default function DeviceInfoPage() {
     void gatherDeviceInfo()
   }
 
+  const handleCacheChange = (enabled: boolean) => {
+    setEnableCache(enabled)
+    try {
+      localStorage.setItem(IP_CACHE_PREFERENCE_KEY, String(enabled))
+      if (!enabled) localStorage.removeItem(IP_CACHE_KEY)
+    } catch {
+      setEnableCache(false)
+    }
+  }
+
   // 获取电池信息
   const getBatteryInfo = async () => {
     try {
@@ -566,6 +577,13 @@ export default function DeviceInfoPage() {
 
   // Initialize on component mount
   useEffect(() => {
+    try {
+      const savedPreference = localStorage.getItem(IP_CACHE_PREFERENCE_KEY)
+      if (savedPreference !== null) setEnableCache(savedPreference === "true")
+    } catch {
+      setEnableCache(false)
+    }
+
     void gatherDeviceInfo()
     void getBatteryInfo()
 
@@ -724,7 +742,7 @@ export default function DeviceInfoPage() {
                     <span className="block font-medium">网络信息缓存</span>
                     <span className="block text-xs text-gray-500">保留 3 小时</span>
                   </Label>
-                  <Switch id="enable-cache" checked={enableCache} onCheckedChange={setEnableCache} />
+                  <Switch id="enable-cache" checked={enableCache} onCheckedChange={handleCacheChange} />
                 </div>
                 <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-gray-100 px-3 py-2 dark:bg-gray-800">
                   <Label htmlFor="detailed-info" className="min-w-0 cursor-pointer text-sm">

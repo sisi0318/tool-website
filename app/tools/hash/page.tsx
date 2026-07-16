@@ -397,7 +397,6 @@ export default function HashPage() {
   }
 
   // 计算文件哈希
-  // Update the calculateFileHash function to handle HMAC
   const calculateFileHash = async (file: File, algorithmId: string, algorithmSize?: number): Promise<string> => {
     if (serverBackedAlgorithms.has(algorithmId)) {
       return calculateServerHash(algorithmId, {

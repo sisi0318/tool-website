@@ -11,6 +11,12 @@ describe("CSV tools", () => {
     ])
   })
 
+  it("ignores delimiters inside quoted fields when auto-detecting", () => {
+    const result = processCsv('name;note\nAda;"uses, commas, inside"', "to-json")
+    expect(result.delimiter).toBe(";")
+    expect(JSON.parse(result.output)).toEqual([{ name: "Ada", note: "uses, commas, inside" }])
+  })
+
   it("converts JSON to CSV", () => {
     const result = processCsv('[{"name":"Ada","active":true}]', "from-json")
     expect(result.output).toContain("name,active")

@@ -37,7 +37,8 @@ function ipv4TailToGroups(input: string): string {
   const lastColon = input.lastIndexOf(":")
   if (lastColon < 0) throw new Error("Invalid IPv6 address")
   const ipv4 = parseIpv4(input.slice(lastColon + 1)).value
-  return `${input.slice(0, lastColon)}:${(ipv4 >> BigInt(16)).toString(16)}:${(ipv4 & GROUP_MASK).toString(16)}`
+  const ipv6Prefix = input.slice(0, lastColon + 1)
+  return `${ipv6Prefix}${(ipv4 >> BigInt(16)).toString(16)}:${(ipv4 & GROUP_MASK).toString(16)}`
 }
 
 function parseIpv6(input: string): ParsedAddress {

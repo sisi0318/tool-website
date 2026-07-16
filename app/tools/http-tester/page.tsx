@@ -30,6 +30,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { M3Card } from "@/components/m3/card"
 import { M3Tabs, type TabItem } from "@/components/m3/tabs"
 import { useMemo } from "react"
+import { buildRequestUrl, encodeUrlEncodedBody } from "@/lib/http-request-tools"
 
 interface RequestParam {
   id: string
@@ -58,13 +59,6 @@ interface RequestHistory {
   duration?: number
 }
 
-interface Environment {
-  id: string
-  name: string
-  variables: Record<string, string>
-  active: boolean
-}
-
 interface RequestTemplate {
   id: string
   name: string
@@ -86,25 +80,15 @@ async function proxyRequest(
 ) {
   const proxyUrl = "https://web-proxy.apifox.cn/api/v1/request"
 
-  // Build URL with query parameters
-  let finalUrl = url
-  const queryParams = params
-    .filter((param) => param.enabled && param.name)
-    .map((param) => `${encodeURIComponent(param.name)}=${encodeURIComponent(param.value || "")}`)
-    .join("&")
-
-  if (queryParams) {
-    // 确保基础URL不包含查询参数，避免重复
-    const baseUrl = finalUrl.includes("?") ? finalUrl.split("?")[0] : finalUrl
-    finalUrl = `${baseUrl}?${queryParams}`
-  }
+  const finalUrl = buildRequestUrl(url, params)
+  const targetUrl = new URL(finalUrl)
 
   // Build custom headers string for api-h0
   const customHeadersArray = Object.entries(headers).map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
   const defaultHeaders = [
     `User-Agent=Apifox/1.0.0 (https://apifox.com)`,
     `Accept=*/*`,
-    `Host=${new URL(finalUrl).hostname}`,
+    `Host=${targetUrl.host}`,
     `Accept-Encoding=gzip%2C deflate%2C br`,
     `Connection=keep-alive`,
   ]
@@ -209,7 +193,6 @@ export default function HTTPTester() {
   // 基本请求状态
   const [url, setUrl] = useState("https://example.com")
   const [method, setMethod] = useState("GET")
-  const [headers, setHeaders] = useState<Record<string, string>>({})
   const [requestParams, setRequestParams] = useState<RequestParam[]>([
     { id: "1", name: "", value: "", type: "String", enabled: true },
   ])
@@ -235,39 +218,57 @@ export default function HTTPTester() {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState("params")
   const [responseTab, setResponseTab] = useState("response")
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
 
   // 新功能状态
   const [history, setHistory] = useState<RequestHistory[]>([])
-  const [environments, setEnvironments] = useState<Environment[]>([
-    { id: "default", name: "默认环境", variables: {}, active: true }
+  const [environmentVariables, setEnvironmentVariables] = useState<RequestParam[]>([
+    { id: "env_1", name: "", value: "", type: "String", enabled: true },
   ])
   const [templates, setTemplates] = useState<RequestTemplate[]>([])
-  const [currentEnvironment, setCurrentEnvironment] = useState("default")
   const [showHistory, setShowHistory] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
 
   // ID计数器
   const nextParamId = useRef(2)
   const nextHeaderId = useRef(2)
-  const nextFormDataId = useRef(1)
+  const nextFormDataId = useRef(2)
+  const nextEnvironmentVariableId = useRef(2)
 
   const binaryInputRef = useRef<HTMLInputElement>(null)
   const abortController = useRef<AbortController | null>(null)
 
   // 环境变量处理
   const replaceEnvironmentVariables = useCallback((text: string) => {
-    const currentEnv = environments.find(env => env.id === currentEnvironment)
-    if (!currentEnv) return text
-
     let result = text
-    Object.entries(currentEnv.variables).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, 'g')
-      result = result.replace(regex, value)
+    environmentVariables.forEach((variable) => {
+      if (!variable.enabled || !variable.name.trim()) return
+      result = result.split(`{{${variable.name.trim()}}}`).join(variable.value)
     })
     return result
-  }, [environments, currentEnvironment])
+  }, [environmentVariables])
+
+  const addEnvironmentVariable = () => {
+    setEnvironmentVariables((variables) => [
+      ...variables,
+      {
+        id: `env_${nextEnvironmentVariableId.current++}`,
+        name: "",
+        value: "",
+        type: "String",
+        enabled: true,
+      },
+    ])
+  }
+
+  const updateEnvironmentVariable = (id: string, field: keyof RequestParam, value: string | boolean) => {
+    setEnvironmentVariables((variables) =>
+      variables.map((variable) => (variable.id === id ? { ...variable, [field]: value } : variable)),
+    )
+  }
+
+  const removeEnvironmentVariable = (id: string) => {
+    setEnvironmentVariables((variables) => variables.filter((variable) => variable.id !== id))
+  }
 
   // 保存到历史记录
   const saveToHistory = useCallback((requestData: Omit<RequestHistory, 'id' | 'timestamp'>) => {
@@ -341,12 +342,7 @@ export default function HTTPTester() {
   // 生成 cURL 命令
   const generateCurl = useCallback(() => {
     const processedUrl = replaceEnvironmentVariables(url)
-    const queryParams = requestParams
-      .filter(param => param.enabled && param.name)
-      .map(param => `${encodeURIComponent(param.name)}=${encodeURIComponent(param.value || "")}`)
-      .join("&")
-
-    const finalUrl = queryParams ? `${processedUrl}?${queryParams}` : processedUrl
+    const finalUrl = buildRequestUrl(processedUrl, requestParams)
 
     let curlCommand = `curl -X ${method} "${finalUrl}"`
 
@@ -362,10 +358,13 @@ export default function HTTPTester() {
     if (body && bodyType === "raw") {
       const processedBody = replaceEnvironmentVariables(body)
       curlCommand += ` \\\n  -d '${processedBody}'`
+    } else if (bodyType === "urlencoded") {
+      const encodedBody = encodeUrlEncodedBody(formDataParams, replaceEnvironmentVariables)
+      if (encodedBody) curlCommand += ` \\\n  -d '${encodedBody}'`
     }
 
     return curlCommand
-  }, [method, url, requestParams, customHeaders, body, bodyType, replaceEnvironmentVariables])
+  }, [method, url, requestParams, customHeaders, body, bodyType, formDataParams, replaceEnvironmentVariables])
 
   // 解析 cURL 命令
   const parseCurl = useCallback((curlCommand: string) => {
@@ -529,6 +528,7 @@ export default function HTTPTester() {
     setBody("")
     setBinaryFile(null)
     setFormDataParams([{ id: "1", name: "", value: "", type: "String", enabled: true }])
+    nextFormDataId.current = 2
     if (binaryInputRef.current) {
       binaryInputRef.current.value = ""
     }
@@ -570,10 +570,7 @@ export default function HTTPTester() {
       } else if (bodyType === "binary" && binaryFile) {
         requestBody = binaryFile
       } else if (bodyType === "urlencoded") {
-        requestBody = requestParams
-          .filter((param) => param.enabled && param.name && param.value)
-          .map((param) => `${encodeURIComponent(param.name)}=${encodeURIComponent(replaceEnvironmentVariables(param.value))}`)
-          .join("&")
+        requestBody = encodeUrlEncodedBody(formDataParams, replaceEnvironmentVariables)
       }
 
       const res = await proxyRequest(processedUrl, method, headersObj, requestParams, requestBody, bodyType)
@@ -1077,25 +1074,58 @@ export default function HTTPTester() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* 侧边栏 */}
         <div className="lg:col-span-1 space-y-4">
-          {/* 环境选择 */}
+          {/* 环境变量 */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Settings className="h-4 w-4" />
-                环境设置
+                环境变量
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
-              <Select value={currentEnvironment} onValueChange={setCurrentEnvironment}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {environments.map(env => (
-                    <SelectItem key={env.id} value={env.id}>{env.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <CardContent className="space-y-3 pt-0">
+              <p className="text-xs text-muted-foreground">
+                在 URL、请求头或请求体中使用 <code className="rounded bg-muted px-1">{'{{变量名}}'}</code>
+              </p>
+              {environmentVariables.map((variable) => (
+                <div key={variable.id} className="space-y-2 rounded-md border p-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={variable.enabled}
+                      onCheckedChange={(checked) =>
+                        updateEnvironmentVariable(variable.id, "enabled", checked === true)
+                      }
+                      aria-label={`启用环境变量 ${variable.name || "未命名"}`}
+                    />
+                    <Input
+                      value={variable.name}
+                      onChange={(event) => updateEnvironmentVariable(variable.id, "name", event.target.value)}
+                      placeholder="变量名"
+                      aria-label="环境变量名"
+                      className="h-8"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeEnvironmentVariable(variable.id)}
+                      aria-label={`删除环境变量 ${variable.name || "未命名"}`}
+                      className="h-8 w-8 shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                  <Input
+                    value={variable.value}
+                    onChange={(event) => updateEnvironmentVariable(variable.id, "value", event.target.value)}
+                    placeholder="变量值"
+                    aria-label={`${variable.name || "环境变量"}的值`}
+                    className="h-8 font-mono text-xs"
+                  />
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addEnvironmentVariable} className="w-full gap-1">
+                <Plus className="h-4 w-4" />
+                添加变量
+              </Button>
             </CardContent>
           </Card>
 
@@ -1236,9 +1266,19 @@ export default function HTTPTester() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const curl = generateCurl()
-                      navigator.clipboard.writeText(curl)
-                      toast({ title: "cURL已复制到剪贴板" })
+                      try {
+                        const curl = generateCurl()
+                        void navigator.clipboard.writeText(curl).then(
+                          () => toast({ title: "cURL已复制到剪贴板" }),
+                          () => toast({ title: "复制失败", variant: "destructive" }),
+                        )
+                      } catch (error) {
+                        toast({
+                          title: "URL 格式错误",
+                          description: (error as Error).message,
+                          variant: "destructive",
+                        })
+                      }
                     }}
                     className="gap-2 flex-1 sm:flex-none"
                   >
@@ -1346,12 +1386,15 @@ export default function HTTPTester() {
                 </div>
 
                 {/* 环境变量提示 */}
-                {currentEnvironment !== 'default' && (
+                {environmentVariables.some((variable) => variable.enabled && variable.name.trim()) && (
                   <Alert>
                     <Settings className="h-4 w-4" />
                     <AlertDescription>
-                      当前使用环境: <strong>{environments.find(e => e.id === currentEnvironment)?.name}</strong>
-                      ，支持在URL、请求头和请求体中使用 <code>{'{{变量名}}'}</code> 语法
+                      已启用{" "}
+                      <strong>
+                        {environmentVariables.filter((variable) => variable.enabled && variable.name.trim()).length}
+                      </strong>{" "}
+                      个环境变量，发送请求和导出 cURL 时会自动替换。
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1593,7 +1636,7 @@ export default function HTTPTester() {
                           </div>
                         )}
 
-                        {bodyType === "form-data" && (
+                        {(bodyType === "form-data" || bodyType === "urlencoded") && (
                           <div className="border rounded-md overflow-hidden">
                             <Table>
                               <TableHeader>
@@ -1623,7 +1666,7 @@ export default function HTTPTester() {
                                       />
                                     </TableCell>
                                     <TableCell>
-                                      {param.type === "String" ? (
+                                      {bodyType === "urlencoded" || param.type === "String" ? (
                                         <Input
                                           value={param.value}
                                           onChange={(e) => updateFormDataParam(param.id, "value", e.target.value)}
@@ -1650,8 +1693,9 @@ export default function HTTPTester() {
                                     </TableCell>
                                     <TableCell>
                                       <Select
-                                        value={param.type}
+                                        value={bodyType === "urlencoded" ? "String" : param.type}
                                         onValueChange={(value) => updateFormDataParam(param.id, "type", value)}
+                                        disabled={bodyType === "urlencoded"}
                                       >
                                         <SelectTrigger className="h-8">
                                           <SelectValue />
@@ -1674,7 +1718,7 @@ export default function HTTPTester() {
                             <div className="p-2 border-t bg-muted/20">
                               <Button variant="outline" size="sm" onClick={addFormDataParam} className="gap-1">
                                 <Plus className="h-4 w-4" />
-                                {t("addFormData")}
+                                {bodyType === "urlencoded" ? "添加表单字段" : t("addFormData")}
                               </Button>
                             </div>
                           </div>

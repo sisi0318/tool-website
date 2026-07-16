@@ -10,6 +10,7 @@ import {
   CaseSensitive, CaseUpper, CaseLower
 } from "lucide-react"
 import { M3Chip } from "@/components/m3/chip"
+import { toUnicodeSentenceCase, toUnicodeTitleCase } from "@/lib/case-converter-tools"
 
 type CaseType = 
   | 'uppercase' 
@@ -76,10 +77,10 @@ export default function CaseConverterPage() {
         return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
       
       case 'title':
-        return text.toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
+        return toUnicodeTitleCase(text)
       
       case 'sentence':
-        return text.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, char => char.toUpperCase())
+        return toUnicodeSentenceCase(text)
       
       case 'toggle':
         return text.split('').map(char => 

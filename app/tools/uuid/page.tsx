@@ -11,44 +11,7 @@ import { useTranslations } from "@/hooks/use-translations"
 import { Copy, Check, RefreshCw, Trash2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-
-// UUID v4 生成函数
-function generateUUIDv4(): string {
-  const cryptoApi = typeof window !== "undefined" ? window.crypto : undefined
-  if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
-    return cryptoApi.randomUUID()
-  }
-
-  const bytes = new Uint8Array(16)
-  if (cryptoApi?.getRandomValues) {
-    cryptoApi.getRandomValues(bytes)
-  } else {
-    for (let index = 0; index < bytes.length; index++) {
-      bytes[index] = Math.floor(Math.random() * 256)
-    }
-  }
-  bytes[6] = (bytes[6] & 0x0f) | 0x40
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-}
-
-// UUID v1-like 生成函数（基于时间戳，非标准实现）
-function generateUUIDv1Like(): string {
-  const now = Date.now()
-  const timeHex = now.toString(16).padStart(12, "0")
-  const timeLow = timeHex.slice(-8)
-  const timeMid = timeHex.slice(-12, -8)
-  const timeHiAndVersion = "1" + timeHex.slice(0, 3)
-  const clockSeq = ((Math.random() * 0x3fff) | 0x8000).toString(16)
-  const node = Array.from({ length: 6 }, () =>
-    Math.floor(Math.random() * 256)
-      .toString(16)
-      .padStart(2, "0")
-  ).join("")
-
-  return `${timeLow}-${timeMid}-${timeHiAndVersion}-${clockSeq}-${node}`
-}
+import { generateUuidV1, generateUuidV4 } from "@/lib/uuid-tools"
 
 // 空 UUID
 const NIL_UUID = "00000000-0000-0000-0000-000000000000"
@@ -102,14 +65,14 @@ export default function UUIDPage() {
       let uuid: string
       switch (version) {
         case "v1":
-          uuid = generateUUIDv1Like()
+          uuid = generateUuidV1()
           break
         case "nil":
           uuid = NIL_UUID
           break
         case "v4":
         default:
-          uuid = generateUUIDv4()
+          uuid = generateUuidV4()
           break
       }
       uuids.push(formatUUID(uuid))
@@ -119,7 +82,7 @@ export default function UUIDPage() {
   }, [version, count, formatUUID])
 
   useEffect(() => {
-    setGeneratedUUIDs([generateUUIDv4()])
+    setGeneratedUUIDs([generateUuidV4()])
   }, [])
 
   // 复制单个 UUID

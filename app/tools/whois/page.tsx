@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
+import { detectRdapQueryType } from "@/lib/whois-tools"
 
 // RDAP查询结果接口
 interface RdapData {
@@ -88,24 +89,7 @@ function extractTLD(domain: string): string {
 
 // Helper function to detect query type
 function detectQueryType(query: string): QueryType {
-  // IPv4 address
-  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
-  if (ipv4Regex.test(query)) {
-    return 'ipv4'
-  }
-  
-  // IPv6 address (simplified check)
-  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/
-  if (ipv6Regex.test(query) || query.includes(':')) {
-    return 'ipv6'
-  }
-  
-  // Domain name
-  if (query.includes('.') && !query.includes(' ')) {
-    return 'domain'
-  }
-  
-  return 'auto'
+  return detectRdapQueryType(query)
 }
 
 // Helper function to get RDAP server for IP addresses
@@ -288,10 +272,12 @@ export default function RdapQueryPage() {
       }
 
       if (!rdapBaseUrl) {
+        const message = "无法确定此查询的 RDAP 服务器"
+        setError(message)
         const duration = Date.now() - startTime
         saveToHistory(queryText, actualQueryType === 'domain' ? 'domain' : 'ip', false, undefined, duration)
         return setRdapData({
-          error: "无法确定此查询的RDAP服务器",
+          error: message,
           domainName: queryTarget,
           raw: JSON.stringify({ error: "Could not determine RDAP server" }, null, 2),
           queryType: actualQueryType === 'domain' ? 'domain' : 'ip',
@@ -304,10 +290,12 @@ export default function RdapQueryPage() {
 
       // 特殊处理404错误
       if (response.status === 404) {
+        const message = "已识别的注册管理机构未返回该查询结果（404）"
+        setError(message)
         const duration = Date.now() - startTime
         saveToHistory(queryText, actualQueryType === 'domain' ? 'domain' : 'ip', false, rdapBaseUrl, duration)
         return setRdapData({
-          error: "我们无法连接到已识别的注册管理机构的 RDAP 服务器。",
+          error: message,
           domainName: queryTarget,
           raw: JSON.stringify({ error: "RDAP server returned 404 Not Found" }, null, 2),
           queryType: actualQueryType === 'domain' ? 'domain' : 'ip',
@@ -424,6 +412,7 @@ export default function RdapQueryPage() {
       saveToHistory(queryText, actualQueryType === 'domain' ? 'domain' : 'ip', true, rdapBaseUrl, duration)
       
       setRdapData(resultData)
+      setError(null)
       
       toast({
         title: "查询成功",
@@ -438,12 +427,14 @@ export default function RdapQueryPage() {
       
       saveToHistory(queryText, actualQueryType === 'domain' ? 'domain' : 'ip', false, undefined, duration)
       
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setError(errorMessage)
       setRdapData({
         error: "获取RDAP信息失败，请稍后重试。",
-        details: error instanceof Error ? error.message : String(error),
+        details: errorMessage,
         queryType: actualQueryType === 'domain' ? 'domain' : 'ip',
         domainName: queryText,
-        raw: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }, null, 2),
+        raw: JSON.stringify({ error: errorMessage }, null, 2),
       })
       
       toast({

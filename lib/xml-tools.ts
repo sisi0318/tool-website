@@ -42,6 +42,11 @@ export function xmlToJson(input: string): string {
 
 export function jsonToXml(input: string): string {
   const parsed = JSON.parse(input)
+  const normalized = Array.isArray(parsed)
+    ? { root: { item: parsed } }
+    : parsed && typeof parsed === "object"
+      ? parsed
+      : { root: parsed }
   const builder = new XMLBuilder({
     ignoreAttributes: false,
     attributeNamePrefix: "@",
@@ -50,7 +55,7 @@ export function jsonToXml(input: string): string {
     indentBy: "  ",
     suppressEmptyNode: false,
   })
-  return builder.build(parsed).trim()
+  return builder.build(normalized).trim()
 }
 
 export function queryXml(input: string, xpath: string): string {

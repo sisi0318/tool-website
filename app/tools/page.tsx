@@ -36,6 +36,27 @@ import {
   Network,
   ShieldCheck,
   Binary,
+  CalendarClock,
+  Camera,
+  CaseSensitive,
+  CircleDot,
+  ClipboardList,
+  Container,
+  Crosshair,
+  Dices,
+  FileImage,
+  Globe2,
+  Grid3X3,
+  Image,
+  Layers,
+  LockKeyhole,
+  PanelTop,
+  PenLine,
+  QrCode,
+  Regex,
+  ScanQrCode,
+  Thermometer,
+  WandSparkles,
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { type SearchResult, createSearchableFeatures, searchFeatures } from "./search-utils"
@@ -46,6 +67,7 @@ import { useBreakpoint } from "@/hooks/use-breakpoint"
 import { useSwipe } from "@/hooks/use-swipe"
 import { ToolRuntimeParamsProvider, type ToolRuntimeParams } from "@/components/tool-runtime-params"
 import { useToolPreferences } from "@/hooks/use-tool-preferences"
+import { haveEqualToolParams, uniqueToolIds } from "@/lib/tool-workspace"
 
 // 动态导入工具组件
 const HashCalculator = dynamic(() => import("./hash/page"), { ssr: false })
@@ -287,15 +309,7 @@ export default function ToolsPage() {
       {
         id: "qrcode",
         title: t("qrcode.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-            <path d="M8 8h2v2H8z" />
-            <path d="M14 8h2v2h-2z" />
-            <path d="M8 14h2v2H8z" />
-            <path d="M14 14h2v2h-2z" />
-          </svg>
-        ),
+        icon: <QrCode className="h-4 w-4" />,
         getComponent: createToolRenderer(QRCodeGenerator),
       },
       {
@@ -307,12 +321,7 @@ export default function ToolsPage() {
       {
         id: "color",
         title: t("color.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <circle cx="12" cy="12" r="10"></circle>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        ),
+        icon: <CircleDot className="h-4 w-4" />,
         getComponent: createToolRenderer(ColorPickerTool),
       },
       {
@@ -324,13 +333,7 @@ export default function ToolsPage() {
       {
         id: "protobuf",
         title: t("protobuf.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
-        ),
+        icon: <Layers className="h-4 w-4" />,
         getComponent: createToolRenderer(ProtobufTool),
       },
       {
@@ -342,277 +345,127 @@ export default function ToolsPage() {
       {
         id: "temperature-converter",
         title: t("temperatureConverter.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
-            <path d="M12 9a1 1 0 0 0-1-1h0a1 1 0 0 0-1 1h0a1 1 0 0 0 1 1h0a1 1 0 0 0 1-1Z" />
-          </svg>
-        ),
+        icon: <Thermometer className="h-4 w-4" />,
         getComponent: createToolRenderer(TemperatureConverterPage),
       },
       {
         id: "docker-converter",
         title: t("dockerConverter.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M22 12.5a2.5 2.5 0 0 0-2.5-2.5H6.5A2.5 2.5 0 0 0 4 12.5V17a2 2 0 0 1-2 2v-6.5a2.5 2.5 0 0 0-2.5-2.5" />
-            <path d="M22 12.5A2.5 2.5 0 0 0 19.5 10H9.5A2.5 2.5 0 0 0 7 12.5V17a2 2 0 0 1-2 2h14a2 2 0 0 0 2-2Z" />
-            <path d="M17 17v-2a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2h10Z" />
-          </svg>
-        ),
+        icon: <Container className="h-4 w-4" />,
         getComponent: createToolRenderer(DockerConverterPage),
       },
       {
         id: "crontab",
         title: t("crontab.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7.5" />
-            <path d="M16 2v4" />
-            <path d="M8 2v4" />
-            <path d="M3 10h18" />
-            <circle cx="18" cy="18" r="4" />
-            <path d="M18 16.5V18l1 1" />
-          </svg>
-        ),
+        icon: <CalendarClock className="h-4 w-4" />,
         getComponent: createToolRenderer(CrontabTool),
       },
       {
         id: "image-to-base64",
         title: t("imageToBase64.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-            <circle cx="9" cy="9" r="2" />
-            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-          </svg>
-        ),
+        icon: <Image className="h-4 w-4" />,
         getComponent: createToolRenderer(ImageToBase64Tool),
       },
       {
         id: "exif-viewer",
         title: t("exifViewer.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-            <circle cx="9" cy="9" r="2" />
-            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-            <path d="M8 21h13" />
-          </svg>
-        ),
+        icon: <Camera className="h-4 w-4" />,
         getComponent: createToolRenderer(ExifViewerTool),
       },
       {
         id: "bmi",
         title: t("bmi.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-            <path d="M9 12h6"></path>
-            <path d="M9 16h6"></path>
-          </svg>
-        ),
+        icon: <ClipboardList className="h-4 w-4" />,
         getComponent: createToolRenderer(BMICalculator),
       },
       {
         id: "regex",
         title: t("regex.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M17 3v10"></path>
-            <path d="m12.67 5.5 8.66 5"></path>
-            <path d="m12.67 10.5 8.66-5"></path>
-            <path d="M9 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2z"></path>
-          </svg>
-        ),
+        icon: <Regex className="h-4 w-4" />,
         getComponent: createToolRenderer(RegexTool),
       },
       {
         id: "qrcode-decode",
         title: t("qrcodeDecoder.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="14" height="14" x="3" y="3" rx="2" />
-            <path d="M7 7h.01" />
-            <path d="M17 7h.01" />
-            <path d="M7 17h.01" />
-            <path d="M17 17h.01" />
-            <path d="M3 21h18" />
-            <path d="M21 21v-2" />
-            <path d="M3 16v5" />
-            <path d="M21 16v3" />
-          </svg>
-        ),
+        icon: <ScanQrCode className="h-4 w-4" />,
         getComponent: createToolRenderer(QRCodeDecoder),
       },
       {
         id: "http-tester",
         title: t("httpTester.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-            <line x1="3" x2="21" y1="9" y2="9" />
-            <line x1="9" x2="9" y1="3" y2="21" />
-          </svg>
-        ),
+        icon: <PanelTop className="h-4 w-4" />,
         getComponent: createToolRenderer(HTTPTester),
       },
       {
         id: "whois",
         title: t("whois.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="2" x2="22" y1="12" y2="12" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-          </svg>
-        ),
+        icon: <Globe2 className="h-4 w-4" />,
         getComponent: createToolRenderer(WhoisPage),
       },
       {
         id: "uuid",
         title: t("uuid.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-            <path d="M7 7h.01" />
-            <path d="M17 7h.01" />
-            <path d="M7 17h.01" />
-            <path d="M17 17h.01" />
-            <path d="M12 12h.01" />
-          </svg>
-        ),
+        icon: <Dices className="h-4 w-4" />,
         getComponent: createToolRenderer(UUIDGenerator),
       },
       {
         id: "jwt",
         title: t("jwt.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        ),
+        icon: <LockKeyhole className="h-4 w-4" />,
         getComponent: createToolRenderer(JWTParser),
       },
       {
         id: "text-stats",
         title: t("textStats.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-          </svg>
-        ),
+        icon: <PenLine className="h-4 w-4" />,
         getComponent: createToolRenderer(TextStats),
       },
       {
         id: "image-compress",
         title: t("imageCompress.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-            <circle cx="9" cy="9" r="2" />
-            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-            <path d="M14 14 8 8" />
-            <path d="m8 11 3-3" />
-          </svg>
-        ),
+        icon: <FileImage className="h-4 w-4" />,
         getComponent: createToolRenderer(ImageCompressTool),
       },
       {
         id: "image-editor",
         title: t("imageEditor.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" x2="12" y1="3" y2="15" />
-            <path d="m14 14-2 2-2-2" />
-            <rect width="20" height="14" x="2" y="3" rx="2" />
-            <circle cx="8" cy="10" r="2" />
-            <path d="m22 17-5-5-5 5" />
-          </svg>
-        ),
+        icon: <WandSparkles className="h-4 w-4" />,
         getComponent: createToolRenderer(ImageEditorTool),
       },
       {
         id: "office-viewer",
         title: t("officeViewer.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" x2="8" y1="13" y2="13" />
-            <line x1="16" x2="8" y1="17" y2="17" />
-            <line x1="10" x2="8" y1="9" y2="9" />
-          </svg>
-        ),
+        icon: <FileText className="h-4 w-4" />,
         getComponent: createToolRenderer(OfficeViewerTool),
       },
       {
         id: "meme-splitter",
         title: t("memeSplitter.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            <path d="M3 9h18" />
-            <path d="M3 15h18" />
-            <path d="M9 3v18" />
-            <path d="M15 3v18" />
-          </svg>
-        ),
+        icon: <Grid3X3 className="h-4 w-4" />,
         getComponent: createToolRenderer(MemeSplitterTool),
       },
       {
         id: "image-coordinates",
         title: t("imageCoordinates.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="22" x2="18" y1="12" y2="12" />
-            <line x1="6" x2="2" y1="12" y2="12" />
-            <line x1="12" x2="12" y1="6" y2="2" />
-            <line x1="12" x2="12" y1="22" y2="18" />
-          </svg>
-        ),
+        icon: <Crosshair className="h-4 w-4" />,
         getComponent: createToolRenderer(ImageCoordinatesTool),
       },
       {
         id: "case-converter",
         title: t("caseConverter.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="m3 15 4-8 4 8" />
-            <path d="M4 13h6" />
-            <path d="M15 11h4.5a2 2 0 0 1 0 4H15V7h4a2 2 0 0 1 0 4" />
-          </svg>
-        ),
+        icon: <CaseSensitive className="h-4 w-4" />,
         getComponent: createToolRenderer(CaseConverterTool),
       },
       {
         id: "totp",
         title: t("totp.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            <circle cx="12" cy="16" r="1" />
-          </svg>
-        ),
+        icon: <LockKeyhole className="h-4 w-4" />,
         getComponent: createToolRenderer(TOTPTool),
       },
       {
         id: "jce",
         title: t("jce.name"),
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="M4 7V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
-            <polyline points="14 2 14 8 20 8" />
-            <path d="M4 12h12" />
-            <path d="M4 15h8" />
-          </svg>
-        ),
+        icon: <FileCode2 className="h-4 w-4" />,
         getComponent: createToolRenderer(JceTool),
       },
       {
@@ -741,6 +594,7 @@ export default function ToolsPage() {
         currency: { name: t("currency.name") },
         time: { name: t("time.name") },
         qrcode: { name: t("qrcode.name") },
+        qrcodeDecoder: { name: t("qrcodeDecoder.name") },
         json: { name: t("json.name") },
         color: { name: t("color.name") },
         device: { name: t("device.name") },
@@ -754,13 +608,21 @@ export default function ToolsPage() {
         bmi: { name: t("bmi.name") },
         regex: { name: t("regex.name") },
         httpTester: { name: t("httpTester.name") },
+        whois: { name: t("whois.name") },
         imageCompress: { name: t("imageCompress.name") },
+        imageEditor: { name: t("imageEditor.name") },
+        imageCoordinates: { name: t("imageCoordinates.name") },
         caseConverter: { name: t("caseConverter.name") },
         totp: { name: t("totp.name") },
         jce: { name: t("jce.name") },
         diff: { name: t("diff.name") },
         passwordGenerator: { name: t("passwordGenerator.name") },
+        uuid: { name: t("uuid.name") },
+        jwt: { name: t("jwt.name") },
+        textStats: { name: t("textStats.name") },
         imageConvert: { name: t("imageConvert.name") },
+        officeViewer: { name: t("officeViewer.name") },
+        memeSplitter: { name: t("memeSplitter.name") },
         dataDetector: { name: t("dataDetector.name") },
         compression: { name: t("compression.name") },
         xmlTools: { name: t("xmlTools.name") },
@@ -883,8 +745,34 @@ export default function ToolsPage() {
       const tool = toolDefinitions.find((t) => t.id === toolId)
       if (!tool) return
 
-      const id = `${toolId}-${tabCounter}`
       const shareableUrl = createShareableUrl([toolId], params ? { [toolId]: params } : undefined)
+      const existingTab = tabs.find((tab) => tab.toolId === toolId)
+
+      if (existingTab) {
+        const shouldUpdateParams = params !== undefined && !haveEqualToolParams(existingTab.params, params)
+        const updatedTabs = shouldUpdateParams
+          ? tabs.map((tab) =>
+              tab.id === existingTab.id
+                ? {
+                    ...tab,
+                    params,
+                    component: tool.getComponent(params),
+                    shareableUrl,
+                  }
+                : tab,
+            )
+          : tabs
+
+        if (shouldUpdateParams) setTabs(updatedTabs)
+        setActiveTab(existingTab.id)
+        setShowDropdown(false)
+        recordRecent(toolId)
+        saveTabsToLocalStorage(updatedTabs, existingTab.id)
+        updateUrl(updatedTabs, existingTab.id)
+        return
+      }
+
+      const id = `${toolId}-${tabCounter}`
 
       const newTab: ToolTabType = {
         id,
@@ -960,15 +848,6 @@ export default function ToolsPage() {
       }
     },
     [tabs, activeTab, saveTabsToLocalStorage, updateUrl, router],
-  )
-
-  // 关闭标签页 - 用于旧版按钮
-  const closeTab = useCallback(
-    (id: string, e: React.MouseEvent) => {
-      e.stopPropagation()
-      handleTabClose(id)
-    },
-    [handleTabClose],
   )
 
   // 处理搜索
@@ -1094,7 +973,9 @@ export default function ToolsPage() {
     const toolParam = searchParams.get("tool")
 
     if (toolParam) {
-      const toolIds = toolParam.split(",").filter((id) => toolDefinitions.some((t) => t.id === id))
+      const toolIds = uniqueToolIds(
+        toolParam.split(",").filter((id) => toolDefinitions.some((t) => t.id === id)),
+      )
 
       if (toolIds.length > 0) {
         const restoredTabs: ToolTabType[] = []
@@ -1144,11 +1025,15 @@ export default function ToolsPage() {
 
       if (savedState && savedState.tabs.length > 0) {
         const restoredTabs: ToolTabType[] = []
+        const restoredToolIds = new Set<string>()
         let nextTabCounter = tabCounter
 
         savedState.tabs.forEach((savedTab) => {
+          if (restoredToolIds.has(savedTab.toolId)) return
+
           const tool = toolDefinitions.find((t) => t.id === savedTab.toolId)
           if (tool) {
+            restoredToolIds.add(savedTab.toolId)
             const id = savedTab.id || `${savedTab.toolId}-${nextTabCounter++}`
             const shareableUrl = createShareableUrl(
               [savedTab.toolId],

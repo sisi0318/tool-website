@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { transformCompression } from "./compression"
+import { strToU8, zipSync } from "fflate"
+import { bytesToBase64, transformCompression } from "./compression"
 
 describe("transformCompression", () => {
   it.each(["gzip", "zlib", "deflate"] as const)("round-trips %s", async (format) => {
@@ -34,6 +35,26 @@ describe("transformCompression", () => {
     })
     expect(decompressed.output).toBe("zip content")
     expect(decompressed.files).toEqual(["note.txt"])
+  })
+
+  it("returns every entry from a multi-file ZIP archive", async () => {
+    const archive = zipSync({
+      "a.txt": strToU8("alpha"),
+      "nested/b.txt": strToU8("beta"),
+    })
+    const decompressed = await transformCompression(bytesToBase64(archive), {
+      operation: "decompress",
+      format: "zip",
+      inputEncoding: "base64",
+      outputEncoding: "text",
+    })
+
+    expect(decompressed.files).toEqual(["a.txt", "nested/b.txt"])
+    expect(decompressed.entries).toEqual({
+      "a.txt": "alpha",
+      "nested/b.txt": "beta",
+    })
+    expect(JSON.parse(decompressed.output)).toEqual(decompressed.entries)
   })
 
   it("rejects malformed hexadecimal input", async () => {

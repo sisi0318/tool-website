@@ -1,304 +1,3 @@
-import { translations } from "@/lib/translations"
-
-export interface Tool {
-  id: string
-  name: string
-  description: string
-  keywords: string[]
-  path: string
-}
-
-type SearchTranslationSection = {
-  title?: string
-  description?: string
-}
-
-function getLocalizedToolText(
-  sections: Record<string, SearchTranslationSection>,
-  key: string,
-  fallbackName: string,
-  fallbackDescription: string,
-) {
-  return {
-    name: sections[key]?.title || fallbackName,
-    description: sections[key]?.description || fallbackDescription,
-  }
-}
-
-export function getTools(locale = "en"): Tool[] {
-  const t = (translations[locale as keyof typeof translations] || translations.en) as unknown as Record<
-    string,
-    SearchTranslationSection
-  >
-
-  return [
-    // existing tools
-    {
-      id: "json",
-      ...getLocalizedToolText(t, "json", "JSON Tools", "Format, validate, and convert JSON data"),
-      keywords: ["json", "format", "compress", "minify", "validate", "escape", "unescape", "unicode", "chinese"],
-      path: "/tools/json",
-    },
-    // Add color picker tool
-    {
-      id: "color",
-      ...getLocalizedToolText(t, "color", "Color Picker", "Pick and convert color values"),
-      keywords: ["color", "picker", "hex", "rgb", "hsl", "hwb", "lch", "cmyk", "css", "convert"],
-      path: "/tools/color",
-    },
-    // Add EXIF viewer tool
-    // Add temperature converter tool
-    {
-      id: "temperature-converter",
-      ...getLocalizedToolText(t, "temperatureConverter", "Temperature Converter", "Convert temperature units"),
-      keywords: [
-        "temperature",
-        "convert",
-        "kelvin",
-        "celsius",
-        "fahrenheit",
-        "rankine",
-        "delisle",
-        "newton",
-        "reaumur",
-        "romer",
-      ],
-      path: "/tools/temperature-converter",
-    },
-    // Add Docker converter tool
-    {
-      id: "docker-converter",
-      ...getLocalizedToolText(t, "dockerConverter", "Docker Converter", "Convert docker run commands to Compose"),
-      keywords: ["docker", "docker-compose", "container", "convert", "yml", "yaml", "command", "run"],
-      path: "/tools/docker-converter",
-    },
-    // Add Crontab generator tool
-    // other tools
-    {
-      id: "crontab",
-      ...getLocalizedToolText(t, "crontab", "Crontab Generator", "Build and explain cron expressions"),
-      keywords: ["cron", "crontab", "schedule", "job", "task", "linux", "unix", "expression", "generator"],
-      path: "/tools/crontab",
-    },
-    {
-      id: "image-to-base64",
-      ...getLocalizedToolText(t, "imageToBase64", "Image to Base64", "Convert images to Base64 data URLs"),
-      keywords: ["image", "base64", "convert", "encoder", "data url", "inline", "embed"],
-      path: "/tools/image-to-base64",
-    },
-    {
-      id: "exif-viewer",
-      ...getLocalizedToolText(t, "exifViewer", "EXIF Viewer", "Inspect image metadata"),
-      keywords: ["exif", "image", "metadata", "photo", "camera", "gps", "location", "viewer"],
-      path: "/tools/exif-viewer",
-    },
-    {
-      id: "bmi",
-      ...getLocalizedToolText(t, "bmi", "BMI Calculator", "Calculate body mass index"),
-      keywords: ["bmi", "body mass index", "weight", "height", "calculator", "health", "fitness"],
-      path: "/tools/bmi",
-    },
-    {
-      id: "regex",
-      ...getLocalizedToolText(t, "regex", "Regex Tester", "Test regular expressions"),
-      keywords: ["regex", "regular expression", "pattern", "match", "test", "validate", "search", "replace"],
-      path: "/tools/regex",
-    },
-    // Add QR Code Decoder tool
-    {
-      id: "qrcode-decode",
-      name: t.qrcodeDecoder?.title || "QR Code Decoder",
-      description: t.qrcodeDecoder?.description || "Scan and decode QR code images",
-      keywords: ["qr", "qrcode", "decode", "scan", "scanner", "reader", "barcode"],
-      path: "/tools/qrcode-decode",
-    },
-    {
-      id: "http-tester",
-      ...getLocalizedToolText(t, "httpTester", "HTTP Tester", "Build and inspect HTTP requests"),
-      keywords: ["http", "tester", "request", "api", "rest", "client", "test"],
-      path: "/tools/http-tester",
-    },
-    // 在getTools函数中添加WHOIS工具
-    {
-      id: "whois",
-      name: t.whois?.title || "WHOIS Lookup",
-      description: t.whois?.description || "Look up WHOIS information for domains",
-      keywords: ["whois", "domain", "lookup", "registrar", "dns", "domain info", "domain search"],
-      path: "/tools/whois",
-    },
-    // UUID Generator
-    {
-      id: "password-generator",
-      ...getLocalizedToolText(t, "passwordGenerator", "Password Generator", "Generate secure passwords and readable passphrases"),
-      keywords: ["password", "passphrase", "generator", "random", "secure", "entropy", "口令", "密码", "随机"],
-      path: "/tools/password-generator",
-    },
-    // UUID Generator
-    {
-      id: "uuid",
-      name: t.uuid?.title || "UUID Generator",
-      description: t.uuid?.description || "Generate UUIDs of various versions",
-      keywords: ["uuid", "guid", "unique", "identifier", "random", "v4", "v1", "generate"],
-      path: "/tools/uuid",
-    },
-    // JWT Parser
-    {
-      id: "jwt",
-      name: t.jwt?.title || "JWT Parser",
-      description: t.jwt?.description || "Parse and validate JWT tokens",
-      keywords: ["jwt", "token", "json web token", "parse", "decode", "header", "payload", "signature", "auth"],
-      path: "/tools/jwt",
-    },
-    // Text Statistics
-    {
-      id: "text-stats",
-      name: t.textStats?.title || "Text Statistics",
-      description: t.textStats?.description || "Count characters, words, sentences and more",
-      keywords: ["text", "statistics", "count", "words", "characters", "sentences", "analyze", "chinese", "english"],
-      path: "/tools/text-stats",
-    },
-    // Image Compress
-    {
-      id: "image-convert",
-      ...getLocalizedToolText(t, "imageConvert", "Image Converter", "Convert and resize images in batches"),
-      keywords: ["image", "convert", "format", "resize", "jpeg", "png", "webp", "avif", "batch", "图片", "格式转换"],
-      path: "/tools/image-convert",
-    },
-    // Image Compress
-    {
-      id: "image-compress",
-      name: t.imageCompress?.title || "Image Compress",
-      description: t.imageCompress?.description || "Compress images online with adjustable quality",
-      keywords: ["image", "compress", "optimize", "reduce", "size", "quality", "jpeg", "png", "webp", "batch"],
-      path: "/tools/image-compress",
-    },
-    // Image Editor
-    {
-      id: "image-editor",
-      name: t.imageEditor?.title || "Image Editor",
-      description: t.imageEditor?.description || "Edit images: crop, rotate, flip, mirror, filters",
-      keywords: ["image", "editor", "crop", "rotate", "flip", "mirror", "filter", "brightness", "contrast", "saturation", "edit", "photo"],
-      path: "/tools/image-editor",
-    },
-    // Office Viewer
-    {
-      id: "office-viewer",
-      name: t.officeViewer?.title || "Office Viewer",
-      description: t.officeViewer?.description || "Preview Word, Excel, PPT documents online",
-      keywords: ["office", "word", "excel", "ppt", "powerpoint", "doc", "docx", "xls", "xlsx", "preview", "viewer", "document"],
-      path: "/tools/office-viewer",
-    },
-    // Meme Splitter
-    {
-      id: "meme-splitter",
-      name: t.memeSplitter?.title || "Smart Splitter",
-      description: t.memeSplitter?.description || "Intelligently detect and split meme grids",
-      keywords: ["meme", "splitter", "split", "grid", "cut", "slice", "image", "sticker", "emoji", "表情包", "切图", "九宫格"],
-      path: "/tools/meme-splitter",
-    },
-    // Image Coordinates
-    {
-      id: "image-coordinates",
-      name: t.imageCoordinates?.title || "Coordinate Picker",
-      description: t.imageCoordinates?.description || "Pick coordinates from image with percent, permille, permyriad formats",
-      keywords: ["coordinate", "position", "pixel", "percent", "permille", "permyriad", "image", "picker", "坐标", "位置", "百分比", "千分比", "万分比"],
-      path: "/tools/image-coordinates",
-    },
-    // Case Converter
-    {
-      id: "case-converter",
-      name: t.caseConverter?.title || "Case Converter",
-      description: t.caseConverter?.description || "Convert text case: uppercase, lowercase, title case, camelCase, etc.",
-      keywords: ["case", "convert", "uppercase", "lowercase", "title", "camel", "pascal", "snake", "kebab", "text"],
-      path: "/tools/case-converter",
-    },
-    // TOTP Authenticator
-    {
-      id: "totp",
-      name: t.totp?.title || "TOTP Authenticator",
-      description: t.totp?.description || "Time-based One-Time Password generator, compatible with Google Authenticator",
-      keywords: ["totp", "otp", "authenticator", "2fa", "two-factor", "google", "security", "password", "token"],
-      path: "/tools/totp",
-    },
-    // JCE Parser
-    {
-      id: "jce",
-      name: t.jce?.title || "JCE Parser",
-      description: t.jce?.description || "Parse and encode JCE/Tars binary protocol data",
-      keywords: ["jce", "tars", "tencent", "binary", "protocol", "parse", "decode", "encode", "struct", "serialize"],
-      path: "/tools/jce",
-    },
-    {
-      id: "diff",
-      name: t.diff?.title || "Text Diff",
-      description: t.diff?.description || "Compare two texts and highlight changes",
-      keywords: ["diff", "compare", "text", "change", "added", "removed", "difference"],
-      path: "/tools/diff",
-    },
-    {
-      id: "data-detector",
-      ...getLocalizedToolText(t, "dataDetector", "Smart Data Detector", "Detect JSON, JWT, Base64, XML, timestamps, and more"),
-      keywords: ["detect", "identify", "json", "jwt", "base64", "xml", "timestamp", "uuid", "识别", "格式"],
-      path: "/tools/data-detector",
-    },
-    {
-      id: "compression",
-      ...getLocalizedToolText(t, "compression", "Compression", "Compress and decompress common formats"),
-      keywords: ["gzip", "zlib", "deflate", "brotli", "zip", "compress", "decompress", "压缩", "解压"],
-      path: "/tools/compression",
-    },
-    {
-      id: "xml",
-      ...getLocalizedToolText(t, "xmlTools", "XML Tools", "Format, validate, convert, and query XML"),
-      keywords: ["xml", "xpath", "format", "minify", "json", "validate", "格式化", "校验"],
-      path: "/tools/xml",
-    },
-    {
-      id: "csv",
-      ...getLocalizedToolText(t, "csvTools", "CSV / TSV Tools", "Convert delimited data and JSON"),
-      keywords: ["csv", "tsv", "table", "delimiter", "json", "spreadsheet", "表格", "分隔符"],
-      path: "/tools/csv",
-    },
-    {
-      id: "markdown",
-      ...getLocalizedToolText(t, "markdownTools", "Markdown Tools", "Preview and convert Markdown"),
-      keywords: ["markdown", "md", "html", "preview", "toc", "目录", "预览"],
-      path: "/tools/markdown",
-    },
-    {
-      id: "sql",
-      ...getLocalizedToolText(t, "sqlTools", "SQL Formatter", "Format or minify SQL for common database dialects"),
-      keywords: ["sql", "mysql", "postgresql", "sqlite", "formatter", "minify", "数据库", "格式化"],
-      path: "/tools/sql",
-    },
-    {
-      id: "json-schema",
-      ...getLocalizedToolText(t, "jsonSchemaTools", "JSON Schema", "Validate JSON or infer a schema"),
-      keywords: ["json schema", "validate", "infer", "ajv", "校验", "推导"],
-      path: "/tools/json-schema",
-    },
-    {
-      id: "subnet",
-      ...getLocalizedToolText(t, "subnetTools", "IP / CIDR Calculator", "Calculate IPv4 and IPv6 subnet ranges"),
-      keywords: ["ip", "cidr", "subnet", "ipv4", "ipv6", "netmask", "network", "网段", "子网"],
-      path: "/tools/subnet",
-    },
-    {
-      id: "certificate",
-      ...getLocalizedToolText(t, "certificateTools", "Certificate & Key Inspector", "Inspect X.509, PEM, CSR, JWK, and JWKS"),
-      keywords: ["x509", "certificate", "pem", "csr", "jwk", "jwks", "public key", "证书", "密钥"],
-      path: "/tools/certificate",
-    },
-    {
-      id: "hex-binary",
-      ...getLocalizedToolText(t, "hexBinaryTools", "Hex / Binary Viewer", "View hex dumps and identify file signatures"),
-      keywords: ["hex", "binary", "hexdump", "magic bytes", "file signature", "base64", "二进制", "文件头"],
-      path: "/tools/hex-binary",
-    },
-  ]
-}
-
-// 搜索结果类型
 export interface SearchResult {
   toolId: string
   toolName: string
@@ -306,1084 +5,264 @@ export interface SearchResult {
   featureDescription?: string
 }
 
-// Make the function more robust by adding null checks for each translation section
+type SearchTranslations = Record<string, { name?: string } | undefined>
+type FeatureDefinition = readonly [name: string, description?: string]
+type FeatureGroup = readonly [toolId: string, features: readonly FeatureDefinition[]]
 
-// 创建可搜索的功能列表
-export function createSearchableFeatures(translations: any): SearchResult[] {
-  const features: SearchResult[] = []
+const SEARCH_FEATURE_GROUPS = {
+  hash: ["hash", [
+    ["MD5", "MD5 摘要与校验"],
+    ["SHA-1", "SHA1 哈希"],
+    ["SHA-2", "SHA-224 / SHA-256 / SHA-384 / SHA-512"],
+    ["SHA-3", "SHA3 与 Keccak"],
+    ["CRC32", "CRC32 校验和"],
+  ]],
+  hmac: ["hmac", [
+    ["HMAC", "带密钥的消息认证码"],
+    ["HMAC-SHA256", "SHA-256 HMAC"],
+    ["HMAC-SHA512", "SHA-512 HMAC"],
+    ["HMAC 验证", "验证签名是否匹配"],
+  ]],
+  crypto: ["crypto", [
+    ["AES", "AES 加密与解密"],
+    ["DES / 3DES", "DES 与 Triple DES"],
+    ["RC4 / Rabbit", "流加密算法"],
+    ["加密解密", "密钥、IV 与输出格式"],
+  ]],
+  encoding: ["encoding", [
+    ["Base64", "Base64 编码与解码"],
+    ["URL 编码", "Percent encode / decode"],
+    ["Unicode", "Unicode 转义与文本"],
+    ["HTML 实体", "HTML entity encode / decode"],
+    ["十六进制", "Hex 与文本互转"],
+  ]],
+  classicCipher: ["classic-cipher", [
+    ["凯撒密码", "Caesar cipher"],
+    ["维吉尼亚密码", "Vigenère cipher"],
+    ["摩斯密码", "Morse code"],
+  ]],
+  json: ["json", [
+    ["JSON 格式化", "Format and pretty print JSON"],
+    ["JSON 压缩", "Minify JSON"],
+    ["JSON 校验", "Validate and repair JSON"],
+    ["JSON / YAML", "JSON 与 YAML 互转"],
+    ["转义", "Escape / unescape Unicode 与字符串"],
+  ]],
+  color: ["color", [
+    ["HEX", "HEX 颜色"],
+    ["RGB", "RGB / RGBA"],
+    ["HSL", "HSL / HSLA"],
+    ["CMYK", "CMYK 色彩转换"],
+    ["取色器", "颜色选择与转换"],
+  ]],
+  device: ["device", [
+    ["设备指纹", "Browser and device fingerprint"],
+    ["User Agent", "浏览器与系统识别"],
+    ["屏幕信息", "Screen, viewport and pixel ratio"],
+    ["WebGL", "GPU 与渲染器信息"],
+  ]],
+  protobuf: ["protobuf", [
+    ["Protobuf 解码", "Decode binary Protobuf"],
+    ["Protobuf 编码", "Encode JSON to Protobuf"],
+    ["Proto Schema", ".proto schema parsing"],
+  ]],
+  baseConverter: ["base-converter", [
+    ["二进制", "Base 2 conversion"],
+    ["十六进制", "Base 16 conversion"],
+    ["Base58 / Base62", "扩展进制转换"],
+    ["任意进制", "Base 2 至 Base 64"],
+  ]],
+  temperatureConverter: ["temperature-converter", [
+    ["摄氏度", "Celsius °C"],
+    ["华氏度", "Fahrenheit °F"],
+    ["开尔文", "Kelvin K"],
+    ["温度换算", "常用、科学与历史温标"],
+  ]],
+  dockerConverter: ["docker-converter", [
+    ["Docker Run", "解析 docker run 命令"],
+    ["Docker Compose", "生成 docker-compose.yml"],
+    ["容器参数", "端口、卷、环境变量"],
+  ]],
+  crontab: ["crontab", [
+    ["Cron 表达式", "Cron expression generator"],
+    ["执行时间", "Next runs and schedule"],
+    ["定时任务", "Linux / Unix crontab"],
+  ]],
+  imageToBase64: ["image-to-base64", [
+    ["图片转 Base64", "Image to Base64"],
+    ["Data URL", "生成可嵌入的数据 URL"],
+  ]],
+  exifViewer: ["exif-viewer", [
+    ["EXIF", "图片元数据"],
+    ["相机信息", "Camera and lens metadata"],
+    ["GPS", "照片定位信息"],
+  ]],
+  bmi: ["bmi", [
+    ["BMI", "Body mass index"],
+    ["身体质量指数", "身高与体重计算"],
+  ]],
+  regex: ["regex", [
+    ["正则测试", "Regular expression tester"],
+    ["匹配", "Find matches and capture groups"],
+    ["替换", "Regex search and replace"],
+    ["常用示例", "Email、URL、手机号等模式"],
+  ]],
+  qrcode: ["qrcode", [
+    ["二维码生成", "QR code generator"],
+    ["Wi-Fi 二维码", "Wi-Fi QR payload"],
+    ["vCard", "联系人二维码"],
+  ]],
+  qrcodeDecoder: ["qrcode-decode", [
+    ["二维码识别", "Decode QR code image"],
+    ["扫码", "QR scanner and reader"],
+  ]],
+  httpTester: ["http-tester", [
+    ["HTTP 请求", "GET / POST / PUT / DELETE"],
+    ["请求头", "Headers and authentication"],
+    ["环境变量", "Template variables in URL and body"],
+    ["cURL", "Import and export cURL"],
+    ["响应分析", "Status, headers and timing"],
+  ]],
+  whois: ["whois", [
+    ["WHOIS 查询", "Domain registration lookup"],
+    ["域名信息", "Registrar, dates and nameservers"],
+  ]],
+  passwordGenerator: ["password-generator", [
+    ["密码生成", "Secure random password"],
+    ["口令短语", "Readable passphrase"],
+    ["密码强度", "Entropy and strength"],
+  ]],
+  uuid: ["uuid", [
+    ["UUID v4", "Random UUID"],
+    ["UUID v1 / v7", "Time based UUID"],
+    ["批量 UUID", "Generate multiple identifiers"],
+  ]],
+  jwt: ["jwt", [
+    ["JWT 解析", "Decode header and payload"],
+    ["JWT 验证", "Token signature and claims"],
+  ]],
+  textStats: ["text-stats", [
+    ["字数统计", "Characters, words and lines"],
+    ["文本分析", "Sentences and reading time"],
+  ]],
+  imageCompress: ["image-compress", [
+    ["图片压缩", "Reduce image file size"],
+    ["压缩质量", "JPEG / WebP quality"],
+    ["批量压缩", "Compress multiple images"],
+  ]],
+  imageConvert: ["image-convert", [
+    ["图片格式转换", "PNG、JPEG、WebP、AVIF"],
+    ["批量转换", "Batch image conversion"],
+    ["调整尺寸", "Resize images"],
+  ]],
+  imageEditor: ["image-editor", [
+    ["图片裁剪", "Crop image"],
+    ["旋转翻转", "Rotate, flip and mirror"],
+    ["滤镜", "Brightness, contrast and saturation"],
+  ]],
+  imageCoordinates: ["image-coordinates", [
+    ["坐标拾取", "Pick pixel coordinates"],
+    ["百分比坐标", "Percent, permille and permyriad"],
+  ]],
+  caseConverter: ["case-converter", [
+    ["大小写转换", "Uppercase and lowercase"],
+    ["camelCase", "Camel and Pascal case"],
+    ["snake_case", "Snake and kebab case"],
+  ]],
+  totp: ["totp", [
+    ["TOTP", "Time-based one-time password"],
+    ["2FA", "Authenticator compatible code"],
+    ["二维码导入", "Import otpauth QR code"],
+  ]],
+  jce: ["jce", [
+    ["JCE 解析", "Decode JCE / Tars binary"],
+    ["JCE 编码", "Encode JCE / Tars data"],
+    ["腾讯 Tars", "Binary protocol"],
+  ]],
+  diff: ["diff", [
+    ["文本对比", "Compare two texts"],
+    ["差异高亮", "Added, removed and changed lines"],
+  ]],
+  dataDetector: ["data-detector", [
+    ["智能识别", "Detect data format"],
+    ["JSON / JWT / Base64", "常见数据类型检测"],
+    ["时间戳 / UUID", "Timestamp and identifier detection"],
+  ]],
+  compression: ["compression", [
+    ["GZip", "GZip compress and decompress"],
+    ["Zlib / Deflate", "Zlib and Deflate"],
+    ["Brotli", "Brotli compression"],
+    ["ZIP", "ZIP archive"],
+  ]],
+  xmlTools: ["xml", [
+    ["XML 格式化", "Format and minify XML"],
+    ["XPath", "Query XML with XPath"],
+    ["XML / JSON", "Convert XML and JSON"],
+  ]],
+  csvTools: ["csv", [
+    ["CSV / TSV", "Delimited table data"],
+    ["CSV / JSON", "Convert CSV and JSON"],
+    ["分隔符", "Comma, tab and custom delimiter"],
+  ]],
+  markdownTools: ["markdown", [
+    ["Markdown 预览", "Render Markdown"],
+    ["Markdown / HTML", "Convert Markdown and HTML"],
+    ["目录", "Table of contents"],
+  ]],
+  sqlTools: ["sql", [
+    ["SQL 格式化", "MySQL、PostgreSQL、SQLite"],
+    ["SQL 压缩", "Minify SQL"],
+  ]],
+  jsonSchemaTools: ["json-schema", [
+    ["JSON Schema 校验", "Validate JSON with schema"],
+    ["推导 Schema", "Infer schema from JSON"],
+  ]],
+  subnetTools: ["subnet", [
+    ["CIDR", "IPv4 and IPv6 CIDR"],
+    ["子网计算", "Network, broadcast and host range"],
+    ["掩码", "Netmask and prefix"],
+  ]],
+  certificateTools: ["certificate", [
+    ["X.509 证书", "Inspect certificate"],
+    ["PEM / CSR", "Certificate signing request"],
+    ["JWK / JWKS", "JSON web keys"],
+  ]],
+  hexBinaryTools: ["hex-binary", [
+    ["Hex Dump", "十六进制查看器"],
+    ["文件头", "Magic bytes and file signatures"],
+    ["二进制 / Base64", "Binary data conversion"],
+  ]],
+  officeViewer: ["office-viewer", [
+    ["Office 预览", "Word、Excel、PowerPoint"],
+    ["文档查看", "DOCX、XLSX、PPTX"],
+  ]],
+  memeSplitter: ["meme-splitter", [
+    ["表情包切图", "Split image grids"],
+    ["九宫格", "Detect and slice grid images"],
+  ]],
+} as const satisfies Record<string, FeatureGroup>
 
-  // Only add features if the corresponding translation section exists
-  if (translations?.hash?.name) {
-    // 哈希计算器功能
-    features.push(
-      { toolId: "hash", toolName: translations.hash.name, featureName: "MD5", featureDescription: "Message Digest 5" },
-      {
-        toolId: "hash",
-        toolName: translations.hash.name,
-        featureName: "SHA1",
-        featureDescription: "Secure Hash Algorithm 1",
-      },
-      {
-        toolId: "hash",
-        toolName: translations.hash.name,
-        featureName: "SHA2",
-        featureDescription: "Secure Hash Algorithm 2",
-      },
-      {
-        toolId: "hash",
-        toolName: translations.hash.name,
-        featureName: "SHA3",
-        featureDescription: "Secure Hash Algorithm 3",
-      },
-      {
-        toolId: "hash",
-        toolName: translations.hash.name,
-        featureName: "CRC32",
-        featureDescription: "Cyclic Redundancy Check",
-      },
-    )
-  }
+export function createSearchableFeatures(translations: SearchTranslations): SearchResult[] {
+  return Object.entries(SEARCH_FEATURE_GROUPS).flatMap(([translationKey, [toolId, features]]) => {
+    const toolName = translations[translationKey]?.name
+    if (!toolName) return []
 
-  // Add color picker features
-  if (translations?.color?.name) {
-    features.push(
-      {
-        toolId: "color",
-        toolName: translations.color.name,
-        featureName: "HEX",
-        featureDescription: "Hexadecimal color code",
-      },
-      {
-        toolId: "color",
-        toolName: translations.color.name,
-        featureName: "RGB",
-        featureDescription: "Red, Green, Blue color model",
-      },
-      {
-        toolId: "color",
-        toolName: translations.color.name,
-        featureName: "HSL",
-        featureDescription: "Hue, Saturation, Lightness color model",
-      },
-      {
-        toolId: "color",
-        toolName: translations.color.name,
-        featureName: "HWB",
-        featureDescription: "Hue, Whiteness, Blackness color model",
-      },
-      {
-        toolId: "color",
-        toolName: translations.color.name,
-        featureName: "LCH",
-        featureDescription: "Lightness, Chroma, Hue color model",
-      },
-      {
-        toolId: "color",
-        toolName: translations.color.name,
-        featureName: "CMYK",
-        featureDescription: "Cyan, Magenta, Yellow, Key (Black) color model",
-      },
-      {
-        toolId: "color",
-        toolName: translations.color.name,
-        featureName: "Color Names",
-        featureDescription: "CSS color names",
-      },
-    )
-  }
-
-  // Add EXIF viewer features
-  if (translations?.exifViewer?.name) {
-    features.push(
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "EXIF",
-        featureDescription: "Extract EXIF metadata from images",
-      },
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "GPS",
-        featureDescription: "Extract GPS location from photos",
-      },
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "Camera Info",
-        featureDescription: "View camera settings from photos",
-      },
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "Photo Metadata",
-        featureDescription: "View all image metadata",
-      },
-    )
-  }
-
-  // Add temperature converter features
-  if (translations?.temperatureConverter?.name) {
-    features.push(
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Kelvin",
-        featureDescription: "Kelvin temperature scale",
-      },
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Celsius",
-        featureDescription: "Celsius temperature scale",
-      },
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Fahrenheit",
-        featureDescription: "Fahrenheit temperature scale",
-      },
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Rankine",
-        featureDescription: "Rankine temperature scale",
-      },
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Delisle",
-        featureDescription: "Delisle temperature scale",
-      },
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Newton",
-        featureDescription: "Newton temperature scale",
-      },
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Réaumur",
-        featureDescription: "Réaumur temperature scale",
-      },
-      {
-        toolId: "temperature-converter",
-        toolName: translations.temperatureConverter.name,
-        featureName: "Rømer",
-        featureDescription: "Rømer temperature scale",
-      },
-    )
-  }
-
-  // Add Docker converter features
-  if (translations?.dockerConverter?.name) {
-    features.push(
-      {
-        toolId: "docker-converter",
-        toolName: translations.dockerConverter.name,
-        featureName: "Docker Run",
-        featureDescription: "Convert docker run command to docker-compose",
-      },
-      {
-        toolId: "docker-converter",
-        toolName: translations.dockerConverter.name,
-        featureName: "docker-compose",
-        featureDescription: "Generate docker-compose.yml from command line",
-      },
-      {
-        toolId: "docker-converter",
-        toolName: translations.dockerConverter.name,
-        featureName: "Container",
-        featureDescription: "Docker container configuration",
-      },
-    )
-  }
-
-  // Add Crontab generator features
-  if (translations?.tools?.crontab?.name) {
-    features.push(
-      {
-        toolId: "crontab",
-        toolName: translations.tools.crontab.name,
-        featureName: "Cron",
-        featureDescription: "Cron expression generator",
-      },
-      {
-        toolId: "crontab",
-        toolName: translations.tools.crontab.name,
-        featureName: "Schedule",
-        featureDescription: "Job scheduling expression",
-      },
-      {
-        toolId: "crontab",
-        toolName: translations.tools.crontab.name,
-        featureName: "Linux",
-        featureDescription: "Linux task scheduling",
-      },
-      {
-        toolId: "crontab",
-        toolName: translations.tools.crontab.name,
-        featureName: "Unix",
-        featureDescription: "Unix task scheduling",
-      },
-    )
-  }
-
-  // Add Image to Base64 converter features
-  if (translations?.imageToBase64?.name) {
-    features.push(
-      {
-        toolId: "image-to-base64",
-        toolName: translations.imageToBase64.name,
-        featureName: "Image to Base64",
-        featureDescription: "Convert images to Base64 encoded strings",
-      },
-      {
-        toolId: "image-to-base64",
-        toolName: translations.imageToBase64.name,
-        featureName: "Data URL",
-        featureDescription: "Convert images to data URLs",
-      },
-      {
-        toolId: "image-to-base64",
-        toolName: translations.imageToBase64.name,
-        featureName: "Image Embed",
-        featureDescription: "Create embeddable image strings",
-      },
-    )
-  }
-
-  if (translations?.hmac?.name) {
-    // HMAC计算器功能
-    features.push(
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "HMAC",
-        featureDescription: "Hash-based Message Authentication Code",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "HMAC-MD5",
-        featureDescription: "HMAC with MD5",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "HMAC-SHA1",
-        featureDescription: "HMAC with SHA1",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "HMAC-SHA256",
-        featureDescription: "HMAC with SHA256",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "HMAC-SHA512",
-        featureDescription: "HMAC with SHA512",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "MD5",
-        featureDescription: "HMAC with MD5",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "SHA1",
-        featureDescription: "HMAC with SHA1",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "SHA256",
-        featureDescription: "HMAC with SHA256",
-      },
-      {
-        toolId: "hmac",
-        toolName: translations.hmac.name,
-        featureName: "SHA512",
-        featureDescription: "HMAC with SHA512",
-      },
-    )
-  }
-
-  if (translations?.crypto?.name) {
-    // 加解密工具功能
-    features.push(
-      {
-        toolId: "crypto",
-        toolName: translations.crypto.name,
-        featureName: "AES",
-        featureDescription: "Advanced Encryption Standard",
-      },
-      {
-        toolId: "crypto",
-        toolName: translations.crypto.name,
-        featureName: "DES",
-        featureDescription: "Data Encryption Standard",
-      },
-      { toolId: "crypto", toolName: translations.crypto.name, featureName: "3DES", featureDescription: "Triple DES" },
-      {
-        toolId: "crypto",
-        toolName: translations.crypto.name,
-        featureName: "Blowfish",
-        featureDescription: "Blowfish Encryption",
-      },
-      {
-        toolId: "crypto",
-        toolName: translations.crypto.name,
-        featureName: "RC4",
-        featureDescription: "Rivest Cipher 4",
-      },
-      {
-        toolId: "crypto",
-        toolName: translations.crypto.name,
-        featureName: "Rabbit",
-        featureDescription: "Rabbit Stream Cipher",
-      },
-    )
-  }
-
-  if (translations?.encoding?.name) {
-    // 编码解码工具功能
-    features.push(
-      {
-        toolId: "encoding",
-        toolName: translations.encoding.name,
-        featureName: "Base64",
-        featureDescription: "Base64 Encoding/Decoding",
-      },
-      {
-        toolId: "encoding",
-        toolName: translations.encoding.name,
-        featureName: "URL",
-        featureDescription: "URL Encoding/Decoding",
-      },
-      {
-        toolId: "encoding",
-        toolName: translations.encoding.name,
-        featureName: "Hex",
-        featureDescription: "Hexadecimal Encoding/Decoding",
-      },
-    )
-  }
-
-  if (translations?.classicCipher?.name) {
-    // 经典密码工具功能
-    features.push(
-      {
-        toolId: "classic-cipher",
-        toolName: translations.classicCipher.name,
-        featureName: "Caesar",
-        featureDescription: "Caesar Cipher",
-      },
-      {
-        toolId: "classic-cipher",
-        toolName: translations.classicCipher.name,
-        featureName: "Vigenère",
-        featureDescription: "Vigenère Cipher",
-      },
-      {
-        toolId: "classic-cipher",
-        toolName: translations.classicCipher.name,
-        featureName: "Atbash",
-        featureDescription: "Atbash Cipher",
-      },
-    )
-  }
-
-  if (translations?.currency?.name) {
-    // 汇率转换工具功能
-    features.push(
-      {
-        toolId: "currency",
-        toolName: translations.currency.name,
-        featureName: "Currency",
-        featureDescription: "Currency Conversion",
-      },
-      {
-        toolId: "currency",
-        toolName: translations.currency.name,
-        featureName: "Exchange Rate",
-        featureDescription: "Currency Exchange Rate",
-      },
-      {
-        toolId: "currency",
-        toolName: translations.currency.name,
-        featureName: "USD",
-        featureDescription: "US Dollar Conversion",
-      },
-      {
-        toolId: "currency",
-        toolName: translations.currency.name,
-        featureName: "EUR",
-        featureDescription: "Euro Conversion",
-      },
-      {
-        toolId: "currency",
-        toolName: translations.currency.name,
-        featureName: "CNY",
-        featureDescription: "Chinese Yuan Conversion",
-      },
-      {
-        toolId: "currency",
-        toolName: translations.currency.name,
-        featureName: "JPY",
-        featureDescription: "Japanese Yen Conversion",
-      },
-      {
-        toolId: "currency",
-        toolName: translations.currency.name,
-        featureName: "GBP",
-        featureDescription: "British Pound Conversion",
-      },
-    )
-  }
-
-  if (translations?.time?.name) {
-    // 时间工具功能
-    features.push(
-      {
-        toolId: "time",
-        toolName: translations.time.name,
-        featureName: "Current Time",
-        featureDescription: "Display current time",
-      },
-      {
-        toolId: "time",
-        toolName: translations.time.name,
-        featureName: "World Clock",
-        featureDescription: "Time in different time zones",
-      },
-      {
-        toolId: "time",
-        toolName: translations.time.name,
-        featureName: "Stopwatch",
-        featureDescription: "Track elapsed time",
-      },
-      {
-        toolId: "time",
-        toolName: translations.time.name,
-        featureName: "Timer",
-        featureDescription: "Countdown timer",
-      },
-    )
-  }
-
-  if (translations?.qrcode?.name) {
-    // 二维码生成器功能
-    features.push(
-      {
-        toolId: "qrcode",
-        toolName: translations.qrcode.name,
-        featureName: "QR Code",
-        featureDescription: "Generate QR codes",
-      },
-      {
-        toolId: "qrcode",
-        toolName: translations.qrcode.name,
-        featureName: "URL QR Code",
-        featureDescription: "Generate QR code for URLs",
-      },
-      {
-        toolId: "qrcode",
-        toolName: translations.qrcode.name,
-        featureName: "vCard",
-        featureDescription: "Generate QR code for contact information",
-      },
-      {
-        toolId: "qrcode",
-        toolName: translations.qrcode.name,
-        featureName: "WiFi",
-        featureDescription: "Generate QR code for WiFi networks",
-      },
-    )
-  }
-
-  if (translations?.json?.name) {
-    // JSON工具功能
-    features.push(
-      {
-        toolId: "json",
-        toolName: translations.json.name,
-        featureName: "Format",
-        featureDescription: "JSON Formatting",
-      },
-      {
-        toolId: "json",
-        toolName: translations.json.name,
-        featureName: "Minify",
-        featureDescription: "JSON Minification",
-      },
-      {
-        toolId: "json",
-        toolName: translations.json.name,
-        featureName: "Validate",
-        featureDescription: "JSON Validation",
-      },
-      {
-        toolId: "json",
-        toolName: translations.json.name,
-        featureName: "JSON to YAML",
-        featureDescription: "Convert JSON to YAML",
-      },
-      {
-        toolId: "json",
-        toolName: translations.json.name,
-        featureName: "YAML to JSON",
-        featureDescription: "Convert YAML to JSON",
-      },
-      {
-        toolId: "json",
-        toolName: translations.json.name,
-        featureName: "JSONPath",
-        featureDescription: "Query JSON with JSONPath",
-      },
-    )
-  }
-
-  if (translations?.crontab?.name) {
-    features.push(
-      {
-        toolId: "crontab",
-        toolName: translations.crontab.name,
-        featureName: "Cron",
-        featureDescription: "Cron expression generator",
-      },
-      {
-        toolId: "crontab",
-        toolName: translations.crontab.name,
-        featureName: "Schedule",
-        featureDescription: "Job scheduling expression",
-      },
-      {
-        toolId: "crontab",
-        toolName: translations.crontab.name,
-        featureName: "Linux",
-        featureDescription: "Linux task scheduling",
-      },
-      {
-        toolId: "crontab",
-        toolName: translations.crontab.name,
-        featureName: "Unix",
-        featureDescription: "Unix task scheduling",
-      },
-    )
-  }
-
-  if (translations?.imageToBase64?.name) {
-    features.push(
-      {
-        toolId: "image-to-base64",
-        toolName: translations.imageToBase64.name,
-        featureName: "Image to Base64",
-        featureDescription: "Convert images to Base64 encoded strings",
-      },
-      {
-        toolId: "image-to-base64",
-        toolName: translations.imageToBase64.name,
-        featureName: "Data URL",
-        featureDescription: "Convert images to data URLs",
-      },
-      {
-        toolId: "image-to-base64",
-        toolName: translations.imageToBase64.name,
-        featureName: "Image Embed",
-        featureDescription: "Create embeddable image strings",
-      },
-    )
-  }
-
-  if (translations?.exifViewer?.name) {
-    features.push(
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "EXIF",
-        featureDescription: "Extract EXIF metadata from images",
-      },
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "GPS",
-        featureDescription: "Extract GPS location from photos",
-      },
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "Camera Info",
-        featureDescription: "View camera settings from photos",
-      },
-      {
-        toolId: "exif-viewer",
-        toolName: translations.exifViewer.name,
-        featureName: "Photo Metadata",
-        featureDescription: "View all image metadata",
-      },
-    )
-  }
-
-  if (translations?.bmi?.name) {
-    features.push(
-      {
-        toolId: "bmi",
-        toolName: translations.bmi.name,
-        featureName: "BMI",
-        featureDescription: "Body Mass Index Calculator",
-      },
-      {
-        toolId: "bmi",
-        toolName: translations.bmi.name,
-        featureName: "Weight",
-        featureDescription: "Calculate healthy weight range",
-      },
-      {
-        toolId: "bmi",
-        toolName: translations.bmi.name,
-        featureName: "Health",
-        featureDescription: "Check weight health status",
-      },
-    )
-  }
-
-  if (translations?.regex?.name) {
-    features.push(
-      {
-        toolId: "regex",
-        toolName: translations.regex.name,
-        featureName: "Regex",
-        featureDescription: "Regular Expression Tester",
-      },
-      {
-        toolId: "regex",
-        toolName: translations.regex.name,
-        featureName: "Email",
-        featureDescription: "Email validation pattern",
-      },
-      {
-        toolId: "regex",
-        toolName: translations.regex.name,
-        featureName: "URL",
-        featureDescription: "URL validation pattern",
-      },
-      {
-        toolId: "regex",
-        toolName: translations.regex.name,
-        featureName: "Phone",
-        featureDescription: "Phone number validation pattern",
-      },
-      {
-        toolId: "regex",
-        toolName: translations.regex.name,
-        featureName: "Date",
-        featureDescription: "Date validation pattern",
-      },
-      {
-        toolId: "regex",
-        toolName: translations.regex.name,
-        featureName: "IP",
-        featureDescription: "IP address validation pattern",
-      },
-      {
-        toolId: "regex",
-        toolName: translations.regex.name,
-        featureName: "Password",
-        featureDescription: "Password strength validation pattern",
-      },
-    )
-  }
-
-  // Add QR Code Decoder features
-  if (translations?.qrcodeDecoder?.name) {
-    features.push(
-      {
-        toolId: "qrcode-decode",
-        toolName: translations.qrcodeDecoder.name,
-        featureName: "QR Code",
-        featureDescription: "Decode QR codes from images",
-      },
-      {
-        toolId: "qrcode-decode",
-        toolName: translations.qrcodeDecoder.name,
-        featureName: "QR Scanner",
-        featureDescription: "Scan QR codes with camera",
-      },
-      {
-        toolId: "qrcode-decode",
-        toolName: translations.qrcodeDecoder.name,
-        featureName: "Barcode",
-        featureDescription: "Read QR code content",
-      },
-    )
-  }
-
-  // Add HTTP Tester features
-  if (translations?.httpTester?.name) {
-    features.push(
-      {
-        toolId: "http-tester",
-        toolName: translations.httpTester.name,
-        featureName: "HTTP Request",
-        featureDescription: "Test HTTP requests",
-      },
-      {
-        toolId: "http-tester",
-        toolName: translations.httpTester.name,
-        featureName: "API Testing",
-        featureDescription: "Test REST APIs",
-      },
-      {
-        toolId: "http-tester",
-        toolName: translations.httpTester.name,
-        featureName: "Request Headers",
-        featureDescription: "View and modify request headers",
-      },
-      {
-        toolId: "http-tester",
-        toolName: translations.httpTester.name,
-        featureName: "Response",
-        featureDescription: "View HTTP response",
-      },
-    )
-  }
-
-  // 在createSearchableFeatures函数中添加WHOIS相关的搜索功能
-  // Add WHOIS lookup features
-  if (translations?.whois?.name) {
-    features.push(
-      {
-        toolId: "whois",
-        toolName: translations.whois.name,
-        featureName: "WHOIS",
-        featureDescription: "Domain WHOIS information lookup",
-      },
-      {
-        toolId: "whois",
-        toolName: translations.whois.name,
-        featureName: "Domain Info",
-        featureDescription: "Check domain registration details",
-      },
-      {
-        toolId: "whois",
-        toolName: translations.whois.name,
-        featureName: "Registrar",
-        featureDescription: "Find domain registrar information",
-      },
-      {
-        toolId: "whois",
-        toolName: translations.whois.name,
-        featureName: "Name Servers",
-        featureDescription: "Check domain name servers",
-      },
-      {
-        toolId: "whois",
-        toolName: translations.whois.name,
-        featureName: "Domain Expiry",
-        featureDescription: "Check when a domain expires",
-      },
-    )
-  }
-
-  // UUID Generator features
-  if (translations?.passwordGenerator?.name) {
-    features.push(
-      {
-        toolId: "password-generator",
-        toolName: translations.passwordGenerator.name,
-        featureName: "Secure Password",
-        featureDescription: "Generate cryptographically secure random passwords",
-      },
-      {
-        toolId: "password-generator",
-        toolName: translations.passwordGenerator.name,
-        featureName: "Passphrase",
-        featureDescription: "Generate readable multi-word passphrases",
-      },
-      {
-        toolId: "password-generator",
-        toolName: translations.passwordGenerator.name,
-        featureName: "Password Entropy",
-        featureDescription: "Estimate password strength in bits",
-      },
-    )
-  }
-
-  // UUID Generator features
-  if (translations?.uuid?.name) {
-    features.push(
-      {
-        toolId: "uuid",
-        toolName: translations.uuid.name,
-        featureName: "UUID",
-        featureDescription: "Generate unique identifiers",
-      },
-      {
-        toolId: "uuid",
-        toolName: translations.uuid.name,
-        featureName: "GUID",
-        featureDescription: "Generate globally unique identifiers",
-      },
-      {
-        toolId: "uuid",
-        toolName: translations.uuid.name,
-        featureName: "UUID v4",
-        featureDescription: "Generate random UUIDs",
-      },
-      {
-        toolId: "uuid",
-        toolName: translations.uuid.name,
-        featureName: "UUID v1",
-        featureDescription: "Generate time-based UUIDs",
-      },
-      {
-        toolId: "uuid",
-        toolName: translations.uuid.name,
-        featureName: "Batch UUID",
-        featureDescription: "Generate multiple UUIDs at once",
-      },
-    )
-  }
-
-  // JWT Parser features
-  if (translations?.jwt?.name) {
-    features.push(
-      {
-        toolId: "jwt",
-        toolName: translations.jwt.name,
-        featureName: "JWT",
-        featureDescription: "Parse JSON Web Tokens",
-      },
-      {
-        toolId: "jwt",
-        toolName: translations.jwt.name,
-        featureName: "Token Decode",
-        featureDescription: "Decode JWT token content",
-      },
-      {
-        toolId: "jwt",
-        toolName: translations.jwt.name,
-        featureName: "JWT Header",
-        featureDescription: "View JWT header information",
-      },
-      {
-        toolId: "jwt",
-        toolName: translations.jwt.name,
-        featureName: "JWT Payload",
-        featureDescription: "View JWT payload claims",
-      },
-      {
-        toolId: "jwt",
-        toolName: translations.jwt.name,
-        featureName: "Token Expiry",
-        featureDescription: "Check JWT expiration status",
-      },
-    )
-  }
-
-  // Text Statistics features
-  if (translations?.textStats?.name) {
-    features.push(
-      {
-        toolId: "text-stats",
-        toolName: translations.textStats.name,
-        featureName: "Text Count",
-        featureDescription: "Count characters, words and sentences",
-      },
-      {
-        toolId: "text-stats",
-        toolName: translations.textStats.name,
-        featureName: "Word Frequency",
-        featureDescription: "Analyze word frequency in text",
-      },
-      {
-        toolId: "text-stats",
-        toolName: translations.textStats.name,
-        featureName: "Reading Time",
-        featureDescription: "Estimate reading time for text",
-      },
-      {
-        toolId: "text-stats",
-        toolName: translations.textStats.name,
-        featureName: "Chinese Analysis",
-        featureDescription: "Analyze Chinese text statistics",
-      },
-      {
-        toolId: "text-stats",
-        toolName: translations.textStats.name,
-        featureName: "English Analysis",
-        featureDescription: "Analyze English text statistics",
-      },
-    )
-  }
-
-  // Image Compress features
-  if (translations?.imageConvert?.name) {
-    features.push(
-      {
-        toolId: "image-convert",
-        toolName: translations.imageConvert.name,
-        featureName: "Image Format Convert",
-        featureDescription: "Convert PNG, JPEG, WebP and AVIF images",
-      },
-      {
-        toolId: "image-convert",
-        toolName: translations.imageConvert.name,
-        featureName: "Batch Image Convert",
-        featureDescription: "Convert multiple images and download a ZIP",
-      },
-      {
-        toolId: "image-convert",
-        toolName: translations.imageConvert.name,
-        featureName: "Image Resize",
-        featureDescription: "Resize while preserving the aspect ratio",
-      },
-    )
-  }
-
-  // Image Compress features
-  if (translations?.imageCompress?.name) {
-    features.push(
-      {
-        toolId: "image-compress",
-        toolName: translations.imageCompress.name,
-        featureName: "Image Compress",
-        featureDescription: "Compress images with adjustable quality",
-      },
-      {
-        toolId: "image-compress",
-        toolName: translations.imageCompress.name,
-        featureName: "Batch Compress",
-        featureDescription: "Compress multiple images at once",
-      },
-      {
-        toolId: "image-compress",
-        toolName: translations.imageCompress.name,
-        featureName: "Image Resize",
-        featureDescription: "Resize images while compressing",
-      },
-    )
-  }
-
-  // Case Converter features
-  if (translations?.caseConverter?.name) {
-    features.push(
-      {
-        toolId: "case-converter",
-        toolName: translations.caseConverter.name,
-        featureName: "Uppercase",
-        featureDescription: "Convert text to uppercase",
-      },
-      {
-        toolId: "case-converter",
-        toolName: translations.caseConverter.name,
-        featureName: "Lowercase",
-        featureDescription: "Convert text to lowercase",
-      },
-      {
-        toolId: "case-converter",
-        toolName: translations.caseConverter.name,
-        featureName: "Title Case",
-        featureDescription: "Convert text to title case",
-      },
-      {
-        toolId: "case-converter",
-        toolName: translations.caseConverter.name,
-        featureName: "camelCase",
-        featureDescription: "Convert text to camelCase",
-      },
-    )
-  }
-
-  // TOTP features
-  if (translations?.totp?.name) {
-    features.push(
-      {
-        toolId: "totp",
-        toolName: translations.totp.name,
-        featureName: "TOTP Generator",
-        featureDescription: "Generate time-based one-time passwords",
-      },
-      {
-        toolId: "totp",
-        toolName: translations.totp.name,
-        featureName: "2FA Authenticator",
-        featureDescription: "Two-factor authentication code generator",
-      },
-    )
-  }
-
-  // JCE Parser features
-  if (translations?.jce?.name) {
-    features.push(
-      {
-        toolId: "jce",
-        toolName: translations.jce.name,
-        featureName: "JCE Decode",
-        featureDescription: "Decode JCE binary data to JSON",
-      },
-      {
-        toolId: "jce",
-        toolName: translations.jce.name,
-        featureName: "JCE Encode",
-        featureDescription: "Encode JSON to JCE binary format",
-      },
-      {
-        toolId: "jce",
-        toolName: translations.jce.name,
-        featureName: "Tars Protocol",
-        featureDescription: "Tars/JCE binary serialization protocol",
-      },
-    )
-  }
-
-  if (translations?.diff?.name) {
-    features.push({
-      toolId: "diff",
-      toolName: translations.diff.name,
-      featureName: "Text Diff",
-      featureDescription: "Compare text and highlight added or removed lines",
-    })
-  }
-
-  const extendedTools = [
-    ["dataDetector", "data-detector", "Data detection", "JSON JWT Base64 XML UUID timestamp format identify 智能识别"],
-    ["compression", "compression", "Compression", "GZip Zlib Deflate Brotli ZIP compress decompress 压缩 解压"],
-    ["xmlTools", "xml", "XML and XPath", "XML format validate XPath JSON conversion 格式化 校验"],
-    ["csvTools", "csv", "CSV and TSV", "CSV TSV delimiter JSON table spreadsheet 表格 分隔符"],
-    ["markdownTools", "markdown", "Markdown preview", "Markdown HTML preview table of contents 预览 目录"],
-    ["sqlTools", "sql", "SQL formatter", "SQL MySQL PostgreSQL SQLite format minify 数据库"],
-    ["jsonSchemaTools", "json-schema", "JSON Schema", "JSON Schema validate infer AJV 校验 推导"],
-    ["subnetTools", "subnet", "IP and CIDR", "IPv4 IPv6 subnet network netmask range 网段 子网"],
-    ["certificateTools", "certificate", "Certificate and keys", "X.509 PEM CSR JWK JWKS public key 证书 密钥"],
-    ["hexBinaryTools", "hex-binary", "Hex and binary", "hexdump binary magic bytes file signature Base64 二进制 文件头"],
-  ] as const
-  for (const [translationKey, toolId, featureName, featureDescription] of extendedTools) {
-    const toolName = translations?.[translationKey]?.name
-    if (toolName) features.push({ toolId, toolName, featureName, featureDescription })
-  }
-
-  return features
+    return features.map(([featureName, featureDescription]) => ({
+      toolId,
+      toolName,
+      featureName,
+      featureDescription,
+    }))
+  })
 }
 
-// 搜索功能
 export function searchFeatures(features: SearchResult[], term: string): SearchResult[] {
-  if (!term || !term.trim()) {
-    return []
-  }
+  const normalizedTerm = term.trim().toLocaleLowerCase()
+  if (!normalizedTerm) return []
 
-  const normalizedTerm = term.toLowerCase().trim()
-
-  return features.filter(
-    (feature) =>
-      feature.featureName.toLowerCase().includes(normalizedTerm) ||
-      feature.toolName.toLowerCase().includes(normalizedTerm) ||
-      (feature.featureDescription && feature.featureDescription.toLowerCase().includes(normalizedTerm)),
+  return features.filter((feature) =>
+    [feature.featureName, feature.toolName, feature.featureDescription]
+      .filter((value): value is string => Boolean(value))
+      .some((value) => value.toLocaleLowerCase().includes(normalizedTerm)),
   )
 }

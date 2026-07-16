@@ -10,10 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useTranslations } from "@/hooks/use-translations"
-import { useI18n } from "@/components/i18n-provider"
-import { Minus, Plus, Copy, Thermometer, Settings, ChevronUp, ChevronDown, Zap, Eye, Check, Snowflake, Sun, RefreshCw, ArrowLeftRight } from "lucide-react"
+import { Minus, Plus, Copy, Thermometer, Settings, ChevronUp, ChevronDown, Check, Snowflake, Sun } from "lucide-react"
 
 // Temperature scales and their conversion formulas
 const temperatureScales = [
@@ -130,13 +127,9 @@ const temperaturePresets = [
 ]
 
 export default function TemperatureConverterPage() {
-  const t = useTranslations("temperatureConverter")
-  const { locale: language } = useI18n()
-
   // 设置状态
   const [showTemperatureSettings, setShowTemperatureSettings] = useState(false)
   const [autoFormat, setAutoFormat] = useState(true)
-  const [realTimeConversion, setRealTimeConversion] = useState(true)
   const [showDescription, setShowDescription] = useState(false)
   const [compactDisplay, setCompactDisplay] = useState(false)
   const [precision, setPrecision] = useState(2)
@@ -146,13 +139,6 @@ export default function TemperatureConverterPage() {
     Object.fromEntries(temperatureScales.map((scale) => [scale.id, scale.id === "celsius" ? 20 : scale.fromKelvin(293.15)])),
   )
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
-  const [conversionHistory, setConversionHistory] = useState<Array<{
-    id: string
-    timestamp: Date
-    input: { value: number, scale: string }
-    results: Record<string, number>
-  }>>([])
-  const [favoritePresets, setFavoritePresets] = useState<string[]>(["celsius", "fahrenheit", "kelvin"])
 
   // Update all temperatures based on the changed scale
   const updateTemperatures = useCallback((value: number, scaleId: string) => {
@@ -207,28 +193,6 @@ export default function TemperatureConverterPage() {
     return formatted.replace(/\.?0+$/, "")
   }, [autoFormat, precision])
 
-  // 添加到转换历史
-  const addToHistory = useCallback((value: number, scaleId: string, results: Record<string, number>) => {
-    const newEntry = {
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      input: { value, scale: scaleId },
-      results
-    }
-    setConversionHistory(prev => [newEntry, ...prev.slice(0, 9)]) // 保留最近10条记录
-  }, [])
-
-  // Get the display name based on language
-  const getDisplayName = useCallback(
-    (scale: (typeof temperatureScales)[0]) => {
-      if (language === "zh") {
-        return `${scale.chineseName} (${scale.name})`
-      }
-      return `${scale.name} (${scale.chineseName})`
-    },
-    [language],
-  )
-
   return (
     <div className="container mx-auto px-4 py-4 max-w-7xl">
       {/* 页面标题 */}
@@ -266,7 +230,7 @@ export default function TemperatureConverterPage() {
         {showTemperatureSettings && (
           <Card className="mt-3 card-modern">
             <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
                   <Label htmlFor="auto-format" className="cursor-pointer text-sm">
                     关闭格式化
@@ -274,15 +238,6 @@ export default function TemperatureConverterPage() {
                   <Switch id="auto-format" checked={autoFormat} onCheckedChange={setAutoFormat} />
                   <Label htmlFor="auto-format" className="cursor-pointer text-sm text-blue-600">
                     自动格式化
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="real-time-conversion" className="cursor-pointer text-sm">
-                    手动转换
-                  </Label>
-                  <Switch id="real-time-conversion" checked={realTimeConversion} onCheckedChange={setRealTimeConversion} />
-                  <Label htmlFor="real-time-conversion" className="cursor-pointer text-sm text-green-600">
-                    实时转换
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
@@ -337,12 +292,6 @@ export default function TemperatureConverterPage() {
               <Badge variant="secondary" className="text-xs">
                 日常使用
               </Badge>
-              {realTimeConversion && (
-                <Badge variant="secondary" className="text-xs">
-                  <Zap className="h-3 w-3 mr-1" />
-                  实时转换
-                </Badge>
-              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -361,7 +310,6 @@ export default function TemperatureConverterPage() {
                     copied={copied}
                     showDescription={showDescription}
                     compactDisplay={compactDisplay}
-                    realTimeConversion={realTimeConversion}
                   />
                 ))}
             </div>
@@ -395,7 +343,6 @@ export default function TemperatureConverterPage() {
                     copied={copied}
                     showDescription={showDescription}
                     compactDisplay={compactDisplay}
-                    realTimeConversion={realTimeConversion}
                   />
                 ))}
             </div>
@@ -429,7 +376,6 @@ export default function TemperatureConverterPage() {
                     copied={copied}
                     showDescription={showDescription}
                     compactDisplay={compactDisplay}
-                    realTimeConversion={realTimeConversion}
                   />
                 ))}
             </div>
@@ -456,8 +402,10 @@ export default function TemperatureConverterPage() {
                 variant="outline"
                 className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                 onClick={() => {
-                  updateTemperatures(preset.kelvin, "kelvin")
-                  addToHistory(preset.kelvin, "kelvin", temperatures)
+                  const presetTemperatures = Object.fromEntries(
+                    temperatureScales.map((scale) => [scale.id, scale.fromKelvin(preset.kelvin)]),
+                  )
+                  setTemperatures(presetTemperatures)
                 }}
               >
                 <span className="text-2xl">{preset.icon}</span>
@@ -495,7 +443,6 @@ interface TemperatureCardProps {
   copied: { [key: string]: boolean }
   showDescription: boolean
   compactDisplay: boolean
-  realTimeConversion: boolean
 }
 
 function TemperatureCard({
@@ -508,7 +455,6 @@ function TemperatureCard({
   copied,
   showDescription,
   compactDisplay,
-  realTimeConversion,
 }: TemperatureCardProps) {
   const copyKey = `temp-${scale.id}`
 
@@ -521,12 +467,6 @@ function TemperatureCard({
             <div className="font-semibold">{scale.chineseName}</div>
             <div className="text-sm font-normal text-gray-500">{scale.name}</div>
           </div>
-          {realTimeConversion && (
-            <Badge variant="secondary" className="text-xs">
-              <Zap className="h-3 w-3 mr-1" />
-              实时
-            </Badge>
-          )}
         </CardTitle>
       </CardHeader>
       <CardContent>

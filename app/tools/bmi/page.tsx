@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Calculator, Info, RotateCcw } from "lucide-react"
+import { calculateImperialBmi, calculateMetricBmi, clampFiniteNumber } from "@/lib/bmi-tools"
 
 export default function BMICalculator() {
   const [activeTab, setActiveTab] = useState("metric")
@@ -22,21 +23,9 @@ export default function BMICalculator() {
   const [heightIn, setHeightIn] = useState(7)
   const [weightLbs, setWeightLbs] = useState(154)
 
-  // 计算BMI
-  let bmi = 0
-
-  if (activeTab === "metric") {
-    // 公制公式: 体重(kg) / (身高(m))²
-    const heightM = heightCm / 100
-    bmi = weightKg / (heightM * heightM)
-  } else {
-    // 英制公式: (体重(lbs) * 703) / (身高(in))²
-    const totalInches = heightFt * 12 + heightIn
-    bmi = (weightLbs * 703) / (totalInches * totalInches)
-  }
-
-  // 保留一位小数
-  bmi = Math.round(bmi * 10) / 10
+  const bmi = activeTab === "metric"
+    ? calculateMetricBmi(heightCm, weightKg)
+    : calculateImperialBmi(heightFt, heightIn, weightLbs)
 
   // BMI分类和颜色
   let category = ""
@@ -71,27 +60,27 @@ export default function BMICalculator() {
 
   // 输入验证处理
   const handleHeightCmChange = (value: number) => {
-    const validValue = Math.max(100, Math.min(250, value))
+    const validValue = clampFiniteNumber(value, 100, 250, heightCm)
     setHeightCm(validValue)
   }
 
   const handleWeightKgChange = (value: number) => {
-    const validValue = Math.max(30, Math.min(300, value))
+    const validValue = clampFiniteNumber(value, 30, 300, weightKg)
     setWeightKg(validValue)
   }
 
   const handleHeightFtChange = (value: number) => {
-    const validValue = Math.max(3, Math.min(8, value))
+    const validValue = clampFiniteNumber(value, 3, 8, heightFt)
     setHeightFt(validValue)
   }
 
   const handleHeightInChange = (value: number) => {
-    const validValue = Math.max(0, Math.min(11, value))
+    const validValue = clampFiniteNumber(value, 0, 11, heightIn)
     setHeightIn(validValue)
   }
 
   const handleWeightLbsChange = (value: number) => {
-    const validValue = Math.max(66, Math.min(660, value))
+    const validValue = clampFiniteNumber(value, 66, 660, weightLbs)
     setWeightLbs(validValue)
   }
 
@@ -165,8 +154,7 @@ export default function BMICalculator() {
                       type="number"
                       value={heightCm}
                       onChange={(e) => {
-                        const value = e.target.value === "" ? 170 : Number(e.target.value)
-                        handleHeightCmChange(value)
+                        handleHeightCmChange(e.currentTarget.valueAsNumber)
                       }}
                       className="w-24"
                       min={100}
@@ -196,8 +184,7 @@ export default function BMICalculator() {
                       type="number"
                       value={weightKg}
                       onChange={(e) => {
-                        const value = e.target.value === "" ? 70 : Number(e.target.value)
-                        handleWeightKgChange(value)
+                        handleWeightKgChange(e.currentTarget.valueAsNumber)
                       }}
                       className="w-24"
                       min={30}
@@ -235,8 +222,7 @@ export default function BMICalculator() {
                           type="number"
                           value={heightFt}
                           onChange={(e) => {
-                            const value = e.target.value === "" ? 5 : Number(e.target.value)
-                            handleHeightFtChange(value)
+                            handleHeightFtChange(e.currentTarget.valueAsNumber)
                           }}
                           className="w-20"
                           min={3}
@@ -264,8 +250,7 @@ export default function BMICalculator() {
                           type="number"
                           value={heightIn}
                           onChange={(e) => {
-                            const value = e.target.value === "" ? 7 : Number(e.target.value)
-                            handleHeightInChange(value)
+                            handleHeightInChange(e.currentTarget.valueAsNumber)
                           }}
                           className="w-20"
                           min={0}
@@ -297,8 +282,7 @@ export default function BMICalculator() {
                       type="number"
                       value={weightLbs}
                       onChange={(e) => {
-                        const value = e.target.value === "" ? 154 : Number(e.target.value)
-                        handleWeightLbsChange(value)
+                        handleWeightLbsChange(e.currentTarget.valueAsNumber)
                       }}
                       className="w-24"
                       min={66}

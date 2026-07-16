@@ -15,6 +15,13 @@ describe("XML tools", () => {
     expect(processXml(json, "from-json")).toContain('<root id="1">')
   })
 
+  it("wraps a root JSON array with valid XML element names", () => {
+    const xml = processXml('[{"name":"Ada"},{"name":"Linus"}]', "from-json")
+    expect(xml).toContain("<root>")
+    expect(xml.match(/<item>/g)).toHaveLength(2)
+    expect(xml).not.toMatch(/<\d+>/)
+  })
+
   it("queries XML with XPath", () => {
     expect(processXml(XML, "xpath", "string(/root/item[2])")).toBe("B")
   })

@@ -47,14 +47,12 @@ export default function ImageCompressPage() {
   const [outputFormat, setOutputFormat] = useState<string>("original")
   const [maxWidth, setMaxWidth] = useState<string>("")
   const [maxHeight, setMaxHeight] = useState<string>("")
-  const [maintainAspectRatio, setMaintainAspectRatio] = useState(true)
   
   // 图片预览弹窗
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [previewTitle, setPreviewTitle] = useState<string>("")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   
   // 用于追踪设置变化，避免新上传图片触发全部重新压缩
   const settingsRef = useRef({ quality, outputFormat, maxWidth, maxHeight })
@@ -397,7 +395,6 @@ export default function ImageCompressPage() {
     setSelectedImageId(null)
   }
 
-  // 当压缩设置变化时，自动重新压缩所有图片
   // 当压缩设置变化时，自动重新压缩所有图片
   useEffect(() => {
     // 检查设置是否真的变化了
@@ -925,9 +922,6 @@ export default function ImageCompressPage() {
           )}
         </div>
       </div>
-
-      {/* 隐藏的canvas用于压缩 */}
-      <canvas ref={canvasRef} className="hidden" />
 
       {/* 图片预览弹窗 */}
       {previewImage && (

@@ -1339,6 +1339,7 @@ export const translations = {
       output: "输出",
       copy: "复制",
       copied: "已复制",
+      copyFailed: "复制失败，请检查剪贴板权限",
       outputPlaceholder: "处理结果会显示在这里",
     },
     dataDetector: {
@@ -2906,6 +2907,7 @@ export const translations = {
       output: "Output",
       copy: "Copy",
       copied: "Copied",
+      copyFailed: "Copy failed. Check clipboard permissions.",
       outputPlaceholder: "The result will appear here",
     },
     dataDetector: {

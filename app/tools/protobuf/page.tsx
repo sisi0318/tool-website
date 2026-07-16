@@ -13,21 +13,13 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
 import { bytesToBase64, bytesToHex } from "@/lib/binary"
-import { Loader2, Copy, FileUp, X, Download, RefreshCw, ArrowLeftRight, Upload, Settings, ChevronUp, ChevronDown, Zap, Eye, Code, FileText, Database, Shield, Check } from "lucide-react"
+import { Loader2, Copy, FileUp, X, Download, RefreshCw, ArrowLeftRight, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
 import * as protobuf from "protobufjs"
 
 export default function ProtobufTool() {
   const t = useTranslations("protobuf")
-  
-  // 设置状态
-  const [showProtobufSettings, setShowProtobufSettings] = useState(false)
-  const [autoFormat, setAutoFormat] = useState(true)
-  const [realTimeValidation, setRealTimeValidation] = useState(true)
-  const [enableCompression, setEnableCompression] = useState(false)
-  const [strictMode, setStrictMode] = useState(false)
   
   // 原有状态
   const [mode, setMode] = useState<"decode" | "encode">("decode")
@@ -637,76 +629,6 @@ export default function ProtobufTool() {
         </h1>
       </div>
 
-      {/* Protobuf设置折叠区域 */}
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowProtobufSettings(!showProtobufSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-        >
-          <div className="flex items-center gap-2">
-            {showProtobufSettings ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            <Settings className="h-4 w-4" />
-            <span>Protobuf 设置</span>
-            {!showProtobufSettings && (
-              <Badge variant="secondary" className="text-xs ml-auto">
-                点击查看
-              </Badge>
-            )}
-          </div>
-        </Button>
-
-        {showProtobufSettings && (
-          <Card className="mt-3 card-modern">
-            <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="auto-format" className="cursor-pointer text-sm">
-                    手动格式化
-                  </Label>
-                  <Switch id="auto-format" checked={autoFormat} onCheckedChange={setAutoFormat} />
-                  <Label htmlFor="auto-format" className="cursor-pointer text-sm text-blue-600">
-                    自动格式化
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="real-time-validation" className="cursor-pointer text-sm">
-                    延迟验证
-                  </Label>
-                  <Switch id="real-time-validation" checked={realTimeValidation} onCheckedChange={setRealTimeValidation} />
-                  <Label htmlFor="real-time-validation" className="cursor-pointer text-sm text-green-600">
-                    实时验证
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="enable-compression" className="cursor-pointer text-sm">
-                    禁用压缩
-                  </Label>
-                  <Switch id="enable-compression" checked={enableCompression} onCheckedChange={setEnableCompression} />
-                  <Label htmlFor="enable-compression" className="cursor-pointer text-sm text-purple-600">
-                    启用压缩
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="strict-mode" className="cursor-pointer text-sm">
-                    宽松模式
-                  </Label>
-                  <Switch id="strict-mode" checked={strictMode} onCheckedChange={setStrictMode} />
-                  <Label htmlFor="strict-mode" className="cursor-pointer text-sm text-orange-600">
-                    严格模式
-                  </Label>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
       <Tabs defaultValue="decode" className="w-full" onValueChange={(value) => setMode(value as "decode" | "encode")}>
         <div className="mb-6">
           <TabsList className="grid w-full grid-cols-2 h-14 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
@@ -741,11 +663,6 @@ export default function ProtobufTool() {
                 <Zap className="h-4 w-4" />
                 <span className="text-sm sm:hidden">无 Schema</span>
                 <span className="hidden text-sm sm:inline">无 Schema 模式</span>
-                {autoFormat && (
-                  <Badge variant="secondary" className="hidden text-xs sm:inline-flex">
-                    自动
-                  </Badge>
-                )}
               </TabsTrigger>
               <TabsTrigger 
                 value="schema" 
@@ -754,11 +671,6 @@ export default function ProtobufTool() {
                 <Shield className="h-4 w-4" />
                 <span className="text-sm sm:hidden">Schema</span>
                 <span className="hidden text-sm sm:inline">Schema 模式</span>
-                {strictMode && (
-                  <Badge variant="secondary" className="hidden text-xs sm:inline-flex">
-                    严格
-                  </Badge>
-                )}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -770,12 +682,6 @@ export default function ProtobufTool() {
                   <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
                     <FileText className="h-5 w-5 text-green-600" />
                     Schema 配置
-                    {realTimeValidation && (
-                      <Badge variant="secondary" className="text-xs">
-                        <Eye className="mr-1 h-3 w-3" />
-                        实时验证
-                      </Badge>
-                    )}
                   </CardTitle>
                   {(protoFile || protoContent) && (
                     <Button variant="outline" size="sm" onClick={removeProtoFile} className="w-full sm:ml-auto sm:w-auto">
@@ -920,12 +826,6 @@ export default function ProtobufTool() {
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Upload className="h-5 w-5 text-purple-600" />
                   Protobuf 输入
-                  {realTimeValidation && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Zap className="h-3 w-3 mr-1" />
-                      实时验证
-                    </Badge>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1038,12 +938,6 @@ export default function ProtobufTool() {
                   <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
                     <FileText className="h-5 w-5 text-green-600" />
                     JSON 输出
-                    {autoFormat && (
-                      <Badge variant="secondary" className="text-xs">
-                        <RefreshCw className="mr-1 h-3 w-3" />
-                        自动格式化
-                      </Badge>
-                    )}
                   </CardTitle>
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
@@ -1122,12 +1016,6 @@ export default function ProtobufTool() {
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Code className="h-5 w-5 text-blue-600" />
                   JSON 输入
-                  {realTimeValidation && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Zap className="h-3 w-3 mr-1" />
-                      实时验证
-                    </Badge>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1192,12 +1080,6 @@ export default function ProtobufTool() {
                   <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
                     <Database className="h-5 w-5 text-purple-600" />
                     Protobuf 输出
-                    {enableCompression && (
-                      <Badge variant="secondary" className="text-xs">
-                        <Zap className="mr-1 h-3 w-3" />
-                        压缩
-                      </Badge>
-                    )}
                   </CardTitle>
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>

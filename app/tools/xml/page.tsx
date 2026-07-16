@@ -16,7 +16,7 @@ export default function XmlToolsPage() {
   const [input, setInput] = useState("")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<XmlOperation>("format")
-  const [xpath, setXpath] = useState("//book/title")
+  const [xpath, setXpath] = useState("//*")
   const [error, setError] = useState("")
 
   const run = () => {

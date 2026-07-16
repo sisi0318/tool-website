@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { getDockerInlineOptionValue, tokenizeDockerCommand } from "@/lib/docker-command-tools"
 
 // 定义配置项接口
 interface ConfigItem {
@@ -121,18 +122,18 @@ export default function DockerConverterPage() {
 
     try {
       // 清理并标准化命令
-      const cleanCommand = command.trim().replace(/\\\s*\n\s*/g, ' ').replace(/\s+/g, ' ')
+      const cleanCommand = command.trim().replace(/\\\s*\r?\n\s*/g, " ")
       
-      if (!cleanCommand.startsWith('docker run')) {
+      if (!/^docker\s+run(?:\s|$)/.test(cleanCommand)) {
         result.errors.push('命令必须以 "docker run" 开头')
         return result
       }
 
       // 提取命令部分
-      const commandPart = cleanCommand.substring(10).trim() // 移除 "docker run"
+      const commandPart = cleanCommand.replace(/^docker\s+run(?:\s|$)/, "").trim()
       
       // 使用更智能的参数解析
-      const args = parseCommandArgs(commandPart)
+      const args = tokenizeDockerCommand(commandPart)
       
       if (args.length === 0) {
         result.errors.push('未找到有效的参数或镜像名')
@@ -385,23 +386,23 @@ export default function DockerConverterPage() {
               if (!service.environment) service.environment = []
               service.environment.push(arg.substring(2))
             } else if (arg.startsWith('--shm-size=')) {
-              service.shm_size = arg.substring(12) // 移除 '--shm-size='
+              service.shm_size = getDockerInlineOptionValue(arg, "--shm-size") ?? undefined
             } else if (arg.startsWith('--memory=') || arg.startsWith('-m=')) {
               service.mem_limit = arg.includes('=') ? arg.split('=')[1] : arg
             } else if (arg.startsWith('--cpus=')) {
-              service.cpus = arg.substring(7) // 移除 '--cpus='
+              service.cpus = getDockerInlineOptionValue(arg, "--cpus") ?? undefined
             } else if (arg.startsWith('--user=') || arg.startsWith('-u=')) {
               service.user = arg.includes('=') ? arg.split('=')[1] : arg
             } else if (arg.startsWith('--workdir=') || arg.startsWith('-w=')) {
               service.working_dir = arg.includes('=') ? arg.split('=')[1] : arg
             } else if (arg.startsWith('--name=')) {
-              const name = arg.substring(7)
+              const name = getDockerInlineOptionValue(arg, "--name") ?? ""
               serviceName = name.replace(/[^a-zA-Z0-9_-]/g, '_')
               service.container_name = name
             } else if (arg.startsWith('--restart=')) {
-              service.restart = arg.substring(10)
+              service.restart = getDockerInlineOptionValue(arg, "--restart") ?? undefined
             } else if (arg.startsWith('--network=')) {
-              const network = arg.substring(10)
+              const network = getDockerInlineOptionValue(arg, "--network") ?? ""
               if (network === 'host' || network === 'none' || network === 'bridge') {
                 service.network_mode = network
               } else {
@@ -410,35 +411,35 @@ export default function DockerConverterPage() {
               }
             } else if (arg.startsWith('--cap-add=')) {
               if (!service.cap_add) service.cap_add = []
-              service.cap_add.push(arg.substring(10))
+              service.cap_add.push(getDockerInlineOptionValue(arg, "--cap-add") ?? "")
             } else if (arg.startsWith('--cap-drop=')) {
               if (!service.cap_drop) service.cap_drop = []
-              service.cap_drop.push(arg.substring(11))
+              service.cap_drop.push(getDockerInlineOptionValue(arg, "--cap-drop") ?? "")
             } else if (arg.startsWith('--tmpfs=')) {
               if (!service.tmpfs) service.tmpfs = []
-              service.tmpfs.push(arg.substring(8))
+              service.tmpfs.push(getDockerInlineOptionValue(arg, "--tmpfs") ?? "")
             } else if (arg.startsWith('--log-driver=')) {
               if (!service.logging) service.logging = {}
-              service.logging.driver = arg.substring(13)
+              service.logging.driver = getDockerInlineOptionValue(arg, "--log-driver") ?? ""
             } else if (arg.startsWith('--health-cmd=')) {
               if (!service.healthcheck) service.healthcheck = {}
-              service.healthcheck.test = ['CMD-SHELL', arg.substring(13)]
+              service.healthcheck.test = ['CMD-SHELL', getDockerInlineOptionValue(arg, "--health-cmd") ?? ""]
             } else if (arg.startsWith('--health-interval=')) {
               if (!service.healthcheck) service.healthcheck = {}
-              service.healthcheck.interval = arg.substring(18)
+              service.healthcheck.interval = getDockerInlineOptionValue(arg, "--health-interval") ?? ""
             } else if (arg.startsWith('--health-timeout=')) {
               if (!service.healthcheck) service.healthcheck = {}
-              service.healthcheck.timeout = arg.substring(17)
+              service.healthcheck.timeout = getDockerInlineOptionValue(arg, "--health-timeout") ?? ""
             } else if (arg.startsWith('--health-retries=')) {
               if (!service.healthcheck) service.healthcheck = {}
-              service.healthcheck.retries = parseInt(arg.substring(17))
+              service.healthcheck.retries = Number.parseInt(getDockerInlineOptionValue(arg, "--health-retries") ?? "", 10)
             } else if (arg.startsWith('--health-start-period=')) {
               if (!service.healthcheck) service.healthcheck = {}
-              service.healthcheck.start_period = arg.substring(22)
+              service.healthcheck.start_period = getDockerInlineOptionValue(arg, "--health-start-period") ?? ""
             } else if (arg.startsWith('--entrypoint=')) {
-              service.entrypoint = arg.substring(13)
+              service.entrypoint = getDockerInlineOptionValue(arg, "--entrypoint") ?? ""
             } else if (arg.startsWith('--memory-reservation=')) {
-              service.mem_reservation = arg.substring(21)
+              service.mem_reservation = getDockerInlineOptionValue(arg, "--memory-reservation") ?? ""
             } else if (arg.startsWith('-') && !imageFound) {
               result.warnings.push(`未识别的选项: ${arg}`)
             } else if (!arg.startsWith('-') && imageFound) {
@@ -465,55 +466,6 @@ export default function DockerConverterPage() {
     }
 
     return result
-  }
-
-  // 解析命令行参数（支持引号）
-  const parseCommandArgs = (command: string): string[] => {
-    const args: string[] = []
-    let current = ''
-    let inQuotes = false
-    let quoteChar = ''
-    let escaping = false
-
-    for (let i = 0; i < command.length; i++) {
-      const char = command[i]
-
-      if (escaping) {
-        current += char
-        escaping = false
-        continue
-      }
-
-      if (char === '\\') {
-        escaping = true
-        continue
-      }
-
-      if (inQuotes) {
-        if (char === quoteChar) {
-          inQuotes = false
-          quoteChar = ''
-        } else {
-          current += char
-        }
-      } else {
-        if (char === '"' || char === "'") {
-          inQuotes = true
-          quoteChar = char
-        } else if (char === ' ' && current.length > 0) {
-          args.push(current)
-          current = ''
-        } else if (char !== ' ') {
-          current += char
-        }
-      }
-    }
-
-    if (current.length > 0) {
-      args.push(current)
-    }
-
-    return args
   }
 
   const convertToDockerCompose = () => {

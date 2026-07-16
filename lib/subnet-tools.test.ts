@@ -21,6 +21,14 @@ describe("IP/CIDR subnet calculator", () => {
     })
   })
 
+  it("handles an IPv4 tail after a leading IPv6 compression marker", () => {
+    expect(calculateSubnet("::192.168.1.1/128")).toMatchObject({
+      family: "IPv6",
+      address: "::c0a8:101",
+      network: "::c0a8:101/128",
+    })
+  })
+
   it("rejects invalid prefixes", () => {
     expect(() => calculateSubnet("192.0.2.1/33")).toThrow(/between 0 and 32/)
   })

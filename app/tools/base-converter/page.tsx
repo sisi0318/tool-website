@@ -14,10 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTranslations } from "@/hooks/use-translations"
 import { Copy, Minus, Plus, Calculator, Settings, ChevronUp, ChevronDown, Zap, Eye, Check, Hash, RefreshCw, ArrowLeftRight, Binary } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
-
-// Base conversion utilities
-// Using '-' instead of '/' to avoid regex issues
-const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-"
+import { formatBigIntInBase, parseBigIntInBase } from "@/lib/base-converter-tools"
 
 // Common base presets
 const BASE_PRESETS = [
@@ -29,104 +26,30 @@ const BASE_PRESETS = [
   { name: "Base36", base: 36, icon: "Z9X7", color: "bg-indigo-100 text-indigo-700" },
   { name: "Base58", base: 58, icon: "BTC", color: "bg-yellow-100 text-yellow-700" },
   { name: "Base62", base: 62, icon: "URL", color: "bg-cyan-100 text-cyan-700" },
-  { name: "Base64", base: 64, icon: "JSON", color: "bg-red-100 text-red-700" },
+  { name: "Radix-64", base: 64, icon: "R64", color: "bg-red-100 text-red-700" },
 ]
 
 // Number format helpers
 const formatNumber = (value: string, base: number): string => {
   if (!value) return ""
-  
+  const sign = value.startsWith("-") ? "-" : ""
+  const digits = sign ? value.slice(1) : value
+
   // Add separators for readability
-  if (base === 2 && value.length > 4) {
-    return value.replace(/(.{4})/g, "$1 ").trim()
+  if (base === 2 && digits.length > 4) {
+    return sign + digits.replace(/(.{4})/g, "$1 ").trim()
   }
-  if (base === 8 && value.length > 3) {
-    return value.replace(/(.{3})/g, "$1 ").trim()
+  if (base === 8 && digits.length > 3) {
+    return sign + digits.replace(/(.{3})/g, "$1 ").trim()
   }
-  if (base === 16 && value.length > 4) {
-    return value.replace(/(.{4})/g, "$1 ").trim()
+  if (base === 16 && digits.length > 4) {
+    return sign + digits.replace(/(.{4})/g, "$1 ").trim()
   }
-  if (base === 10 && value.length > 3) {
-    return value.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,")
+  if (base === 10 && digits.length > 3) {
+    return sign + digits.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,")
   }
   
   return value
-}
-
-// Convert from any base to decimal
-function toDecimal(value: string, base: number): number {
-  if (base === 64) {
-    try {
-      // For base64, we'll use a custom implementation instead of atob
-      // to avoid issues with special characters
-      let result = 0
-      for (let i = 0; i < value.length; i++) {
-        const digit = ALPHABET.indexOf(value[i])
-        if (digit === -1 || digit >= 64) {
-          throw new Error(`Invalid digit for base 64: ${value[i]}`)
-        }
-        result = result * 64 + digit
-      }
-      return result
-    } catch (e) {
-      throw new Error("Invalid Base64 input")
-    }
-  }
-
-  if (base < 2 || base > 62) {
-    throw new Error(`Base ${base} not supported`)
-  }
-
-  let result = 0
-  for (let i = 0; i < value.length; i++) {
-    const digit = ALPHABET.indexOf(value[i])
-    if (digit === -1 || digit >= base) {
-      throw new Error(`Invalid digit for base ${base}: ${value[i]}`)
-    }
-    result = result * base + digit
-  }
-  return result
-}
-
-// Convert from decimal to any base
-function fromDecimal(value: number, base: number): string {
-  if (base === 64) {
-    // Custom base64 implementation using our ALPHABET
-    if (value === 0) return "0"
-
-    let result = ""
-    let temp = value
-    while (temp > 0) {
-      result = ALPHABET[temp % 64] + result
-      temp = Math.floor(temp / 64)
-    }
-    return result
-  }
-
-  if (base < 2 || base > 62) {
-    throw new Error(`Base ${base} not supported`)
-  }
-
-  if (value === 0) return "0"
-
-  let result = ""
-  let temp = value
-  while (temp > 0) {
-    result = ALPHABET[temp % base] + result
-    temp = Math.floor(temp / base)
-  }
-  return result
-}
-
-// Convert from any base to any base
-function convertBase(value: string, fromBase: number, toBase: number): string {
-  if (!value) return ""
-  try {
-    const decimal = toDecimal(value, fromBase)
-    return fromDecimal(decimal, toBase)
-  } catch (e) {
-    throw e
-  }
 }
 
 export default function BaseConverterPage() {
@@ -162,19 +85,19 @@ export default function BaseConverterPage() {
     }
 
     try {
-      const decimal = toDecimal(inputNumber, inputBase)
+      const decimal = parseBigIntInBase(inputNumber, inputBase)
 
       const newResults = {
-        binary: fromDecimal(decimal, 2),
-        octal: fromDecimal(decimal, 8),
+        binary: formatBigIntInBase(decimal, 2),
+        octal: formatBigIntInBase(decimal, 8),
         decimal: decimal.toString(),
-        hexadecimal: fromDecimal(decimal, 16),
-        base32: fromDecimal(decimal, 32),
-        base36: fromDecimal(decimal, 36),
-        base58: fromDecimal(decimal, 58),
-        base62: fromDecimal(decimal, 62),
-        base64: fromDecimal(decimal, 64),
-        custom: fromDecimal(decimal, customBase),
+        hexadecimal: formatBigIntInBase(decimal, 16),
+        base32: formatBigIntInBase(decimal, 32),
+        base36: formatBigIntInBase(decimal, 36),
+        base58: formatBigIntInBase(decimal, 58),
+        base62: formatBigIntInBase(decimal, 62),
+        base64: formatBigIntInBase(decimal, 64),
+        custom: formatBigIntInBase(decimal, customBase),
       }
       
       setResults(newResults)
@@ -188,8 +111,10 @@ export default function BaseConverterPage() {
 
   // Update conversions when inputs change
   useEffect(() => {
-    convertToAllBases()
-  }, [convertToAllBases])
+    if (realTimeConversion) {
+      convertToAllBases()
+    }
+  }, [convertToAllBases, realTimeConversion])
 
   // Handle copying to clipboard
   const handleCopy = useCallback((text: string, key: string = "main") => {
@@ -205,7 +130,7 @@ export default function BaseConverterPage() {
 
   // Increment/decrement input base
   const incrementBase = () => {
-    if (inputBase < 62) setInputBase(inputBase + 1)
+    if (inputBase < 64) setInputBase(inputBase + 1)
   }
 
   const decrementBase = () => {
@@ -214,7 +139,7 @@ export default function BaseConverterPage() {
 
   // Increment/decrement custom base
   const incrementCustomBase = () => {
-    if (customBase < 62) setCustomBase(customBase + 1)
+    if (customBase < 64) setCustomBase(customBase + 1)
   }
 
   const decrementCustomBase = () => {
@@ -363,6 +288,15 @@ export default function BaseConverterPage() {
               </div>
             </div>
           </div>
+
+          {!realTimeConversion && (
+            <div className="mt-4 flex justify-end">
+              <Button onClick={convertToAllBases} disabled={!inputNumber}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                开始转换
+              </Button>
+            </div>
+          )}
 
           {/* 错误信息 */}
           {error && (
@@ -525,9 +459,9 @@ export default function BaseConverterPage() {
               icon={<Hash className="h-5 w-5" />}
             />
 
-            {/* Base64 */}
+            {/* Radix-64 numeric representation */}
             <ResultCard
-              title="Base64 (Base 64)"
+              title="Radix-64 数值进制（非文本 Base64）"
               base={64}
               value={results.base64 || ""}
               autoFormat={autoFormat}

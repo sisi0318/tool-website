@@ -313,7 +313,7 @@ export default function RegexTester() {
   // 加载示例
   const loadExample = useCallback((example: typeof examples[0]) => {
     setPattern(example.pattern)
-    setTestText(example.text.replace(/\\n/g, '\\n'))
+    setTestText(example.text.replace(/\\n/g, "\n"))
     setFlags(example.flags)
     toast({
       title: "示例已加载",
@@ -651,7 +651,7 @@ export default function RegexTester() {
                       </div>
                       <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                         <div className="text-2xl font-bold text-green-600">
-                          {testText ? Math.round((matches.length / testText.split('\\n').length) * 100) : 0}%
+                          {testText ? Math.round((matches.length / testText.split(/\r?\n/).length) * 100) : 0}%
                         </div>
                         <div className="text-sm text-gray-500">匹配率</div>
                       </div>

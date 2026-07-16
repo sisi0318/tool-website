@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import yaml from "js-yaml"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
+import { escapeJsonText, tryRepairCommonJson, unescapeJsonText } from "@/lib/json-text-tools"
 
 export default function JsonTool() {
   const t = useTranslations("json")
@@ -32,6 +33,7 @@ export default function JsonTool() {
   const [originalJson, setOriginalJson] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
   const [errorPosition, setErrorPosition] = useState<{ line: number; column: number } | null>(null)
+  const [repairSuggestion, setRepairSuggestion] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [indentSize, setIndentSize] = useState(2)
@@ -41,6 +43,61 @@ export default function JsonTool() {
   const [wordWrap, setWordWrap] = useState(true)
   const [collapsed, setCollapsed] = useState(false)
 
+  useEffect(() => {
+    if (!realTimeValidation) {
+      setError(null)
+      setErrorPosition(null)
+      setRepairSuggestion(null)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (!jsonText.trim()) {
+        setError(null)
+        setErrorPosition(null)
+        setRepairSuggestion(null)
+        return
+      }
+
+      try {
+        JSON.parse(jsonText)
+        setError(null)
+        setErrorPosition(null)
+        setRepairSuggestion(null)
+      } catch (err) {
+        if (!(err instanceof Error)) return
+
+        setError(err.message)
+        const posMatch = err.message.match(/at position (\d+)/)
+        if (posMatch?.[1]) {
+          const position = Number.parseInt(posMatch[1], 10)
+          const lines = jsonText.substring(0, position).split("\n")
+          setErrorPosition({
+            line: lines.length,
+            column: lines[lines.length - 1].length + 1,
+          })
+        } else {
+          setErrorPosition(null)
+        }
+
+        const repaired = tryRepairCommonJson(jsonText)
+        setRepairSuggestion(
+          repaired === null
+            ? null
+            : JSON.stringify(
+                repaired,
+                sortKeys && repaired && typeof repaired === "object" && !Array.isArray(repaired)
+                  ? Object.keys(repaired).sort()
+                  : null,
+                useTab ? "\t" : indentSize,
+              ),
+        )
+      }
+    }, 300)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [indentSize, jsonText, realTimeValidation, sortKeys, useTab])
+
   // 格式化JSON
   const formatJson = () => {
     try {
@@ -49,6 +106,7 @@ export default function JsonTool() {
       setJsonText(formatted)
       setError(null)
       setErrorPosition(null)
+      setRepairSuggestion(null)
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
@@ -63,25 +121,20 @@ export default function JsonTool() {
             column: lines[lines.length - 1].length + 1,
           })
 
-          // Still try to format what we can
-          try {
-            // Try to fix common issues
-            const fixedJson = jsonText
-              .replace(/,\s*}/g, "}") // Remove trailing commas in objects
-              .replace(/,\s*\]/g, "]") // Remove trailing commas in arrays
-              .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Fix unquoted property names
-
-            const parsed = JSON.parse(fixedJson)
-            const formatted = JSON.stringify(
-              parsed,
-              sortKeys ? Object.keys(parsed).sort() : null,
-              useTab ? "\t" : indentSize,
-            )
-            setJsonText(formatted)
-          } catch (fixErr) {
-            // If fixing failed, just keep the original text
-          }
         }
+
+        const repaired = tryRepairCommonJson(jsonText)
+        setRepairSuggestion(
+          repaired === null
+            ? null
+            : JSON.stringify(
+                repaired,
+                sortKeys && repaired && typeof repaired === "object" && !Array.isArray(repaired)
+                  ? Object.keys(repaired).sort()
+                  : null,
+                useTab ? "\t" : indentSize,
+              ),
+        )
       }
     }
   }
@@ -182,13 +235,7 @@ export default function JsonTool() {
   // 转义JSON
   const escapeJson = () => {
     try {
-      // Split by lines, escape each line separately, then rejoin
-      const lines = jsonText.split("\n")
-      const escapedLines = lines.map((line) => {
-        if (line.trim() === "") return line // Preserve empty lines
-        return JSON.stringify(line).slice(1, -1) // Remove the quotes added by JSON.stringify
-      })
-      setJsonText(escapedLines.join("\n"))
+      setJsonText(escapeJsonText(jsonText))
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -201,9 +248,7 @@ export default function JsonTool() {
   // 去转义JSON
   const unescapeJson = () => {
     try {
-      // 移除开头和结尾的引号，并解析转义字符
-      const unescaped = jsonText.replace(/^"|"$/g, "").replace(/\\"/g, '"').replace(/\\\\/g, "\\")
-      setJsonText(unescaped)
+      setJsonText(unescapeJsonText(jsonText))
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -250,6 +295,7 @@ export default function JsonTool() {
     setJsonText("")
     setError(null)
     setErrorPosition(null)
+    setRepairSuggestion(null)
   }
 
   // 复制到剪贴板
@@ -528,6 +574,27 @@ export default function JsonTool() {
                 位置: 第 {errorPosition.line} 行, 第 {errorPosition.column} 列
               </div>
             )}
+            {repairSuggestion && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs">检测到可修复的尾随逗号或未加引号键名，是否应用建议？</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setJsonText(repairSuggestion)
+                    setRepairSuggestion(null)
+                    setError(null)
+                    setErrorPosition(null)
+                  }}
+                >
+                  应用修复
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setRepairSuggestion(null)}>
+                  保留原文
+                </Button>
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -589,10 +656,10 @@ export default function JsonTool() {
                 value={jsonText}
                 onChange={(e) => {
                   setJsonText(e.target.value)
-                  if (realTimeValidation) {
-                    setError(null)
-                    setErrorPosition(null)
-                  }
+                  setRepairSuggestion(null)
+                }}
+                onBlur={() => {
+                  if (autoFormat && jsonText.trim()) formatJson()
                 }}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}

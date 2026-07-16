@@ -18,6 +18,7 @@ import {
   ChevronUp, ChevronDown, Code, FileText, Database, Check,
   Loader2, Zap, Eye, BookOpen,
 } from "lucide-react"
+import { decodeJceBase64, parseJceJson } from "@/lib/jce-tools"
 
 // ==================== JCE Protocol Constants ====================
 
@@ -253,25 +254,15 @@ class JceParser {
     }
   }
 
-  parse(): Record<string, any> {
+  parseWithDetails(): { data: Record<string, any>; fields: JceField[] } {
     const result: Record<string, any> = {}
-    while (this.offset < this.data.length) {
-      const head = this.readHead()
-      if (!head) break
-      if (head.type === JCE_TYPE.STRUCT_END) break
-      result[String(head.tag)] =
-        head.type === JCE_TYPE.ZERO ? 0 : this.readValueByType(head.type, 0)
-    }
-    return result
-  }
-
-  parseDetailed(): JceField[] {
     const fields: JceField[] = []
     while (this.offset < this.data.length) {
       const head = this.readHead()
       if (!head) break
       if (head.type === JCE_TYPE.STRUCT_END) break
       const value = head.type === JCE_TYPE.ZERO ? 0 : this.readValueByType(head.type, 0)
+      result[String(head.tag)] = value
       fields.push({
         tag: head.tag,
         type: head.type,
@@ -279,7 +270,15 @@ class JceParser {
         value,
       })
     }
-    return fields
+    return { data: result, fields }
+  }
+
+  parse(): Record<string, any> {
+    return this.parseWithDetails().data
+  }
+
+  parseDetailed(): JceField[] {
+    return this.parseWithDetails().fields
   }
 }
 
@@ -311,6 +310,10 @@ class JceEncoder {
   }
 
   private writeLong(v: bigint) {
+    const minLong = -(BigInt(1) << BigInt(63))
+    const maxLong = (BigInt(1) << BigInt(63)) - BigInt(1)
+    if (v < minLong || v > maxLong) throw new Error("JCE Long 超出有符号 64 位整数范围")
+    if (v < BigInt(0)) v += BigInt(1) << BigInt(64)
     for (let i = 7; i >= 0; i--) this.buf.push(Number((v >> BigInt(i * 8)) & BigInt(0xff)))
   }
 
@@ -351,6 +354,7 @@ class JceEncoder {
       this.writeHead(tag, JCE_TYPE.INT)
       this.writeInt(value)
     } else if (Number.isInteger(value)) {
+      if (!Number.isSafeInteger(value)) throw new Error("不安全的整数，请使用完整整数文本输入")
       this.writeHead(tag, JCE_TYPE.LONG)
       this.writeLong(BigInt(value))
     } else {
@@ -389,6 +393,9 @@ class JceEncoder {
     if (value === null || value === undefined) return
     if (typeof value === "number") {
       this.writeNumber(tag, value)
+    } else if (typeof value === "bigint") {
+      this.writeHead(tag, JCE_TYPE.LONG)
+      this.writeLong(value)
     } else if (typeof value === "string") {
       this.writeString(tag, value)
     } else if (typeof value === "boolean") {
@@ -433,10 +440,7 @@ function inputToBuffer(input: string): Uint8Array {
     return new Uint8Array(clean.match(/.{1,2}/g)!.map((b) => parseInt(b, 16)))
   }
   if (format === "base64") {
-    const binary = atob(clean)
-    const buffer = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i)
-    return buffer
+    return decodeJceBase64(clean)
   }
   throw new Error("无法识别的输入格式，请输入 Hex 或 Base64 编码的数据")
 }
@@ -575,14 +579,17 @@ export default function JceTool() {
     try {
       if (mode === "decode") {
         const buffer = inputToBuffer(inputData)
-        const p1 = new JceParser(buffer)
-        setOutputData(JSON.stringify(p1.parse(), null, indentSize))
-        const p2 = new JceParser(buffer)
-        setDetailedOutput(formatDetailedOutput(p2.parseDetailed()))
+        const parser = new JceParser(buffer)
+        const parsed = parser.parseWithDetails()
+        setOutputData(JSON.stringify(parsed.data, null, indentSize))
+        setDetailedOutput(formatDetailedOutput(parsed.fields))
       } else {
-        const obj = JSON.parse(jsonInput)
+        const obj = parseJceJson(jsonInput)
+        if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+          throw new Error("JCE 根节点必须是以 Tag 为键的 JSON 对象")
+        }
         const encoder = new JceEncoder()
-        const encoded = encoder.encode(obj)
+        const encoded = encoder.encode(obj as Record<string, any>)
         setOutputData(
           Array.from(encoded)
             .map((b) => b.toString(16).padStart(2, "0"))

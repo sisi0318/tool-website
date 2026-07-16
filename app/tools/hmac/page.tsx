@@ -65,7 +65,6 @@ export default function HmacPage() {
   // 实时计算状态
   const [leftInput, setLeftInput] = useState("")
   const [rightInput, setRightInput] = useState("")
-  const [leftType] = useState<"data" | "hmac">("data")
   const [autoMode, setAutoMode] = useState(true)
   const [autoSwitch, setAutoSwitch] = useState(true)
   const [leftInputLength, setLeftInputLength] = useState(0)
@@ -108,13 +107,9 @@ export default function HmacPage() {
 
   // 实时转换处理
   const performTransform = useCallback(
-    async (fromText: string, fromType: "data" | "hmac", toType: "data" | "hmac") => {
-      if (!fromText || !hmacKey) return ""
-      if (fromType === "data" && toType === "hmac") {
-        return calculateHmacValue(fromText, hmacKey, algorithm)
-      }
-      // HMAC到数据的逆转换通常不可行，因为HMAC是单向函数
-      return fromText
+    async (data: string) => {
+      if (!data || !hmacKey) return ""
+      return calculateHmacValue(data, hmacKey, algorithm)
     },
     [algorithm, calculateHmacValue, hmacKey],
   )
@@ -128,8 +123,7 @@ export default function HmacPage() {
 
     if (autoMode && value && hmacKey) {
       try {
-        const rightType: "data" | "hmac" = leftType === "data" ? "hmac" : "data"
-        const result = await performTransform(value, leftType, rightType)
+        const result = await performTransform(value)
         if (requestId === transformRequestRef.current) {
           setRightInput(result)
           setRightInputLength(result.length)
@@ -146,8 +140,7 @@ export default function HmacPage() {
 
     try {
       const requestId = ++transformRequestRef.current
-      const rightType: "data" | "hmac" = leftType === "data" ? "hmac" : "data"
-      const result = await performTransform(leftInput, leftType, rightType)
+      const result = await performTransform(leftInput)
       if (requestId === transformRequestRef.current) {
         setRightInput(result)
         setRightInputLength(result.length)
@@ -292,8 +285,7 @@ export default function HmacPage() {
       const requestId = ++transformRequestRef.current
       void (async () => {
         try {
-          const rightType: "data" | "hmac" = leftType === "data" ? "hmac" : "data"
-          const result = await performTransform(leftInput, leftType, rightType)
+          const result = await performTransform(leftInput)
           if (!cancelled && requestId === transformRequestRef.current) {
             setRightInput(result)
             setRightInputLength(result.length)
@@ -506,8 +498,8 @@ export default function HmacPage() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${leftType === "data" ? "bg-green-500" : "bg-blue-500"}`} />
-                  {leftType === "data" ? "数据输入" : "HMAC输入"}
+                  <div className="h-3 w-3 rounded-full bg-green-500" />
+                  数据输入
                   <Badge variant="outline" className="text-xs ml-auto">
                     {leftInputLength} 字符
                   </Badge>
@@ -518,7 +510,7 @@ export default function HmacPage() {
                   value={leftInput}
                   onChange={(e) => handleLeftInputChange(e.target.value)}
                   aria-label="待计算 HMAC 的数据"
-                  placeholder={leftType === "data" ? "输入要计算HMAC的数据..." : "输入HMAC值进行验证..."}
+                  placeholder="输入要计算 HMAC 的数据..."
                   rows={8}
                   className="font-mono text-sm resize-none"
                 />
@@ -581,8 +573,8 @@ export default function HmacPage() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${leftType === "data" ? "bg-blue-500" : "bg-green-500"}`} />
-                  {leftType === "data" ? "HMAC输出" : "验证结果"}
+                  <div className="h-3 w-3 rounded-full bg-blue-500" />
+                  HMAC 输出
                   <Badge variant="outline" className="text-xs ml-auto">
                     {rightInputLength} 字符
                   </Badge>
@@ -594,7 +586,7 @@ export default function HmacPage() {
                     value={rightInput}
                     readOnly
                     aria-label="HMAC 计算结果"
-                    placeholder={leftType === "data" ? "HMAC计算结果将在这里显示..." : "验证结果将在这里显示..."}
+                    placeholder="HMAC 计算结果将在这里显示..."
                     rows={8}
                     className="font-mono text-sm resize-none pr-10"
                   />

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useTranslations } from "@/hooks/use-translations"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,7 @@ import { Download, Copy, Check, Link, FileText, Phone, Mail, MapPin, Calendar, C
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { buildPaymentQrValue } from "@/lib/qrcode-tools"
 
 // QR Code error correction levels
 const errorCorrectionLevels = [
@@ -101,7 +102,7 @@ export default function QRCodePage() {
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Generate QR code value based on content type
-  useEffect(() => {
+  const generateQrValue = useCallback(() => {
     let value = ""
 
     switch (contentType) {
@@ -160,9 +161,12 @@ END:VEVENT`
         value = `WIFI:S:${wifiSsid};T:${wifiEncryption};P:${wifiPassword};H:${wifiHidden ? "true" : "false"};`
         break
       case "payment":
-        value = `bitcoin:?amount=${paymentAmount}&label=${encodeURIComponent(
-          paymentName,
-        )}&message=${encodeURIComponent(paymentMessage)}`
+        value = buildPaymentQrValue({
+          recipient: paymentName,
+          amount: paymentAmount,
+          currency: paymentCurrency,
+          message: paymentMessage,
+        })
         break
       default:
         value = text
@@ -202,6 +206,10 @@ END:VEVENT`
     paymentMessage,
   ])
 
+  useEffect(() => {
+    if (autoGenerate) generateQrValue()
+  }, [autoGenerate, generateQrValue])
+
   // Add this new useEffect after the existing QR value generation useEffect
   useEffect(() => {
     // Automatically set higher error correction when logo is enabled
@@ -232,23 +240,53 @@ END:VEVENT`
     const svg = qrCodeRef.current.querySelector("svg")
     if (!svg) return
 
-    const svgData = new XMLSerializer().serializeToString(svg)
+    const svgClone = svg.cloneNode(true) as SVGSVGElement
+    svgClone.querySelectorAll("image").forEach((image) => image.remove())
+    const svgData = new XMLSerializer().serializeToString(svgClone)
+    const svgBlobUrl = URL.createObjectURL(new Blob([svgData], { type: "image/svg+xml;charset=utf-8" }))
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
     const img = new Image()
 
     img.onload = () => {
+      URL.revokeObjectURL(svgBlobUrl)
       canvas.width = size
       canvas.height = size
-      ctx?.drawImage(img, 0, 0)
-      const pngFile = canvas.toDataURL("image/png")
-      const downloadLink = document.createElement("a")
-      downloadLink.download = `qrcode-${new Date().getTime()}.png`
-      downloadLink.href = pngFile
-      downloadLink.click()
-    }
+      if (!ctx) return
+      ctx.drawImage(img, 0, 0, size, size)
 
-    img.src = `data:image/svg+xml;base64,${btoa(svgData)}`
+      const finishDownload = () => {
+        canvas.toBlob((blob) => {
+          if (!blob) return
+          const pngUrl = URL.createObjectURL(blob)
+          const downloadLink = document.createElement("a")
+          downloadLink.download = `qrcode-${Date.now()}.png`
+          downloadLink.href = pngUrl
+          downloadLink.click()
+          setTimeout(() => URL.revokeObjectURL(pngUrl), 0)
+        }, "image/png")
+      }
+
+      const logoSource = logoEnabled ? (logoDataUrl || logoUrl) : ""
+      if (!logoSource) {
+        finishDownload()
+        return
+      }
+
+      const logo = new Image()
+      if (!logoSource.startsWith("data:")) logo.crossOrigin = "anonymous"
+      logo.onload = () => {
+        const logoSize = Math.round((size * logoSizePercent) / 100)
+        const offset = Math.round((size - logoSize) / 2)
+        ctx.drawImage(logo, offset, offset, logoSize, logoSize)
+        finishDownload()
+      }
+      logo.onerror = finishDownload
+      logo.src = logoSource
+    }
+    img.onerror = () => URL.revokeObjectURL(svgBlobUrl)
+
+    img.src = svgBlobUrl
   }
 
   // 复制到剪贴板
@@ -1008,7 +1046,7 @@ END:VEVENT`
                     </Button>
                     
                     {!autoGenerate && (
-                      <Button variant="outline" className="w-full h-10">
+                      <Button variant="outline" className="w-full h-10" onClick={generateQrValue}>
                         <Zap className="h-4 w-4 mr-2" />
                         手动生成
                       </Button>
