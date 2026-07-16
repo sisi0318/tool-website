@@ -29,7 +29,7 @@ export function ColorInput({ value, onChange, disabled }: ColorInputProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="flex-1 px-2 py-1 text-xs font-mono bg-gray-50 dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+        className="flex-1 rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-2 py-1 font-mono text-xs text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50"
       />
     </div>
   )

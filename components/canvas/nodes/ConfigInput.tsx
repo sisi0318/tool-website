@@ -108,7 +108,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         onChange={(e) => onChange(Number(e.target.value))}
         disabled={disabled}
         aria-label={field.name}
-        className="w-full px-1 py-0.5 text-[10px] bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50"
+        className="w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50"
       />
     )
   }
@@ -122,7 +122,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         disabled={disabled}
         rows={2}
         aria-label={field.name}
-        className="w-full px-1 py-0.5 text-[10px] font-mono bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 resize-y disabled:opacity-50"
+        className="w-full resize-y rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 font-mono text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50"
       />
     )
   }
@@ -157,7 +157,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label={field.name}
-      className="w-full px-1 py-0.5 text-[10px] bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50"
+      className="w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50"
     />
   )
 }

@@ -75,6 +75,15 @@ export const translations = {
       addFavorite: "添加到收藏",
       removeFavorite: "取消收藏",
       favoriteHint: "点击星标固定常用工具",
+      categories: {
+        all: "全部",
+        developer: "开发工具",
+        security: "安全加密",
+        image: "图片处理",
+        text: "文本文档",
+        network: "网络",
+        life: "生活实用",
+      },
       search: {
         placeholder: "搜索工具...",
       },
@@ -1633,6 +1642,15 @@ export const translations = {
       addFavorite: "Add to favorites",
       removeFavorite: "Remove from favorites",
       favoriteHint: "Use the star to pin tools you use often",
+      categories: {
+        all: "All",
+        developer: "Developer",
+        security: "Security & Crypto",
+        image: "Image",
+        text: "Text & Docs",
+        network: "Network",
+        life: "Everyday",
+      },
       search: {
         placeholder: "Search tools...",
       },

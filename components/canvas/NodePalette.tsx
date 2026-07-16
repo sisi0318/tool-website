@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useMemo, useRef, useState } from "react"
-import { Search, X } from "lucide-react"
+import Link from "next/link"
+import { ArrowLeft, ChevronDown, ChevronRight, Search, X } from "lucide-react"
 import { useReactFlow } from "@xyflow/react"
 import { getAllNodes } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
@@ -43,6 +44,7 @@ interface NodePaletteProps {
 
 export function NodePalette({ onNodeAdded, onRequestClose }: NodePaletteProps = {}) {
   const t = useTranslations("canvas")
+  const tCommon = useTranslations("common")
   const addNode = useCanvasStore((s) => s.addNode)
   const { screenToFlowPosition } = useReactFlow()
   const [workflowExpanded, setWorkflowExpanded] = useState(true)
@@ -131,18 +133,36 @@ export function NodePalette({ onNodeAdded, onRequestClose }: NodePaletteProps = 
     handleAddNode(type)
   }
 
+  const sectionButtonClass =
+    "flex min-h-11 w-full items-center gap-2 border-b border-md-outline-variant p-3 text-md-on-surface transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary"
+
   return (
-    <aside className="relative flex w-64 max-w-[85vw] flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900" aria-label={t("palette")}>
+    <aside
+      className="relative flex w-64 max-w-[85vw] flex-col border-r border-md-outline-variant bg-md-surface-container-low"
+      aria-label={t("palette")}
+    >
       {onRequestClose && (
         <button
           type="button"
           onClick={onRequestClose}
           aria-label={t("close")}
-          className="absolute right-2 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
+          className="absolute right-2 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary lg:hidden"
         >
           <X aria-hidden="true" className="h-4 w-4" />
         </button>
       )}
+
+      {/* Back to tools */}
+      <div className="border-b border-md-outline-variant p-2 pr-12 lg:pr-2">
+        <Link
+          href="/tools"
+          className="flex min-h-10 items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 text-sm font-medium text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+        >
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          {tCommon("backToTools")}
+        </Link>
+      </div>
+
       {/* Workflow Section */}
       <div>
         <button
@@ -150,13 +170,15 @@ export function NodePalette({ onNodeAdded, onRequestClose }: NodePaletteProps = 
           onClick={() => setWorkflowExpanded(!workflowExpanded)}
           aria-expanded={workflowExpanded}
           aria-controls="canvas-workflow-actions"
-          className="flex min-h-11 w-full items-center gap-2 border-b border-gray-200 p-3 pr-12 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:border-gray-700 dark:hover:bg-gray-800 lg:pr-3"
+          className={`${sectionButtonClass} pr-12 lg:pr-3`}
         >
-          <span aria-hidden="true" className="text-xs text-gray-500">{workflowExpanded ? "▼" : "▶"}</span>
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t("workflow")}</h3>
+          {workflowExpanded
+            ? <ChevronDown aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
+            : <ChevronRight aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />}
+          <h3 className="text-sm font-semibold">{t("workflow")}</h3>
         </button>
         {workflowExpanded && (
-          <div id="canvas-workflow-actions" className="p-2 space-y-1 border-b border-gray-200 dark:border-gray-700">
+          <div id="canvas-workflow-actions" className="space-y-1 border-b border-md-outline-variant p-2">
             <WorkflowNewButton />
             <WorkflowSaveButton />
             <WorkflowLoadButton />
@@ -166,49 +188,51 @@ export function NodePalette({ onNodeAdded, onRequestClose }: NodePaletteProps = 
       </div>
 
       {/* Nodes Section */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col">
         <button
           type="button"
           onClick={() => setNodesExpanded(!nodesExpanded)}
           aria-expanded={nodesExpanded}
           aria-controls="canvas-node-library"
-          className="min-h-11 w-full flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+          className={sectionButtonClass}
         >
-          <span aria-hidden="true" className="text-xs text-gray-500">{nodesExpanded ? "▼" : "▶"}</span>
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t("nodes")}</h3>
+          {nodesExpanded
+            ? <ChevronDown aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
+            : <ChevronRight aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />}
+          <h3 className="text-sm font-semibold">{t("nodes")}</h3>
         </button>
         {nodesExpanded && (
           <div id="canvas-node-library" className="flex min-h-0 flex-1 flex-col">
-            <div className="border-b border-gray-200 p-2 dark:border-gray-700">
+            <div className="border-b border-md-outline-variant p-2">
               <div className="relative">
-                <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+                <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-md-on-surface-variant" />
                 <Input
                   type="search"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder={t("nodeSearchPlaceholder")}
                   aria-label={t("nodeSearchPlaceholder")}
-                  className="h-10 rounded-md border border-gray-200 bg-gray-50 pl-9 pr-9 text-sm dark:border-gray-700 dark:bg-gray-800"
+                  className="h-10 rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant bg-md-surface-container-lowest pl-9 pr-9 text-sm text-md-on-surface placeholder:text-md-on-surface-variant"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
                     aria-label={t("clearNodeSearch")}
-                    className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+                    className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[var(--md-sys-shape-corner-small)] text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
                   >
                     <X aria-hidden="true" className="h-4 w-4" />
                   </button>
                 )}
               </div>
-              <p className="mt-1.5 px-1 text-[11px] text-gray-500 dark:text-gray-400">
+              <p className="mt-1.5 px-1 text-[11px] text-md-on-surface-variant">
                 {t("nodeAddHint")}
               </p>
             </div>
             <ScrollArea className="flex-1">
-              <div className="p-2 space-y-3" aria-live="polite">
+              <div className="space-y-3 p-2" aria-live="polite">
                 {visibleNodeCount === 0 && (
-                  <p role="status" className="px-3 py-8 text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  <p role="status" className="px-3 py-8 text-center text-sm leading-6 text-md-on-surface-variant">
                     {t("noMatchingNodes")}
                   </p>
                 )}
@@ -218,7 +242,7 @@ export function NodePalette({ onNodeAdded, onRequestClose }: NodePaletteProps = 
 
                 return (
                   <div key={catId}>
-                    <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase px-2 mb-1">
+                    <h4 className="mb-1 px-2 text-xs font-medium uppercase text-md-on-surface-variant">
                       {t(CATEGORY_KEYS[catId])}
                     </h4>
                     <div className="space-y-1">
@@ -234,15 +258,17 @@ export function NodePalette({ onNodeAdded, onRequestClose }: NodePaletteProps = 
                             onClick={() => handleNodeClick(node.type)}
                             aria-label={`${t("addNode")}: ${node.label}`}
                             title={node.description ?? t("nodeAddHint")}
-                            className="flex min-h-11 w-full cursor-grab touch-manipulation items-center gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-gray-100 active:cursor-grabbing active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                            className="flex min-h-11 w-full cursor-grab touch-manipulation items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 py-2 text-left transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] active:cursor-grabbing active:bg-[var(--md-sys-color-on-surface)]/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
                           >
-                            <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-600 dark:text-gray-400" />
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--md-sys-shape-corner-small)] bg-md-secondary-container text-md-on-secondary-container">
+                              <Icon aria-hidden="true" className="h-4 w-4" />
+                            </span>
                             <span className="min-w-0">
-                              <span className="block truncate text-sm text-gray-700 dark:text-gray-300">
+                              <span className="block truncate text-sm text-md-on-surface">
                                 {node.label}
                               </span>
                               {node.description && (
-                                <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
+                                <span className="block truncate text-xs text-md-on-surface-variant">
                                   {node.description}
                                 </span>
                               )}

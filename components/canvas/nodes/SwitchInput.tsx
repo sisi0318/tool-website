@@ -14,7 +14,7 @@ export function SwitchInput({ checked, onChange, disabled }: SwitchInputProps) {
         disabled={disabled}
         className="sr-only peer"
       />
-      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all" />
+      <div className="peer h-5 w-9 rounded-full bg-md-surface-container-highest outline-none ring-offset-1 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-md-outline after:transition-all after:content-[''] peer-checked:bg-md-primary peer-checked:after:translate-x-full peer-checked:after:bg-md-on-primary peer-focus-visible:ring-2 peer-focus-visible:ring-md-primary peer-disabled:opacity-50" />
     </label>
   )
 }

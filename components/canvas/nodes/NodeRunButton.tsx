@@ -25,7 +25,7 @@ export function NodeRunButton({ nodeId, running, hasError }: NodeRunButtonProps)
       disabled={running}
       aria-label={label}
       title={label}
-      className="nodrag nopan ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+      className="nodrag nopan ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-primary/10 hover:text-md-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
     >
       {running ? (
         <LoaderCircle className="h-3.5 w-3.5 animate-spin" />

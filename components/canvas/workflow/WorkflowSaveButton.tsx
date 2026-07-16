@@ -29,12 +29,13 @@ export function WorkflowSaveButton() {
   }
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => setShowDialog(true)}
-      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      className="flex min-h-11 w-full items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 py-1.5 text-left text-sm text-md-on-surface transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
     >
-      <Save className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-      <span className="text-sm text-gray-700 dark:text-gray-300">{t("save")}</span>
-    </div>
+      <Save aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
+      {t("save")}
+    </button>
   )
 }

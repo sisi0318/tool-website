@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ReactFlowProvider } from "@xyflow/react"
+import { Plus } from "lucide-react"
 import { Canvas } from "@/components/canvas/Canvas"
 import { NodePalette } from "@/components/canvas/NodePalette"
 import { PropertyPanel } from "@/components/canvas/PropertyPanel"
@@ -58,8 +59,9 @@ export default function CanvasContent() {
                 setShowPalette(true)
               }}
               aria-expanded={showPalette}
-              className="min-h-11 rounded-full bg-[var(--md-sys-color-inverse-surface)] px-4 text-xs font-semibold text-[var(--md-sys-color-inverse-on-surface)] shadow-lg"
+              className="flex min-h-11 items-center gap-1.5 rounded-full bg-md-inverse-surface px-4 text-xs font-semibold text-md-inverse-on-surface shadow-lg transition-transform active:scale-95"
             >
+              <Plus aria-hidden="true" className="h-4 w-4" />
               {t("palette")}
             </button>
           </div>

@@ -1,11 +1,69 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { FilePlus } from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
+import { Button } from "@/components/ui/button"
 import { SaveDialog } from "./SaveDialog"
 import { saveWorkflow, getWorkflowList } from "@/lib/canvas/workflow"
+
+function NewCanvasConfirm({
+  onCancel,
+  onDiscard,
+  onSave,
+}: {
+  onCancel: () => void
+  onDiscard: () => void
+  onSave: () => void
+}) {
+  const t = useTranslations("canvas")
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation()
+        onCancel()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown, true)
+    return () => window.removeEventListener("keydown", handleKeyDown, true)
+  }, [onCancel])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--md-sys-color-scrim)]/50 p-4"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onCancel()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="canvas-new-dialog-title"
+        className="w-80 max-w-full rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container-high p-4 text-md-on-surface shadow-2xl"
+      >
+        <h3 id="canvas-new-dialog-title" className="mb-2 text-sm font-semibold">
+          {t("newCanvasTitle")}
+        </h3>
+        <p className="mb-4 text-xs text-md-on-surface-variant">
+          {t("newCanvasMessage")}
+        </p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel} className="min-h-11 sm:min-h-9">
+            {t("cancel")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={onDiscard} className="min-h-11 sm:min-h-9">
+            {t("dontSave")}
+          </Button>
+          <Button size="sm" onClick={onSave} autoFocus className="min-h-11 sm:min-h-9">
+            {t("save")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function WorkflowNewButton() {
   const t = useTranslations("canvas")
@@ -47,44 +105,22 @@ export function WorkflowNewButton() {
 
   if (showConfirm) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 w-80">
-          <h3 className="text-sm font-semibold mb-2">{t("newCanvasTitle")}</h3>
-          <p className="text-xs text-gray-500 mb-4">
-            {t("newCanvasMessage")}
-          </p>
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setShowConfirm(false)}
-              className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              {t("cancel")}
-            </button>
-            <button
-              onClick={handleDiscard}
-              className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              {t("dontSave")}
-            </button>
-            <button
-              onClick={() => { setShowConfirm(false); setShowSaveDialog(true) }}
-              className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              {t("save")}
-            </button>
-          </div>
-        </div>
-      </div>
+      <NewCanvasConfirm
+        onCancel={() => setShowConfirm(false)}
+        onDiscard={handleDiscard}
+        onSave={() => { setShowConfirm(false); setShowSaveDialog(true) }}
+      />
     )
   }
 
   return (
-    <div
+    <button
+      type="button"
       onClick={handleClick}
-      className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      className="flex min-h-11 w-full items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 py-1.5 text-left text-sm text-md-on-surface transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
     >
-      <FilePlus className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-      <span className="text-sm text-gray-700 dark:text-gray-300">{t("newCanvas")}</span>
-    </div>
+      <FilePlus aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
+      {t("newCanvas")}
+    </button>
   )
 }

@@ -99,32 +99,32 @@ export function CompatibleNodePicker({
             event.preventDefault()
             searchInputRef.current?.focus()
           }}
-          className="fixed inset-x-3 bottom-3 z-[60] flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 dark:border-gray-700 dark:bg-gray-900 sm:inset-x-auto sm:bottom-auto sm:left-[var(--compatible-picker-left)] sm:top-[var(--compatible-picker-top)] sm:max-h-[min(30rem,calc(100dvh-1.5rem))] sm:w-[22rem]"
+          className="fixed inset-x-3 bottom-3 z-[60] flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container-high text-md-on-surface shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:inset-x-auto sm:bottom-auto sm:left-[var(--compatible-picker-left)] sm:top-[var(--compatible-picker-top)] sm:max-h-[min(30rem,calc(100dvh-1.5rem))] sm:w-[22rem]"
         >
-          <header className="border-b border-gray-200 pb-3 pl-4 pr-12 pt-4 dark:border-gray-700">
+          <header className="border-b border-md-outline-variant pb-3 pl-4 pr-12 pt-4">
             <div className="flex items-center gap-2">
-              <DialogPrimitive.Title className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <DialogPrimitive.Title className="text-base font-semibold text-md-on-surface">
                 {t("compatibleNodePickerTitle")}
               </DialogPrimitive.Title>
-              <span className="rounded-full bg-blue-50 px-2 py-0.5 font-mono text-[11px] text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+              <span className="rounded-full bg-md-secondary-container px-2 py-0.5 font-mono text-[11px] text-md-on-secondary-container">
                 {sourceDataType}
               </span>
             </div>
-            <DialogPrimitive.Description className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+            <DialogPrimitive.Description className="mt-1 text-xs leading-5 text-md-on-surface-variant">
               {t("compatibleNodePickerDescription").replace("{type}", sourceDataType)}
             </DialogPrimitive.Description>
           </header>
 
           <DialogPrimitive.Close
             aria-label={t("close")}
-            className="absolute right-2 top-2 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 sm:h-10 sm:w-10"
+            className="absolute right-2 top-2 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-10 sm:w-10"
           >
             <X aria-hidden="true" className="h-4 w-4" />
           </DialogPrimitive.Close>
 
-          <div className="border-b border-gray-200 p-3 dark:border-gray-700">
+          <div className="border-b border-md-outline-variant p-3">
             <div className="relative">
-              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-md-on-surface-variant" />
               <Input
                 ref={searchInputRef}
                 type="search"
@@ -132,14 +132,14 @@ export function CompatibleNodePicker({
                 onChange={(event) => setQuery(event.target.value)}
                 aria-label={t("compatibleNodeSearchPlaceholder")}
                 placeholder={t("compatibleNodeSearchPlaceholder")}
-                className="h-11 rounded-md border border-gray-200 bg-gray-50 pl-9 text-sm dark:border-gray-700 dark:bg-gray-800 sm:h-10"
+                className="h-11 rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant bg-md-surface-container-lowest pl-9 text-sm text-md-on-surface placeholder:text-md-on-surface-variant sm:h-10"
               />
             </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-2" role="list">
             {visibleOptions.length === 0 && (
-              <p role="status" className="px-4 py-10 text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
+              <p role="status" className="px-4 py-10 text-center text-sm leading-6 text-md-on-surface-variant">
                 {t("noCompatibleNodes")}
               </p>
             )}
@@ -163,7 +163,7 @@ export function CompatibleNodePicker({
                   <article
                     key={definition.type}
                     role="listitem"
-                    className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+                    className="overflow-hidden rounded-[var(--md-sys-shape-corner-medium)] border border-md-outline-variant bg-md-surface-container-low"
                   >
                     <button
                       type="button"
@@ -173,28 +173,28 @@ export function CompatibleNodePicker({
                       })}
                       aria-label={`${t("addAndConnect")}: ${definition.label}`}
                       aria-describedby={targetDescriptionId}
-                      className="flex min-h-14 w-full touch-manipulation items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 active:bg-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+                      className="flex min-h-14 w-full touch-manipulation items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary active:bg-[var(--md-sys-color-on-surface)]/[0.1]"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-                        <Icon aria-hidden="true" className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--md-sys-shape-corner-small)] bg-md-secondary-container text-md-on-secondary-container">
+                        <Icon aria-hidden="true" className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <span className="block truncate text-sm font-medium text-md-on-surface">
                           {definition.label}
                         </span>
-                        <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
+                        <span className="block truncate text-xs text-md-on-surface-variant">
                           {t(CATEGORY_KEYS[definition.category])} · {definition.type}
                         </span>
                       </span>
-                      <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-400" />
+                      <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 text-md-on-surface-variant" />
                     </button>
 
                     <div
                       id={targetDescriptionId}
-                      className="border-t border-gray-100 bg-gray-50/80 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60"
+                      className="border-t border-md-outline-variant bg-md-surface-container px-3 py-2"
                     >
                       {compatibleInputs.length > 1 ? (
-                        <label className="flex min-h-10 items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                        <label className="flex min-h-10 items-center gap-2 text-xs text-md-on-surface-variant">
                           <span className="shrink-0">{t("targetInput")}</span>
                           <select
                             value={targetPortId}
@@ -203,7 +203,7 @@ export function CompatibleNodePicker({
                               [definition.type]: event.target.value,
                             }))}
                             aria-label={`${t("targetInput")}: ${definition.label}`}
-                            className="h-11 min-w-0 flex-1 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 sm:h-9"
+                            className="h-11 min-w-0 flex-1 rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant bg-md-surface-container-lowest px-2 text-xs text-md-on-surface outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-9"
                           >
                             {compatibleInputs.map((input) => (
                               <option key={input.id} value={input.id}>
@@ -213,7 +213,7 @@ export function CompatibleNodePicker({
                           </select>
                         </label>
                       ) : (
-                        <p className="truncate text-xs text-gray-600 dark:text-gray-300">
+                        <p className="truncate text-xs text-md-on-surface-variant">
                           {t("targetInput")} · {selectedInput.name} · {selectedInput.dataType}
                         </p>
                       )}

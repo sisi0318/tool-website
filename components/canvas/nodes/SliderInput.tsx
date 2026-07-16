@@ -30,7 +30,7 @@ export function SliderInput({ min, max, step, value, onChange, disabled }: Slide
         disabled={disabled}
         className="flex-1 disabled:opacity-50"
       />
-      <span className="text-xs text-gray-500 w-8 text-right">{value}</span>
+      <span className="w-8 text-right text-xs text-md-on-surface-variant">{value}</span>
     </div>
   )
 }

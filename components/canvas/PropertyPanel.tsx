@@ -28,19 +28,20 @@ function OutputField({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500">{label}</Label>
+        <Label className="text-xs text-md-on-surface-variant">{label}</Label>
         <button
+          type="button"
           onClick={handleCopy}
           aria-label={copied ? t("copied") : t("copyOutput")}
           title={copied ? t("copied") : t("copyOutput")}
-          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="rounded p-0.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
         >
           {copied
-            ? <Check className="w-3 h-3 text-green-500" />
-            : <Copy className="w-3 h-3" />}
+            ? <Check className="h-3 w-3 text-md-success" />
+            : <Copy className="h-3 w-3" />}
         </button>
       </div>
-      <div className="px-2 py-1.5 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono break-all max-h-40 overflow-auto">
+      <div className="max-h-40 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container-high px-2 py-1.5 font-mono text-xs text-md-on-surface break-all">
         {text}
       </div>
     </div>
@@ -76,8 +77,8 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
 
   if (!selectedNode || !definition) {
     return (
-      <div className="flex h-full w-full items-center justify-center border-t border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 lg:w-72 lg:border-l lg:border-t-0">
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t("selectNodeToEdit")}</p>
+      <div className="flex h-full w-full items-center justify-center border-t border-md-outline-variant bg-md-surface-container-low p-4 lg:w-72 lg:border-l lg:border-t-0">
+        <p className="text-center text-sm leading-6 text-md-on-surface-variant">{t("selectNodeToEdit")}</p>
       </div>
     )
   }
@@ -89,9 +90,9 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
 
   return (
     <>
-    <section className="flex h-full max-h-[72dvh] w-full flex-col rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900 lg:max-h-none lg:w-72 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none">
-      <div className="flex min-h-12 items-center gap-2 border-b border-gray-200 p-2 pl-3 dark:border-gray-700">
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
+    <section className="flex h-full max-h-[72dvh] w-full flex-col rounded-t-2xl border-t border-md-outline-variant bg-md-surface-container-low shadow-2xl lg:max-h-none lg:w-72 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none">
+      <div className="flex min-h-12 items-center gap-2 border-b border-md-outline-variant p-2 pl-3">
+        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-md-on-surface">
           {definition.label}
         </h3>
         <button
@@ -100,7 +101,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           disabled={running}
           aria-label={error ? t("retryNode") : t("runNode")}
           title={error ? t("retryNode") : t("runNode")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
         >
           {running ? (
             <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -115,7 +116,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           onClick={() => setConfirmDelete(true)}
           aria-label={t("deleteNode")}
           title={t("deleteNode")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-gray-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-error-container/60 hover:text-md-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-error"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -125,16 +126,16 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
             onClick={onClose}
             aria-label={t("close")}
             title={t("close")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary lg:hidden"
           >
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-auto p-3 space-y-4">
+      <div className="flex-1 space-y-4 overflow-auto p-3">
         {definition.config.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+            <h4 className="text-xs font-medium uppercase text-md-on-surface-variant">
               {t("config")}
             </h4>
             {definition.config.map((field) => {
@@ -161,7 +162,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
                   allConfig={selectedNode.config}
                 />
                 {incomingEdge && (
-                  <p className="text-[11px] text-blue-600 dark:text-blue-400">
+                  <p className="text-[11px] text-md-primary">
                     {t("connectedInput")}
                   </p>
                 )}
@@ -173,7 +174,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
 
         {outputs && Object.keys(outputs).length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+            <h4 className="text-xs font-medium uppercase text-md-on-surface-variant">
               {t("outputs")}
             </h4>
             {Object.entries(outputs).map(([key, value]) => {

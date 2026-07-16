@@ -4,13 +4,16 @@ import { useCallback, useMemo, useEffect, useRef, useState } from "react"
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   Panel,
+  SelectionMode,
   useNodesState,
   useEdgesState,
   useReactFlow,
   type Connection,
+  type Edge as FlowEdge,
   type FinalConnectionState,
   type NodeTypes,
 } from "@xyflow/react"
@@ -80,10 +83,19 @@ export function Canvas() {
     redo,
   } = useCanvasStore()
   const { screenToFlowPosition, fitView, getNodes } = useReactFlow()
+  const reactFlowInstance = useReactFlow()
+
+  // Exposed for e2e tests (same pattern as window.__ZUSTAND_STORE__)
+  useEffect(() => {
+    ;(window as unknown as Record<string, unknown>).__REACT_FLOW_INSTANCE__ =
+      reactFlowInstance
+  }, [reactFlowInstance])
+
   const [pendingNodeInsert, setPendingNodeInsert] = useState<PendingNodeInsert | null>(null)
   const [executionLogOpen, setExecutionLogOpen] = useState(false)
   const clipboardRef = useRef<CanvasClipboardPayload | null>(null)
   const pasteSequenceRef = useRef(0)
+  const lastPasteOffsetRef = useRef<{ x: number; y: number } | null>(null)
   const layoutFitPendingRef = useRef(false)
   const layoutFitFrameRef = useRef<number | null>(null)
   const [connectionFeedback, setConnectionFeedback] = useState<{
@@ -189,7 +201,7 @@ export function Canvas() {
   )
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges)
+  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(flowEdges)
 
   useEffect(() => {
     setNodes(flowNodes)
@@ -229,11 +241,8 @@ export function Canvas() {
   }, [selectedNodeIds])
 
   const insertClipboardPayload = useCallback(
-    (payload: CanvasClipboardPayload, offsetMultiplier = 1) => {
-      const pasted = instantiateClipboardPayload(payload, {
-        x: 40 * offsetMultiplier,
-        y: 40 * offsetMultiplier,
-      })
+    (payload: CanvasClipboardPayload, offset: { x: number; y: number }) => {
+      const pasted = instantiateClipboardPayload(payload, offset)
       if (pasted.nodes.length === 0) return []
 
       addSubgraph(pasted)
@@ -242,6 +251,32 @@ export function Canvas() {
       return pastedIds
     },
     [addSubgraph, selectNodes]
+  )
+
+  // First paste lands at the current viewport center; subsequent pastes cascade.
+  const getViewportCenterOffset = useCallback(
+    (payload: CanvasClipboardPayload) => {
+      if (payload.nodes.length === 0) return { x: 0, y: 0 }
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+      for (const node of payload.nodes) {
+        minX = Math.min(minX, node.position.x)
+        minY = Math.min(minY, node.position.y)
+        maxX = Math.max(maxX, node.position.x)
+        maxY = Math.max(maxY, node.position.y)
+      }
+      const center = screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      })
+      return {
+        x: center.x - (minX + maxX) / 2,
+        y: center.y - (minY + maxY) / 2,
+      }
+    },
+    [screenToFlowPosition]
   )
 
   const copySelection = useCallback(() => {
@@ -257,6 +292,7 @@ export function Canvas() {
 
     clipboardRef.current = payload
     pasteSequenceRef.current = 0
+    lastPasteOffsetRef.current = null
     showConnectionFeedback(
       t("nodesCopied").replace("{count}", String(payload.nodes.length)),
       "success"
@@ -265,12 +301,18 @@ export function Canvas() {
   }, [getSelectedIds, showConnectionFeedback, storeEdges, storeNodes, t])
 
   const pasteSelection = useCallback(() => {
-    if (!clipboardRef.current) return false
+    const payload = clipboardRef.current
+    if (!payload) return false
+    const offset =
+      pasteSequenceRef.current === 0 || !lastPasteOffsetRef.current
+        ? getViewportCenterOffset(payload)
+        : {
+            x: lastPasteOffsetRef.current.x + 40,
+            y: lastPasteOffsetRef.current.y + 40,
+          }
     pasteSequenceRef.current += 1
-    const pastedIds = insertClipboardPayload(
-      clipboardRef.current,
-      pasteSequenceRef.current
-    )
+    lastPasteOffsetRef.current = offset
+    const pastedIds = insertClipboardPayload(payload, offset)
     if (pastedIds.length === 0) return false
 
     showConnectionFeedback(
@@ -278,13 +320,13 @@ export function Canvas() {
       "success"
     )
     return true
-  }, [insertClipboardPayload, showConnectionFeedback, t])
+  }, [getViewportCenterOffset, insertClipboardPayload, showConnectionFeedback, t])
 
   const duplicateSelection = useCallback(() => {
     const ids = getSelectedIds()
     if (ids.length === 0) return false
     const payload = createClipboardPayload(storeNodes, storeEdges, new Set(ids))
-    const pastedIds = insertClipboardPayload(payload)
+    const pastedIds = insertClipboardPayload(payload, { x: 40, y: 40 })
     if (pastedIds.length === 0) return false
 
     showConnectionFeedback(
@@ -294,13 +336,29 @@ export function Canvas() {
     return true
   }, [getSelectedIds, insertClipboardPayload, showConnectionFeedback, storeEdges, storeNodes, t])
 
+  const selectedEdgeIds = useMemo(
+    () => edges.filter((edge) => edge.selected).map((edge) => edge.id),
+    [edges]
+  )
+
   const deleteSelection = useCallback(() => {
     const ids = getSelectedIds()
-    if (ids.length === 0) return false
-    removeNodes(ids)
-    selectNodes([])
-    return true
-  }, [getSelectedIds, removeNodes, selectNodes])
+    let handled = false
+    if (ids.length > 0) {
+      removeNodes(ids)
+      selectNodes([])
+      handled = true
+    }
+    // Edges are selectable but not covered by deleteKeyCode (disabled so node
+    // deletion stays store-driven), so remove them here too.
+    if (selectedEdgeIds.length > 0) {
+      for (const edgeId of selectedEdgeIds) {
+        removeEdge(edgeId)
+      }
+      handled = true
+    }
+    return handled
+  }, [getSelectedIds, removeNodes, selectNodes, selectedEdgeIds, removeEdge])
 
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Array<{ id: string }> }) => {
@@ -320,7 +378,7 @@ export function Canvas() {
         tagName === "SELECT" ||
         target.isContentEditable
       if (isTextEntry) return
-      if (target.closest('[role="dialog"], [data-canvas-shortcuts="off"]')) return
+      if (target.closest('[role="dialog"], [role="alertdialog"], [data-canvas-shortcuts="off"]')) return
       const isButton = tagName === "BUTTON"
 
       const modifier = event.ctrlKey || event.metaKey
@@ -623,9 +681,13 @@ export function Canvas() {
         }}
         nodeTypes={nodeTypes}
         deleteKeyCode={null}
+        selectionOnDrag
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={[1, 2]}
+        panActivationKeyCode=" "
         fitView
       >
-        <Background />
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
         <CanvasToolbar
           onAutoLayout={applyAutoLayout}
           onToggleExecutionLog={() => setExecutionLogOpen((open) => !open)}
@@ -638,10 +700,10 @@ export function Canvas() {
           >
             <div
               role={connectionFeedback.tone === "error" ? "alert" : "status"}
-              className={`rounded-lg border px-3 py-2 text-sm shadow-lg ${
+              className={`rounded-[var(--md-sys-shape-corner-medium)] border px-3 py-2 text-sm shadow-lg ${
                 connectionFeedback.tone === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/90 dark:text-emerald-200"
-                  : "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/90 dark:text-red-200"
+                  ? "border-md-success/40 bg-md-success-container text-md-on-success-container"
+                  : "border-md-error/40 bg-md-error-container text-md-on-error-container"
               }`}
             >
               {connectionFeedback.tone === "error" && (
@@ -651,14 +713,8 @@ export function Canvas() {
             </div>
           </Panel>
         )}
-        <Controls
-          className="!bg-gray-800 !border-gray-700 [&>button]:!bg-gray-700 [&>button]:!border-gray-600 [&>button]:!text-gray-200 [&>button:hover]:!bg-gray-600"
-        />
-        <MiniMap
-          className="!hidden !bg-gray-800 !border-gray-700 lg:!block"
-          nodeColor="#4b5563"
-          maskColor="rgba(0, 0, 0, 0.5)"
-        />
+        <Controls />
+        <MiniMap className="!hidden lg:!block" pannable />
       </ReactFlow>
       {!executionLogOpen && (
         <SelectionToolbar

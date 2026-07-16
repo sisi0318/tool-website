@@ -104,6 +104,100 @@ function createToolRenderer(Component: React.ComponentType) {
   )
 }
 
+// 工具分类定义 - 图标配色沿用首页精选工具的柔和多色方案
+type ToolCategoryId = "developer" | "security" | "image" | "text" | "network" | "life"
+
+const TOOL_CATEGORIES: { id: ToolCategoryId; accent: string; dot: string }[] = [
+  {
+    id: "developer",
+    accent: "bg-[#e4f2df] text-[#2f6b2f] dark:bg-[#29432a] dark:text-[#b9dfb1]",
+    dot: "bg-[#4A8135]",
+  },
+  {
+    id: "security",
+    accent: "bg-[#e8e5f3] text-[#5d547c] dark:bg-[#373247] dark:text-[#cbc2ea]",
+    dot: "bg-[#5d547c]",
+  },
+  {
+    id: "image",
+    accent: "bg-[#f4ead5] text-[#765a1f] dark:bg-[#493b20] dark:text-[#e7cb8d]",
+    dot: "bg-[#a0742c]",
+  },
+  {
+    id: "text",
+    accent: "bg-[#dfe9f5] text-[#35567c] dark:bg-[#2c3648] dark:text-[#c2cfeb]",
+    dot: "bg-[#4a6a9c]",
+  },
+  {
+    id: "network",
+    accent: "bg-[#dcefeb] text-[#006b60] dark:bg-[#17443f] dark:text-[#8bd4c9]",
+    dot: "bg-[#00897B]",
+  },
+  {
+    id: "life",
+    accent: "bg-[#f5e3e3] text-[#7c4545] dark:bg-[#432e2e] dark:text-[#e8baba]",
+    dot: "bg-[#a05c5c]",
+  },
+]
+
+const DEFAULT_CATEGORY: ToolCategoryId = "developer"
+
+const TOOL_CATEGORY_MAP: Record<string, ToolCategoryId> = {
+  // 开发工具
+  json: "developer",
+  "json-schema": "developer",
+  xml: "developer",
+  csv: "developer",
+  sql: "developer",
+  regex: "developer",
+  crontab: "developer",
+  "docker-converter": "developer",
+  protobuf: "developer",
+  jce: "developer",
+  "hex-binary": "developer",
+  "base-converter": "developer",
+  encoding: "developer",
+  compression: "developer",
+  "data-detector": "developer",
+  // 安全加密
+  hash: "security",
+  hmac: "security",
+  crypto: "security",
+  "classic-cipher": "security",
+  jwt: "security",
+  totp: "security",
+  "password-generator": "security",
+  uuid: "security",
+  certificate: "security",
+  // 图片处理
+  "image-compress": "image",
+  "image-convert": "image",
+  "image-editor": "image",
+  "image-to-base64": "image",
+  "exif-viewer": "image",
+  "meme-splitter": "image",
+  "image-coordinates": "image",
+  qrcode: "image",
+  "qrcode-decode": "image",
+  // 文本文档
+  "text-stats": "text",
+  "case-converter": "text",
+  diff: "text",
+  markdown: "text",
+  "office-viewer": "text",
+  // 网络
+  "http-tester": "network",
+  whois: "network",
+  subnet: "network",
+  // 生活实用
+  currency: "life",
+  time: "life",
+  bmi: "life",
+  "temperature-converter": "life",
+  color: "life",
+  device: "life",
+}
+
 // 标签页类型
 interface ToolTabType {
   id: string
@@ -139,6 +233,7 @@ export default function ToolsPage() {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [showToolOptionsSheet, setShowToolOptionsSheet] = useState(false)
+  const [activeCategory, setActiveCategory] = useState<ToolCategoryId | "all">("all")
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const tabContentRef = useRef<HTMLDivElement>(null)
@@ -622,6 +717,18 @@ export default function ToolsPage() {
     }).slice(0, 8)
   }, [favoriteTools, recentTools])
 
+  // 按分类分组工具，保持 toolDefinitions 的原始顺序
+  const toolsByCategory = useMemo(
+    () =>
+      TOOL_CATEGORIES.map((category) => ({
+        ...category,
+        tools: toolDefinitions.filter(
+          (tool) => (TOOL_CATEGORY_MAP[tool.id] ?? DEFAULT_CATEGORY) === category.id,
+        ),
+      })),
+    [toolDefinitions],
+  )
+
   // 初始化可搜索功能
   useEffect(() => {
     try {
@@ -927,26 +1034,26 @@ export default function ToolsPage() {
 
   // 工具卡片组件 - M3 Expressive Style
   const ToolCard = useCallback(
-    ({ id, name, icon, onClick }: { id: string; name: string; icon: React.ReactNode; onClick: () => void }) => {
+    ({ id, name, icon, accent, onClick }: { id: string; name: string; icon: React.ReactNode; accent: string; onClick: () => void }) => {
       const isFavorite = favoriteIds.includes(id)
 
       return (
-        <Card className="group relative h-full min-h-[132px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--md-sys-color-primary)]/40 hover:shadow-xl">
+        <Card className="group relative h-full min-h-[104px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--md-sys-color-primary)]/40 hover:shadow-xl sm:min-h-[128px]">
           <button
             type="button"
             onClick={onClick}
             className="h-full w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--md-sys-color-primary)]"
             aria-label={name}
           >
-            <CardContent className="flex h-full items-center gap-4 p-4 pr-14 sm:p-5 sm:pr-16">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-primary-container)] shadow-sm transition-transform duration-300 group-hover:scale-105">
+            <CardContent className="flex h-full items-center gap-3 p-4 pr-14 sm:gap-4 sm:p-5 sm:pr-16">
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-105 sm:h-12 sm:w-12 ${accent}`}>
                 {icon}
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="line-clamp-2 font-semibold leading-6 text-[var(--md-sys-color-on-surface)] transition-colors group-hover:text-[var(--md-sys-color-primary)]">
                   {name}
                 </h3>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
+                <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] sm:mt-2">
                   {t("openTool")}
                   <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                 </span>
@@ -1523,11 +1630,77 @@ export default function ToolsPage() {
             <h2 className="text-xl font-bold text-[var(--md-sys-color-on-surface)]">{t("allTools")}</h2>
             <span className="hidden text-sm text-[var(--md-sys-color-on-surface-variant)] sm:inline">{t("favoriteHint")}</span>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {toolDefinitions.map((tool) => (
-              <ToolCard key={tool.id} id={tool.id} name={tool.title} icon={tool.icon} onClick={() => addTab(tool.id)} />
+
+          {/* 分类筛选 Chips */}
+          <div className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0 sm:pb-0">
+            <button
+              type="button"
+              onClick={() => setActiveCategory("all")}
+              aria-pressed={activeCategory === "all"}
+              className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all duration-md-short-4 ease-md-expressive active:scale-95 ${
+                activeCategory === "all"
+                  ? "bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] shadow-sm"
+                  : "border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
+              }`}
+            >
+              {t("categories.all")}
+              <span className="text-xs opacity-70">{toolDefinitions.length}</span>
+            </button>
+            {toolsByCategory.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => setActiveCategory(category.id)}
+                aria-pressed={activeCategory === category.id}
+                className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all duration-md-short-4 ease-md-expressive active:scale-95 ${
+                  activeCategory === category.id
+                    ? "bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] shadow-sm"
+                    : "border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${category.dot}`} />
+                {t(`categories.${category.id}`)}
+                <span className="text-xs opacity-70">{category.tools.length}</span>
+              </button>
             ))}
           </div>
+
+          {activeCategory === "all" ? (
+            <div className="space-y-8">
+              {toolsByCategory.map((category) => (
+                <section key={category.id}>
+                  <div className="mb-4 flex items-center gap-2.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${category.dot}`} />
+                    <h3 className="font-bold text-[var(--md-sys-color-on-surface)]">{t(`categories.${category.id}`)}</h3>
+                    <span className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{category.tools.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {category.tools.map((tool) => (
+                      <ToolCard key={tool.id} id={tool.id} name={tool.title} icon={tool.icon} accent={category.accent} onClick={() => addTab(tool.id)} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            (() => {
+              const selected = toolsByCategory.find((category) => category.id === activeCategory)
+              return (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {(selected?.tools ?? []).map((tool) => (
+                    <ToolCard
+                      key={tool.id}
+                      id={tool.id}
+                      name={tool.title}
+                      icon={tool.icon}
+                      accent={selected?.accent ?? TOOL_CATEGORIES[0].accent}
+                      onClick={() => addTab(tool.id)}
+                    />
+                  ))}
+                </div>
+              )
+            })()
+          )}
         </div>
       )}
 

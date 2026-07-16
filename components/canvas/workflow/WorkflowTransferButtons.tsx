@@ -53,17 +53,17 @@ export function WorkflowTransferButtons() {
       <button
         type="button"
         onClick={exportWorkflow}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+        className="flex min-h-11 w-full items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 py-1.5 text-left text-sm text-md-on-surface transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
       >
-        <Download className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        <Download aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
         {t("exportWorkflow")}
       </button>
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+        className="flex min-h-11 w-full items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 py-1.5 text-left text-sm text-md-on-surface transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
       >
-        <Upload className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        <Upload aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
         {t("importWorkflow")}
       </button>
       <input
@@ -78,7 +78,7 @@ export function WorkflowTransferButtons() {
           event.target.value = ""
         }}
       />
-      {message && <p role="status" className="px-2 pt-1 text-xs text-gray-500 dark:text-gray-400">{message}</p>}
+      {message && <p role="status" className="px-2 pt-1 text-xs text-md-on-surface-variant">{message}</p>}
     </div>
   )
 }

@@ -42,18 +42,18 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
 
   return (
     <div
-      className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-lg border-2 bg-white shadow-md dark:bg-gray-800 sm:max-w-[400px] ${
+      className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-md-surface-container-low text-md-on-surface shadow-md sm:max-w-[400px] ${
         nodeErrors
-          ? "border-red-500"
+          ? "border-md-error"
           : isSelected
-          ? "border-blue-500"
-          : "border-gray-200 dark:border-gray-700"
+          ? "border-md-primary"
+          : "border-md-outline-variant"
       }`}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-t-lg">
-        <Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+      <div className="flex items-center gap-2 rounded-t-[calc(var(--md-sys-shape-corner-medium)-2px)] border-b border-md-outline-variant bg-md-surface-container px-3 py-2">
+        <Icon className="h-4 w-4 text-md-on-surface-variant" />
+        <span className="text-sm font-medium text-md-on-surface">
           {definition.label}
         </span>
         <NodeRunButton nodeId={node.id} running={Boolean(nodeRunning)} hasError={Boolean(nodeErrors)} />
@@ -78,7 +78,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                       background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
                       width: 12,
                       height: 12,
-                      border: "2px solid white",
+                      border: "2px solid var(--md-sys-color-surface)",
                       position: "relative",
                       left: -12,
                       transform: "none",
@@ -89,7 +89,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
 
               {/* Parameter Label + Input */}
               <div className="flex-1 flex items-center gap-1 min-w-0">
-                <span className="text-[10px] text-gray-400 w-14 shrink-0 truncate" title={field.name}>
+                <span className="w-14 shrink-0 truncate text-[10px] text-md-on-surface-variant" title={field.name}>
                   {field.name}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -118,7 +118,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                       background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
                       width: 12,
                       height: 12,
-                      border: "2px solid white",
+                      border: "2px solid var(--md-sys-color-surface)",
                       position: "relative",
                       right: -12,
                       transform: "none",
@@ -132,7 +132,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
 
         {/* Derived Outputs */}
         {definition.outputs.length > 0 && (
-          <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
+          <div className="mt-1 border-t border-md-outline-variant/60 pt-1">
             {definition.outputs.map((output) => {
               const outputValue = nodeOutputs?.[output.id]
               const outputText = formatCanvasValue(outputValue)
@@ -140,10 +140,10 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                 <div key={output.id} className="flex items-center gap-1 px-2 py-1">
                   <div className="w-3" />
                   <div className="flex-1 flex items-center gap-1 min-w-0">
-                    <span className="text-[10px] text-gray-400 w-14 shrink-0 truncate" title={output.name}>
+                    <span className="w-14 shrink-0 truncate text-[10px] text-md-on-surface-variant" title={output.name}>
                       {output.name}
                     </span>
-                    <span className="text-[10px] text-gray-500 truncate" title={outputText}>
+                    <span className="truncate text-[10px] text-md-on-surface-variant" title={outputText}>
                       {outputText}
                     </span>
                   </div>
@@ -156,7 +156,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
                         background: TYPE_COLORS[output.dataType] ?? "#94a3b8",
                         width: 12,
                         height: 12,
-                        border: "2px solid white",
+                        border: "2px solid var(--md-sys-color-surface)",
                         position: "relative",
                         right: -12,
                         transform: "none",
@@ -171,8 +171,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
       </div>
 
       {nodeErrors && (
-        <div className="px-3 py-2 border-t border-red-200 bg-red-50 dark:bg-red-900/20 rounded-b-lg">
-          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-red-600 dark:text-red-400">{nodeErrors}</p>
+        <div className="rounded-b-[calc(var(--md-sys-shape-corner-medium)-2px)] border-t border-md-error/40 bg-md-error-container/60 px-3 py-2">
+          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-md-on-error-container">{nodeErrors}</p>
         </div>
       )}
     </div>
