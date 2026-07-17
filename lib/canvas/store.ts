@@ -4,9 +4,10 @@ import type {
   Edge,
   ExecutionLogEntry,
   ExecutionLogStatus,
+  ExecutionStepProgress,
 } from "./types"
 import { getNodeDefinition } from "./registry"
-import { topologicalSort } from "./engine"
+import { createBypassOutputs, topologicalSort } from "./engine"
 import { validateConnectionStructure } from "./validation"
 import { normalizeWorkflowData } from "./workflow"
 
@@ -14,6 +15,8 @@ const nodeExecVersion = new Map<string, number>()
 const activeNodeRunTokens = new Map<string, number>()
 let nextNodeRunToken = 0
 let executionRevision = 0
+let stepExecutionRevision = -1
+let stepExecutionIndex = 0
 const nodeExecTimers = new Map<string, ReturnType<typeof setTimeout>>()
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 const SAVE_DEBOUNCE_MS = 300
@@ -41,6 +44,37 @@ function resetConfigHistoryGroup() {
 
 function invalidateExecutionPlan() {
   executionRevision += 1
+  stepExecutionRevision = -1
+  stepExecutionIndex = 0
+}
+
+function emptyStepProgress(): ExecutionStepProgress {
+  return { current: 0, total: 0, nextNodeId: null }
+}
+
+function collectReachableNodeIds(
+  startNodeId: string,
+  edges: readonly Edge[],
+  direction: "upstream" | "downstream"
+): Set<string> {
+  const result = new Set<string>()
+  const pending = [startNodeId]
+
+  while (pending.length > 0) {
+    const nodeId = pending.pop()!
+    if (result.has(nodeId)) continue
+    result.add(nodeId)
+
+    for (const edge of edges) {
+      if (direction === "upstream" && edge.target === nodeId) {
+        pending.push(edge.source)
+      } else if (direction === "downstream" && edge.source === nodeId) {
+        pending.push(edge.target)
+      }
+    }
+  }
+
+  return result
 }
 
 function isManualNode(node: NodeInstance | undefined): boolean {
@@ -109,6 +143,7 @@ interface CanvasState {
   selectedNodeId: string | null
   selectedNodeIds: string[]
   autoRun: boolean
+  stepProgress: ExecutionStepProgress
 
   addNode: (node: NodeInstance) => void
   addSubgraph: (data: { nodes: NodeInstance[]; edges: Edge[] }) => void
@@ -119,6 +154,7 @@ interface CanvasState {
     updates: Array<{ id: string; position: { x: number; y: number } }>
   ) => void
   updateNodeConfig: (nodeId: string, config: Record<string, unknown>) => void
+  setNodeDisabled: (nodeId: string, disabled: boolean) => void
 
   addEdge: (edge: Edge) => void
   removeEdge: (edgeId: string) => void
@@ -133,6 +169,8 @@ interface CanvasState {
     includeManual?: boolean
   ) => Promise<void>
   executeAll: (includeManual?: boolean) => Promise<void>
+  executeToNode: (nodeId: string, includeManual?: boolean) => Promise<void>
+  executeStep: (includeManual?: boolean) => Promise<void>
   setAutoRun: (enabled: boolean) => void
   clearExecutionLog: () => void
 
@@ -161,6 +199,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   selectedNodeId: null,
   selectedNodeIds: [],
   autoRun: true,
+  stepProgress: emptyStepProgress(),
   canUndo: false,
   canRedo: false,
 
@@ -205,6 +244,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
               nodeErrors: {},
               nodeRunning: {},
               executionLog: cancelRunningExecutionLogs(state.executionLog, Date.now()),
+              stepProgress: emptyStepProgress(),
             }),
         selectedNodeIds,
         selectedNodeId: selectedNodeIds.length === 1 ? selectedNodeIds[0] : null,
@@ -249,6 +289,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
               nodeErrors: {},
               nodeRunning: {},
               executionLog: cancelRunningExecutionLogs(state.executionLog, Date.now()),
+              stepProgress: emptyStepProgress(),
             }),
         selectedNodeIds,
         selectedNodeId: selectedNodeIds.length === 1 ? selectedNodeIds[0] : null,
@@ -274,6 +315,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         nodes: [...state.nodes, node],
         selectedNodeId: node.id,
         selectedNodeIds: [node.id],
+        stepProgress: emptyStepProgress(),
       }
     })
   },
@@ -320,6 +362,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       edges: nextEdges,
       selectedNodeId: addedNodes.at(-1)?.id ?? state.selectedNodeId,
       selectedNodeIds: [addedNodes.at(-1)!.id],
+      stepProgress: emptyStepProgress(),
     })
     debouncedSave(() => get().saveToLocalStorage())
     if (get().autoRun) {
@@ -357,6 +400,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           Date.now(),
           nodeId
         ),
+        stepProgress: emptyStepProgress(),
         selectedNodeIds,
         selectedNodeId: selectedNodeIds.length === 1 ? selectedNodeIds[0] : null,
       }
@@ -422,6 +466,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         executionLog,
         selectedNodeIds,
         selectedNodeId: selectedNodeIds.length === 1 ? selectedNodeIds[0] : null,
+        stepProgress: emptyStepProgress(),
       }
     })
     debouncedSave(() => get().saveToLocalStorage())
@@ -493,6 +538,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       nodes: state.nodes.map((n) =>
         n.id === nodeId ? { ...n, config } : n
       ),
+      stepProgress: emptyStepProgress(),
     }))
     debouncedSave(() => get().saveToLocalStorage())
 
@@ -506,6 +552,63 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }
     }, AUTO_EXEC_DEBOUNCE_MS)
     nodeExecTimers.set(nodeId, timer)
+  },
+
+  setNodeDisabled: (nodeId, disabled) => {
+    const state = get()
+    const node = state.nodes.find((candidate) => candidate.id === nodeId)
+    if (!node || Boolean(node.disabled) === disabled) return
+
+    invalidateExecutionPlan()
+    resetConfigHistoryGroup()
+    get().pushHistory()
+
+    const affectedNodeIds = collectReachableNodeIds(
+      nodeId,
+      state.edges,
+      "downstream"
+    )
+    for (const affectedNodeId of affectedNodeIds) {
+      clearNodeExecutionTimer(affectedNodeId)
+    }
+
+    set((current) => {
+      const nodeOutputs = { ...current.nodeOutputs }
+      const nodeErrors = { ...current.nodeErrors }
+      const nodeRunning = { ...current.nodeRunning }
+      let executionLog = current.executionLog
+
+      for (const affectedNodeId of affectedNodeIds) {
+        delete nodeOutputs[affectedNodeId]
+        delete nodeErrors[affectedNodeId]
+        delete nodeRunning[affectedNodeId]
+        executionLog = cancelRunningExecutionLogs(
+          executionLog,
+          Date.now(),
+          affectedNodeId
+        )
+      }
+
+      return {
+        nodes: current.nodes.map((candidate) =>
+          candidate.id === nodeId
+            ? { ...candidate, disabled }
+            : candidate
+        ),
+        nodeOutputs,
+        nodeErrors,
+        nodeRunning,
+        executionLog,
+        stepProgress: emptyStepProgress(),
+      }
+    })
+    debouncedSave(() => get().saveToLocalStorage())
+
+    if (get().autoRun) {
+      setTimeout(() => {
+        if (get().autoRun) get().executeAll(false)
+      }, 0)
+    }
   },
 
   addEdge: (edge) => {
@@ -526,6 +629,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           ...state.edges.filter((existing) => existing.id !== occupiedEdgeId),
           edge,
         ],
+        stepProgress: emptyStepProgress(),
       }
     })
     if (get().autoRun) {
@@ -545,7 +649,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const removedEdge = get().edges.find((e) => e.id === edgeId)
     set((state) => {
       debouncedSave(() => get().saveToLocalStorage())
-      return { edges: state.edges.filter((e) => e.id !== edgeId) }
+      return {
+        edges: state.edges.filter((e) => e.id !== edgeId),
+        stepProgress: emptyStepProgress(),
+      }
     })
     if (removedEdge && get().autoRun) {
       setTimeout(() => {
@@ -663,22 +770,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })
 
     try {
-      const computedOutputs = await definition.execute(inputs, node.config)
-      const configOutputs = Object.fromEntries(
-        definition.config
-          .filter((field) => field.hasOutput)
-          .map((field) => {
-            const hasInputValue = Object.prototype.hasOwnProperty.call(
-              inputs,
-              field.id
-            )
-            const value = hasInputValue
-              ? inputs[field.id]
-              : node.config[field.id] ?? field.defaultValue
-            return [field.id, value]
-          })
-      )
-      const outputs = { ...configOutputs, ...computedOutputs }
+      const outputs = node.disabled
+        ? createBypassOutputs(definition, inputs, node.config)
+        : {
+            ...Object.fromEntries(
+              definition.config
+                .filter((field) => field.hasOutput)
+                .map((field) => {
+                  const hasInputValue = Object.prototype.hasOwnProperty.call(
+                    inputs,
+                    field.id
+                  )
+                  const value = hasInputValue
+                    ? inputs[field.id]
+                    : node.config[field.id] ?? field.defaultValue
+                  return [field.id, value]
+                })
+            ),
+            ...await definition.execute(inputs, node.config),
+          }
 
       if (
         executionRevision !== planRevision ||
@@ -701,7 +811,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         executionLog: settleExecutionLog(
           s.executionLog,
           runToken,
-          "success",
+          node.disabled ? "skipped" : "success",
           Date.now()
         ),
       }))
@@ -753,6 +863,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   executeAll: async (includeManual = true) => {
     const planRevision = executionRevision
     const state = get()
+    stepExecutionRevision = -1
+    stepExecutionIndex = 0
+    set({ stepProgress: emptyStepProgress() })
     const { sorted, hasCycle } = topologicalSort(state.nodes, state.edges)
     if (hasCycle) {
       console.warn("Canvas contains cycles — skipped cyclic nodes")
@@ -772,6 +885,94 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       await get().executeNode(node.id, undefined, false, includeManual)
       if (executionRevision !== planRevision) return
     }
+  },
+
+  executeToNode: async (nodeId, includeManual = true) => {
+    const planRevision = executionRevision
+    const state = get()
+    if (!state.nodes.some((node) => node.id === nodeId)) return
+
+    stepExecutionRevision = -1
+    stepExecutionIndex = 0
+    set({ stepProgress: emptyStepProgress() })
+
+    const requiredNodeIds = collectReachableNodeIds(
+      nodeId,
+      state.edges,
+      "upstream"
+    )
+    const requiredNodes = state.nodes.filter((node) => requiredNodeIds.has(node.id))
+    const requiredEdges = state.edges.filter(
+      (edge) => requiredNodeIds.has(edge.source) && requiredNodeIds.has(edge.target)
+    )
+    const { sorted, hasCycle } = topologicalSort(requiredNodes, requiredEdges)
+    if (hasCycle) {
+      console.warn("Canvas contains cycles — skipped cyclic nodes")
+    }
+
+    const skippedNodes = new Set<string>()
+    for (const node of sorted) {
+      if (executionRevision !== planRevision) return
+      const dependsOnSkippedNode = requiredEdges.some(
+        (edge) => edge.target === node.id && skippedNodes.has(edge.source)
+      )
+      if (!includeManual && (isManualNode(node) || dependsOnSkippedNode)) {
+        skippedNodes.add(node.id)
+        continue
+      }
+
+      await get().executeNode(node.id, undefined, false, includeManual)
+      if (executionRevision !== planRevision) return
+    }
+  },
+
+  executeStep: async (includeManual = true) => {
+    const planRevision = executionRevision
+    const state = get()
+    const { sorted, hasCycle } = topologicalSort(state.nodes, state.edges)
+    if (hasCycle) {
+      console.warn("Canvas contains cycles — skipped cyclic nodes")
+    }
+
+    const skippedNodes = new Set<string>()
+    const executableNodes = sorted.filter((node) => {
+      const dependsOnSkippedNode = state.edges.some(
+        (edge) => edge.target === node.id && skippedNodes.has(edge.source)
+      )
+      if (!includeManual && (isManualNode(node) || dependsOnSkippedNode)) {
+        skippedNodes.add(node.id)
+        return false
+      }
+      return true
+    })
+
+    if (executableNodes.length === 0) {
+      stepExecutionRevision = planRevision
+      stepExecutionIndex = 0
+      set({ stepProgress: emptyStepProgress() })
+      return
+    }
+
+    if (
+      stepExecutionRevision !== planRevision ||
+      stepExecutionIndex >= executableNodes.length
+    ) {
+      stepExecutionRevision = planRevision
+      stepExecutionIndex = 0
+    }
+
+    const node = executableNodes[stepExecutionIndex]
+    await get().executeNode(node.id, undefined, false, includeManual)
+    if (executionRevision !== planRevision) return
+
+    stepExecutionIndex += 1
+    set({
+      stepProgress: {
+        current: stepExecutionIndex,
+        total: executableNodes.length,
+        nextNodeId: executableNodes[stepExecutionIndex]?.id ?? null,
+      },
+    })
   },
 
   setAutoRun: (enabled) => {
@@ -819,6 +1020,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           selectedNodeIds: [],
           canUndo: false,
           canRedo: false,
+          stepProgress: emptyStepProgress(),
         }))
         if (get().autoRun) {
           setTimeout(() => {
@@ -845,6 +1047,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       executionLog: cancelRunningExecutionLogs(state.executionLog, Date.now()),
       selectedNodeId: null,
       selectedNodeIds: [],
+      stepProgress: emptyStepProgress(),
     }))
     debouncedSave(() => get().saveToLocalStorage())
     if (get().autoRun) {
@@ -872,6 +1075,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       executionLog: cancelRunningExecutionLogs(state.executionLog, Date.now()),
       selectedNodeId: null,
       selectedNodeIds: [],
+      stepProgress: emptyStepProgress(),
     }))
     debouncedSave(() => get().saveToLocalStorage())
   },

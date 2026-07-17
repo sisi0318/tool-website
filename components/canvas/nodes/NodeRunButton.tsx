@@ -12,20 +12,20 @@ interface NodeRunButtonProps {
 
 export function NodeRunButton({ nodeId, running, hasError }: NodeRunButtonProps) {
   const t = useTranslations("canvas")
-  const executeNode = useCanvasStore((state) => state.executeNode)
-  const label = hasError ? t("retryNode") : t("runNode")
+  const executeToNode = useCanvasStore((state) => state.executeToNode)
+  const label = hasError ? t("retryToNode") : t("runToNode")
 
   return (
     <button
       type="button"
       onClick={(event) => {
         event.stopPropagation()
-        executeNode(nodeId, undefined, false, true)
+        executeToNode(nodeId, true)
       }}
       disabled={running}
       aria-label={label}
       title={label}
-      className="nodrag nopan ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-primary/10 hover:text-md-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
+      className="nodrag nopan flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-primary/10 hover:text-md-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
     >
       {running ? (
         <LoaderCircle className="h-3.5 w-3.5 animate-spin" />

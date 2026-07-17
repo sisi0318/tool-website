@@ -49,6 +49,8 @@ export interface NodeInstance {
   type: string
   position: { x: number; y: number }
   config: Record<string, unknown>
+  /** Skip the node implementation and forward compatible upstream values. */
+  disabled?: boolean
 }
 
 export interface Edge {
@@ -59,7 +61,13 @@ export interface Edge {
   targetPort: string
 }
 
-export type ExecutionLogStatus = "running" | "success" | "error" | "cancelled"
+export type ExecutionLogStatus = "running" | "success" | "error" | "cancelled" | "skipped"
+
+export interface ExecutionStepProgress {
+  current: number
+  total: number
+  nextNodeId: string | null
+}
 
 export interface ExecutionLogEntry {
   id: number

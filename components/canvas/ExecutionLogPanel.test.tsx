@@ -13,6 +13,7 @@ vi.mock("@/hooks/use-translations", () => ({
     executionStatusSuccess: "Succeeded",
     executionStatusError: "Failed",
     executionStatusCancelled: "Cancelled",
+    executionStatusSkipped: "Skipped",
   }[key] ?? key),
 }))
 

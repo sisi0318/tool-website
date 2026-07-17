@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Panel, useReactFlow } from "@xyflow/react"
 import {
   AlertCircle,
+  Footprints,
   LoaderCircle,
   Maximize2,
   Network,
@@ -55,7 +56,7 @@ function ToolbarButton({
       aria-expanded={expanded}
       aria-controls={controls}
       title={label}
-      className={`inline-flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-[var(--md-sys-shape-corner-small)] px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:min-w-9 ${
+      className={`inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--md-sys-shape-corner-small)] px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:min-w-9 ${
         active
           ? "bg-md-primary text-md-on-primary hover:bg-md-primary/90"
           : danger
@@ -79,27 +80,39 @@ export function CanvasToolbar({
   const nodeRunning = useCanvasStore((state) => state.nodeRunning)
   const nodeErrors = useCanvasStore((state) => state.nodeErrors)
   const autoRun = useCanvasStore((state) => state.autoRun)
+  const stepProgress = useCanvasStore((state) => state.stepProgress)
   const canUndo = useCanvasStore((state) => state.canUndo)
   const canRedo = useCanvasStore((state) => state.canRedo)
   const executeAll = useCanvasStore((state) => state.executeAll)
+  const executeStep = useCanvasStore((state) => state.executeStep)
   const setAutoRun = useCanvasStore((state) => state.setAutoRun)
   const undo = useCanvasStore((state) => state.undo)
   const redo = useCanvasStore((state) => state.redo)
   const clearCanvas = useCanvasStore((state) => state.clearCanvas)
-  const [runRequested, setRunRequested] = useState(false)
+  const [requestedAction, setRequestedAction] = useState<"all" | "step" | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
 
   const runningCount = Object.values(nodeRunning).filter(Boolean).length
   const errorCount = Object.values(nodeErrors).filter(Boolean).length
-  const isRunning = runRequested || runningCount > 0
+  const isRunning = requestedAction !== null || runningCount > 0
 
   const runAll = async () => {
     if (nodes.length === 0 || isRunning) return
-    setRunRequested(true)
+    setRequestedAction("all")
     try {
       await executeAll()
     } finally {
-      setRunRequested(false)
+      setRequestedAction(null)
+    }
+  }
+
+  const runNextStep = async () => {
+    if (nodes.length === 0 || isRunning) return
+    setRequestedAction("step")
+    try {
+      await executeStep()
+    } finally {
+      setRequestedAction(null)
     }
   }
 
@@ -116,8 +129,26 @@ export function CanvasToolbar({
             onClick={runAll}
             disabled={nodes.length === 0 || isRunning}
           >
-            {isRunning ? <LoaderCircle className="size-4 animate-spin" /> : <Play className="size-4" />}
+            {requestedAction === "all" || (runningCount > 0 && requestedAction !== "step")
+              ? <LoaderCircle className="size-4 animate-spin" />
+              : <Play className="size-4" />}
             <span className="hidden sm:inline">{t("run")}</span>
+          </ToolbarButton>
+
+          <ToolbarButton
+            label={t("runNextStep")}
+            onClick={runNextStep}
+            disabled={nodes.length === 0 || isRunning}
+          >
+            {requestedAction === "step"
+              ? <LoaderCircle className="size-4 animate-spin" />
+              : <Footprints className="size-4" />}
+            <span className="hidden md:inline">{t("step")}</span>
+            {stepProgress.total > 0 && (
+              <span className="hidden tabular-nums lg:inline">
+                {stepProgress.current}/{stepProgress.total}
+              </span>
+            )}
           </ToolbarButton>
 
           <ToolbarButton
@@ -189,6 +220,10 @@ export function CanvasToolbar({
                 <AlertCircle className="size-3.5 text-md-error" />
                 <span>{t("errorCount").replace("{count}", String(errorCount))}</span>
               </>
+            ) : stepProgress.total > 0 ? (
+              <span>{t("stepCount")
+                .replace("{current}", String(stepProgress.current))
+                .replace("{total}", String(stepProgress.total))}</span>
             ) : (
               <span>{t("nodeCount").replace("{count}", String(nodes.length))}</span>
             )}

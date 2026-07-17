@@ -30,6 +30,7 @@ export function normalizeWorkflowData(value: unknown): WorkflowData | null {
       type: node.type,
       position: { x: node.position.x, y: node.position.y },
       config: isRecord(node.config) ? node.config : {},
+      ...(node.disabled === true ? { disabled: true } : {}),
     }]
   })
   const nodeIds = new Set(nodes.map((node) => node.id))

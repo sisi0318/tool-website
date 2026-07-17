@@ -30,6 +30,8 @@ function StatusIcon({ entry }: { entry: ExecutionLogEntry }) {
       return <CircleAlert className="size-4 text-md-error" />
     case "cancelled":
       return <Ban className="size-4 text-md-on-surface-variant" />
+    case "skipped":
+      return <Ban className="size-4 text-md-tertiary" />
   }
 }
 

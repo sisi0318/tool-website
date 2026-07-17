@@ -763,3 +763,114 @@ describe("canvas store execution", () => {
     expect(harness.useCanvasStore.getState().executionLog).toEqual([])
   })
 })
+
+describe("canvas guided execution", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
+
+  it("停用节点会旁路同类型输入，并继续执行下游", async () => {
+    const harness = await createTestHarness()
+    const transform = vi.fn(async () => ({ out: "transformed" }))
+    const sink = vi.fn(async (inputs: Record<string, unknown>) => ({ out: inputs.in }))
+
+    registerDefinition(harness, "source", async () => ({ out: "raw" }))
+    harness.registry.registerNode({
+      type: "transform",
+      category: "data",
+      label: "Transform",
+      icon: () => null,
+      config: [{ id: "in", name: "Input", dataType: "string", hasInput: true }],
+      outputs: [{ id: "out", name: "Output", dataType: "string" }],
+      execute: transform,
+    })
+    harness.registry.registerNode({
+      type: "sink",
+      category: "data",
+      label: "Sink",
+      icon: () => null,
+      config: [{ id: "in", name: "Input", dataType: "string", hasInput: true }],
+      outputs: [{ id: "out", name: "Output", dataType: "string" }],
+      execute: sink,
+    })
+    harness.useCanvasStore.setState({
+      nodes: [node("a", "source"), node("b", "transform"), node("c", "sink")],
+      edges: [edge("a-b", "a", "b"), edge("b-c", "b", "c")],
+    })
+
+    harness.useCanvasStore.getState().setNodeDisabled("b", true)
+    await harness.useCanvasStore.getState().executeAll()
+
+    expect(transform).not.toHaveBeenCalled()
+    expect(sink).toHaveBeenCalledWith({ in: "raw" }, {})
+    expect(harness.useCanvasStore.getState().nodeOutputs.b).toEqual({ out: "raw" })
+    expect(harness.useCanvasStore.getState().executionLog.map((entry) => entry.status)).toEqual([
+      "success",
+      "skipped",
+      "success",
+    ])
+  })
+
+  it("单步执行按拓扑顺序前进，并在工作流改变后复位", async () => {
+    const harness = await createTestHarness()
+    const order: string[] = []
+    for (const type of ["first", "second", "third"]) {
+      registerDefinition(harness, type, async () => {
+        order.push(type)
+        return { out: type }
+      })
+    }
+    harness.useCanvasStore.setState({
+      nodes: [node("b", "second"), node("c", "third"), node("a", "first")],
+      edges: [edge("a-b", "a", "b"), edge("b-c", "b", "c")],
+    })
+
+    await harness.useCanvasStore.getState().executeStep()
+    expect(order).toEqual(["first"])
+    expect(harness.useCanvasStore.getState().stepProgress).toEqual({
+      current: 1,
+      total: 3,
+      nextNodeId: "b",
+    })
+
+    await harness.useCanvasStore.getState().executeStep()
+    await harness.useCanvasStore.getState().executeStep()
+    expect(order).toEqual(["first", "second", "third"])
+    expect(harness.useCanvasStore.getState().stepProgress.current).toBe(3)
+
+    harness.useCanvasStore.getState().addNode(node("d", "first"))
+    expect(harness.useCanvasStore.getState().stepProgress).toEqual({
+      current: 0,
+      total: 0,
+      nextNodeId: null,
+    })
+  })
+
+  it("运行到节点只执行其上游依赖，不触发无关下游", async () => {
+    const harness = await createTestHarness()
+    const calls = {
+      first: vi.fn(async () => ({ out: "first" })),
+      second: vi.fn(async () => ({ out: "second" })),
+      third: vi.fn(async () => ({ out: "third" })),
+    }
+    registerDefinition(harness, "first", calls.first)
+    registerDefinition(harness, "second", calls.second)
+    registerDefinition(harness, "third", calls.third)
+    harness.useCanvasStore.setState({
+      nodes: [node("a", "first"), node("b", "second"), node("c", "third")],
+      edges: [edge("a-b", "a", "b"), edge("b-c", "b", "c")],
+    })
+
+    await harness.useCanvasStore.getState().executeToNode("b")
+
+    expect(calls.first).toHaveBeenCalledTimes(1)
+    expect(calls.second).toHaveBeenCalledTimes(1)
+    expect(calls.third).not.toHaveBeenCalled()
+  })
+})

@@ -7,6 +7,7 @@ import { formatCanvasValue } from "@/lib/canvas/format-value"
 import type { NodeInstance, ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
 import { NodeRunButton } from "./NodeRunButton"
+import { NodeBypassButton } from "./NodeBypassButton"
 
 interface BaseNodeProps {
   data: NodeInstance & {
@@ -42,20 +43,22 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
 
   return (
     <div
-      className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-md-surface-container-low text-md-on-surface shadow-md sm:max-w-[400px] ${
+      data-node-disabled={node.disabled ? "true" : undefined}
+      className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-md-surface-container-low text-md-on-surface shadow-md transition-opacity sm:max-w-[400px] ${
         nodeErrors
           ? "border-md-error"
           : isSelected
           ? "border-md-primary"
           : "border-md-outline-variant"
-      }`}
+      } ${node.disabled ? "border-dashed opacity-70" : ""}`}
     >
       {/* Header */}
       <div className="flex items-center gap-2 rounded-t-[calc(var(--md-sys-shape-corner-medium)-2px)] border-b border-md-outline-variant bg-md-surface-container px-3 py-2">
         <Icon className="h-4 w-4 text-md-on-surface-variant" />
-        <span className="text-sm font-medium text-md-on-surface">
+        <span className={`text-sm font-medium text-md-on-surface ${node.disabled ? "line-through" : ""}`}>
           {definition.label}
         </span>
+        <NodeBypassButton nodeId={node.id} disabled={Boolean(node.disabled)} />
         <NodeRunButton nodeId={node.id} running={Boolean(nodeRunning)} hasError={Boolean(nodeErrors)} />
       </div>
 

@@ -23,7 +23,9 @@ export default function CanvasContent() {
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
   const selectNode = useCanvasStore((s) => s.selectNode)
   const [showPalette, setShowPalette] = useState(false)
-  const showPropertyPanel = Boolean(selectedNodeId && selectedNodeIds.length === 1)
+  const showPropertyPanel = Boolean(
+    !showPalette && selectedNodeId && selectedNodeIds.length === 1
+  )
 
   useEffect(() => {
     loadFromLocalStorage()
@@ -37,8 +39,8 @@ export default function CanvasContent() {
             type="button"
             aria-label={t("close")}
             onClick={() => {
-              setShowPalette(false)
-              selectNode(null)
+              if (showPalette) setShowPalette(false)
+              else selectNode(null)
             }}
             className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[1px] lg:hidden"
           />
@@ -47,24 +49,25 @@ export default function CanvasContent() {
           <NodePalette
             onNodeAdded={() => setShowPalette(false)}
             onRequestClose={() => setShowPalette(false)}
+            onRequestOpen={() => setShowPalette(true)}
           />
         </div>
         <div className="relative min-w-0 flex-1">
           {!showPalette && selectedNodeIds.length < 2 && (
-            <div className="absolute bottom-3 left-14 z-20 flex gap-1 lg:hidden">
-            <button
-              type="button"
-              onClick={() => {
-                selectNode(null)
-                setShowPalette(true)
-              }}
-              aria-expanded={showPalette}
-              className="flex min-h-11 items-center gap-1.5 rounded-full bg-md-inverse-surface px-4 text-xs font-semibold text-md-inverse-on-surface shadow-lg transition-transform active:scale-95"
-            >
-              <Plus aria-hidden="true" className="h-4 w-4" />
-              {t("palette")}
-            </button>
-          </div>
+            <div className={`absolute left-14 z-50 flex gap-1 lg:hidden ${
+              showPropertyPanel ? "top-16" : "bottom-3"
+            }`}>
+              <button
+                type="button"
+                onClick={() => setShowPalette(true)}
+                aria-expanded={showPalette}
+                aria-controls="canvas-node-palette"
+                className="flex min-h-11 items-center gap-1.5 rounded-full bg-md-inverse-surface px-4 text-xs font-semibold text-md-inverse-on-surface shadow-lg transition-transform active:scale-95"
+              >
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                {t("palette")}
+              </button>
+            </div>
           )}
           <Canvas />
         </div>

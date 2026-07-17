@@ -2,21 +2,32 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NodePalette } from "./NodePalette"
 
-const { addNode, getAllNodes, screenToFlowPosition } = vi.hoisted(() => ({
+const { addNode, addSubgraph, getAllNodes, getNodeDefinition, screenToFlowPosition, storeState } = vi.hoisted(() => ({
   addNode: vi.fn(),
+  addSubgraph: vi.fn(),
   getAllNodes: vi.fn(),
+  getNodeDefinition: vi.fn(),
   screenToFlowPosition: vi.fn((position: { x: number; y: number }) => position),
+  storeState: {
+    addNode: vi.fn(),
+    addSubgraph: vi.fn(),
+    nodes: [] as Array<{ id: string; type: string; position: { x: number; y: number }; config: Record<string, unknown> }>,
+    selectedNodeId: null as string | null,
+  },
 }))
+
+storeState.addNode = addNode
+storeState.addSubgraph = addSubgraph
 
 vi.mock("@xyflow/react", () => ({
   useReactFlow: () => ({ screenToFlowPosition }),
 }))
 
-vi.mock("@/lib/canvas/registry", () => ({ getAllNodes }))
+vi.mock("@/lib/canvas/registry", () => ({ getAllNodes, getNodeDefinition }))
 
 vi.mock("@/lib/canvas/store", () => ({
-  useCanvasStore: (selector: (state: { addNode: typeof addNode }) => unknown) =>
-    selector({ addNode }),
+  useCanvasStore: (selector: (state: typeof storeState) => unknown) =>
+    selector(storeState),
 }))
 
 vi.mock("@/hooks/use-translations", () => ({
@@ -28,8 +39,15 @@ vi.mock("@/hooks/use-translations", () => ({
       nodeSearchPlaceholder: "Search nodes…",
       clearNodeSearch: "Clear node search",
       noMatchingNodes: "No matching nodes.",
+      searchResults: "{count} search results",
+      favoriteNodes: "Favorites",
+      recentNodes: "Recently used",
+      addFavoriteNode: "Add node to favorites",
+      removeFavoriteNode: "Remove node from favorites",
       addNode: "Add node",
       nodeAddHint: "Click to add, or drag onto the canvas",
+      appendFromNode: "Continue from {node}",
+      addAndConnectAfter: "Add after selected node and connect",
       categoryBasic: "Basic",
       categoryCrypto: "Crypto",
       categoryData: "Data",
@@ -61,8 +79,8 @@ const NODE_DEFINITIONS = [
     label: "Hash",
     description: "Create a digest",
     icon: TestIcon,
-    config: [],
-    outputs: [],
+    config: [{ id: "data", name: "Data", dataType: "string", hasInput: true }],
+    outputs: [{ id: "hash", name: "Hash", dataType: "string" }],
     execute: vi.fn(),
   },
   {
@@ -71,16 +89,21 @@ const NODE_DEFINITIONS = [
     label: "JSON Format",
     description: "Pretty-print a payload",
     icon: TestIcon,
-    config: [],
-    outputs: [],
+    config: [{ id: "input", name: "Input", dataType: "json", hasInput: true }],
+    outputs: [{ id: "output", name: "Output", dataType: "string" }],
     execute: vi.fn(),
   },
 ]
 
 describe("NodePalette", () => {
   beforeEach(() => {
+    localStorage.clear()
     addNode.mockReset()
+    addSubgraph.mockReset()
     getAllNodes.mockReturnValue(NODE_DEFINITIONS)
+    getNodeDefinition.mockReset()
+    storeState.nodes = []
+    storeState.selectedNodeId = null
     screenToFlowPosition.mockClear()
   })
 
@@ -142,5 +165,58 @@ describe("NodePalette", () => {
       2,
       expect.objectContaining({ type: "json-format", position: { x: 484, y: 364 }, config: {} })
     )
+  })
+
+  it("persists favorites and records recently used nodes", () => {
+    render(<NodePalette />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Add node to favorites: Hash" }))
+    expect(screen.getByRole("heading", { name: /Favorites/ })).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem("canvas-favorite-nodes") ?? "[]")).toEqual([
+      "hash-text",
+    ])
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Add node: Hash" })[0])
+    expect(screen.getByRole("heading", { name: /Recently used/ })).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem("canvas-recent-nodes") ?? "[]")).toEqual([
+      "hash-text",
+    ])
+  })
+
+  it("adds a compatible node after the selected source and connects it", () => {
+    const sourceDefinition = {
+      type: "source",
+      category: "basic",
+      label: "Source",
+      icon: TestIcon,
+      config: [],
+      outputs: [{ id: "value", name: "Value", dataType: "string" }],
+      execute: vi.fn(),
+    }
+    storeState.nodes = [{
+      id: "source-node",
+      type: "source",
+      position: { x: 100, y: 200 },
+      config: {},
+    }]
+    storeState.selectedNodeId = "source-node"
+    getNodeDefinition.mockReturnValue(sourceDefinition)
+
+    render(<NodePalette />)
+    fireEvent.click(screen.getByRole("button", {
+      name: "Add after selected node and connect: Hash",
+    }))
+
+    expect(addSubgraph).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({
+        type: "hash-text",
+        position: { x: 460, y: 200 },
+      })],
+      edges: [expect.objectContaining({
+        source: "source-node",
+        sourcePort: "value",
+        targetPort: "data",
+      })],
+    })
   })
 })

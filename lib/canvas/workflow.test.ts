@@ -85,6 +85,22 @@ describe("workflow", () => {
       expect(loadWorkflow("test")!.nodes[0].config).toEqual({})
     })
 
+    it("preserves the disabled state while ignoring non-boolean values", () => {
+      const data = {
+        nodes: [
+          { id: "1", type: "string", position: { x: 0, y: 0 }, config: {}, disabled: true },
+          { id: "2", type: "string", position: { x: 20, y: 0 }, config: {}, disabled: "yes" },
+        ],
+        edges: [],
+      }
+      saveWorkflow("test", data as any)
+
+      expect(loadWorkflow("test")!.nodes).toEqual([
+        { id: "1", type: "string", position: { x: 0, y: 0 }, config: {}, disabled: true },
+        { id: "2", type: "string", position: { x: 20, y: 0 }, config: {} },
+      ])
+    })
+
     it("filters out edges referencing missing nodes", () => {
       const data = {
         nodes: [{ id: "1", type: "string", position: { x: 0, y: 0 }, config: {} }],

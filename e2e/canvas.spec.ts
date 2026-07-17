@@ -399,4 +399,140 @@ test.describe("Canvas Page", () => {
     // the copy of the off-screen node must land in view (previously it pasted at the original coordinates)
     expect(insideCount).toBe(1)
   })
+
+  test("should open node search from the keyboard and add the best match", async ({ page }) => {
+    await page.keyboard.press("Control+k")
+    const search = page.getByRole("searchbox", { name: "搜索节点…" })
+    await expect(search).toBeFocused()
+
+    await search.fill("Hash")
+    await search.press("Enter")
+
+    await expect(page.locator(".react-flow__node")).toHaveCount(1, { timeout: 5000 })
+    const state = await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__.getState()
+      return {
+        type: store.nodes[0]?.type,
+        recent: JSON.parse(localStorage.getItem("canvas-recent-nodes") ?? "[]"),
+      }
+    })
+    expect(state.type).toBe("hash")
+    expect(state.recent[0]).toBe("hash")
+  })
+
+  test("should append and connect a compatible node from the palette", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__.getState()
+      store.setAutoRun(false)
+      store.addNode({
+        id: "append-source",
+        type: "string",
+        position: { x: 120, y: 220 },
+        config: { value: "hello" },
+      })
+    })
+
+    await page.getByRole("button", {
+      name: "添加到已选节点后并连接: Hash",
+      exact: true,
+    }).click()
+
+    await expect(page.locator(".react-flow__node")).toHaveCount(2, { timeout: 5000 })
+    const graph = await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__.getState()
+      return { nodes: store.nodes, edges: store.edges }
+    })
+    expect(graph.nodes.find((node: any) => node.type === "hash")).toMatchObject({
+      position: { x: 480, y: 220 },
+    })
+    expect(graph.edges).toEqual([
+      expect.objectContaining({
+        source: "append-source",
+        sourcePort: "value",
+        targetPort: "data",
+      }),
+    ])
+  })
+
+  test("should bypass a disabled node and step through the workflow", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__.getState()
+      store.setAutoRun(false)
+      store.addSubgraph({
+        nodes: [
+          {
+            id: "step-source",
+            type: "string",
+            position: { x: 120, y: 220 },
+            config: { value: "raw input" },
+          },
+          {
+            id: "step-hash",
+            type: "hash",
+            position: { x: 500, y: 220 },
+            config: { algorithm: "sha256", outputFormat: "hex" },
+          },
+        ],
+        edges: [{
+          id: "step-edge",
+          source: "step-source",
+          sourcePort: "value",
+          target: "step-hash",
+          targetPort: "data",
+        }],
+      })
+      store.selectNodes([])
+    })
+
+    const hashNode = page.locator('.react-flow__node[data-id="step-hash"]')
+    await hashNode.getByRole("button", { name: "临时停用节点" }).click()
+    await expect(hashNode.locator('[data-node-disabled="true"]')).toBeVisible()
+
+    await page.getByRole("button", { name: "单步执行下一个节点" }).click()
+    await page.getByRole("button", { name: "单步执行下一个节点" }).click()
+
+    await page.waitForFunction(() => {
+      const state = (window as any).__ZUSTAND_STORE__.getState()
+      return state.stepProgress.current === 2 && state.executionLog.length === 2
+    })
+    const result = await page.evaluate(() => {
+      const state = (window as any).__ZUSTAND_STORE__.getState()
+      return {
+        output: state.nodeOutputs["step-hash"]?.hash,
+        statuses: state.executionLog.map((entry: any) => entry.status),
+      }
+    })
+    expect(result.output).toBe("raw input")
+    expect(result.statuses).toEqual(["success", "skipped"])
+    await expect(page.getByText("单步 2/2", { exact: true })).toBeVisible()
+  })
+
+  test("should keep the enhanced palette usable on a phone viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.reload()
+    await page.waitForSelector(".react-flow", { timeout: 30000 })
+
+    await page.getByRole("button", { name: "节点库" }).click()
+    const palette = page.getByRole("complementary", { name: "节点库" })
+    await expect(palette).toBeVisible()
+
+    const bounds = await palette.boundingBox()
+    expect(bounds).not.toBeNull()
+    expect(bounds!.width).toBeLessThanOrEqual(344)
+    expect(bounds!.height).toBeLessThanOrEqual(844)
+
+    const search = page.getByRole("searchbox", { name: "搜索节点…" })
+    await search.fill("Hash")
+    await search.press("Enter")
+
+    await expect(palette).not.toBeVisible()
+    await expect(page.locator(".react-flow__node")).toHaveCount(1, { timeout: 5000 })
+    await expect(page.getByRole("heading", { name: "Hash", exact: true })).toBeVisible()
+
+    const reopenPalette = page.getByRole("button", { name: "节点库" })
+    await expect(reopenPalette).toBeVisible()
+    await reopenPalette.click()
+    await expect(palette).toBeVisible()
+    await expect(page.getByText(/从「Hash」继续/)).toBeVisible()
+  })
 })

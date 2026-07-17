@@ -6,7 +6,7 @@ import { useCanvasStore } from "@/lib/canvas/store"
 import { formatCanvasValue } from "@/lib/canvas/format-value"
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
-import { Check, Copy, LoaderCircle, Play, RotateCcw, Trash2, X } from "lucide-react"
+import { Check, CircleSlash2, Copy, LoaderCircle, Play, Power, RotateCcw, Trash2, X } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { ConfigInput } from "./nodes/ConfigInput"
 import { ConfirmDialog } from "./workflow/ConfirmDialog"
@@ -62,7 +62,8 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
   const nodeErrors = useCanvasStore((s) => s.nodeErrors)
   const nodeRunning = useCanvasStore((s) => s.nodeRunning)
   const edges = useCanvasStore((s) => s.edges)
-  const executeNode = useCanvasStore((s) => s.executeNode)
+  const executeToNode = useCanvasStore((s) => s.executeToNode)
+  const setNodeDisabled = useCanvasStore((s) => s.setNodeDisabled)
   const removeNode = useCanvasStore((s) => s.removeNode)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -98,10 +99,10 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
         </h3>
         <button
           type="button"
-          onClick={() => executeNode(selectedNode.id, undefined, false, true)}
+          onClick={() => executeToNode(selectedNode.id, true)}
           disabled={running}
-          aria-label={error ? t("retryNode") : t("runNode")}
-          title={error ? t("retryNode") : t("runNode")}
+          aria-label={error ? t("retryToNode") : t("runToNode")}
+          title={error ? t("retryToNode") : t("runToNode")}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
         >
           {running ? (
@@ -111,6 +112,22 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           ) : (
             <Play className="h-4 w-4" />
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setNodeDisabled(selectedNode.id, !selectedNode.disabled)}
+          aria-label={selectedNode.disabled ? t("enableNode") : t("disableNode")}
+          aria-pressed={Boolean(selectedNode.disabled)}
+          title={selectedNode.disabled ? t("enableNode") : t("disableNode")}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary ${
+            selectedNode.disabled
+              ? "bg-md-tertiary-container text-md-on-tertiary-container"
+              : "text-md-on-surface-variant hover:bg-md-tertiary-container/60 hover:text-md-on-tertiary-container"
+          }`}
+        >
+          {selectedNode.disabled
+            ? <Power className="h-4 w-4" />
+            : <CircleSlash2 className="h-4 w-4" />}
         </button>
         <button
           type="button"
@@ -134,6 +151,11 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
         )}
       </div>
       <div className="flex-1 space-y-4 overflow-auto p-3">
+        {selectedNode.disabled && (
+          <div className="rounded-[var(--md-sys-shape-corner-small)] bg-md-tertiary-container px-3 py-2 text-xs leading-5 text-md-on-tertiary-container">
+            {t("nodeDisabledHint")}
+          </div>
+        )}
         {definition.config.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-xs font-medium uppercase text-md-on-surface-variant">
