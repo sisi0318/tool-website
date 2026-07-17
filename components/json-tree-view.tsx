@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useTranslations } from "@/hooks/use-translations"
 import { cn } from "@/lib/utils"
+import { copyTextToClipboard } from "@/lib/clipboard"
 import { Check, ChevronDown, ChevronRight, Copy } from "lucide-react"
 
 type JsonPrimitive = string | number | boolean | null
@@ -12,13 +14,15 @@ type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
 const isJsonContainer = (value: JsonValue): value is JsonValue[] | { [key: string]: JsonValue } =>
   typeof value === "object" && value !== null
 
-const getNodeSummary = (value: JsonValue) => {
+type JsonTreeTranslator = (key: string) => string
+
+const getNodeSummary = (value: JsonValue, t: JsonTreeTranslator) => {
   if (Array.isArray(value)) {
-    return `Array(${value.length})`
+    return `${t("array")}(${value.length})`
   }
 
   if (value && typeof value === "object") {
-    return `Object(${Object.keys(value).length})`
+    return `${t("object")}(${Object.keys(value).length})`
   }
 
   if (typeof value === "string") {
@@ -62,6 +66,7 @@ interface JsonTreeNodeProps {
   onCopy: (text: string, key?: string) => void
   onToggle: (path: string) => void
   path: string
+  t: JsonTreeTranslator
   value: JsonValue
 }
 
@@ -74,6 +79,7 @@ function JsonTreeNode({
   onCopy,
   onToggle,
   path,
+  t,
   value,
 }: JsonTreeNodeProps) {
   const collapsible = isJsonContainer(value)
@@ -84,25 +90,25 @@ function JsonTreeNode({
   if (!collapsible) {
     const primitiveClassName =
       value === null
-        ? "text-slate-500"
+        ? "text-[var(--md-sys-color-on-surface-variant)]"
         : typeof value === "string"
-          ? "text-emerald-600 dark:text-emerald-400"
+          ? "text-[var(--md-sys-color-success)]"
           : typeof value === "number"
-            ? "text-sky-600 dark:text-sky-400"
-            : "text-violet-600 dark:text-violet-400"
+            ? "text-[var(--md-sys-color-tertiary)]"
+            : "text-[var(--md-sys-color-primary)]"
 
     return (
-      <div className="rounded-xl border border-slate-200/80 bg-white/85 px-3 py-2.5 shadow-[0_1px_0_rgba(15,23,42,0.04)] transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-950/60 dark:hover:border-slate-700 dark:hover:bg-slate-950/80">
+      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-3 py-2.5 transition-colors hover:border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container-low)]">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm font-semibold text-slate-700 dark:text-slate-100">{label}</span>
+              <span className="font-mono text-sm font-semibold text-[var(--md-sys-color-on-surface)]">{label}</span>
               <Badge variant="secondary" className="rounded-full px-2 py-0 text-[10px] uppercase tracking-[0.12em]">
                 {typeLabel}
               </Badge>
             </div>
             <div className="mt-1 font-mono text-sm leading-6">
-              <span className="mr-2 text-slate-400">=</span>
+              <span className="mr-2 text-[var(--md-sys-color-outline)]">=</span>
               <span className={cn("break-all", primitiveClassName)}>
                 {typeof value === "string" ? `"${value}"` : String(value)}
               </span>
@@ -114,10 +120,10 @@ function JsonTreeNode({
             size="sm"
             className="h-8 shrink-0 rounded-full px-2.5 text-xs"
             onClick={() => onCopy(nodeCopyText, path)}
-            aria-label={`复制 ${label}`}
+            aria-label={t("copyAria").replace("{label}", label)}
           >
             {copied[path] ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            <span className="ml-1 hidden sm:inline">{copied[path] ? "已复制" : "复制"}</span>
+            <span className="ml-1 hidden sm:inline">{copied[path] ? t("copied") : t("copy")}</span>
           </Button>
         </div>
       </div>
@@ -130,7 +136,7 @@ function JsonTreeNode({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))] px-3 py-2.5 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(2,6,23,0.82))]">
+      <div className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -138,7 +144,7 @@ function JsonTreeNode({
             size="sm"
             className="h-8 rounded-full px-2.5 font-mono text-xs"
             onClick={() => onToggle(path)}
-            aria-label={`${collapsed ? "展开" : "折叠"} ${label}`}
+            aria-label={(collapsed ? t("expandAria") : t("collapseAria")).replace("{label}", label)}
           >
             {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             <span className="ml-1 font-semibold">{label}</span>
@@ -147,7 +153,7 @@ function JsonTreeNode({
             {typeLabel}
           </Badge>
           <Badge variant="secondary" className="rounded-full px-2 py-0 font-mono text-[11px]">
-            {getNodeSummary(value)}
+            {getNodeSummary(value, t)}
           </Badge>
           <div className="ml-auto">
             <Button
@@ -156,22 +162,22 @@ function JsonTreeNode({
               size="sm"
               className="h-8 rounded-full px-2.5 text-xs"
               onClick={() => onCopy(nodeCopyText, path)}
-              aria-label={`复制节点 ${label}`}
+              aria-label={t("copyNodeAria").replace("{label}", label)}
             >
               {copied[path] ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              <span className="ml-1 hidden sm:inline">{copied[path] ? "已复制" : "复制节点"}</span>
+              <span className="ml-1 hidden sm:inline">{copied[path] ? t("copied") : t("copyNode")}</span>
             </Button>
           </div>
         </div>
 
         {collapsed ? (
-          <div className="mt-2 rounded-xl bg-slate-100/80 px-3 py-2 font-mono text-xs text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+          <div className="mt-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] px-3 py-2 font-mono text-xs text-[var(--md-sys-color-on-surface-variant)]">
             {Array.isArray(value) ? "[ ... ]" : "{ ... }"}
           </div>
         ) : (
           <div
             className={cn(
-              "mt-3 space-y-3 border-l border-dashed border-slate-300/90 pl-4 dark:border-slate-700/90",
+              "mt-3 space-y-3 border-l border-dashed border-[var(--md-sys-color-outline-variant)] pl-4",
               depth === 0 && "pl-3 sm:pl-4",
             )}
           >
@@ -186,6 +192,7 @@ function JsonTreeNode({
                 onCopy={onCopy}
                 onToggle={onToggle}
                 path={`${path}.${childKey}`}
+                t={t}
                 value={childValue}
               />
             ))}
@@ -206,13 +213,16 @@ interface JsonTreeViewProps {
 
 export function JsonTreeView({
   className,
-  emptyMessage = "输入有效 JSON 后，这里会显示可折叠、可复制的节点树。",
+  emptyMessage,
   indentSize = 2,
   jsonText,
-  rootLabel = "root",
+  rootLabel,
 }: JsonTreeViewProps) {
+  const t = useTranslations("jsonTree")
   const [copied, setCopied] = useState<Record<string, boolean>>({})
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
+  const resolvedEmptyMessage = emptyMessage ?? t("emptyMessage")
+  const resolvedRootLabel = rootLabel ?? t("root")
 
   const parsedResult = useMemo(() => {
     if (!jsonText.trim()) {
@@ -237,7 +247,8 @@ export function JsonTreeView({
   const copyToClipboard = (text: string, key = "main") => {
     if (text === undefined || text === null) return
 
-    navigator.clipboard.writeText(text).then(() => {
+    void copyTextToClipboard(text).then((success) => {
+      if (!success) return
       setCopied((prev) => ({ ...prev, [key]: true }))
 
       window.setTimeout(() => {
@@ -269,22 +280,22 @@ export function JsonTreeView({
 
   if (!parsedResult.valid) {
     return (
-      <div className={cn("rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400", className)}>
-        {emptyMessage}
+      <div className={cn("rounded-2xl border border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-6 text-sm text-[var(--md-sys-color-on-surface-variant)]", className)}>
+        {resolvedEmptyMessage}
       </div>
     )
   }
 
   const rootTypeLabel = parsedResult.parsed === null ? "null" : getNodeTypeLabel(parsedResult.parsed)
-  const rootSummary = getNodeSummary(parsedResult.parsed)
+  const rootSummary = getNodeSummary(parsedResult.parsed, t)
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="rounded-2xl border border-slate-200 bg-white/80 p-3 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950/40">
+      <div className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] p-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">节点视图</span>
+              <span className="text-sm font-semibold text-[var(--md-sys-color-on-surface)]">{t("nodeView")}</span>
               <Badge variant="secondary" className="rounded-full px-2 py-0 text-[10px] uppercase tracking-[0.12em]">
                 {rootTypeLabel}
               </Badge>
@@ -292,8 +303,8 @@ export function JsonTreeView({
                 {rootSummary}
               </Badge>
             </div>
-            <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-              支持逐层展开、整树折叠，以及按节点复制内容。
+            <p className="text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">
+              {t("description")}
             </p>
           </div>
 
@@ -305,29 +316,30 @@ export function JsonTreeView({
               onClick={() => copyToClipboard(JSON.stringify(parsedResult.parsed, null, indentSize), "tree-all")}
             >
               {copied["tree-all"] ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-              {copied["tree-all"] ? "已复制" : "复制全部"}
+              {copied["tree-all"] ? t("copied") : t("copyAll")}
             </Button>
             <Button variant="outline" size="sm" className="rounded-full" onClick={expandAllNodes}>
               <ChevronDown className="h-4 w-4 mr-1" />
-              展开全部
+              {t("expandAll")}
             </Button>
             <Button variant="outline" size="sm" className="rounded-full" onClick={collapseAllNodes}>
               <ChevronRight className="h-4 w-4 mr-1" />
-              折叠全部
+              {t("collapseAll")}
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-h-[36rem] overflow-auto rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-950/40">
+      <div className="max-h-[36rem] overflow-auto rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3 sm:p-4">
         <JsonTreeNode
           copied={copied}
           indentText={indentSize}
           isCollapsed={(path) => collapsedPaths.has(path)}
-          label={rootLabel}
+          label={resolvedRootLabel}
           onCopy={copyToClipboard}
           onToggle={toggleNodeCollapse}
           path="root"
+          t={t}
           value={parsedResult.parsed}
         />
       </div>

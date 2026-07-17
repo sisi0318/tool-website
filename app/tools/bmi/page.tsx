@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { AlertTriangle, Calculator, Info, RotateCcw } from "lucide-react"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Slider } from "@/components/ui/slider"
@@ -8,81 +10,82 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, Calculator, Info, RotateCcw } from "lucide-react"
 import { calculateImperialBmi, calculateMetricBmi, clampFiniteNumber } from "@/lib/bmi-tools"
+import { useTranslations } from "@/hooks/use-translations"
+
+type BmiCategoryKey = "underweight" | "normal" | "overweight" | "obese1" | "obese2" | "obese3"
+
+interface BmiCategory {
+  key: BmiCategoryKey
+  maximum: number
+  range: string
+  tone: string
+  containerTone: string
+}
+
+const BMI_CATEGORIES: readonly BmiCategory[] = [
+  {
+    key: "underweight",
+    maximum: 18.5,
+    range: "< 18.5",
+    tone: "bg-[var(--md-sys-color-secondary)]",
+    containerTone: "bg-[var(--md-sys-color-secondary-container)]",
+  },
+  {
+    key: "normal",
+    maximum: 25,
+    range: "18.5–24.9",
+    tone: "bg-[var(--md-sys-color-tertiary)]",
+    containerTone: "bg-[var(--md-sys-color-tertiary-container)]",
+  },
+  {
+    key: "overweight",
+    maximum: 30,
+    range: "25.0–29.9",
+    tone: "bg-[var(--md-sys-color-primary)]",
+    containerTone: "bg-[var(--md-sys-color-primary-container)]",
+  },
+  {
+    key: "obese1",
+    maximum: 35,
+    range: "30.0–34.9",
+    tone: "bg-[var(--md-sys-color-error)]/55",
+    containerTone: "bg-[var(--md-sys-color-error-container)]/55",
+  },
+  {
+    key: "obese2",
+    maximum: 40,
+    range: "35.0–39.9",
+    tone: "bg-[var(--md-sys-color-error)]/75",
+    containerTone: "bg-[var(--md-sys-color-error-container)]/75",
+  },
+  {
+    key: "obese3",
+    maximum: Number.POSITIVE_INFINITY,
+    range: "≥ 40.0",
+    tone: "bg-[var(--md-sys-color-error)]",
+    containerTone: "bg-[var(--md-sys-color-error-container)]",
+  },
+]
+
+function getBmiCategory(bmi: number): BmiCategory {
+  return BMI_CATEGORIES.find((category) => bmi < category.maximum) ?? BMI_CATEGORIES.at(-1)!
+}
 
 export default function BMICalculator() {
+  const t = useTranslations("bmi")
   const [activeTab, setActiveTab] = useState("metric")
-
-  // 公制单位
   const [heightCm, setHeightCm] = useState(170)
   const [weightKg, setWeightKg] = useState(70)
-
-  // 英制单位
   const [heightFt, setHeightFt] = useState(5)
   const [heightIn, setHeightIn] = useState(7)
   const [weightLbs, setWeightLbs] = useState(154)
 
-  const bmi = activeTab === "metric"
-    ? calculateMetricBmi(heightCm, weightKg)
-    : calculateImperialBmi(heightFt, heightIn, weightLbs)
-
-  // BMI分类和颜色
-  let category = ""
-  let color = ""
-  let categoryDesc = ""
-
-  if (bmi < 18.5) {
-    category = "体重过轻"
-    color = "text-blue-500"
-    categoryDesc = "可能需要适当增重"
-  } else if (bmi >= 18.5 && bmi < 25) {
-    category = "正常体重"
-    color = "text-green-500"
-    categoryDesc = "保持良好的生活习惯"
-  } else if (bmi >= 25 && bmi < 30) {
-    category = "超重"
-    color = "text-yellow-500"
-    categoryDesc = "建议适当控制体重"
-  } else if (bmi >= 30 && bmi < 35) {
-    category = "肥胖 I 级"
-    color = "text-orange-500"
-    categoryDesc = "需要减重以降低健康风险"
-  } else if (bmi >= 35 && bmi < 40) {
-    category = "肥胖 II 级"
-    color = "text-red-500"
-    categoryDesc = "强烈建议寻求专业指导"
-  } else {
-    category = "肥胖 III 级"
-    color = "text-red-700"
-    categoryDesc = "需要立即寻求医疗帮助"
-  }
-
-  // 输入验证处理
-  const handleHeightCmChange = (value: number) => {
-    const validValue = clampFiniteNumber(value, 100, 250, heightCm)
-    setHeightCm(validValue)
-  }
-
-  const handleWeightKgChange = (value: number) => {
-    const validValue = clampFiniteNumber(value, 30, 300, weightKg)
-    setWeightKg(validValue)
-  }
-
-  const handleHeightFtChange = (value: number) => {
-    const validValue = clampFiniteNumber(value, 3, 8, heightFt)
-    setHeightFt(validValue)
-  }
-
-  const handleHeightInChange = (value: number) => {
-    const validValue = clampFiniteNumber(value, 0, 11, heightIn)
-    setHeightIn(validValue)
-  }
-
-  const handleWeightLbsChange = (value: number) => {
-    const validValue = clampFiniteNumber(value, 66, 660, weightLbs)
-    setWeightLbs(validValue)
-  }
+  const bmi =
+    activeTab === "metric"
+      ? calculateMetricBmi(heightCm, weightKg)
+      : calculateImperialBmi(heightFt, heightIn, weightLbs)
+  const category = getBmiCategory(bmi)
 
   const resetValues = () => {
     setActiveTab("metric")
@@ -94,318 +97,250 @@ export default function BMICalculator() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* 页面标题 */}
-      <div className="text-center space-y-4 mb-8">
-        <h1 className="flex items-center justify-center gap-2 text-3xl font-bold text-[var(--md-sys-color-on-surface)]">
-          <Calculator className="h-8 w-8" />
-          BMI 计算器
+    <div className="container mx-auto max-w-4xl px-4 py-4 sm:py-8">
+      <div className="mb-6 space-y-2 text-center sm:mb-8">
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          <Calculator className="h-7 w-7 sm:h-8 sm:w-8" />
+          {t("title")}
         </h1>
-        <p className="text-[var(--md-sys-color-on-surface-variant)]">
-          计算您的身体质量指数 (Body Mass Index)
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("description")}
         </p>
       </div>
 
-      {/* 免责声明 */}
-      <Alert className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-900/20">
-        <AlertTriangle className="h-4 w-4 text-orange-600" />
-        <AlertDescription className="text-orange-800 dark:text-orange-200">
-          <strong>免责声明：</strong>
-          BMI仅为健康筛查工具，不能作为疾病诊断依据。它不能区分肌肉和脂肪重量，也不适用于孕妇、儿童、老年人或运动员。
-          如有健康问题，请咨询专业医疗人员。
+      <Alert className="mb-6 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+        <AlertTriangle className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+        <AlertDescription className="text-[var(--md-sys-color-on-surface-variant)]">
+          <strong className="text-[var(--md-sys-color-on-surface)]">{t("disclaimerTitle")}: </strong>
+          {t("disclaimer")}
         </AlertDescription>
       </Alert>
 
       <Card className="card-elevated mb-6">
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>身体数据输入</CardTitle>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardTitle>{t("bodyData")}</CardTitle>
           <Button variant="ghost" size="sm" onClick={resetValues}>
             <RotateCcw className="mr-2 h-4 w-4" />
-            恢复默认值
+            {t("reset")}
           </Button>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="metric">公制 (cm/kg)</TabsTrigger>
-              <TabsTrigger value="imperial">英制 (ft/lbs)</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6 grid w-full grid-cols-2">
+              <TabsTrigger value="metric">{t("metric")} (cm/kg)</TabsTrigger>
+              <TabsTrigger value="imperial">{t("imperial")} (ft/lb)</TabsTrigger>
             </TabsList>
 
             <TabsContent value="metric" className="space-y-6">
-              <div className="space-y-4">
-                {/* 身高 - 公制 */}
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <Label htmlFor="height-cm">身高 (cm)</Label>
-                    <span className="font-medium">{heightCm} cm</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      id="height-cm"
-                      min={100}
-                      max={250}
-                      step={1}
-                      value={[heightCm]}
-                      onValueChange={(value) => handleHeightCmChange(value[0])}
-                      className="flex-1"
-                    />
-                    <Input
-                      aria-label="身高（厘米）"
-                      type="number"
-                      value={heightCm}
-                      onChange={(e) => {
-                        handleHeightCmChange(e.currentTarget.valueAsNumber)
-                      }}
-                      className="w-24"
-                      min={100}
-                      max={250}
-                    />
-                  </div>
-                </div>
-
-                {/* 体重 - 公制 */}
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <Label htmlFor="weight-kg">体重 (kg)</Label>
-                    <span className="font-medium">{weightKg} kg</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      id="weight-kg"
-                      min={30}
-                      max={300}
-                      step={0.5}
-                      value={[weightKg]}
-                      onValueChange={(value) => handleWeightKgChange(value[0])}
-                      className="flex-1"
-                    />
-                    <Input
-                      aria-label="体重（千克）"
-                      type="number"
-                      value={weightKg}
-                      onChange={(e) => {
-                        handleWeightKgChange(e.currentTarget.valueAsNumber)
-                      }}
-                      className="w-24"
-                      min={30}
-                      max={300}
-                      step={0.5}
-                    />
-                  </div>
-                </div>
-              </div>
+              <MeasurementControl
+                id="height-cm"
+                label={`${t("height")} (cm)`}
+                ariaLabel={t("heightCmAria")}
+                value={heightCm}
+                min={100}
+                max={250}
+                step={1}
+                unit="cm"
+                onValueChange={setHeightCm}
+              />
+              <MeasurementControl
+                id="weight-kg"
+                label={`${t("weight")} (kg)`}
+                ariaLabel={t("weightKgAria")}
+                value={weightKg}
+                min={30}
+                max={300}
+                step={0.5}
+                unit="kg"
+                onValueChange={setWeightKg}
+              />
             </TabsContent>
 
             <TabsContent value="imperial" className="space-y-6">
-              <div className="space-y-4">
-                {/* 身高 - 英制 */}
-                <div>
-                  <Label className="block mb-2">身高</Label>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm">英尺</span>
-                        <span className="font-medium">{heightFt} ft</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Slider
-                          aria-label="身高（英尺）"
-                          min={3}
-                          max={8}
-                          step={1}
-                          value={[heightFt]}
-                          onValueChange={(value) => handleHeightFtChange(value[0])}
-                          className="flex-1"
-                        />
-                        <Input
-                          aria-label="身高（英尺）"
-                          type="number"
-                          value={heightFt}
-                          onChange={(e) => {
-                            handleHeightFtChange(e.currentTarget.valueAsNumber)
-                          }}
-                          className="w-20"
-                          min={3}
-                          max={8}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm">英寸</span>
-                        <span className="font-medium">{heightIn} in</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Slider
-                          aria-label="身高（英寸）"
-                          min={0}
-                          max={11}
-                          step={1}
-                          value={[heightIn]}
-                          onValueChange={(value) => handleHeightInChange(value[0])}
-                          className="flex-1"
-                        />
-                        <Input
-                          aria-label="身高（英寸）"
-                          type="number"
-                          value={heightIn}
-                          onChange={(e) => {
-                            handleHeightInChange(e.currentTarget.valueAsNumber)
-                          }}
-                          className="w-20"
-                          min={0}
-                          max={11}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 体重 - 英制 */}
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <Label htmlFor="weight-lbs">体重 (lbs)</Label>
-                    <span className="font-medium">{weightLbs} lbs</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      id="weight-lbs"
-                      min={66}
-                      max={660}
-                      step={1}
-                      value={[weightLbs]}
-                      onValueChange={(value) => handleWeightLbsChange(value[0])}
-                      className="flex-1"
-                    />
-                    <Input
-                      aria-label="体重（磅）"
-                      type="number"
-                      value={weightLbs}
-                      onChange={(e) => {
-                        handleWeightLbsChange(e.currentTarget.valueAsNumber)
-                      }}
-                      className="w-24"
-                      min={66}
-                      max={660}
-                    />
-                  </div>
+              <div>
+                <Label className="mb-3 block">{t("height")}</Label>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <MeasurementControl
+                    id="height-feet"
+                    label={t("feet")}
+                    ariaLabel={t("heightFeetAria")}
+                    value={heightFt}
+                    min={3}
+                    max={8}
+                    step={1}
+                    unit="ft"
+                    onValueChange={setHeightFt}
+                  />
+                  <MeasurementControl
+                    id="height-inches"
+                    label={t("inches")}
+                    ariaLabel={t("heightInchesAria")}
+                    value={heightIn}
+                    min={0}
+                    max={11}
+                    step={1}
+                    unit="in"
+                    onValueChange={setHeightIn}
+                  />
                 </div>
               </div>
+              <MeasurementControl
+                id="weight-pounds"
+                label={`${t("weight")} (lb)`}
+                ariaLabel={t("weightPoundsAria")}
+                value={weightLbs}
+                min={66}
+                max={660}
+                step={1}
+                unit="lb"
+                onValueChange={setWeightLbs}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
-      {/* BMI 结果 */}
       <Card className="card-elevated">
         <CardHeader>
-          <CardTitle>BMI 计算结果</CardTitle>
+          <CardTitle>{t("resultTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* BMI 数值显示 */}
-          <div className="text-center mb-6">
-            <div className="text-5xl font-bold mb-2">{bmi}</div>
-            <div className={`text-xl font-medium ${color} mb-1`}>{category}</div>
-            <div className="text-gray-600 dark:text-gray-400">{categoryDesc}</div>
+          <div className="mb-6 text-center" aria-live="polite">
+            <div className="mb-2 text-5xl font-bold text-[var(--md-sys-color-on-surface)]">{bmi}</div>
+            <div className="mb-1 text-xl font-medium text-[var(--md-sys-color-primary)]">
+              {t(category.key)}
+            </div>
+            <div className="text-[var(--md-sys-color-on-surface-variant)]">
+              {t(`categoryDescriptions.${category.key}`)}
+            </div>
           </div>
 
-          {/* BMI 量表 */}
           <div className="mb-6">
-            <div className="relative h-8 rounded-full overflow-hidden flex mb-3">
-              <div className="bg-blue-500 flex-1" title="体重过轻 (< 18.5)"></div>
-              <div className="bg-green-500 flex-1" title="正常体重 (18.5-24.9)"></div>
-              <div className="bg-yellow-500 flex-1" title="超重 (25-29.9)"></div>
-              <div className="bg-orange-500 flex-1" title="肥胖 I 级 (30-34.9)"></div>
-              <div className="bg-red-500 flex-1" title="肥胖 II 级 (35-39.9)"></div>
-              <div className="bg-red-700 flex-1" title="肥胖 III 级 (≥ 40)"></div>
-
-              {/* BMI 指示器 */}
+            <div className="relative mb-3 flex h-8 overflow-hidden rounded-full">
+              {BMI_CATEGORIES.map((item) => (
+                <div
+                  key={item.key}
+                  className={`flex-1 ${item.tone}`}
+                  title={`${t(item.key)} (${item.range})`}
+                />
+              ))}
               {bmi > 0 && (
                 <div
-                  className="absolute top-0 w-2 h-8 bg-white border-2 border-gray-800 dark:border-white rounded-sm"
-                  style={{
-                    left: `${Math.min(Math.max(((bmi - 15) / 35) * 100, 0), 100)}%`,
-                    transform: "translateX(-50%)",
-                  }}
-                ></div>
+                  className="absolute top-0 h-8 w-2 -translate-x-1/2 rounded-sm border-2 border-[var(--md-sys-color-on-surface)] bg-[var(--md-sys-color-surface)]"
+                  style={{ left: `${Math.min(Math.max(((bmi - 15) / 35) * 100, 0), 100)}%` }}
+                  aria-hidden="true"
+                />
               )}
             </div>
-
-            <div className="flex text-xs justify-between text-gray-500 px-1">
-              <span>15</span>
-              <span>18.5</span>
-              <span>25</span>
-              <span>30</span>
-              <span>35</span>
-              <span>40</span>
-              <span>50</span>
+            <div className="flex justify-between px-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              {["15", "18.5", "25", "30", "35", "40", "50"].map((value) => (
+                <span key={value}>{value}</span>
+              ))}
             </div>
           </div>
 
-          {/* BMI 分类说明 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div className="flex items-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-              <div className="w-4 h-4 rounded-full bg-blue-500 mr-3"></div>
-              <div>
-                <div className="font-medium text-sm">体重过轻</div>
-                <div className="text-xs text-gray-500">&lt; 18.5</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {BMI_CATEGORIES.map((item) => (
+              <div
+                key={item.key}
+                className={`flex items-center rounded-xl p-3 ${item.containerTone}`}
+              >
+                <span className={`mr-3 h-4 w-4 shrink-0 rounded-full ${item.tone}`} />
+                <span>
+                  <span className="block text-sm font-medium text-[var(--md-sys-color-on-surface)]">
+                    {t(item.key)}
+                  </span>
+                  <span className="block text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    {item.range}
+                  </span>
+                </span>
               </div>
-            </div>
-            <div className="flex items-center p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
-              <div className="w-4 h-4 rounded-full bg-green-500 mr-3"></div>
-              <div>
-                <div className="font-medium text-sm">正常体重</div>
-                <div className="text-xs text-gray-500">18.5 - 24.9</div>
-              </div>
-            </div>
-            <div className="flex items-center p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
-              <div className="w-4 h-4 rounded-full bg-yellow-500 mr-3"></div>
-              <div>
-                <div className="font-medium text-sm">超重</div>
-                <div className="text-xs text-gray-500">25.0 - 29.9</div>
-              </div>
-            </div>
-            <div className="flex items-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
-              <div className="w-4 h-4 rounded-full bg-orange-500 mr-3"></div>
-              <div>
-                <div className="font-medium text-sm">肥胖 I 级</div>
-                <div className="text-xs text-gray-500">30.0 - 34.9</div>
-              </div>
-            </div>
-            <div className="flex items-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
-              <div className="w-4 h-4 rounded-full bg-red-500 mr-3"></div>
-              <div>
-                <div className="font-medium text-sm">肥胖 II 级</div>
-                <div className="text-xs text-gray-500">35.0 - 39.9</div>
-              </div>
-            </div>
-            <div className="flex items-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
-              <div className="w-4 h-4 rounded-full bg-red-700 mr-3"></div>
-              <div>
-                <div className="font-medium text-sm">肥胖 III 级</div>
-                <div className="text-xs text-gray-500">≥ 40.0</div>
-              </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* 注意事项 */}
-      <Alert className="mt-6 border-blue-200 bg-blue-50 dark:bg-blue-900/20">
-        <Info className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-800 dark:text-blue-200">
-          <div className="space-y-2">
-            <div><strong>使用说明：</strong></div>
-            <ul className="text-sm space-y-1 ml-4">
-              <li>• BMI = 体重(kg) ÷ 身高²(m²)</li>
-              <li>• 此计算器适用于18-65岁健康成年人</li>
-              <li>• 不适用于：孕妇、哺乳期妇女、儿童、运动员、老年人</li>
-              <li>• BMI不能反映体脂肪分布情况</li>
-              <li>• 如有健康疑问，请咨询医疗专业人士</li>
-            </ul>
-          </div>
+      <Alert className="mt-6 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+        <Info className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+        <AlertDescription>
+          <strong>{t("howToRead")}</strong>
+          <ul className="ml-4 mt-2 space-y-1 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+            <li>• {t("formula")}</li>
+            <li>• {t("adultUse")}</li>
+            <li>• {t("screeningNote")}</li>
+          </ul>
         </AlertDescription>
       </Alert>
+    </div>
+  )
+}
+
+interface MeasurementControlProps {
+  id: string
+  label: string
+  ariaLabel: string
+  value: number
+  min: number
+  max: number
+  step: number
+  unit: string
+  onValueChange: (value: number) => void
+}
+
+function MeasurementControl({
+  id,
+  label,
+  ariaLabel,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  onValueChange,
+}: MeasurementControlProps) {
+  const [draft, setDraft] = useState(value.toString())
+
+  useEffect(() => {
+    setDraft(value.toString())
+  }, [value])
+
+  return (
+    <div className="min-w-0">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <Label htmlFor={id}>{label}</Label>
+        <span className="shrink-0 font-medium">{value} {unit}</span>
+      </div>
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <Slider
+          min={min}
+          max={max}
+          step={step}
+          value={[value]}
+          onValueChange={(values) => onValueChange(values[0])}
+          className="min-w-0 flex-1"
+          aria-label={ariaLabel}
+        />
+        <Input
+          id={id}
+          type="text"
+          inputMode="decimal"
+          value={draft}
+          onChange={(event) => {
+            const nextDraft = event.target.value
+            setDraft(nextDraft)
+            const parsed = Number(nextDraft)
+            if (Number.isFinite(parsed) && parsed >= min && parsed <= max) onValueChange(parsed)
+          }}
+          onBlur={() => {
+            const parsed = Number(draft)
+            const nextValue = clampFiniteNumber(parsed, min, max, value)
+            onValueChange(nextValue)
+            setDraft(nextValue.toString())
+          }}
+          className="w-20 shrink-0 sm:w-24"
+          aria-label={ariaLabel}
+        />
+      </div>
     </div>
   )
 }

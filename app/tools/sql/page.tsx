@@ -30,9 +30,9 @@ export default function SqlPage() {
     try {
       setOutput(processSql(input, operation, { language: dialect, keywordCase: "upper", tabWidth: 2 }))
       setError("")
-    } catch (cause) {
+    } catch {
       setOutput("")
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     }
   }
 

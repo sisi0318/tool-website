@@ -23,10 +23,10 @@ export default function SubnetPage() {
       setResult(next)
       setOutput(JSON.stringify(next, null, 2))
       setError("")
-    } catch (cause) {
+    } catch {
       setResult(null)
       setOutput("")
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     }
   }
 
@@ -64,7 +64,7 @@ export default function SubnetPage() {
               <strong className="mt-1 block break-all font-mono">{value}</strong>
             </div>
           ))}
-          {result.contains !== undefined && <div className={`rounded-xl p-3 font-medium sm:col-span-2 ${result.contains ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-700 dark:text-red-300"}`}>{result.contains ? t("inside") : t("outside")}</div>}
+          {result.contains !== undefined && <div className={`rounded-xl p-3 font-medium sm:col-span-2 ${result.contains ? "bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]" : "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]"}`}>{result.contains ? t("inside") : t("outside")}</div>}
         </div>
       )}
     />

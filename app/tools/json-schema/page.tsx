@@ -31,10 +31,10 @@ export default function JsonSchemaPage() {
       setValid(result.valid)
       setOutput(JSON.stringify(operation === "infer" ? result.schema : { valid: result.valid, errors: result.errors }, null, 2))
       setError("")
-    } catch (cause) {
+    } catch {
       setOutput("")
       setValid(false)
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     }
   }
 
@@ -62,7 +62,7 @@ export default function JsonSchemaPage() {
         </div>
       ) : undefined}
       footer={valid !== null && (
-        <div className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium ${valid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-700 dark:text-red-300"}`}>
+        <div className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium ${valid ? "bg-[var(--md-sys-color-success-container)] text-[var(--md-sys-color-on-success-container)]" : "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]"}`}>
           {valid ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
           {operation === "infer" ? t("schemaGenerated") : valid ? t("valid") : t("invalid")}
         </div>

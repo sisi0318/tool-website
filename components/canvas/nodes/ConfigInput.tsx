@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { ConfigField } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
 import { SelectInput } from "./SelectInput"
@@ -24,6 +24,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
   const currentValue = String(value ?? field.defaultValue ?? "")
   const needsAutoUpdate = dynamicOpts && dynamicOpts.length > 0 && !dynamicOpts.some(opt => opt.value === currentValue)
   const effectiveValue = needsAutoUpdate && dynamicOpts ? dynamicOpts[0].value : currentValue
+  const [fileError, setFileError] = useState("")
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
@@ -131,21 +132,30 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
   if (field.dataType === "bytes") {
     const MAX_FILE_SIZE = 50 * 1024 * 1024
     return (
-      <input
-        type="file"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file && file.size > MAX_FILE_SIZE) {
-            alert(t("fileTooLarge").replace("{size}", (file.size / 1024 / 1024).toFixed(1)))
-            e.target.value = ""
-            return
-          }
-          onChange(file ?? null)
-        }}
-        disabled={disabled}
-        aria-label={field.name}
-        className="w-full text-[10px] disabled:opacity-50"
-      />
+      <div className="space-y-1">
+        <input
+          type="file"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file && file.size > MAX_FILE_SIZE) {
+              setFileError(t("fileTooLarge").replace("{size}", (file.size / 1024 / 1024).toFixed(1)))
+              e.target.value = ""
+              return
+            }
+            setFileError("")
+            onChange(file ?? null)
+          }}
+          disabled={disabled}
+          aria-label={field.name}
+          aria-describedby={fileError ? `${field.name}-file-error` : undefined}
+          className="w-full text-[10px] disabled:opacity-50"
+        />
+        {fileError && (
+          <p id={`${field.name}-file-error`} role="alert" className="text-[10px] text-md-error">
+            {fileError}
+          </p>
+        )}
+      </div>
     )
   }
 

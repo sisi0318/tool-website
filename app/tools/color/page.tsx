@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import type React from "react"
 
 import { useState, useEffect, useRef, useMemo } from "react"
@@ -200,7 +202,7 @@ export default function ColorPickerPage() {
   ])
   const [recentColors, setRecentColors] = useState<string[]>([])
 
-  const copyTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({})
+  const copyTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   // Find the closest named color
   // Pre-compute RGB values for all named colors (only once)
@@ -585,7 +587,8 @@ export default function ColorPickerPage() {
     const value = formats[index].value
     if (!value) return
 
-    navigator.clipboard.writeText(value).then(() => {
+    void copyTextToClipboard(value).then((success) => {
+      if (!success) return
       const newFormats = [...formats]
       newFormats[index].copied = true
       setFormats(newFormats)

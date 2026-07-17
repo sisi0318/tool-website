@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
 import { inspectCryptoMaterial } from "@/lib/certificate-tools"
 import { bytesToBase64 } from "@/lib/compression"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
 
 const SAMPLE = JSON.stringify({ kty: "EC", crv: "P-256", kid: "signing-key", use: "sig", alg: "ES256", x: "f83OJ3D2xF4", y: "x_FEzRu9m36" }, null, 2)
 
@@ -23,19 +28,28 @@ export default function CertificatePage() {
     try {
       setOutput(JSON.stringify(await inspectCryptoMaterial(input), null, 2))
       setError("")
-    } catch (cause) {
+    } catch {
       setOutput("")
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     } finally {
       setRunning(false)
     }
   }
 
   const loadFile = async (file: File) => {
+    if (!isFileWithinLimit(file, FILE_SIZE_LIMITS.certificate)) {
+      setError(t("fileTooLarge").replace(
+        "{size}",
+        formatFileSizeLimit(FILE_SIZE_LIMITS.certificate),
+      ))
+      return
+    }
+
     const bytes = new Uint8Array(await file.arrayBuffer())
     const isText = /(?:pem|crt|cer|csr|key|json|jwk|txt)$/i.test(file.name)
     setInput(isText ? new TextDecoder().decode(bytes) : bytesToBase64(bytes))
     setOutput("")
+    setError("")
   }
 
   return (

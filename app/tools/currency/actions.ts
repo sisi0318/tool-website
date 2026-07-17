@@ -10,7 +10,10 @@ interface ExchangeRateResponse {
 const CACHE_TTL_SECONDS = 8 * 60 * 60
 
 // 从ExchangeRate-API获取汇率数据
-async function fetchExchangeRates(baseCurrency = "USD"): Promise<ExchangeRateResponse> {
+async function fetchExchangeRates(
+  baseCurrency = "USD",
+  forceRefresh = false,
+): Promise<ExchangeRateResponse> {
   const normalizedCurrency = baseCurrency.trim().toUpperCase()
   if (!/^[A-Z]{3}$/.test(normalizedCurrency)) {
     throw new Error("Invalid base currency")
@@ -20,7 +23,9 @@ async function fetchExchangeRates(baseCurrency = "USD"): Promise<ExchangeRateRes
     // 汇率是公开、无用户态的数据。Next 按完整 URL 隔离缓存，并在 8 小时后重新验证。
     const response = await fetch(
       `https://open.er-api.com/v6/latest/${encodeURIComponent(normalizedCurrency)}`,
-      { next: { revalidate: CACHE_TTL_SECONDS } },
+      forceRefresh
+        ? { cache: "no-store" }
+        : { next: { revalidate: CACHE_TTL_SECONDS } },
     )
 
     if (!response.ok) {
@@ -35,10 +40,10 @@ async function fetchExchangeRates(baseCurrency = "USD"): Promise<ExchangeRateRes
 }
 
 // 获取完整的汇率表
-export async function getAllExchangeRates() {
+export async function getAllExchangeRates(forceRefresh = false) {
   try {
     // 使用USD作为基础货币获取所有汇率
-    const data = await fetchExchangeRates("USD")
+    const data = await fetchExchangeRates("USD", forceRefresh)
 
     if (data.result !== "success") {
       throw new Error(`API error: ${data.error || "Unknown error"}`)

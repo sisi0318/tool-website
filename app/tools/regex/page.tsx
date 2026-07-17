@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,11 +17,12 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslations } from "@/hooks/use-translations"
 import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
 import { downloadBlob } from "@/lib/object-url"
 import { 
   Search, Replace, Copy, Download, Upload, History, 
-  Play, Pause, RotateCcw, Settings, BookOpen, 
+  RotateCcw, Settings, BookOpen,
   Zap, Target, Code, FileText, CheckCircle2, 
   AlertTriangle, Info, Clock, Hash, Eye, 
   ChevronDown, ChevronUp, Lightbulb, TestTube2
@@ -42,14 +45,11 @@ interface RegexFlags {
   sticky: boolean
 }
 
-interface TestCase {
-  id: string
-  name: string
+interface RegexExample {
+  id: "email" | "phone" | "idCard" | "url" | "ipv4" | "date" | "password" | "han" | "html" | "json"
   pattern: string
   text: string
   flags: RegexFlags
-  expectedMatches: number
-  description?: string
 }
 
 interface RegexHistory {
@@ -60,8 +60,172 @@ interface RegexHistory {
   matchCount: number
 }
 
+const FLAG_OPTIONS: Array<{ key: keyof RegexFlags; flag: string; labelKey: string }> = [
+  { key: "global", flag: "g", labelKey: "flags.global" },
+  { key: "ignoreCase", flag: "i", labelKey: "flags.caseInsensitive" },
+  { key: "multiline", flag: "m", labelKey: "flags.multiline" },
+  { key: "dotAll", flag: "s", labelKey: "flags.dotAll" },
+  { key: "unicode", flag: "u", labelKey: "flags.unicode" },
+  { key: "sticky", flag: "y", labelKey: "flags.sticky" },
+]
+
+const REGEX_EXAMPLES: RegexExample[] = [
+  {
+    id: "email",
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+    text: "test@example.com\ninvalid-email\nuser.name@domain.co.uk\njohn.doe@company.org",
+    flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "phone",
+    pattern: "^1[3-9]\\d{9}$",
+    text: "13812345678\n12345678901\n15987654321\n18123456789",
+    flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "idCard",
+    pattern: "^\\d{17}[0-9Xx]$",
+    text: "110101199003077071\n32052119900307707X\n123456789012345678\n110101990030770711",
+    flags: { global: true, ignoreCase: true, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "url",
+    pattern: "https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)",
+    text: "https://example.com\nhttp://subdomain.example.co.uk/path?query=value\nhttps://github.com/user/repo\nNot a URL",
+    flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "ipv4",
+    pattern: "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+    text: "192.168.1.1\n255.255.255.255\n192.168.1.300\n192.168.1\n127.0.0.1",
+    flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "date",
+    pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+    text: "2023-01-31\n2023-13-01\n2023-02-29\n01/31/2023\n2023-12-25",
+    flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "password",
+    pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+    text: "Passw0rd!\npassword\nPassword\nPassword1\nMyStr0ng#Pass",
+    flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "han",
+    pattern: "[\\u4e00-\\u9fa5]+",
+    text: "Hello 世界\n中文字符串\nEnglish Text\n测试123Test",
+    flags: { global: true, ignoreCase: false, multiline: false, dotAll: false, unicode: true, sticky: false },
+  },
+  {
+    id: "html",
+    pattern: "<\\/?[\\w\\s]*>|<.+[\\W]>",
+    text: "<div>content</div>\n<p class=\"text\">paragraph</p>\n<br/>\n<img src=\"image.jpg\" alt=\"test\">",
+    flags: { global: true, ignoreCase: true, multiline: true, dotAll: false, unicode: false, sticky: false },
+  },
+  {
+    id: "json",
+    pattern: '"[^"]*"',
+    text: '{"name": "John", "age": 30, "city": "New York"}\n"hello world"\n\'single quotes\'',
+    flags: { global: true, ignoreCase: false, multiline: false, dotAll: false, unicode: false, sticky: false },
+  },
+]
+
+const REPLACEMENT_HELP = [
+  { pattern: "$&", descriptionKey: "replacementHelp.fullMatch" },
+  { pattern: "$1, $2, ...", descriptionKey: "replacementHelp.captureReference" },
+  { pattern: "$`", descriptionKey: "replacementHelp.beforeMatch" },
+  { pattern: "$'", descriptionKey: "replacementHelp.afterMatch" },
+  { pattern: "$$", descriptionKey: "replacementHelp.literalDollar" },
+  { pattern: "\\n", descriptionKey: "replacementHelp.newline" },
+]
+
+const REFERENCE_SECTIONS = [
+  {
+    titleKey: "cheatsheet.characterClasses",
+    items: [
+      [".", "cheatsheet.anyChar"],
+      ["\\d", "cheatsheet.digit"],
+      ["\\D", "cheatsheet.nonDigit"],
+      ["\\w", "cheatsheet.wordChar"],
+      ["\\W", "cheatsheet.nonWordChar"],
+      ["\\s", "cheatsheet.whitespace"],
+      ["\\S", "cheatsheet.nonWhitespace"],
+      ["[abc]", "cheatsheet.anyOfChars"],
+      ["[^abc]", "cheatsheet.notChars"],
+      ["[a-z]", "cheatsheet.lowercaseRange"],
+      ["[A-Z]", "cheatsheet.uppercaseRange"],
+      ["[0-9]", "cheatsheet.numericRange"],
+    ],
+  },
+  {
+    titleKey: "cheatsheet.quantifiers",
+    items: [
+      ["*", "cheatsheet.zeroOrMore"],
+      ["+", "cheatsheet.oneOrMore"],
+      ["?", "cheatsheet.zeroOrOne"],
+      ["{n}", "cheatsheet.exactlyN"],
+      ["{n,}", "cheatsheet.nOrMore"],
+      ["{n,m}", "cheatsheet.betweenNAndM"],
+      ["*?", "cheatsheet.lazyZeroOrMore"],
+      ["+?", "cheatsheet.lazyOneOrMore"],
+      ["??", "cheatsheet.lazyZeroOrOne"],
+    ],
+  },
+  {
+    titleKey: "cheatsheet.anchors",
+    items: [
+      ["^", "cheatsheet.startOfLine"],
+      ["$", "cheatsheet.endOfLine"],
+      ["\\b", "cheatsheet.wordBoundary"],
+      ["\\B", "cheatsheet.nonWordBoundary"],
+      ["\\A", "cheatsheet.startOfString"],
+      ["\\Z", "cheatsheet.endOfString"],
+    ],
+  },
+  {
+    titleKey: "cheatsheet.groups",
+    items: [
+      ["(abc)", "cheatsheet.captureGroup"],
+      ["(?:abc)", "cheatsheet.nonCaptureGroup"],
+      ["(?<name>abc)", "cheatsheet.namedCaptureGroup"],
+      ["\\1", "cheatsheet.backreference"],
+      ["(?=abc)", "cheatsheet.positiveLookahead"],
+      ["(?!abc)", "cheatsheet.negativeLookahead"],
+      ["(?<=abc)", "cheatsheet.positiveLookbehind"],
+      ["(?<!abc)", "cheatsheet.negativeLookbehind"],
+    ],
+  },
+  {
+    titleKey: "cheatsheet.specialCharacters",
+    items: [
+      ["\\", "cheatsheet.escapeSpecialChar"],
+      ["|", "cheatsheet.alternation"],
+      ["\\n", "cheatsheet.newline"],
+      ["\\r", "cheatsheet.carriageReturn"],
+      ["\\t", "cheatsheet.tab"],
+      ["\\f", "cheatsheet.formFeed"],
+      ["\\v", "cheatsheet.verticalTab"],
+      ["\\0", "cheatsheet.nullCharacter"],
+    ],
+  },
+  {
+    titleKey: "cheatsheet.flags",
+    items: [
+      ["g", "cheatsheet.globalFlag"],
+      ["i", "cheatsheet.ignoreCaseFlag"],
+      ["m", "cheatsheet.multilineFlag"],
+      ["s", "cheatsheet.dotAllFlag"],
+      ["u", "cheatsheet.unicodeFlag"],
+      ["y", "cheatsheet.stickyFlag"],
+    ],
+  },
+] as const
+
 export default function RegexTester() {
   const { toast } = useToast()
+  const t = useTranslations("regex")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 基本状态
@@ -88,90 +252,12 @@ export default function RegexTester() {
   const [executionTime, setExecutionTime] = useState<number>(0)
 
   // 界面状态
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [showFlags, setShowFlags] = useState(true)
   const [highlightMatches, setHighlightMatches] = useState(true)
-  const [caseSensitive, setCaseSensitive] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<number | null>(null)
 
-  // 历史和测试用例
+  // 历史记录
   const [history, setHistory] = useState<RegexHistory[]>([])
-  const [testCases, setTestCases] = useState<TestCase[]>([])
-  const [showHistory, setShowHistory] = useState(false)
-
-  // 预定义示例
-  const examples = [
-    {
-      name: "邮箱验证",
-      pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-      text: "test@example.com\ninvalid-email\nuser.name@domain.co.uk\njohn.doe@company.org",
-      description: "验证邮箱地址格式",
-      flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "手机号码",
-      pattern: "^1[3-9]\\d{9}$",
-      text: "13812345678\n12345678901\n15987654321\n18123456789",
-      description: "中国大陆手机号码验证",
-      flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "身份证号",
-      pattern: "^\\d{17}[0-9Xx]$",
-      text: "110101199003077071\n32052119900307707X\n123456789012345678\n110101990030770711",
-      description: "18位身份证号码验证",
-      flags: { global: true, ignoreCase: true, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "URL链接",
-      pattern: "https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)",
-      text: "https://example.com\nhttp://subdomain.example.co.uk/path?query=value\nhttps://github.com/user/repo\nNot a URL",
-      description: "HTTP/HTTPS URL匹配",
-      flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "IP地址",
-      pattern: "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
-      text: "192.168.1.1\n255.255.255.255\n192.168.1.300\n192.168.1\n127.0.0.1",
-      description: "IPv4地址验证",
-      flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "日期格式",
-      pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
-      text: "2023-01-31\n2023-13-01\n2023-02-29\n01/31/2023\n2023-12-25",
-      description: "YYYY-MM-DD 日期格式",
-      flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "密码强度",
-      pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-      text: "Passw0rd!\npassword\nPassword\nPassword1\nMyStr0ng#Pass",
-      description: "至少8位，包含大小写字母、数字和特殊字符",
-      flags: { global: true, ignoreCase: false, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "中文字符",
-      pattern: "[\\u4e00-\\u9fa5]+",
-      text: "Hello 世界\n中文字符串\nEnglish Text\n测试123Test",
-      description: "匹配中文字符",
-      flags: { global: true, ignoreCase: false, multiline: false, dotAll: false, unicode: true, sticky: false }
-    },
-    {
-      name: "HTML标签",
-      pattern: "<\\/?[\\w\\s]*>|<.+[\\W]>",
-      text: "<div>content</div>\n<p class=\"text\">paragraph</p>\n<br/>\n<img src=\"image.jpg\" alt=\"test\">",
-      description: "匹配HTML标签",
-      flags: { global: true, ignoreCase: true, multiline: true, dotAll: false, unicode: false, sticky: false }
-    },
-    {
-      name: "JSON字符串",
-      pattern: '"[^"]*"',
-      text: '{"name": "John", "age": 30, "city": "New York"}\n"hello world"\n\'single quotes\'',
-      description: "匹配JSON中的字符串值",
-      flags: { global: true, ignoreCase: false, multiline: false, dotAll: false, unicode: false, sticky: false }
-    }
-  ]
 
   // 生成标志字符串
   const getFlagsString = useCallback(() => {
@@ -224,7 +310,7 @@ export default function RegexTester() {
         }
 
         if (iterationCount >= maxIterations) {
-          setError("正则表达式执行次数过多，可能存在无限循环")
+          setError(t("iterationLimit"))
           setIsValid(false)
           return
         }
@@ -253,7 +339,7 @@ export default function RegexTester() {
       setError(errorMessage)
       setIsValid(false)
     }
-  }, [pattern, testText, flags, getFlagsString])
+  }, [pattern, testText, flags, getFlagsString, t])
 
   // 执行替换
   const performReplace = useCallback(() => {
@@ -268,9 +354,9 @@ export default function RegexTester() {
       const result = testText.replace(regex, replaceText)
       setReplaceResult(result)
     } catch (err) {
-      setReplaceResult("替换失败: " + (err as Error).message)
+      setReplaceResult(`${t("replaceFailed")}: ${(err as Error).message}`)
     }
-  }, [pattern, testText, replaceText, getFlagsString])
+  }, [pattern, testText, replaceText, getFlagsString, t])
 
   // 添加到历史记录
   const addToHistory = useCallback((pattern: string, flags: string, matchCount: number) => {
@@ -312,24 +398,26 @@ export default function RegexTester() {
   }, [pattern, testText, replaceText, flags])
 
   // 加载示例
-  const loadExample = useCallback((example: typeof examples[0]) => {
+  const loadExample = useCallback((example: RegexExample) => {
     setPattern(example.pattern)
     setTestText(example.text.replace(/\\n/g, "\n"))
     setFlags(example.flags)
     toast({
-      title: "示例已加载",
-      description: example.name,
+      title: t("exampleLoaded"),
+      description: t(`examples.${example.id}`),
     })
-  }, [toast])
+  }, [t, toast])
 
   // 复制功能
   const copyToClipboard = useCallback((text: string, label: string) => {
-    navigator.clipboard.writeText(text)
-    toast({
-      title: "已复制",
-      description: `${label}已复制到剪贴板`,
+    void writeClipboardText(text).then((success) => {
+      toast({
+        title: success ? t("copied") : t("copyFailed"),
+        description: success ? t("copiedDescription").replace("{label}", label) : undefined,
+        variant: success ? "default" : "destructive",
+      })
     })
-  }, [toast])
+  }, [t, toast])
 
   // 导出测试用例
   const exportTestCase = useCallback(() => {
@@ -348,10 +436,10 @@ export default function RegexTester() {
     )
     
     toast({
-      title: "导出成功",
-      description: "测试用例已导出为JSON文件",
+      title: t("exportSuccess"),
+      description: t("exportSuccessDescription"),
     })
-  }, [pattern, testText, flags, replaceText, matches, toast])
+  }, [pattern, testText, flags, replaceText, matches, t, toast])
 
   // 导入测试用例
   const importTestCase = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -368,19 +456,21 @@ export default function RegexTester() {
         setReplaceText(testCase.replaceText || "")
         
         toast({
-          title: "导入成功",
-          description: "测试用例已导入",
+          title: t("importSuccess"),
+          description: t("importSuccessDescription"),
         })
       } catch (err) {
         toast({
-          title: "导入失败",
-          description: "文件格式不正确",
+          title: t("importFailed"),
+          description: t("invalidFileFormat"),
           variant: "destructive"
         })
+      } finally {
+        event.target.value = ""
       }
     }
     reader.readAsText(file)
-  }, [flags, toast])
+  }, [flags, t, toast])
 
   // 清空所有内容
   const clearAll = useCallback(() => {
@@ -395,15 +485,15 @@ export default function RegexTester() {
 
   return (
     <TooltipProvider>
-      <div className="container mx-auto py-6 px-4 max-w-7xl">
+      <div className="container mx-auto max-w-7xl px-3 py-6 sm:px-4">
         {/* 页面标题 */}
         <div className="text-center space-y-4 mb-8">
-          <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-            <Search className="h-8 w-8 text-blue-500" />
-            正则表达式测试工具
+          <h1 className="flex items-center justify-center gap-2 text-2xl font-bold sm:text-3xl">
+            <Search className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
+            {t("title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            强大的正则表达式测试、匹配、替换和学习工具
+          <p className="mx-auto max-w-2xl text-[var(--md-sys-color-on-surface-variant)]">
+            {t("description")}
           </p>
         </div>
 
@@ -411,23 +501,23 @@ export default function RegexTester() {
           <TabsList className="mb-6 grid h-auto w-full grid-cols-3 gap-1 p-1 sm:grid-cols-5">
             <TabsTrigger value="tester" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
               <TestTube2 className="hidden h-4 w-4 sm:block" />
-              测试器
+              {t("tabs.tester")}
             </TabsTrigger>
             <TabsTrigger value="replace" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
               <Replace className="hidden h-4 w-4 sm:block" />
-              替换器
+              {t("tabs.replace")}
             </TabsTrigger>
             <TabsTrigger value="examples" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
               <BookOpen className="hidden h-4 w-4 sm:block" />
-              示例库
+              {t("tabs.examples")}
             </TabsTrigger>
             <TabsTrigger value="reference" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
               <Code className="hidden h-4 w-4 sm:block" />
-              语法参考
+              {t("tabs.reference")}
             </TabsTrigger>
             <TabsTrigger value="tools" className="flex min-h-10 items-center justify-center gap-1 px-1 text-xs sm:gap-2 sm:px-3 sm:text-sm">
               <Settings className="hidden h-4 w-4 sm:block" />
-              工具箱
+              {t("tabs.tools")}
             </TabsTrigger>
           </TabsList>
 
@@ -442,7 +532,7 @@ export default function RegexTester() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
                         <Target className="h-5 w-5" />
-                        正则表达式
+                        {t("pattern")}
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <Tooltip>
@@ -451,15 +541,15 @@ export default function RegexTester() {
                               <RotateCcw className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>清空所有内容</TooltipContent>
+                          <TooltipContent>{t("clearAll")}</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(pattern, "正则表达式")}>
+                            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(pattern, t("pattern"))}>
                               <Copy className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>复制正则表达式</TooltipContent>
+                          <TooltipContent>{t("copyPattern")}</TooltipContent>
                         </Tooltip>
                       </div>
                     </div>
@@ -470,8 +560,8 @@ export default function RegexTester() {
                       <Input
                         value={pattern}
                         onChange={(e) => setPattern(e.target.value)}
-                        placeholder="输入正则表达式..."
-                        className={`font-mono ${error ? 'border-red-500' : isValid ? 'border-green-500' : ''}`}
+                        placeholder={t("patternPlaceholder")}
+                        className={`font-mono ${error ? "border-[var(--md-sys-color-error)]" : pattern && isValid ? "border-[var(--md-sys-color-success)]" : ""}`}
                       />
                       <span className="text-lg font-mono">/{getFlagsString()}</span>
                     </div>
@@ -479,7 +569,7 @@ export default function RegexTester() {
                     {/* 标志位控制 */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">标志位</Label>
+                        <Label className="text-sm font-medium">{t("flagOptions")}</Label>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -490,67 +580,22 @@ export default function RegexTester() {
                       </div>
                       
                       {showFlags && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="global"
-                              checked={flags.global}
-                              onCheckedChange={(checked) => setFlags(prev => ({ ...prev, global: checked }))}
-                            />
-                            <Label htmlFor="global" className="text-sm">
-                              <span className="font-mono">g</span> 全局
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="ignoreCase"
-                              checked={flags.ignoreCase}
-                              onCheckedChange={(checked) => setFlags(prev => ({ ...prev, ignoreCase: checked }))}
-                            />
-                            <Label htmlFor="ignoreCase" className="text-sm">
-                              <span className="font-mono">i</span> 忽略大小写
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="multiline"
-                              checked={flags.multiline}
-                              onCheckedChange={(checked) => setFlags(prev => ({ ...prev, multiline: checked }))}
-                            />
-                            <Label htmlFor="multiline" className="text-sm">
-                              <span className="font-mono">m</span> 多行
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="dotAll"
-                              checked={flags.dotAll}
-                              onCheckedChange={(checked) => setFlags(prev => ({ ...prev, dotAll: checked }))}
-                            />
-                            <Label htmlFor="dotAll" className="text-sm">
-                              <span className="font-mono">s</span> 单行
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="unicode"
-                              checked={flags.unicode}
-                              onCheckedChange={(checked) => setFlags(prev => ({ ...prev, unicode: checked }))}
-                            />
-                            <Label htmlFor="unicode" className="text-sm">
-                              <span className="font-mono">u</span> Unicode
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="sticky"
-                              checked={flags.sticky}
-                              onCheckedChange={(checked) => setFlags(prev => ({ ...prev, sticky: checked }))}
-                            />
-                            <Label htmlFor="sticky" className="text-sm">
-                              <span className="font-mono">y</span> 粘性
-                            </Label>
-                          </div>
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                          {FLAG_OPTIONS.map(({ key, flag, labelKey }) => {
+                            const id = `regex-flag-${key}`
+                            return (
+                              <div key={key} className="flex items-center space-x-2">
+                                <Switch
+                                  id={id}
+                                  checked={flags[key]}
+                                  onCheckedChange={(checked) => setFlags((prev) => ({ ...prev, [key]: checked }))}
+                                />
+                                <Label htmlFor={id} className="text-sm">
+                                  <span className="font-mono">{flag}</span> {t(labelKey)}
+                                </Label>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -558,24 +603,24 @@ export default function RegexTester() {
                     {/* 状态指示器 */}
                     <div className="flex items-center gap-4 text-sm">
                       {error ? (
-                        <div className="flex items-center gap-2 text-red-500">
+                        <div className="flex items-center gap-2 text-[var(--md-sys-color-error)]">
                           <AlertTriangle className="h-4 w-4" />
-                          <span>语法错误</span>
+                          <span>{t("syntaxError")}</span>
                         </div>
                       ) : pattern ? (
-                        <div className="flex items-center gap-2 text-green-500">
+                        <div className="flex items-center gap-2 text-[var(--md-sys-color-success)]">
                           <CheckCircle2 className="h-4 w-4" />
-                          <span>语法正确</span>
+                          <span>{t("syntaxValid")}</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-gray-500">
+                        <div className="flex items-center gap-2 text-[var(--md-sys-color-on-surface-variant)]">
                           <Info className="h-4 w-4" />
-                          <span>等待输入</span>
+                          <span>{t("waitingForInput")}</span>
                         </div>
                       )}
                       
                       {executionTime > 0 && (
-                        <div className="flex items-center gap-2 text-blue-500">
+                        <div className="flex items-center gap-2 text-[var(--md-sys-color-tertiary)]">
                           <Clock className="h-4 w-4" />
                           <span>{executionTime.toFixed(2)}ms</span>
                         </div>
@@ -590,7 +635,7 @@ export default function RegexTester() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
                         <FileText className="h-5 w-5" />
-                        测试文本
+                        {t("testString")}
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <div className="flex items-center space-x-2">
@@ -599,9 +644,9 @@ export default function RegexTester() {
                             checked={highlightMatches}
                             onCheckedChange={setHighlightMatches}
                           />
-                          <Label htmlFor="highlight" className="text-sm">高亮匹配</Label>
+                          <Label htmlFor="highlight" className="text-sm">{t("highlightMatches")}</Label>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(testText, "测试文本")}>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(testText, t("testString"))}>
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
@@ -611,7 +656,7 @@ export default function RegexTester() {
                     <Textarea
                       value={testText}
                       onChange={(e) => setTestText(e.target.value)}
-                      placeholder="输入要测试的文本..."
+                      placeholder={t("testStringPlaceholder")}
                       rows={8}
                       className="font-mono"
                     />
@@ -623,7 +668,7 @@ export default function RegexTester() {
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>正则表达式错误:</strong> {error}
+                      <strong>{t("regexError")}:</strong> {error}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -636,26 +681,26 @@ export default function RegexTester() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Hash className="h-5 w-5" />
-                      匹配统计
+                      {t("matchStatistics")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{matches.length}</div>
-                        <div className="text-sm text-gray-500">匹配数量</div>
+                      <div className="rounded-xl bg-[var(--md-sys-color-primary-container)] p-3 text-center">
+                        <div className="text-2xl font-bold text-[var(--md-sys-color-on-primary-container)]">{matches.length}</div>
+                        <div className="text-sm text-[var(--md-sys-color-on-primary-container)]">{t("matchCount")}</div>
                       </div>
-                      <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">
+                      <div className="rounded-xl bg-[var(--md-sys-color-success-container)] p-3 text-center">
+                        <div className="text-2xl font-bold text-[var(--md-sys-color-on-success-container)]">
                           {testText ? Math.round((matches.length / testText.split(/\r?\n/).length) * 100) : 0}%
                         </div>
-                        <div className="text-sm text-gray-500">匹配率</div>
+                        <div className="text-sm text-[var(--md-sys-color-on-success-container)]">{t("matchRate")}</div>
                       </div>
                     </div>
 
                     {matches.length > 0 && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">匹配列表</Label>
+                        <Label className="text-sm font-medium">{t("matchList")}</Label>
                         <ScrollArea className="h-40">
                           <div className="space-y-1">
                             {matches.map((match, index) => (
@@ -663,23 +708,23 @@ export default function RegexTester() {
                                 key={index}
                                 className={`p-2 rounded border cursor-pointer transition-colors ${
                                   selectedMatch === index 
-                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                                    : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]"
+                                    : "hover:bg-[var(--md-sys-color-surface-container-low)]"
                                 }`}
                                 onClick={() => setSelectedMatch(selectedMatch === index ? null : index)}
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium">#{index + 1}</span>
                                   <Badge variant="outline" className="text-xs">
-                                    位置 {match.index}
+                                    {t("position")} {match.index}
                                   </Badge>
                                 </div>
                                 <div className="text-sm font-mono truncate mt-1">
                                   "{match.match}"
                                 </div>
                                 {match.groups.length > 0 && (
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {match.groups.length} 个捕获组
+                                  <div className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                                    {t("captureGroupCount").replace("{count}", String(match.groups.length))}
                                   </div>
                                 )}
                               </div>
@@ -695,29 +740,29 @@ export default function RegexTester() {
                 {selectedMatch !== null && matches[selectedMatch] && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">匹配详情 #{selectedMatch + 1}</CardTitle>
+                      <CardTitle className="text-lg">{t("matchDetails")} #{selectedMatch + 1}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
-                        <Label className="text-sm text-gray-500">完整匹配</Label>
-                        <div className="font-mono text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                        <Label className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("fullMatch")}</Label>
+                        <div className="rounded bg-[var(--md-sys-color-surface-container-low)] p-2 font-mono text-sm">
                           "{matches[selectedMatch].match}"
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <Label className="text-gray-500">起始位置</Label>
+                          <Label className="text-[var(--md-sys-color-on-surface-variant)]">{t("startPosition")}</Label>
                           <div className="font-medium">{matches[selectedMatch].index}</div>
                         </div>
                         <div>
-                          <Label className="text-gray-500">长度</Label>
+                          <Label className="text-[var(--md-sys-color-on-surface-variant)]">{t("length")}</Label>
                           <div className="font-medium">{matches[selectedMatch].length}</div>
                         </div>
                       </div>
                       
                       {matches[selectedMatch].groups.length > 0 && (
                         <div>
-                          <Label className="text-sm text-gray-500">捕获组</Label>
+                          <Label className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("groups")}</Label>
                           <div className="space-y-1 mt-2">
                             {matches[selectedMatch].groups.map((group, index) => (
                               <div key={index} className="flex items-center gap-2">
@@ -725,7 +770,7 @@ export default function RegexTester() {
                                   ${index + 1}
                                 </Badge>
                                 <span className="font-mono text-sm">
-                                  "{group || '<empty>'}"
+                                  "{group || t("emptyValue")}"
                                 </span>
                               </div>
                             ))}
@@ -735,7 +780,7 @@ export default function RegexTester() {
 
                       {matches[selectedMatch].namedGroups && Object.keys(matches[selectedMatch].namedGroups!).length > 0 && (
                         <div>
-                          <Label className="text-sm text-gray-500">命名捕获组</Label>
+                          <Label className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("namedGroups")}</Label>
                           <div className="space-y-1 mt-2">
                             {Object.entries(matches[selectedMatch].namedGroups!).map(([name, value]) => (
                               <div key={name} className="flex items-center gap-2">
@@ -760,11 +805,11 @@ export default function RegexTester() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Eye className="h-5 w-5" />
-                    高亮结果
+                    {t("highlightedResult")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="font-mono text-sm p-4 bg-gray-50 dark:bg-gray-800 rounded border whitespace-pre-wrap break-words">
+                  <div className="whitespace-pre-wrap break-words rounded border bg-[var(--md-sys-color-surface-container-low)] p-4 font-mono text-sm">
                     {highlightedTextSegments.map((segment, index) =>
                       segment.type === "text" ? (
                         <span key={`text-${index}`}>{segment.text}</span>
@@ -773,10 +818,12 @@ export default function RegexTester() {
                           key={`match-${segment.matchIndex}-${segment.start}`}
                           className={
                             selectedMatch === segment.matchIndex
-                              ? "cursor-pointer rounded border-2 border-blue-500 bg-blue-200 px-1 dark:bg-blue-800"
-                              : "cursor-pointer rounded bg-yellow-200 px-1 dark:bg-yellow-800"
+                              ? "cursor-pointer rounded border-2 border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)] px-1 text-[var(--md-sys-color-on-primary-container)]"
+                              : "cursor-pointer rounded bg-[var(--md-sys-color-tertiary-container)] px-1 text-[var(--md-sys-color-on-tertiary-container)]"
                           }
-                          title={`匹配 ${segment.matchIndex + 1}: 位置 ${segment.start}`}
+                          title={t("matchPosition")
+                            .replace("{match}", String(segment.matchIndex + 1))
+                            .replace("{position}", String(segment.start))}
                           onClick={() => setSelectedMatch(segment.matchIndex)}
                         >
                           {segment.text}
@@ -796,39 +843,39 @@ export default function RegexTester() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Replace className="h-5 w-5" />
-                    替换设置
+                    {t("replacementSettings")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="replace-pattern">正则表达式</Label>
+                    <Label htmlFor="replace-pattern">{t("pattern")}</Label>
                     <Input
                       id="replace-pattern"
                       value={pattern}
                       onChange={(e) => setPattern(e.target.value)}
-                      placeholder="输入正则表达式..."
+                      placeholder={t("patternPlaceholder")}
                       className="font-mono mt-1"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="replace-text">替换文本</Label>
+                    <Label htmlFor="replace-text">{t("replacementText")}</Label>
                     <Input
                       id="replace-text"
                       value={replaceText}
                       onChange={(e) => setReplaceText(e.target.value)}
-                      placeholder="输入替换文本 (支持 $1, $2 等引用捕获组)..."
+                      placeholder={t("replacementPlaceholder")}
                       className="font-mono mt-1"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="source-text">原始文本</Label>
+                    <Label htmlFor="source-text">{t("sourceText")}</Label>
                     <Textarea
                       id="source-text"
                       value={testText}
                       onChange={(e) => setTestText(e.target.value)}
-                      placeholder="输入要替换的文本..."
+                      placeholder={t("sourceTextPlaceholder")}
                       rows={6}
                       className="font-mono mt-1"
                     />
@@ -841,11 +888,11 @@ export default function RegexTester() {
                       className="flex items-center gap-2"
                     >
                       <Replace className="h-4 w-4" />
-                      执行替换
+                      {t("runReplacement")}
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => copyToClipboard(replaceResult, "替换结果")}
+                      onClick={() => copyToClipboard(replaceResult, t("replacementResult"))}
                       disabled={!replaceResult}
                     >
                       <Copy className="h-4 w-4" />
@@ -856,23 +903,23 @@ export default function RegexTester() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>替换结果</CardTitle>
+                  <CardTitle>{t("replacementResult")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Textarea
                     value={replaceResult}
                     readOnly
-                    placeholder="替换结果将在这里显示..."
+                    placeholder={t("replacementResultPlaceholder")}
                     rows={12}
                     className="font-mono"
                   />
                   
                   {replaceResult && (
-                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
-                      <div className="text-sm text-blue-800 dark:text-blue-200">
-                        <div>原始长度: {testText.length} 字符</div>
-                        <div>替换后长度: {replaceResult.length} 字符</div>
-                        <div>变化: {replaceResult.length - testText.length > 0 ? '+' : ''}{replaceResult.length - testText.length} 字符</div>
+                    <div className="mt-4 rounded-xl bg-[var(--md-sys-color-secondary-container)] p-3">
+                      <div className="text-sm text-[var(--md-sys-color-on-secondary-container)]">
+                        <div>{t("originalLength").replace("{count}", String(testText.length))}</div>
+                        <div>{t("replacedLength").replace("{count}", String(replaceResult.length))}</div>
+                        <div>{t("lengthChange").replace("{count}", `${replaceResult.length - testText.length > 0 ? "+" : ""}${replaceResult.length - testText.length}`)}</div>
                       </div>
                     </div>
                   )}
@@ -885,35 +932,17 @@ export default function RegexTester() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lightbulb className="h-5 w-5" />
-                  替换语法帮助
+                  {t("replacementSyntaxHelp")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="p-3 border rounded">
-                    <code className="text-sm">$&</code>
-                    <div className="text-sm text-gray-600 mt-1">整个匹配</div>
-                  </div>
-                  <div className="p-3 border rounded">
-                    <code className="text-sm">$1, $2, ...</code>
-                    <div className="text-sm text-gray-600 mt-1">捕获组引用</div>
-                  </div>
-                  <div className="p-3 border rounded">
-                    <code className="text-sm">$`</code>
-                    <div className="text-sm text-gray-600 mt-1">匹配前的文本</div>
-                  </div>
-                  <div className="p-3 border rounded">
-                    <code className="text-sm">$'</code>
-                    <div className="text-sm text-gray-600 mt-1">匹配后的文本</div>
-                  </div>
-                  <div className="p-3 border rounded">
-                    <code className="text-sm">$$</code>
-                    <div className="text-sm text-gray-600 mt-1">字面量 $</div>
-                  </div>
-                  <div className="p-3 border rounded">
-                    <code className="text-sm">\\n</code>
-                    <div className="text-sm text-gray-600 mt-1">换行符</div>
-                  </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {REPLACEMENT_HELP.map((item) => (
+                    <div key={item.pattern} className="rounded border p-3">
+                      <code className="text-sm">{item.pattern}</code>
+                      <div className="mt-1 text-sm text-[var(--md-sys-color-on-surface-variant)]">{t(item.descriptionKey)}</div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -922,21 +951,21 @@ export default function RegexTester() {
           {/* 示例库页面 */}
           <TabsContent value="examples" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {examples.map((example, index) => (
+              {REGEX_EXAMPLES.map((example) => (
                 <Card 
-                  key={index}
+                  key={example.id}
                   className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
                   onClick={() => loadExample(example)}
                 >
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">{example.name}</CardTitle>
+                    <CardTitle className="text-lg">{t(`examples.${example.id}`)}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                    <div className="rounded bg-[var(--md-sys-color-surface-container-low)] p-2">
                       <code className="text-xs break-all">{example.pattern}</code>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {example.description}
+                    <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                      {t(`examples.${example.id}Desc`)}
                     </p>
                     <div className="flex items-center gap-2">
                       {Object.entries(example.flags).map(([flag, enabled]) => 
@@ -960,175 +989,26 @@ export default function RegexTester() {
 
           {/* 语法参考页面 */}
           <TabsContent value="reference" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 字符类 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>字符类</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-                      { pattern: ".", desc: "匹配除换行符外的任意字符" },
-                      { pattern: "\\d", desc: "匹配数字 [0-9]" },
-                      { pattern: "\\D", desc: "匹配非数字 [^0-9]" },
-                      { pattern: "\\w", desc: "匹配单词字符 [a-zA-Z0-9_]" },
-                      { pattern: "\\W", desc: "匹配非单词字符" },
-                      { pattern: "\\s", desc: "匹配空白字符" },
-                      { pattern: "\\S", desc: "匹配非空白字符" },
-                      { pattern: "[abc]", desc: "匹配 a、b 或 c" },
-                      { pattern: "[^abc]", desc: "匹配除 a、b、c 外的字符" },
-                      { pattern: "[a-z]", desc: "匹配小写字母" },
-                      { pattern: "[A-Z]", desc: "匹配大写字母" },
-                      { pattern: "[0-9]", desc: "匹配数字" }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm min-w-16 text-center">
-                          {item.pattern}
-                        </code>
-                        <span className="text-sm">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 量词 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>量词</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-                      { pattern: "*", desc: "匹配 0 次或多次" },
-                      { pattern: "+", desc: "匹配 1 次或多次" },
-                      { pattern: "?", desc: "匹配 0 次或 1 次" },
-                      { pattern: "{n}", desc: "匹配恰好 n 次" },
-                      { pattern: "{n,}", desc: "匹配至少 n 次" },
-                      { pattern: "{n,m}", desc: "匹配 n 到 m 次" },
-                      { pattern: "*?", desc: "非贪婪匹配 0 次或多次" },
-                      { pattern: "+?", desc: "非贪婪匹配 1 次或多次" },
-                      { pattern: "??", desc: "非贪婪匹配 0 次或 1 次" }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm min-w-16 text-center">
-                          {item.pattern}
-                        </code>
-                        <span className="text-sm">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 锚点 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>锚点</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-                      { pattern: "^", desc: "行开始" },
-                      { pattern: "$", desc: "行结束" },
-                      { pattern: "\\b", desc: "单词边界" },
-                      { pattern: "\\B", desc: "非单词边界" },
-                      { pattern: "\\A", desc: "字符串开始" },
-                      { pattern: "\\Z", desc: "字符串结束" }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm min-w-16 text-center">
-                          {item.pattern}
-                        </code>
-                        <span className="text-sm">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 分组和引用 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>分组和引用</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-                      { pattern: "(abc)", desc: "捕获组" },
-                      { pattern: "(?:abc)", desc: "非捕获组" },
-                      { pattern: "(?<name>abc)", desc: "命名捕获组" },
-                      { pattern: "\\1", desc: "反向引用第一个捕获组" },
-                      { pattern: "(?=abc)", desc: "正向先行断言" },
-                      { pattern: "(?!abc)", desc: "负向先行断言" },
-                      { pattern: "(?<=abc)", desc: "正向后行断言" },
-                      { pattern: "(?<!abc)", desc: "负向后行断言" }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm min-w-20 text-center">
-                          {item.pattern}
-                        </code>
-                        <span className="text-sm">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 特殊字符 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>特殊字符</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-                      { pattern: "\\", desc: "转义字符" },
-                      { pattern: "|", desc: "或操作符" },
-                      { pattern: "\\n", desc: "换行符" },
-                      { pattern: "\\r", desc: "回车符" },
-                      { pattern: "\\t", desc: "制表符" },
-                      { pattern: "\\f", desc: "换页符" },
-                      { pattern: "\\v", desc: "垂直制表符" },
-                      { pattern: "\\0", desc: "空字符" }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm min-w-16 text-center">
-                          {item.pattern}
-                        </code>
-                        <span className="text-sm">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 标志位 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>标志位</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-                      { pattern: "g", desc: "全局匹配，找到所有匹配项" },
-                      { pattern: "i", desc: "忽略大小写" },
-                      { pattern: "m", desc: "多行模式，^ 和 $ 匹配行开始和结束" },
-                      { pattern: "s", desc: "单行模式，. 匹配包括换行符在内的所有字符" },
-                      { pattern: "u", desc: "Unicode 模式" },
-                      { pattern: "y", desc: "粘性模式，从 lastIndex 开始匹配" }
-                    ].map((item, index) => (
-                      <div key={index} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm min-w-8 text-center">
-                          {item.pattern}
-                        </code>
-                        <span className="text-sm">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {REFERENCE_SECTIONS.map((section) => (
+                <Card key={section.titleKey}>
+                  <CardHeader>
+                    <CardTitle>{t(section.titleKey)}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {section.items.map(([patternText, descriptionKey]) => (
+                        <div key={patternText} className="flex items-center gap-3 rounded p-2 hover:bg-[var(--md-sys-color-surface-container-low)]">
+                          <code className="min-w-16 rounded bg-[var(--md-sys-color-surface-container-high)] px-2 py-1 text-center text-sm">
+                            {patternText}
+                          </code>
+                          <span className="text-sm">{t(descriptionKey)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
@@ -1140,14 +1020,14 @@ export default function RegexTester() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Download className="h-5 w-5" />
-                    导入导出
+                    {t("importExport")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex gap-2">
                     <Button onClick={exportTestCase} className="flex items-center gap-2">
                       <Download className="h-4 w-4" />
-                      导出测试用例
+                      {t("exportTestCase")}
                     </Button>
                     <Button
                       variant="outline"
@@ -1155,18 +1035,18 @@ export default function RegexTester() {
                       className="flex items-center gap-2"
                     >
                       <Upload className="h-4 w-4" />
-                      导入测试用例
+                      {t("importTestCase")}
                     </Button>
                   </div>
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept=".json"
-                    style={{ display: 'none' }}
+                    className="hidden"
                     onChange={importTestCase}
                   />
-                  <p className="text-sm text-gray-500">
-                    导出的文件包含当前的正则表达式、测试文本、标志位和替换设置
+                  <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                    {t("exportDescription")}
                   </p>
                 </CardContent>
               </Card>
@@ -1177,7 +1057,7 @@ export default function RegexTester() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                       <History className="h-5 w-5" />
-                      历史记录
+                      {t("history")}
                     </CardTitle>
                     <Button
                       variant="outline"
@@ -1185,14 +1065,14 @@ export default function RegexTester() {
                       onClick={() => setHistory([])}
                       disabled={history.length === 0}
                     >
-                      清空
+                      {t("clear")}
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
                   {history.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      暂无历史记录
+                    <p className="py-4 text-center text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("noHistory")}
                     </p>
                   ) : (
                     <ScrollArea className="h-40">
@@ -1200,7 +1080,7 @@ export default function RegexTester() {
                         {history.slice(0, 10).map((item) => (
                           <div
                             key={item.id}
-                            className="p-2 border rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                            className="cursor-pointer rounded border p-2 hover:bg-[var(--md-sys-color-surface-container-low)]"
                             onClick={() => {
                               setPattern(item.pattern)
                               setFlags({
@@ -1221,7 +1101,7 @@ export default function RegexTester() {
                                 {item.matchCount}
                               </Badge>
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
                               {new Date(item.timestamp).toLocaleString()}
                             </div>
                           </div>
@@ -1237,28 +1117,28 @@ export default function RegexTester() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="h-5 w-5" />
-                    性能统计
+                    {t("performance")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                    <div className="rounded bg-[var(--md-sys-color-primary-container)] p-3 text-center text-[var(--md-sys-color-on-primary-container)]">
                       <div className="text-lg font-bold">{executionTime.toFixed(2)}ms</div>
-                      <div className="text-sm text-gray-500">执行时间</div>
+                      <div className="text-sm">{t("executionTime")}</div>
                     </div>
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                    <div className="rounded bg-[var(--md-sys-color-success-container)] p-3 text-center text-[var(--md-sys-color-on-success-container)]">
                       <div className="text-lg font-bold">{testText.length}</div>
-                      <div className="text-sm text-gray-500">文本长度</div>
+                      <div className="text-sm">{t("textLength")}</div>
                     </div>
                   </div>
                   
                   {executionTime > 0 && (
-                    <div className="text-sm text-gray-600">
-                      <div>• 匹配效率: {testText ? Math.round(testText.length / executionTime) : 0} 字符/ms</div>
-                      <div>• 平均每个匹配: {matches.length > 0 ? (executionTime / matches.length).toFixed(2) : 0}ms</div>
+                    <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                      <div>• {t("matchEfficiency").replace("{value}", String(testText ? Math.round(testText.length / executionTime) : 0))}</div>
+                      <div>• {t("averagePerMatch").replace("{value}", String(matches.length > 0 ? (executionTime / matches.length).toFixed(2) : 0))}</div>
                       {executionTime > 100 && (
-                        <div className="text-orange-600 mt-2">
-                          ⚠️ 执行时间较长，考虑优化正则表达式
+                        <div className="mt-2 text-[var(--md-sys-color-warning)]">
+                          {t("slowRegexWarning")}
                         </div>
                       )}
                     </div>
@@ -1271,7 +1151,7 @@ export default function RegexTester() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Settings className="h-5 w-5" />
-                    快捷操作
+                    {t("quickActions")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -1281,40 +1161,40 @@ export default function RegexTester() {
                       size="sm"
                       onClick={() => {
                         setPattern("\\d+")
-                        setTestText("找到数字: 123, 456, 789")
+                        setTestText(t("quickSamples.digits"))
                       }}
                     >
-                      匹配数字
+                      {t("quickMatchDigits")}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
                         setPattern("\\w+@\\w+\\.\\w+")
-                        setTestText("邮箱: user@example.com, test@domain.org")
+                        setTestText(t("quickSamples.email"))
                       }}
                     >
-                      匹配邮箱
+                      {t("quickMatchEmail")}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
                         setPattern("https?://[^\\s]+")
-                        setTestText("访问 https://example.com 和 http://test.org")
+                        setTestText(t("quickSamples.url"))
                       }}
                     >
-                      匹配URL
+                      {t("quickMatchUrl")}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
                         setPattern("[\\u4e00-\\u9fa5]+")
-                        setTestText("Hello 世界, English 中文混合 text")
+                        setTestText(t("quickSamples.han"))
                       }}
                     >
-                      匹配中文
+                      {t("quickMatchHan")}
                     </Button>
                   </div>
                   
@@ -1335,16 +1215,16 @@ export default function RegexTester() {
                         })
                       }}
                     >
-                      重置标志位
+                      {t("resetFlags")}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setTestText("这里是测试文本\\n可以包含多行内容\\n用于测试正则表达式")
+                        setTestText(t("quickSamples.multiline").replace(/\\n/g, "\n"))
                       }}
                     >
-                      示例文本
+                      {t("sampleText")}
                     </Button>
                   </div>
                 </CardContent>

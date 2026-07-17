@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import type React from "react"
 import { useState, useCallback, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -162,7 +164,7 @@ export default function JWTPage() {
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [autoFormat, setAutoFormat] = useState(true)
 
-  const copyTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({})
+  const copyTimeoutRef = useRef<{ [key: string]: ReturnType<typeof setTimeout> | null }>({})
 
   // 自动解析
   useEffect(() => {
@@ -176,7 +178,8 @@ export default function JWTPage() {
 
   // 复制到剪贴板
   const copyToClipboard = useCallback((text: string, key: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) return
       if (copyTimeoutRef.current[key]) {
         clearTimeout(copyTimeoutRef.current[key]!)
       }

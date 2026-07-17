@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
@@ -40,7 +42,6 @@ export default function JsonTool() {
   const [indentSize, setIndentSize] = useState(2)
   const [useTab, setUseTab] = useState(false)
   const [sortKeys, setSortKeys] = useState(false)
-  const [syntaxHighlight, setSyntaxHighlight] = useState(true)
   const [wordWrap, setWordWrap] = useState(true)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -278,8 +279,16 @@ export default function JsonTool() {
   // 中文转Unicode
   const chineseToUnicode = () => {
     try {
-      const result = jsonText.replace(/[\u4e00-\u9fa5]/g, (match) => {
-        return "\\u" + match.charCodeAt(0).toString(16).padStart(4, "0")
+      const result = jsonText.replace(/\p{Script=Han}/gu, (match) => {
+        const codePoint = match.codePointAt(0)!
+        if (codePoint <= 0xffff) {
+          return `\\u${codePoint.toString(16).padStart(4, "0")}`
+        }
+
+        const offset = codePoint - 0x10000
+        const high = 0xd800 + (offset >> 10)
+        const low = 0xdc00 + (offset & 0x3ff)
+        return `\\u${high.toString(16)}\\u${low.toString(16)}`
       })
       setJsonText(result)
       setError(null)
@@ -303,7 +312,8 @@ export default function JsonTool() {
   const copyToClipboard = (text: string, key: string = "main") => {
     if (!text) return
 
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) return
       setCopied(prev => ({ ...prev, [key]: true }))
 
       setTimeout(() => {
@@ -428,12 +438,12 @@ export default function JsonTool() {
   }, [params])
 
   return (
-    <div className="container mx-auto px-4 py-4 max-w-6xl">
+    <div className="container mx-auto max-w-6xl px-3 py-4 sm:px-4">
       {/* 页面标题 */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <Code className="h-8 w-8 text-emerald-600" />
-          JSON 工具
+        <h1 className="mb-4 flex items-center justify-center gap-2 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          <Code className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
+          {t("title")}
         </h1>
       </div>
 
@@ -443,7 +453,7 @@ export default function JsonTool() {
           variant="ghost"
           size="sm"
           onClick={() => setShowJsonSettings(!showJsonSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          className="w-full text-sm text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
         >
           <div className="flex items-center gap-2">
             {showJsonSettings ? (
@@ -452,10 +462,10 @@ export default function JsonTool() {
               <ChevronDown className="h-4 w-4" />
             )}
             <Settings className="h-4 w-4" />
-            <span>JSON设置</span>
+            <span>{t("settings")}</span>
             {!showJsonSettings && (
               <Badge variant="secondary" className="text-xs ml-auto">
-                点击查看
+                {t("settingsHint")}
               </Badge>
             )}
           </div>
@@ -464,33 +474,24 @@ export default function JsonTool() {
         {showJsonSettings && (
           <Card className="mt-3 card-modern">
             <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+              <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
                   <Label htmlFor="auto-format" className="cursor-pointer text-sm">
-                    手动格式化
+                    {t("autoFormat")}
                   </Label>
                   <Switch id="auto-format" checked={autoFormat} onCheckedChange={setAutoFormat} />
-                  <Label htmlFor="auto-format" className="cursor-pointer text-sm text-blue-600">
-                    自动格式化
-                  </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
                   <Label htmlFor="real-time-validation" className="cursor-pointer text-sm">
-                    关闭验证
+                    {t("realTimeValidation")}
                   </Label>
                   <Switch id="real-time-validation" checked={realTimeValidation} onCheckedChange={setRealTimeValidation} />
-                  <Label htmlFor="real-time-validation" className="cursor-pointer text-sm text-green-600">
-                    实时验证
-                  </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
                   <Label htmlFor="word-wrap" className="cursor-pointer text-sm">
-                    禁用换行
+                    {t("wordWrap")}
                   </Label>
                   <Switch id="word-wrap" checked={wordWrap} onCheckedChange={setWordWrap} />
-                  <Label htmlFor="word-wrap" className="cursor-pointer text-sm text-purple-600">
-                    自动换行
-                  </Label>
                 </div>
               </div>
 
@@ -498,8 +499,8 @@ export default function JsonTool() {
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium flex justify-between">
-                      <span>缩进大小</span>
-                      <span className="text-emerald-600">{indentSize} 空格</span>
+                      <span>{t("indentSize")}</span>
+                      <span className="text-[var(--md-sys-color-primary)]">{t("spaces").replace("{count}", String(indentSize))}</span>
                     </Label>
                     <Slider
                       value={[indentSize]}
@@ -516,11 +517,11 @@ export default function JsonTool() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
                       <Switch id="use-tab" checked={useTab} onCheckedChange={setUseTab} />
-                      <Label htmlFor="use-tab" className="text-sm">使用Tab</Label>
+                      <Label htmlFor="use-tab" className="text-sm">{t("useTab")}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Switch id="sort-keys" checked={sortKeys} onCheckedChange={setSortKeys} />
-                      <Label htmlFor="sort-keys" className="text-sm">排序键名</Label>
+                      <Label htmlFor="sort-keys" className="text-sm">{t("sortKeys")}</Label>
                     </div>
                   </div>
                 </div>
@@ -532,18 +533,18 @@ export default function JsonTool() {
 
       {/* 工具栏 */}
       <div className="mb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={uploadJson}>
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <Button variant="outline" size="sm" onClick={uploadJson} className="min-w-0 px-2 sm:px-3">
             <Upload className="h-4 w-4 mr-1" />
-            上传文件
+            <span className="truncate">{t("uploadFile")}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={copyJsonContent}>
+          <Button variant="outline" size="sm" onClick={copyJsonContent} className="min-w-0 px-2 sm:px-3">
             {copied.json ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-            {copied.json ? "已复制" : "复制内容"}
+            <span className="truncate">{copied.json ? t("copied") : t("copyContent")}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={downloadJson}>
+          <Button variant="outline" size="sm" onClick={downloadJson} className="min-w-0 px-2 sm:px-3">
             <Download className="h-4 w-4 mr-1" />
-            下载文件
+            <span className="truncate">{t("downloadFile")}</span>
           </Button>
           <input
             type="file"
@@ -560,16 +561,18 @@ export default function JsonTool() {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <div className="font-medium">JSON 解析错误</div>
+            <div className="font-medium">{t("parseError")}</div>
             <div className="text-sm mt-1">{error}</div>
             {errorPosition && (
               <div className="text-xs mt-1 opacity-90">
-                位置: 第 {errorPosition.line} 行, 第 {errorPosition.column} 列
+                {t("position")
+                  .replace("{line}", String(errorPosition.line))
+                  .replace("{column}", String(errorPosition.column))}
               </div>
             )}
             {repairSuggestion && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-xs">检测到可修复的尾随逗号或未加引号键名，是否应用建议？</span>
+                <span className="text-xs">{t("repairPrompt")}</span>
                 <Button
                   type="button"
                   size="sm"
@@ -581,10 +584,10 @@ export default function JsonTool() {
                     setErrorPosition(null)
                   }}
                 >
-                  应用修复
+                  {t("applyRepair")}
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={() => setRepairSuggestion(null)}>
-                  保留原文
+                  {t("keepOriginal")}
                 </Button>
               </div>
             )}
@@ -599,53 +602,26 @@ export default function JsonTool() {
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-emerald-600" />
-                JSON 编辑器
+                <FileText className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                {t("editor")}
                 {realTimeValidation && (
                   <Badge variant="secondary" className="text-xs">
                     <Zap className="h-3 w-3 mr-1" />
-                    实时验证
+                    {t("realTimeValidation")}
                   </Badge>
                 )}
                 {autoFormat && (
                   <Badge variant="secondary" className="text-xs">
                     <RefreshCw className="h-3 w-3 mr-1" />
-                    自动格式化
+                    {t("autoFormat")}
                   </Badge>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <style jsx global>{`
-                .json-editor {
-                  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
-                  font-size: 14px;
-                  line-height: 1.6;
-                  padding: 1rem;
-                  width: 100%;
-                  height: 70vh;
-                  resize: none;
-                  outline: none;
-                  border: none;
-                  tab-size: ${indentSize};
-                  background: #f8fafc;
-                  color: #1e293b;
-                }
-                .dark .json-editor {
-                  background: #0f172a;
-                  color: #e2e8f0;
-                }
-                .json-editor:focus {
-                  background: #ffffff;
-                }
-                .dark .json-editor:focus {
-                  background: #1e293b;
-                }
-              `}</style>
-
               <textarea
                 ref={textareaRef}
-                className="json-editor transition-colors"
+                className="h-[62vh] min-h-96 max-h-[48rem] w-full resize-none border-0 bg-[var(--md-sys-color-surface-container-low)] p-4 font-mono text-sm leading-relaxed text-[var(--md-sys-color-on-surface)] outline-none transition-colors focus:bg-[var(--md-sys-color-surface-container-lowest)]"
                 value={jsonText}
                 onChange={(e) => {
                   setJsonText(e.target.value)
@@ -656,10 +632,11 @@ export default function JsonTool() {
                 }}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                placeholder="在此输入或粘贴 JSON 内容..."
+                placeholder={t("inputPlaceholder")}
                 spellCheck="false"
                 style={{
                   whiteSpace: wordWrap ? "pre-wrap" : "pre",
+                  tabSize: indentSize,
                 }}
               />
             </CardContent>
@@ -669,14 +646,14 @@ export default function JsonTool() {
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Clipboard className="h-4 w-4 text-indigo-600" />
-                  JSON 节点视图
+                  <Clipboard className="h-4 w-4 text-[var(--md-sys-color-tertiary)]" />
+                  {t("treeView")}
                 </CardTitle>
                 <Badge variant="secondary" className="text-xs">
-                  可复制
+                  {t("copyable")}
                 </Badge>
                 <Badge variant="secondary" className="text-xs">
-                  可折叠
+                  {t("collapsible")}
                 </Badge>
               </div>
             </CardHeader>
@@ -692,36 +669,36 @@ export default function JsonTool() {
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Palette className="h-4 w-4 text-blue-600" />
-                基础操作
+                <Palette className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                {t("basicActions")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <Button onClick={formatJson} variant="outline" size="sm" className="w-full h-10">
                   <Code className="h-4 w-4 mr-2" />
-                  格式化
+                  {t("format")}
                 </Button>
                 <Button onClick={compressJson} variant="outline" size="sm" className="w-full h-10">
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  压缩
+                  {t("compress")}
                 </Button>
                 <Button onClick={toggleCollapse} variant="outline" size="sm" className="w-full h-10">
                   {collapsed ? (
                     <>
                       <ChevronDown className="h-4 w-4 mr-2" />
-                      展开
+                      {t("expand")}
                     </>
                   ) : (
                     <>
                       <ChevronUp className="h-4 w-4 mr-2" />
-                      折叠
+                      {t("collapse")}
                     </>
                   )}
                 </Button>
                 <Button onClick={clearJson} variant="destructive" size="sm" className="w-full h-10">
                   <Trash2 className="h-4 w-4 mr-2" />
-                  清空
+                  {t("clear")}
                 </Button>
               </div>
             </CardContent>
@@ -731,27 +708,27 @@ export default function JsonTool() {
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-purple-600" />
-                格式转换
+                <RefreshCw className="h-4 w-4 text-[var(--md-sys-color-tertiary)]" />
+                {t("formatConversion")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <Button onClick={jsonToYaml} variant="outline" size="sm" className="w-full h-10">
                   <FileText className="h-4 w-4 mr-2" />
-                  转换为 YAML
+                  {t("jsonToYaml")}
                 </Button>
                 <Button onClick={yamlToJson} variant="outline" size="sm" className="w-full h-10">
                   <Code className="h-4 w-4 mr-2" />
-                  转换为 JSON
+                  {t("yamlToJson")}
                 </Button>
                 <Button onClick={escapeJson} variant="outline" size="sm" className="w-full h-10">
                   <span className="mr-2 text-xs">{"\\'"}</span>
-                  JSON 转义
+                  {t("escape")}
                 </Button>
                 <Button onClick={unescapeJson} variant="outline" size="sm" className="w-full h-10">
                   <span className="mr-2 text-xs">{"'"}</span>
-                  JSON 去转义
+                  {t("unescape")}
                 </Button>
               </div>
             </CardContent>
@@ -761,22 +738,22 @@ export default function JsonTool() {
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-orange-600" />
-                Unicode 转换
+                <FileText className="h-4 w-4 text-[var(--md-sys-color-warning)]" />
+                {t("unicodeConversion")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <Button onClick={unicodeToChinese} variant="outline" size="sm" className="w-full h-10">
                   <span className="mr-2 text-sm">{"\\u"}</span>
-                  Unicode → 中文
+                  {t("unicodeToChinese")}
                 </Button>
                 <Button onClick={chineseToUnicode} variant="outline" size="sm" className="w-full h-10">
                   <span className="mr-2 text-sm">{"中"}</span>
-                  中文 → Unicode
+                  {t("chineseToUnicode")}
                 </Button>
-                <div className="text-xs text-gray-500 p-2 bg-gray-50 dark:bg-gray-800 rounded text-center">
-                  支持中文字符与 Unicode 编码之间的相互转换
+                <div className="rounded bg-[var(--md-sys-color-surface-container-low)] p-2 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("unicodeHint")}
                 </div>
               </div>
             </CardContent>

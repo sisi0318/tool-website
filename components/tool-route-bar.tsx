@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { ArrowLeft, Check, Clipboard, ExternalLink, Search } from "lucide-react"
 
 import { useTranslations } from "@/hooks/use-translations"
+import { copyTextToClipboard } from "@/lib/clipboard"
 
 const toolTranslationKeys: Record<string, string> = {
   "base-converter": "baseConverter.name",
@@ -100,7 +101,7 @@ export function ToolRouteBar() {
   if (!translationKey) return null
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href)
+    if (!await copyTextToClipboard(window.location.href)) return
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1800)
   }

@@ -1,706 +1,730 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Slider } from "@/components/ui/slider"
-import { Progress } from "@/components/ui/progress"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import {
-  Upload,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react"
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
   Download,
-  Trash2,
+  Eye,
   Grid3X3,
-  Scissors,
   Image as ImageIcon,
+  Loader2,
+  Package,
+  RotateCcw,
+  Scissors,
+  Settings,
+  Trash2,
+  Upload,
   ZoomIn,
   ZoomOut,
-  Settings,
-  Eye,
-  Loader2,
-  CheckCircle,
-  AlertCircle,
-  RotateCcw,
-  Package,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { useToolActivity } from "@/components/tool-activity"
+import { useObjectUrl } from "@/hooks/use-object-url"
+import { useTranslations } from "@/hooks/use-translations"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
+import {
+  analyzeMemeGrid,
+  createMemeGrid,
+  getConstrainedImageSize,
+  mapMemeBounds,
+  safeMemeFileBase,
+  type MemeBounds,
+  type MemeGridCell,
+} from "@/lib/meme-grid-tools"
 import { downloadBlob } from "@/lib/object-url"
 
-interface GridCell {
-  x: number
-  y: number
-  width: number
-  height: number
-  index: number
-}
-
 interface SplitResult {
-  cells: GridCell[]
-  images: string[] // base64 data URLs
+  cells: MemeGridCell[]
+  images: Blob[]
   gridLines: { horizontal: number[]; vertical: number[] }
 }
 
-interface ProcessStep {
-  name: string
-  imageData: string
-  description: string
+type ProcessStep =
+  | {
+      kind: "bounds"
+      image: Blob
+      width: number
+      height: number
+      left: number
+      top: number
+      right: number
+      bottom: number
+    }
+  | {
+      kind: "grid"
+      image: Blob
+      rows: number
+      cols: number
+      ratio: number
+    }
+
+const ANALYSIS_MAX_DIMENSION = 1600
+const ANALYSIS_MAX_PIXELS = 2_500_000
+const PREVIEW_MAX_DIMENSION = 1400
+const PREVIEW_MAX_PIXELS = 2_000_000
+const CANCELLED_ERROR = "meme-processing-cancelled"
+const CANVAS_ERROR = "meme-canvas-unavailable"
+const ENCODING_ERROR = "meme-image-encoding-failed"
+const M3_CARD_CLASS =
+  "min-w-0 rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm"
+const M3_ICON_CLASS = "text-[var(--md-sys-color-primary)]"
+
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob)
+      else reject(new Error(ENCODING_ERROR))
+    }, "image/png")
+  })
+}
+
+async function yieldToMainThread(): Promise<void> {
+  const scheduler = (
+    globalThis as typeof globalThis & {
+      scheduler?: { yield?: () => Promise<void> }
+    }
+  ).scheduler
+
+  if (scheduler?.yield) {
+    await scheduler.yield()
+    return
+  }
+
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+}
+
+function BlobPreview({
+  blob,
+  alt,
+  className,
+}: {
+  blob: Blob
+  alt: string
+  className: string
+}) {
+  const url = useObjectUrl(blob)
+  if (!url) return null
+  return <img src={url} alt={alt} className={className} loading="lazy" />
 }
 
 export default function MemeSplitterPage() {
-  // 图片状态
-  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null)
-  const [imageUrl, setImageUrl] = useState<string>("")
-  const [fileName, setFileName] = useState<string>("")
-  
-  // 处理状态
+  const t = useTranslations("memeSplitter")
+  const isToolActive = useToolActivity()
+  const [sourceFile, setSourceFile] = useState<File | null>(null)
+  const imageUrl = useObjectUrl(sourceFile)
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isPackaging, setIsPackaging] = useState(false)
   const [progress, setProgress] = useState(0)
   const [splitResult, setSplitResult] = useState<SplitResult | null>(null)
   const [processSteps, setProcessSteps] = useState<ProcessStep[]>([])
-  const [error, setError] = useState<string | null>(null)
-  
-  // 设置
-  const [sensitivity, setSensitivity] = useState(50) // 边缘检测灵敏度
-  const [minCellSize, setMinCellSize] = useState(50) // 最小单元格大小
+  const [error, setError] = useState("")
+  const [sensitivity, setSensitivity] = useState(50)
   const [showGrid, setShowGrid] = useState(true)
   const [showProcess, setShowProcess] = useState(false)
   const [autoDetect, setAutoDetect] = useState(true)
   const [manualRows, setManualRows] = useState(4)
   const [manualCols, setManualCols] = useState(6)
-  
-  // 检测到的行列数（可调整）
   const [detectedRows, setDetectedRows] = useState(4)
   const [detectedCols, setDetectedCols] = useState(6)
-  const [contentBounds, setContentBounds] = useState<{left: number, top: number, width: number, height: number} | null>(null)
-  
-  // UI 状态
+  const [contentBounds, setContentBounds] = useState<MemeBounds | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [zoom, setZoom] = useState(100)
   const [selectedCells, setSelectedCells] = useState<Set<number>>(new Set())
-  
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
 
-  // 处理文件上传
-  const handleFileUpload = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("请上传图片文件")
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+  const originalImageRef = useRef<HTMLImageElement | null>(null)
+  const runIdRef = useRef(0)
+  const packageIdRef = useRef(0)
+  const activityRef = useRef(isToolActive)
+
+  const fileName = sourceFile?.name ?? ""
+  const previewSize = useMemo(
+    () =>
+      imageSize
+        ? getConstrainedImageSize(
+            imageSize.width,
+            imageSize.height,
+            PREVIEW_MAX_DIMENSION,
+            PREVIEW_MAX_PIXELS,
+          )
+        : null,
+    [imageSize],
+  )
+
+  const cancelProcessing = useCallback(() => {
+    runIdRef.current += 1
+    setIsProcessing(false)
+  }, [])
+
+  const ensureCurrentRun = useCallback((runId: number) => {
+    if (runIdRef.current !== runId || !activityRef.current) {
+      throw new Error(CANCELLED_ERROR)
+    }
+  }, [])
+
+  const yieldForRun = useCallback(
+    async (runId: number) => {
+      await yieldToMainThread()
+      ensureCurrentRun(runId)
+    },
+    [ensureCurrentRun],
+  )
+
+  useEffect(() => {
+    activityRef.current = isToolActive
+    if (!isToolActive) cancelProcessing()
+  }, [cancelProcessing, isToolActive])
+
+  useEffect(
+    () => () => {
+      runIdRef.current += 1
+      packageIdRef.current += 1
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!imageUrl) {
+      originalImageRef.current = null
+      setImageSize(null)
       return
     }
-    
-    setError(null)
+
+    let cancelled = false
+    const image = new Image()
+    image.onload = () => {
+      if (cancelled) return
+      originalImageRef.current = image
+      setImageSize({ width: image.naturalWidth, height: image.naturalHeight })
+      setError("")
+    }
+    image.onerror = () => {
+      if (cancelled) return
+      originalImageRef.current = null
+      setImageSize(null)
+      setError(t("loadFailed"))
+    }
+    image.src = imageUrl
+
+    return () => {
+      cancelled = true
+      image.src = ""
+    }
+  }, [imageUrl, t])
+
+  const resetResults = useCallback(() => {
+    cancelProcessing()
+    packageIdRef.current += 1
+    setIsPackaging(false)
     setSplitResult(null)
     setProcessSteps([])
     setSelectedCells(new Set())
-    setFileName(file.name)
-    
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        setOriginalImage(img)
-        setImageUrl(e.target?.result as string)
+    setContentBounds(null)
+    setProgress(0)
+  }, [cancelProcessing])
+
+  const handleFileUpload = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setError(t("invalidImage"))
+        return
       }
-      img.src = e.target?.result as string
-    }
-    reader.readAsDataURL(file)
-  }, [])
+      if (!isFileWithinLimit(file, FILE_SIZE_LIMITS.memeImage)) {
+        setError(
+          t("imageTooLarge").replace(
+            "{size}",
+            formatFileSizeLimit(FILE_SIZE_LIMITS.memeImage),
+          ),
+        )
+        return
+      }
 
-  // 拖放处理
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFileUpload(file)
-  }, [handleFileUpload])
+      resetResults()
+      setImageSize(null)
+      originalImageRef.current = null
+      setSourceFile(file)
+      setZoom(100)
+      setError("")
+    },
+    [resetResults, t],
+  )
 
-  // 清除图片
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLElement>) => {
+      event.preventDefault()
+      setIsDragging(false)
+      const file = event.dataTransfer.files[0]
+      if (file) handleFileUpload(file)
+    },
+    [handleFileUpload],
+  )
+
   const clearImage = useCallback(() => {
-    setOriginalImage(null)
-    setImageUrl("")
-    setFileName("")
-    setSplitResult(null)
-    setProcessSteps([])
-    setError(null)
-    setSelectedCells(new Set())
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
-  }, [])
+    resetResults()
+    setSourceFile(null)
+    setImageSize(null)
+    setError("")
+    originalImageRef.current = null
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }, [resetResults])
 
+  const splitImageByGrid = useCallback(
+    async (
+      image: HTMLImageElement,
+      bounds: MemeBounds,
+      rows: number,
+      cols: number,
+      runId: number,
+      progressStart = 70,
+    ): Promise<SplitResult> => {
+      const width = image.naturalWidth
+      const height = image.naturalHeight
+      const layout = createMemeGrid(bounds, rows, cols, width, height)
+      const images: Blob[] = []
 
-  // 智能网格检测算法 - 优化版 V3
-  const detectGrid = useCallback(async (img: HTMLImageElement): Promise<SplitResult> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")!
-      canvas.width = img.width
-      canvas.height = img.height
-      ctx.drawImage(img, 0, 0)
-      
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const { data, width, height } = imageData
-      
-      const steps: ProcessStep[] = []
-      
-      // Step 1: 检测背景色并找到内容边界
-      setProgress(10)
-      
-      // 采样四个角和边缘来确定背景色
-      const cornerSamples: number[][] = []
-      const sampleSize = Math.min(50, Math.floor(Math.min(width, height) * 0.1))
-      
-      // 四个角采样
-      for (let dy = 0; dy < sampleSize; dy++) {
-        for (let dx = 0; dx < sampleSize; dx++) {
-          // 左上
-          let idx = (dy * width + dx) * 4
-          cornerSamples.push([data[idx], data[idx + 1], data[idx + 2]])
-          // 右上
-          idx = (dy * width + (width - 1 - dx)) * 4
-          cornerSamples.push([data[idx], data[idx + 1], data[idx + 2]])
-          // 左下
-          idx = ((height - 1 - dy) * width + dx) * 4
-          cornerSamples.push([data[idx], data[idx + 1], data[idx + 2]])
-          // 右下
-          idx = ((height - 1 - dy) * width + (width - 1 - dx)) * 4
-          cornerSamples.push([data[idx], data[idx + 1], data[idx + 2]])
-        }
+      for (let index = 0; index < layout.cells.length; index += 1) {
+        ensureCurrentRun(runId)
+        const cell = layout.cells[index]
+        const canvas = document.createElement("canvas")
+        canvas.width = cell.width
+        canvas.height = cell.height
+        const context = canvas.getContext("2d")
+        if (!context) throw new Error(CANVAS_ERROR)
+        context.drawImage(
+          image,
+          cell.x,
+          cell.y,
+          cell.width,
+          cell.height,
+          0,
+          0,
+          cell.width,
+          cell.height,
+        )
+        images.push(await canvasToBlob(canvas))
+
+        setProgress(
+          progressStart +
+            Math.round(((index + 1) / layout.cells.length) * (100 - progressStart)),
+        )
+        if ((index + 1) % 3 === 0) await yieldForRun(runId)
       }
-      
-      // 计算背景色（取众数或中位数）
-      const bgR = cornerSamples.map(p => p[0]).sort((a, b) => a - b)[Math.floor(cornerSamples.length / 2)]
-      const bgG = cornerSamples.map(p => p[1]).sort((a, b) => a - b)[Math.floor(cornerSamples.length / 2)]
-      const bgB = cornerSamples.map(p => p[2]).sort((a, b) => a - b)[Math.floor(cornerSamples.length / 2)]
-      
-      // Step 2: 计算每行每列的内容密度
-      setProgress(20)
-      const bgThreshold = 25 + (100 - sensitivity) * 0.4
-      
-      const isBackground = (r: number, g: number, b: number): boolean => {
-        return Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB) < bgThreshold
-      }
-      
-      // 计算每列的非背景像素数
-      const colDensity = new Array(width).fill(0)
-      for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
-          const idx = (y * width + x) * 4
-          if (!isBackground(data[idx], data[idx + 1], data[idx + 2])) {
-            colDensity[x]++
-          }
-        }
-      }
-      
-      // 计算每行的非背景像素数
-      const rowDensity = new Array(height).fill(0)
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const idx = (y * width + x) * 4
-          if (!isBackground(data[idx], data[idx + 1], data[idx + 2])) {
-            rowDensity[y]++
-          }
-        }
-      }
-      
-      // 找内容边界 - 使用密度阈值（至少有5%的像素是非背景）
-      const colThreshold = height * 0.05
-      const rowThreshold = width * 0.05
-      
-      let contentLeft = 0, contentRight = width - 1, contentTop = 0, contentBottom = height - 1
-      
-      // 从左边找第一个有足够内容的列
-      for (let x = 0; x < width; x++) {
-        if (colDensity[x] > colThreshold) { contentLeft = x; break }
-      }
-      
-      // 从右边找最后一个有足够内容的列
-      for (let x = width - 1; x >= 0; x--) {
-        if (colDensity[x] > colThreshold) { contentRight = x; break }
-      }
-      
-      // 从上边找
-      for (let y = 0; y < height; y++) {
-        if (rowDensity[y] > rowThreshold) { contentTop = y; break }
-      }
-      
-      // 从下边找
-      for (let y = height - 1; y >= 0; y--) {
-        if (rowDensity[y] > rowThreshold) { contentBottom = y; break }
-      }
-      
-      // 扩展边界以包含完整的单元格（向外扩展一点）
-      const margin = Math.min(width, height) * 0.01
-      contentLeft = Math.max(0, contentLeft - margin)
-      contentRight = Math.min(width - 1, contentRight + margin)
-      contentTop = Math.max(0, contentTop - margin)
-      contentBottom = Math.min(height - 1, contentBottom + margin)
-      
-      // 额外检查：如果右边有大片空白区域，进一步收缩
-      // 检测右侧是否有连续的低密度区域
-      let consecutiveLowDensity = 0
-      const lowDensityThreshold = height * 0.02
-      for (let x = width - 1; x >= contentLeft; x--) {
-        if (colDensity[x] < lowDensityThreshold) {
-          consecutiveLowDensity++
-        } else {
-          // 如果连续空白区域超过图片宽度的10%，认为是边缘空白
-          if (consecutiveLowDensity > width * 0.1) {
-            contentRight = x
-          }
-          break
-        }
-      }
-      
-      // 同样检查底部
-      consecutiveLowDensity = 0
-      const lowRowDensityThreshold = width * 0.02
-      for (let y = height - 1; y >= contentTop; y--) {
-        if (rowDensity[y] < lowRowDensityThreshold) {
-          consecutiveLowDensity++
-        } else {
-          if (consecutiveLowDensity > height * 0.1) {
-            contentBottom = y
-          }
-          break
-        }
-      }
-      
-      const contentWidth = contentRight - contentLeft + 1
-      const contentHeight = contentBottom - contentTop + 1
-      
-      steps.push({
-        name: "内容边界",
-        imageData: canvas.toDataURL(),
-        description: `内容区域: ${contentWidth}×${contentHeight}, 边距: 左${contentLeft} 上${contentTop} 右${width - contentRight - 1} 下${height - contentBottom - 1}`
-      })
-      
-      // Step 3: 基于宽高比计算最佳网格
-      setProgress(50)
-      
-      // 核心思路：
-      // 1. 表情包单元格通常是正方形或接近正方形
-      // 2. 根据图片方向（横向/竖向）选择合适的网格
-      // 3. 优先选择单元格更接近正方形的组合
-      
-      const contentRatio = contentWidth / contentHeight
-      const isLandscape = contentRatio > 1 // 横向图片
-      
-      // 根据图片方向生成候选网格
-      // 横向图片：列数 > 行数，竖向图片：行数 > 列数
-      const candidateGrids: [number, number][] = []
-      
-      for (let rows = 2; rows <= 8; rows++) {
-        for (let cols = 2; cols <= 8; cols++) {
-          // 根据图片方向过滤不合理的组合
-          if (isLandscape && cols < rows) continue  // 横向图片，列应该>=行
-          if (!isLandscape && rows < cols) continue // 竖向图片，行应该>=列
-          
-          candidateGrids.push([rows, cols])
-        }
-      }
-      
-      // 添加一些特殊的常见组合
-      candidateGrids.push([3, 3], [4, 4], [5, 5]) // 正方形网格
-      
-      let bestRows = isLandscape ? 4 : 6
-      let bestCols = isLandscape ? 6 : 4
-      let bestScore = Infinity
-      
-      for (const [rows, cols] of candidateGrids) {
-        // 计算单元格尺寸
-        const cellWidth = contentWidth / cols
-        const cellHeight = contentHeight / rows
-        
-        // 单元格宽高比（越接近1越好）
-        const cellRatio = cellWidth / cellHeight
-        
-        // 只考虑单元格比例在合理范围内的组合（0.75-1.35）
-        if (cellRatio < 0.75 || cellRatio > 1.35) continue
-        
-        // 计算与正方形的偏差
-        const squareError = Math.abs(cellRatio - 1)
-        
-        // 总数量惩罚
-        const totalCells = rows * cols
-        let countPenalty = 0
-        if (totalCells < 4) countPenalty = 0.5
-        else if (totalCells > 36) countPenalty = 0.3
-        
-        // 常见网格加成
-        let bonus = 0
-        if ((rows === 4 && cols === 6) || (rows === 6 && cols === 4)) bonus = 0.1
-        else if ((rows === 3 && cols === 4) || (rows === 4 && cols === 3)) bonus = 0.08
-        else if (rows === 3 && cols === 3) bonus = 0.08
-        else if (rows === 4 && cols === 4) bonus = 0.08
-        else if ((rows === 4 && cols === 5) || (rows === 5 && cols === 4)) bonus = 0.05
-        
-        // 综合评分（越低越好）
-        const score = squareError + countPenalty - bonus
-        
-        if (score < bestScore) {
-          bestScore = score
-          bestRows = rows
-          bestCols = cols
-        }
-      }
-      
-      // Step 4: 保存检测结果并生成网格线
-      setProgress(70)
-      
-      // 保存检测到的行列数和内容边界，供用户调整
-      setDetectedRows(bestRows)
-      setDetectedCols(bestCols)
-      setContentBounds({
-        left: Math.floor(contentLeft),
-        top: Math.floor(contentTop),
-        width: Math.ceil(contentWidth),
-        height: Math.ceil(contentHeight)
-      })
-      
-      // 使用内容边界生成网格线
-      const horizontalLines: number[] = []
-      const verticalLines: number[] = []
-      
-      for (let i = 0; i <= bestRows; i++) {
-        const y = contentTop + Math.round(contentHeight * i / bestRows)
-        horizontalLines.push(Math.min(y, height))
-      }
-      
-      for (let i = 0; i <= bestCols; i++) {
-        const x = contentLeft + Math.round(contentWidth * i / bestCols)
-        verticalLines.push(Math.min(x, width))
-      }
-      
-      // 保存网格检测结果
-      setProgress(80)
-      const gridCanvas = document.createElement("canvas")
-      gridCanvas.width = width
-      gridCanvas.height = height
-      const gridCtx = gridCanvas.getContext("2d")!
-      gridCtx.drawImage(img, 0, 0)
-      
-      // 绘制内容边界（蓝色虚线）
-      gridCtx.strokeStyle = "rgba(0, 100, 255, 0.5)"
-      gridCtx.lineWidth = 2
-      gridCtx.setLineDash([5, 5])
-      gridCtx.strokeRect(contentLeft, contentTop, contentWidth, contentHeight)
-      gridCtx.setLineDash([])
-      
-      // 绘制网格线（绿色）
-      gridCtx.strokeStyle = "#00ff00"
-      gridCtx.lineWidth = 2
-      
-      horizontalLines.forEach(y => {
-        gridCtx.beginPath()
-        gridCtx.moveTo(contentLeft, y)
-        gridCtx.lineTo(contentRight, y)
-        gridCtx.stroke()
-      })
-      
-      verticalLines.forEach(x => {
-        gridCtx.beginPath()
-        gridCtx.moveTo(x, contentTop)
-        gridCtx.lineTo(x, contentBottom)
-        gridCtx.stroke()
-      })
-      
-      steps.push({
-        name: "网格检测",
-        imageData: gridCanvas.toDataURL(),
-        description: `最佳匹配: ${bestRows} 行 × ${bestCols} 列 (单元格比例: ${(contentWidth / bestCols / (contentHeight / bestRows)).toFixed(2)})`
-      })
-      
-      // Step 5: 生成切分结果
-      setProgress(90)
-      const cells: GridCell[] = []
-      const images: string[] = []
-      
-      for (let row = 0; row < horizontalLines.length - 1; row++) {
-        for (let col = 0; col < verticalLines.length - 1; col++) {
-          const x = verticalLines[col]
-          const y = horizontalLines[row]
-          const cellWidth = verticalLines[col + 1] - x
-          const cellHeight = horizontalLines[row + 1] - y
-          
-          cells.push({
-            x, y,
-            width: cellWidth,
-            height: cellHeight,
-            index: cells.length
-          })
-          
-          // 切分图片
-          const cellCanvas = document.createElement("canvas")
-          cellCanvas.width = cellWidth
-          cellCanvas.height = cellHeight
-          const cellCtx = cellCanvas.getContext("2d")!
-          cellCtx.drawImage(img, x, y, cellWidth, cellHeight, 0, 0, cellWidth, cellHeight)
-          images.push(cellCanvas.toDataURL("image/png"))
-        }
-      }
-      
-      setProgress(100)
-      setProcessSteps(steps)
-      
-      resolve({
-        cells,
+
+      return {
+        cells: layout.cells,
         images,
         gridLines: {
-          horizontal: horizontalLines,
-          vertical: verticalLines
+          horizontal: layout.horizontal,
+          vertical: layout.vertical,
+        },
+      }
+    },
+    [ensureCurrentRun, yieldForRun],
+  )
+
+  const createDiagnostic = useCallback(
+    async (
+      source: HTMLCanvasElement,
+      bounds: MemeBounds,
+      rows: number,
+      cols: number,
+      includeGrid: boolean,
+    ) => {
+      const canvas = document.createElement("canvas")
+      canvas.width = source.width
+      canvas.height = source.height
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error(CANVAS_ERROR)
+      context.drawImage(source, 0, 0)
+
+      const rootStyles = getComputedStyle(document.documentElement)
+      const primary =
+        rootStyles.getPropertyValue("--md-sys-color-primary").trim() || "CanvasText"
+      const tertiary =
+        rootStyles.getPropertyValue("--md-sys-color-tertiary").trim() || "Highlight"
+      context.lineWidth = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) / 500))
+      context.strokeStyle = primary
+      context.setLineDash([8, 6])
+      context.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height)
+      context.setLineDash([])
+
+      if (includeGrid) {
+        const layout = createMemeGrid(bounds, rows, cols, canvas.width, canvas.height)
+        context.strokeStyle = tertiary
+        for (const y of layout.horizontal) {
+          context.beginPath()
+          context.moveTo(layout.vertical[0], y)
+          context.lineTo(layout.vertical.at(-1) ?? canvas.width, y)
+          context.stroke()
         }
-      })
-    })
-  }, [sensitivity, minCellSize, setProcessSteps])
-
-  // 使用调整后的行列数重新切分
-  const resplitWithAdjustedGrid = useCallback(async () => {
-    if (!originalImage || !contentBounds) return
-    
-    const { left, top, width: cWidth, height: cHeight } = contentBounds
-    const img = originalImage
-    
-    const horizontalLines: number[] = []
-    const verticalLines: number[] = []
-    
-    for (let i = 0; i <= detectedRows; i++) {
-      const y = top + Math.round(cHeight * i / detectedRows)
-      horizontalLines.push(Math.min(y, img.height))
-    }
-    
-    for (let i = 0; i <= detectedCols; i++) {
-      const x = left + Math.round(cWidth * i / detectedCols)
-      verticalLines.push(Math.min(x, img.width))
-    }
-    
-    const cells: GridCell[] = []
-    const images: string[] = []
-    
-    for (let row = 0; row < horizontalLines.length - 1; row++) {
-      for (let col = 0; col < verticalLines.length - 1; col++) {
-        const x = verticalLines[col]
-        const y = horizontalLines[row]
-        const cellWidth = verticalLines[col + 1] - x
-        const cellHeight = horizontalLines[row + 1] - y
-        
-        cells.push({ x, y, width: cellWidth, height: cellHeight, index: cells.length })
-        
-        const cellCanvas = document.createElement("canvas")
-        cellCanvas.width = cellWidth
-        cellCanvas.height = cellHeight
-        const cellCtx = cellCanvas.getContext("2d")!
-        cellCtx.drawImage(img, x, y, cellWidth, cellHeight, 0, 0, cellWidth, cellHeight)
-        images.push(cellCanvas.toDataURL("image/png"))
+        for (const x of layout.vertical) {
+          context.beginPath()
+          context.moveTo(x, layout.horizontal[0])
+          context.lineTo(x, layout.horizontal.at(-1) ?? canvas.height)
+          context.stroke()
+        }
       }
-    }
-    
-    setSplitResult({
-      cells,
-      images,
-      gridLines: { horizontal: horizontalLines, vertical: verticalLines }
-    })
-    setSelectedCells(new Set(cells.map(c => c.index)))
-  }, [originalImage, contentBounds, detectedRows, detectedCols])
 
-  // 手动网格切分
-  const manualSplit = useCallback(async (img: HTMLImageElement): Promise<SplitResult> => {
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")!
-    canvas.width = img.width
-    canvas.height = img.height
-    ctx.drawImage(img, 0, 0)
-    
-    const cellWidth = Math.floor(img.width / manualCols)
-    const cellHeight = Math.floor(img.height / manualRows)
-    
-    const horizontalLines = Array.from({ length: manualRows + 1 }, (_, i) => 
-      i === manualRows ? img.height : i * cellHeight
-    )
-    const verticalLines = Array.from({ length: manualCols + 1 }, (_, i) => 
-      i === manualCols ? img.width : i * cellWidth
-    )
-    
-    const cells: GridCell[] = []
-    const images: string[] = []
-    
-    for (let row = 0; row < manualRows; row++) {
-      for (let col = 0; col < manualCols; col++) {
-        const x = col * cellWidth
-        const y = row * cellHeight
-        const w = col === manualCols - 1 ? img.width - x : cellWidth
-        const h = row === manualRows - 1 ? img.height - y : cellHeight
-        
-        cells.push({ x, y, width: w, height: h, index: cells.length })
-        
-        const cellCanvas = document.createElement("canvas")
-        cellCanvas.width = w
-        cellCanvas.height = h
-        const cellCtx = cellCanvas.getContext("2d")!
-        cellCtx.drawImage(img, x, y, w, h, 0, 0, w, h)
-        images.push(cellCanvas.toDataURL("image/png"))
+      return canvasToBlob(canvas)
+    },
+    [],
+  )
+
+  const detectAndSplit = useCallback(
+    async (image: HTMLImageElement, runId: number): Promise<SplitResult> => {
+      ensureCurrentRun(runId)
+      const originalWidth = image.naturalWidth
+      const originalHeight = image.naturalHeight
+      const analysisSize = getConstrainedImageSize(
+        originalWidth,
+        originalHeight,
+        ANALYSIS_MAX_DIMENSION,
+        ANALYSIS_MAX_PIXELS,
+      )
+      const analysisCanvas = document.createElement("canvas")
+      analysisCanvas.width = analysisSize.width
+      analysisCanvas.height = analysisSize.height
+      const context = analysisCanvas.getContext("2d", { willReadFrequently: true })
+      if (!context) throw new Error(CANVAS_ERROR)
+      context.imageSmoothingEnabled = true
+      context.imageSmoothingQuality = "high"
+      context.drawImage(image, 0, 0, analysisSize.width, analysisSize.height)
+      setProgress(12)
+      await yieldForRun(runId)
+
+      const imageData = context.getImageData(0, 0, analysisSize.width, analysisSize.height)
+      const detection = analyzeMemeGrid(imageData, sensitivity)
+      ensureCurrentRun(runId)
+      setProgress(48)
+
+      const originalBounds = mapMemeBounds(
+        detection.bounds,
+        analysisSize.width,
+        analysisSize.height,
+        originalWidth,
+        originalHeight,
+      )
+      setDetectedRows(detection.rows)
+      setDetectedCols(detection.cols)
+      setContentBounds(originalBounds)
+
+      const steps: ProcessStep[] = []
+      if (showProcess) {
+        steps.push({
+          kind: "bounds",
+          image: await createDiagnostic(
+            analysisCanvas,
+            detection.bounds,
+            detection.rows,
+            detection.cols,
+            false,
+          ),
+          width: originalBounds.width,
+          height: originalBounds.height,
+          left: originalBounds.left,
+          top: originalBounds.top,
+          right: originalWidth - originalBounds.left - originalBounds.width,
+          bottom: originalHeight - originalBounds.top - originalBounds.height,
+        })
+        await yieldForRun(runId)
+        steps.push({
+          kind: "grid",
+          image: await createDiagnostic(
+            analysisCanvas,
+            detection.bounds,
+            detection.rows,
+            detection.cols,
+            true,
+          ),
+          rows: detection.rows,
+          cols: detection.cols,
+          ratio:
+            originalBounds.width /
+            detection.cols /
+            (originalBounds.height / detection.rows),
+        })
       }
-    }
-    
-    return {
-      cells,
-      images,
-      gridLines: { horizontal: horizontalLines, vertical: verticalLines }
-    }
-  }, [manualRows, manualCols])
 
-  // 执行切分
-  const handleSplit = useCallback(async () => {
-    if (!originalImage) return
-    
-    setIsProcessing(true)
-    setProgress(0)
-    setError(null)
-    
-    try {
-      const result = autoDetect 
-        ? await detectGrid(originalImage)
-        : await manualSplit(originalImage)
-      
-      setSplitResult(result)
-      setSelectedCells(new Set(result.cells.map(c => c.index)))
-    } catch (err: any) {
-      setError(err.message || "切分失败")
-    } finally {
-      setIsProcessing(false)
+      ensureCurrentRun(runId)
+      setProcessSteps(steps)
+      setProgress(70)
+      return splitImageByGrid(
+        image,
+        originalBounds,
+        detection.rows,
+        detection.cols,
+        runId,
+      )
+    },
+    [
+      createDiagnostic,
+      ensureCurrentRun,
+      sensitivity,
+      showProcess,
+      splitImageByGrid,
+      yieldForRun,
+    ],
+  )
+
+  const errorMessage = useCallback(
+    (caught: unknown) => {
+      const code = caught instanceof Error ? caught.message : ""
+      if (code === CANVAS_ERROR) return t("canvasUnavailable")
+      if (code === ENCODING_ERROR) return t("encodingFailed")
+      return t("splitFailed")
+    },
+    [t],
+  )
+
+  const runSplit = useCallback(
+    async (
+      operation: (
+        image: HTMLImageElement,
+        runId: number,
+      ) => Promise<SplitResult>,
+    ) => {
+      const image = originalImageRef.current
+      if (!image || !activityRef.current) return
+      const runId = ++runIdRef.current
+      setIsProcessing(true)
+      setProgress(0)
+      setError("")
+
+      try {
+        const result = await operation(image, runId)
+        ensureCurrentRun(runId)
+        setSplitResult(result)
+        setSelectedCells(new Set(result.cells.map((cell) => cell.index)))
+      } catch (caught) {
+        if (caught instanceof Error && caught.message === CANCELLED_ERROR) return
+        if (runIdRef.current === runId) setError(errorMessage(caught))
+      } finally {
+        if (runIdRef.current === runId) setIsProcessing(false)
+      }
+    },
+    [ensureCurrentRun, errorMessage],
+  )
+
+  const handleSplit = useCallback(() => {
+    if (autoDetect) {
+      void runSplit(detectAndSplit)
+      return
     }
-  }, [originalImage, autoDetect, detectGrid, manualSplit])
 
-  // 下载单张图片
-  const downloadImage = useCallback((dataUrl: string, index: number) => {
-    const link = document.createElement("a")
-    link.download = `${fileName.replace(/\.[^/.]+$/, "")}_${index + 1}.png`
-    link.href = dataUrl
-    link.click()
-  }, [fileName])
+    void runSplit((image, runId) => {
+      setContentBounds(null)
+      setProcessSteps([])
+      return splitImageByGrid(
+        image,
+        {
+          left: 0,
+          top: 0,
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+        },
+        manualRows,
+        manualCols,
+        runId,
+        5,
+      )
+    })
+  }, [
+    autoDetect,
+    detectAndSplit,
+    manualCols,
+    manualRows,
+    runSplit,
+    splitImageByGrid,
+  ])
 
-  // 下载选中的图片
+  const resplitWithAdjustedGrid = useCallback(() => {
+    if (!contentBounds) return
+    void runSplit((image, runId) =>
+      splitImageByGrid(
+        image,
+        contentBounds,
+        detectedRows,
+        detectedCols,
+        runId,
+        5,
+      ),
+    )
+  }, [contentBounds, detectedCols, detectedRows, runSplit, splitImageByGrid])
+
+  const downloadImage = useCallback(
+    (image: Blob, index: number) => {
+      downloadBlob(image, `${safeMemeFileBase(fileName)}_${index + 1}.png`)
+    },
+    [fileName],
+  )
+
   const downloadSelected = useCallback(async () => {
-    if (!splitResult) return
-    
+    if (!splitResult || isPackaging) return
     const selected = Array.from(selectedCells)
+      .filter((index) => index >= 0 && index < splitResult.images.length)
+      .sort((left, right) => left - right)
     if (selected.length === 0) return
-    
     if (selected.length === 1) {
       downloadImage(splitResult.images[selected[0]], selected[0])
       return
     }
-    
-    // 多张图片打包下载 (使用 JSZip)
+
+    const packageId = ++packageIdRef.current
+    setIsPackaging(true)
+    setError("")
     try {
       const JSZip = (await import("jszip")).default
       const zip = new JSZip()
-      
-      selected.forEach((index) => {
-        const dataUrl = splitResult.images[index]
-        const base64 = dataUrl.split(",")[1]
-        zip.file(`${fileName.replace(/\.[^/.]+$/, "")}_${index + 1}.png`, base64, { base64: true })
-      })
-      
-      const blob = await zip.generateAsync({ type: "blob" })
-      downloadBlob(blob, `${fileName.replace(/\.[^/.]+$/, "")}_切分.zip`)
-    } catch (err) {
-      // 如果 JSZip 不可用，逐个下载
-      selected.forEach((index) => {
-        setTimeout(() => downloadImage(splitResult.images[index], index), index * 100)
-      })
-    }
-  }, [splitResult, selectedCells, fileName, downloadImage])
-
-  // 切换选中状态
-  const toggleCellSelection = useCallback((index: number) => {
-    setSelectedCells(prev => {
-      const next = new Set(prev)
-      if (next.has(index)) {
-        next.delete(index)
-      } else {
-        next.add(index)
+      const baseName = safeMemeFileBase(fileName)
+      for (const index of selected) {
+        zip.file(`${baseName}_${index + 1}.png`, splitResult.images[index])
       }
+      const blob = await zip.generateAsync({ type: "blob" })
+      if (packageIdRef.current !== packageId) return
+      downloadBlob(blob, `${baseName}_slices.zip`)
+    } catch {
+      if (packageIdRef.current === packageId) setError(t("packageFailed"))
+    } finally {
+      if (packageIdRef.current === packageId) setIsPackaging(false)
+    }
+  }, [downloadImage, fileName, isPackaging, selectedCells, splitResult, t])
+
+  const toggleCellSelection = useCallback((index: number) => {
+    setSelectedCells((previous) => {
+      const next = new Set(previous)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
       return next
     })
   }, [])
 
-  // 全选/取消全选
   const toggleSelectAll = useCallback(() => {
     if (!splitResult) return
-    if (selectedCells.size === splitResult.cells.length) {
-      setSelectedCells(new Set())
-    } else {
-      setSelectedCells(new Set(splitResult.cells.map(c => c.index)))
-    }
-  }, [splitResult, selectedCells])
+    setSelectedCells((previous) =>
+      previous.size === splitResult.cells.length
+        ? new Set()
+        : new Set(splitResult.cells.map((cell) => cell.index)),
+    )
+  }, [splitResult])
 
-  // 绘制预览
   useEffect(() => {
-    if (!originalImage || !previewCanvasRef.current) return
-    
+    const image = originalImageRef.current
     const canvas = previewCanvasRef.current
-    const ctx = canvas.getContext("2d")!
-    
-    const scale = zoom / 100
-    canvas.width = originalImage.width * scale
-    canvas.height = originalImage.height * scale
-    
-    ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height)
-    
-    // 绘制网格线
-    if (showGrid && splitResult) {
-      ctx.strokeStyle = "rgba(74, 129, 53, 0.8)"
-      ctx.lineWidth = 2
-      
-      splitResult.gridLines.horizontal.forEach(y => {
-        ctx.beginPath()
-        ctx.moveTo(0, y * scale)
-        ctx.lineTo(canvas.width, y * scale)
-        ctx.stroke()
-      })
-      
-      splitResult.gridLines.vertical.forEach(x => {
-        ctx.beginPath()
-        ctx.moveTo(x * scale, 0)
-        ctx.lineTo(x * scale, canvas.height)
-        ctx.stroke()
-      })
-      
-      // 绘制选中状态
-      splitResult.cells.forEach(cell => {
-        if (selectedCells.has(cell.index)) {
-          ctx.fillStyle = "rgba(74, 129, 53, 0.2)"
-          ctx.fillRect(cell.x * scale, cell.y * scale, cell.width * scale, cell.height * scale)
-        }
-      })
+    if (!image || !imageSize || !previewSize || !canvas) return
+    const context = canvas.getContext("2d")
+    if (!context) return
+
+    canvas.width = previewSize.width
+    canvas.height = previewSize.height
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.imageSmoothingEnabled = true
+    context.imageSmoothingQuality = "high"
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+    if (!showGrid || !splitResult) return
+    const scaleX = canvas.width / image.naturalWidth
+    const scaleY = canvas.height / image.naturalHeight
+    const styles = getComputedStyle(canvas)
+    const primary =
+      styles.getPropertyValue("--md-sys-color-primary").trim() || "CanvasText"
+    const primaryContainer =
+      styles.getPropertyValue("--md-sys-color-primary-container").trim() ||
+      "Highlight"
+    const left = (splitResult.gridLines.vertical[0] ?? 0) * scaleX
+    const right =
+      (splitResult.gridLines.vertical.at(-1) ?? image.naturalWidth) * scaleX
+    const top = (splitResult.gridLines.horizontal[0] ?? 0) * scaleY
+    const bottom =
+      (splitResult.gridLines.horizontal.at(-1) ?? image.naturalHeight) * scaleY
+
+    context.strokeStyle = primary
+    context.lineWidth = 2
+    for (const y of splitResult.gridLines.horizontal) {
+      context.beginPath()
+      context.moveTo(left, y * scaleY)
+      context.lineTo(right, y * scaleY)
+      context.stroke()
     }
-  }, [originalImage, splitResult, showGrid, zoom, selectedCells])
+    for (const x of splitResult.gridLines.vertical) {
+      context.beginPath()
+      context.moveTo(x * scaleX, top)
+      context.lineTo(x * scaleX, bottom)
+      context.stroke()
+    }
+
+    context.save()
+    context.globalAlpha = 0.28
+    context.fillStyle = primaryContainer
+    for (const cell of splitResult.cells) {
+      if (!selectedCells.has(cell.index)) continue
+      context.fillRect(
+        cell.x * scaleX,
+        cell.y * scaleY,
+        cell.width * scaleX,
+        cell.height * scaleY,
+      )
+    }
+    context.restore()
+  }, [imageSize, previewSize, selectedCells, showGrid, splitResult])
+
+  const renderStepDescription = (step: ProcessStep) => {
+    if (step.kind === "bounds") {
+      return t("boundsDescription")
+        .replace("{width}", String(step.width))
+        .replace("{height}", String(step.height))
+        .replace("{left}", String(step.left))
+        .replace("{top}", String(step.top))
+        .replace("{right}", String(step.right))
+        .replace("{bottom}", String(step.bottom))
+    }
+    return t("gridDescription")
+      .replace("{rows}", String(step.rows))
+      .replace("{cols}", String(step.cols))
+      .replace("{ratio}", step.ratio.toFixed(2))
+  }
 
   return (
-    <div className="container mx-auto px-4 py-4 max-w-7xl">
-      {/* 页面标题 */}
-      <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center justify-center gap-2">
-          <Grid3X3 className="h-8 w-8 text-green-600" />
-          智能切图
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          自动检测表情包网格，智能切分图片
+    <div className="container mx-auto max-w-7xl px-3 py-4 sm:px-4">
+      <header className="mb-6 text-center">
+        <div className="mb-2 flex items-center justify-center gap-2">
+          <Grid3X3 className={`h-8 w-8 ${M3_ICON_CLASS}`} aria-hidden="true" />
+          <h1 className="text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+            {t("title")}
+          </h1>
+        </div>
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("description")}
         </p>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* 左侧控制面板 */}
-        <div className="lg:col-span-1 space-y-4">
-          {/* 文件上传 */}
-          <Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4 lg:gap-6">
+        <aside className="contents lg:col-span-1 lg:block lg:space-y-4">
+          <Card className={`order-1 ${M3_CARD_CLASS}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Upload className="h-4 w-4 text-green-600" />
-                上传图片
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Upload className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                {t("uploadImage")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -708,93 +732,130 @@ export default function MemeSplitterPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) handleFileUpload(file)
+                }}
                 className="hidden"
               />
-              <div
+              <button
+                type="button"
+                aria-label={t("dropzoneAria")}
                 onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setIsDragging(true)
+                }}
                 onDragLeave={() => setIsDragging(false)}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                className={`w-full rounded-[var(--md-sys-shape-corner-large)] border-2 border-dashed p-5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
                   isDragging
-                    ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                    : "border-gray-300 dark:border-gray-700 hover:border-green-400"
+                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]"
+                    : "border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)]"
                 }`}
               >
-                <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  点击或拖放图片
-                </p>
-              </div>
-              
-              {originalImage && (
+                <Upload
+                  className="mx-auto mb-2 h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]"
+                  aria-hidden="true"
+                />
+                <span className="block text-sm text-[var(--md-sys-color-on-surface)]">
+                  {t("dropzone")}
+                </span>
+                <span className="mt-1 block text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("maximum")} {formatFileSizeLimit(FILE_SIZE_LIMITS.memeImage)}
+                </span>
+              </button>
+
+              {imageSize && (
                 <div className="mt-3 space-y-2">
-                  <p className="text-sm truncate" title={fileName}>{fileName}</p>
-                  <p className="text-xs text-gray-500">
-                    {originalImage.width} × {originalImage.height}
+                  <p
+                    className="break-all text-sm font-medium text-[var(--md-sys-color-on-surface)]"
+                    title={fileName}
+                  >
+                    {fileName}
                   </p>
-                  <Button variant="outline" size="sm" onClick={clearImage} className="w-full">
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    清除
+                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    {imageSize.width} × {imageSize.height} {t("pixels")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearImage}
+                    className="w-full"
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+                    {t("clear")}
                   </Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* 切分设置 */}
-          <Card>
+          <Card className={`order-3 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Settings className="h-4 w-4 text-green-600" />
-                切分设置
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Settings className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                {t("splitSettings")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="auto-detect">智能检测</Label>
+            <CardContent className="space-y-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Label htmlFor="auto-detect">{t("smartDetection")}</Label>
+                  <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    {autoDetect ? t("autoHint") : t("manualHint")}
+                  </p>
+                </div>
                 <Switch
                   id="auto-detect"
                   checked={autoDetect}
                   onCheckedChange={setAutoDetect}
                 />
               </div>
-              
+
               {autoDetect ? (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-sm">检测灵敏度: {sensitivity}%</Label>
+                    <Label htmlFor="meme-sensitivity">
+                      {t("sensitivity").replace("{value}", String(sensitivity))}
+                    </Label>
                     <Slider
+                      id="meme-sensitivity"
                       value={[sensitivity]}
-                      onValueChange={([v]) => setSensitivity(v)}
+                      onValueChange={([value]) => setSensitivity(value)}
                       min={10}
                       max={90}
                       step={5}
                     />
                   </div>
-                  
-                  {/* 检测后可调整的行列数 */}
+
                   {splitResult && contentBounds && (
-                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-3">
-                      <p className="text-xs text-green-700 dark:text-green-400 font-medium">
-                        检测结果（可调整）:
-                      </p>
+                    <div className="space-y-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] p-3 text-[var(--md-sys-color-on-primary-container)]">
+                      <div>
+                        <p className="text-sm font-medium">{t("detectedGrid")}</p>
+                        <p className="mt-1 text-xs opacity-80">{t("gridAdjustHint")}</p>
+                      </div>
                       <div className="space-y-2">
-                        <Label className="text-sm">行数: {detectedRows}</Label>
+                        <Label htmlFor="detected-rows">
+                          {t("rowsCount").replace("{value}", String(detectedRows))}
+                        </Label>
                         <Slider
+                          id="detected-rows"
                           value={[detectedRows]}
-                          onValueChange={([v]) => setDetectedRows(v)}
+                          onValueChange={([value]) => setDetectedRows(value)}
                           min={1}
                           max={8}
                           step={1}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-sm">列数: {detectedCols}</Label>
+                        <Label htmlFor="detected-cols">
+                          {t("colsCount").replace("{value}", String(detectedCols))}
+                        </Label>
                         <Slider
+                          id="detected-cols"
                           value={[detectedCols]}
-                          onValueChange={([v]) => setDetectedCols(v)}
+                          onValueChange={([value]) => setDetectedCols(value)}
                           min={1}
                           max={10}
                           step={1}
@@ -802,11 +863,12 @@ export default function MemeSplitterPage() {
                       </div>
                       <Button
                         onClick={resplitWithAdjustedGrid}
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         className="w-full"
+                        disabled={isProcessing}
                       >
-                        应用调整
+                        {t("applyAdjustment")}
                       </Button>
                     </div>
                   )}
@@ -814,20 +876,26 @@ export default function MemeSplitterPage() {
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-sm">行数: {manualRows}</Label>
+                    <Label htmlFor="manual-rows">
+                      {t("rowsCount").replace("{value}", String(manualRows))}
+                    </Label>
                     <Slider
+                      id="manual-rows"
                       value={[manualRows]}
-                      onValueChange={([v]) => setManualRows(v)}
+                      onValueChange={([value]) => setManualRows(value)}
                       min={1}
                       max={10}
                       step={1}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm">列数: {manualCols}</Label>
+                    <Label htmlFor="manual-cols">
+                      {t("colsCount").replace("{value}", String(manualCols))}
+                    </Label>
                     <Slider
+                      id="manual-cols"
                       value={[manualCols]}
-                      onValueChange={([v]) => setManualCols(v)}
+                      onValueChange={([value]) => setManualCols(value)}
                       min={1}
                       max={10}
                       step={1}
@@ -835,50 +903,49 @@ export default function MemeSplitterPage() {
                   </div>
                 </>
               )}
-              
+
               <Button
                 onClick={handleSplit}
-                disabled={!originalImage || isProcessing}
-                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={!imageSize || isProcessing}
+                className="min-h-11 w-full"
               >
                 {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    处理中...
-                  </>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <>
-                    <Scissors className="h-4 w-4 mr-2" />
-                    开始切分
-                  </>
+                  <Scissors className="mr-2 h-4 w-4" aria-hidden="true" />
                 )}
+                {isProcessing ? t("processing") : t("startSplit")}
               </Button>
-              
+
               {isProcessing && (
-                <Progress value={progress} className="w-full" />
+                <div className="space-y-1" aria-live="polite">
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-right text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    {progress}%
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {/* 显示设置 */}
-          <Card>
+          <Card className={`order-4 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Eye className="h-4 w-4 text-green-600" />
-                显示设置
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Eye className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                {t("displaySettings")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="show-grid">显示网格</Label>
+            <CardContent className="space-y-5">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="show-grid">{t("showGrid")}</Label>
                 <Switch
                   id="show-grid"
                   checked={showGrid}
                   onCheckedChange={setShowGrid}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="show-process">显示处理过程</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="show-process">{t("showProcess")}</Label>
                 <Switch
                   id="show-process"
                   checked={showProcess}
@@ -886,182 +953,240 @@ export default function MemeSplitterPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm">缩放: {zoom}%</Label>
+                <Label>{t("zoom").replace("{value}", String(zoom))}</Label>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => setZoom(Math.max(25, zoom - 25))}
+                    size="icon"
+                    aria-label={t("zoomOut")}
+                    onClick={() => setZoom((value) => Math.max(25, value - 25))}
                   >
-                    <ZoomOut className="h-4 w-4" />
+                    <ZoomOut className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   <Slider
                     value={[zoom]}
-                    onValueChange={([v]) => setZoom(v)}
+                    onValueChange={([value]) => setZoom(value)}
                     min={25}
                     max={200}
                     step={25}
-                    className="flex-1"
+                    className="min-w-0 flex-1"
+                    aria-label={t("zoomControl")}
                   />
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => setZoom(Math.min(200, zoom + 25))}
+                    size="icon"
+                    aria-label={t("zoomIn")}
+                    onClick={() => setZoom((value) => Math.min(200, value + 25))}
                   >
-                    <ZoomIn className="h-4 w-4" />
+                    <ZoomIn className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </div>
+        </aside>
 
-
-        {/* 右侧预览区域 */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* 预览区域 */}
-          <Card className="min-h-[400px]">
+        <main className="contents lg:col-span-3 lg:block lg:space-y-4">
+          <Card className={`order-2 min-h-[360px] ${M3_CARD_CLASS}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-green-600" />
-                  预览
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ImageIcon className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                  {t("preview")}
+                </CardTitle>
                 {splitResult && (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                    {splitResult.cells.length} 个切片
+                  <Badge
+                    variant="secondary"
+                    className="bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]"
+                  >
+                    {t("slicesCount").replace(
+                      "{count}",
+                      String(splitResult.cells.length),
+                    )}
                   </Badge>
                 )}
-              </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              {!originalImage ? (
-                <div className="flex flex-col items-center justify-center h-[300px] text-gray-400">
-                  <ImageIcon className="h-16 w-16 mb-4" />
-                  <p>请上传图片开始切分</p>
-                </div>
+              {!imageSize || !previewSize ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex min-h-[270px] w-full flex-col items-center justify-center rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface-container-low)] px-4 text-[var(--md-sys-color-on-surface-variant)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+                >
+                  <ImageIcon className="mb-3 h-14 w-14" aria-hidden="true" />
+                  <span className="font-medium">{t("uploadPrompt")}</span>
+                  <span className="mt-1 text-sm">{t("uploadPromptHint")}</span>
+                </button>
               ) : (
-                <div className="overflow-auto max-h-[500px] scrollbar-m3">
+                <div
+                  className="max-h-[min(62dvh,640px)] overflow-auto overscroll-contain rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] p-2 touch-pan-x touch-pan-y scrollbar-m3"
+                  aria-label={t("previewScrollAria")}
+                  tabIndex={0}
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
                   <canvas
                     ref={previewCanvasRef}
-                    className="mx-auto border border-gray-200 dark:border-gray-700 rounded-lg"
+                    className="mx-auto block rounded-[var(--md-sys-shape-corner-small)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)]"
+                    style={{
+                      width: `${Math.round(previewSize.width * (zoom / 100))}px`,
+                      height: `${Math.round(previewSize.height * (zoom / 100))}px`,
+                    }}
                   />
                 </div>
               )}
-              
+
               {error && (
-                <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  {error}
+                <div
+                  className="mt-4 flex items-start gap-2 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
+                  role="alert"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 break-words">{error}</span>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* 处理过程 */}
           {showProcess && processSteps.length > 0 && (
-            <Card>
+            <Card className={`order-5 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <RotateCcw className="h-4 w-4 text-green-600" />
-                  处理过程
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <RotateCcw className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                  {t("processTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {processSteps.map((step, index) => (
-                    <div key={index} className="border rounded-lg p-3 dark:border-gray-700">
-                      <p className="text-sm font-medium mb-2">{step.name}</p>
-                      <img
-                        src={step.imageData}
-                        alt={step.name}
-                        className="w-full rounded border dark:border-gray-600"
-                      />
-                      <p className="text-xs text-gray-500 mt-2">{step.description}</p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {processSteps.map((step) => {
+                    const name =
+                      step.kind === "bounds" ? t("boundsStep") : t("gridStep")
+                    return (
+                      <article
+                        key={step.kind}
+                        className="min-w-0 rounded-[var(--md-sys-shape-corner-medium)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3"
+                      >
+                        <h3 className="mb-2 text-sm font-medium">{name}</h3>
+                        <BlobPreview
+                          blob={step.image}
+                          alt={name}
+                          className="max-h-72 w-full rounded-[var(--md-sys-shape-corner-small)] border border-[var(--md-sys-color-outline-variant)] object-contain"
+                        />
+                        <p className="mt-2 break-words text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                          {renderStepDescription(step)}
+                        </p>
+                      </article>
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* 切分结果 */}
           {splitResult && splitResult.images.length > 0 && (
-            <Card>
+            <Card className={`order-6 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    切分结果
-                  </span>
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <CheckCircle2
+                      className={`h-4 w-4 ${M3_ICON_CLASS}`}
+                      aria-hidden="true"
+                    />
+                    {t("results")}
+                  </CardTitle>
+                  <div className="grid grid-cols-2 gap-2 sm:flex">
                     <Button variant="outline" size="sm" onClick={toggleSelectAll}>
-                      {selectedCells.size === splitResult.cells.length ? "取消全选" : "全选"}
+                      {selectedCells.size === splitResult.cells.length
+                        ? t("clearSelection")
+                        : t("selectAll")}
                     </Button>
                     <Button
                       size="sm"
-                      onClick={downloadSelected}
-                      disabled={selectedCells.size === 0}
-                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => void downloadSelected()}
+                      disabled={selectedCells.size === 0 || isPackaging}
                     >
-                      <Download className="h-4 w-4 mr-1" />
-                      下载选中 ({selectedCells.size})
+                      {isPackaging ? (
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : selectedCells.size > 1 ? (
+                        <Package className="mr-1 h-4 w-4" aria-hidden="true" />
+                      ) : (
+                        <Download className="mr-1 h-4 w-4" aria-hidden="true" />
+                      )}
+                      <span className="truncate">
+                        {isPackaging
+                          ? t("packaging")
+                          : t("downloadSelected").replace(
+                              "{count}",
+                              String(selectedCells.size),
+                            )}
+                      </span>
                     </Button>
                   </div>
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {splitResult.images.map((dataUrl, index) => (
-                    <div
-                      key={index}
-                      onClick={() => toggleCellSelection(index)}
-                      className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                        selectedCells.has(index)
-                          ? "border-green-500 ring-2 ring-green-200 dark:ring-green-800"
-                          : "border-gray-200 dark:border-gray-700 hover:border-green-300"
-                      }`}
-                    >
-                      <img
-                        src={dataUrl}
-                        alt={`切片 ${index + 1}`}
-                        className="w-full aspect-square object-contain bg-gray-50 dark:bg-gray-800"
-                      />
-                      <div className="absolute top-1 left-1">
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs ${
-                            selectedCells.has(index)
-                              ? "bg-green-500 text-white"
-                              : "bg-gray-800/70 text-white"
-                          }`}
-                        >
-                          {index + 1}
-                        </Badge>
-                      </div>
-                      {selectedCells.has(index) && (
-                        <div className="absolute top-1 right-1">
-                          <CheckCircle className="h-5 w-5 text-green-500 bg-white rounded-full" />
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center opacity-0 hover:opacity-100 transition-opacity">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                  {splitResult.images.map((image, index) => {
+                    const selected = selectedCells.has(index)
+                    return (
+                      <div
+                        key={index}
+                        className={`relative min-w-0 overflow-hidden rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-[var(--md-sys-color-surface-container-low)] transition-colors ${
+                          selected
+                            ? "border-[var(--md-sys-color-primary)]"
+                            : "border-[var(--md-sys-color-outline-variant)]"
+                        }`}
+                      >
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            downloadImage(dataUrl, index)
-                          }}
-                          className="hover:underline"
+                          type="button"
+                          aria-pressed={selected}
+                          aria-label={t("selectSliceAria").replace(
+                            "{index}",
+                            String(index + 1),
+                          )}
+                          onClick={() => toggleCellSelection(index)}
+                          className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--md-sys-color-primary)]"
                         >
-                          下载
+                          <BlobPreview
+                            blob={image}
+                            alt={t("sliceAlt").replace("{index}", String(index + 1))}
+                            className="aspect-square w-full object-contain"
+                          />
+                          <span
+                            className={`absolute left-1.5 top-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+                              selected
+                                ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]"
+                                : "bg-[var(--md-sys-color-inverse-surface)] text-[var(--md-sys-color-inverse-on-surface)]"
+                            }`}
+                          >
+                            {index + 1}
+                          </span>
+                          {selected && (
+                            <span className="absolute right-1.5 top-1.5 rounded-full bg-[var(--md-sys-color-primary)] p-1 text-[var(--md-sys-color-on-primary)]">
+                              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                            </span>
+                          )}
                         </button>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="absolute bottom-1.5 right-1.5 h-9 w-9 shadow-sm"
+                          aria-label={t("downloadSliceAria").replace(
+                            "{index}",
+                            String(index + 1),
+                          )}
+                          onClick={() => downloadImage(image, index)}
+                        >
+                          <Download className="h-4 w-4" aria-hidden="true" />
+                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
           )}
-        </div>
+        </main>
       </div>
     </div>
   )

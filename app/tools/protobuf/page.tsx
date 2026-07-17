@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import type React from "react"
 
 import { useState, useRef, useCallback, useEffect } from "react"
@@ -10,14 +12,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { useTranslations } from "@/hooks/use-translations"
 import { bytesToBase64, bytesToHex } from "@/lib/binary"
 import { downloadBlob } from "@/lib/object-url"
-import { Loader2, Copy, FileUp, X, Download, RefreshCw, ArrowLeftRight, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
+import { Loader2, Copy, FileUp, X, Download, RefreshCw, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
 import * as protobuf from "protobufjs"
+
+function collectMessageTypes(namespace: protobuf.NamespaceBase): string[] {
+  const messageTypes: string[] = []
+
+  namespace.nestedArray.forEach((item) => {
+    if (item instanceof protobuf.Type) {
+      messageTypes.push(item.fullName)
+      messageTypes.push(...collectMessageTypes(item))
+    } else if (item instanceof protobuf.Namespace) {
+      messageTypes.push(...collectMessageTypes(item))
+    }
+  })
+
+  return messageTypes
+}
 
 export default function ProtobufTool() {
   const t = useTranslations("protobuf")
@@ -37,12 +52,12 @@ export default function ProtobufTool() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [indentSize, setIndentSize] = useState(2)
-  const [showFieldIds, setShowFieldIds] = useState(true)
   const [root, setRoot] = useState<protobuf.Root | null>(null)
   const [messageTypes, setMessageTypes] = useState<string[]>([])
   const [selectedMessageType, setSelectedMessageType] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const protoFileInputRef = useRef<HTMLInputElement>(null)
+  const copyResetTimerRef = useRef<number | null>(null)
 
   // Detect input format (base64 or hex)
   const detectInputFormat = (input: string): "base64" | "hex" | "unknown" => {
@@ -50,7 +65,7 @@ export default function ProtobufTool() {
     const cleanInput = input.replace(/\s/g, "")
 
     // Check if it's hex (only contains hex characters)
-    if (/^[0-9a-fA-F]+$/.test(cleanInput)) {
+    if (/^(?:[0-9a-fA-F]{2})+$/.test(cleanInput)) {
       return "hex"
     }
 
@@ -143,12 +158,7 @@ export default function ProtobufTool() {
             setRoot(parsedRoot)
 
             // Get all message types
-            const types: string[] = []
-            parsedRoot.nestedArray.forEach((obj) => {
-              if (obj instanceof protobuf.Type) {
-                types.push(obj.fullName)
-              }
-            })
+            const types = collectMessageTypes(parsedRoot)
             setMessageTypes(types)
 
             if (types.length > 0) {
@@ -230,12 +240,7 @@ export default function ProtobufTool() {
               setRoot(parsedRoot)
 
               // Get all message types
-              const types: string[] = []
-              parsedRoot.nestedArray.forEach((obj) => {
-                if (obj instanceof protobuf.Type) {
-                  types.push(obj.fullName)
-                }
-              })
+              const types = collectMessageTypes(parsedRoot)
               setMessageTypes(types)
 
               if (types.length > 0) {
@@ -281,11 +286,23 @@ export default function ProtobufTool() {
 
   // Copy output to clipboard
   const copyToClipboard = useCallback((text: string, key: string = "main") => {
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) {
+        setError(t("copyError"))
+        return
+      }
+
       setCopied(prev => ({ ...prev, [key]: true }))
-      setTimeout(() => setCopied(prev => ({ ...prev, [key]: false })), 2000)
+
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current)
+      }
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setCopied(prev => ({ ...prev, [key]: false }))
+        copyResetTimerRef.current = null
+      }, 2000)
     })
-  }, [])
+  }, [t])
 
   // Download output as JSON file
   const downloadOutput = useCallback(() => {
@@ -552,43 +569,6 @@ export default function ProtobufTool() {
     return result
   }
 
-  // Format Protobuf output
-  const formatProtobufOutput = (decoded: any, showFieldIds: boolean, indent: number): string => {
-    // Helper function to process each field
-    const processField = (field: any, path: string[] = []): any => {
-      if (field === null || field === undefined) {
-        return null
-      }
-
-      if (Array.isArray(field)) {
-        return field.map((item) => processField(item, path))
-      }
-
-      if (typeof field === "object") {
-        const result: Record<string, any> = {}
-
-        for (const [key, value] of Object.entries(field)) {
-          const newPath = [...path, key]
-          const fieldId = key.match(/^(\d+)$/) ? key : null
-
-          if (fieldId && !showFieldIds) {
-            // Skip numeric keys if showFieldIds is false
-            continue
-          }
-
-          result[key] = processField(value, newPath)
-        }
-
-        return result
-      }
-
-      return field
-    }
-
-    const processed = processField(decoded)
-    return JSON.stringify(processed, null, indent)
-  }
-
   // Clear input and output
   const clearAll = useCallback(() => {
     setInputData("")
@@ -603,44 +583,59 @@ export default function ProtobufTool() {
 
   // Process when input changes
   useEffect(() => {
-    if ((mode === "decode" && inputData) || (mode === "encode" && jsonInput)) {
-      // Don't auto-process for large inputs to avoid performance issues
-      const inputSize = mode === "decode" ? inputData.length : jsonInput.length
-      if (inputSize < 10000) {
-        parseProtobuf()
-      }
-    } else {
+    const source = mode === "decode" ? inputData : jsonInput
+    if (!source) {
       setOutputData("")
       setError(null)
+      return
     }
+
+    // Don't auto-process large inputs, and wait until the user pauses typing.
+    if (source.length >= 10000) return
+
+    const timeout = window.setTimeout(() => {
+      void parseProtobuf()
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
   }, [inputData, jsonInput, mode, parseProtobuf])
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current)
+      }
+    }
+  }, [])
+
   return (
-    <div className="container mx-auto px-4 py-4 max-w-7xl">
-      {/* 页面标题 */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <Database className="h-8 w-8 text-purple-600" />
-          Protobuf 解析器
+    <div className="container mx-auto max-w-7xl px-3 py-4 sm:px-4">
+      <div className="mb-6 text-center sm:mb-8">
+        <h1 className="mb-2 flex items-center justify-center gap-2 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          <Database className="h-7 w-7 text-[var(--md-sys-color-primary)] sm:h-8 sm:w-8" />
+          {t("title")}
         </h1>
+        <p className="mx-auto max-w-2xl text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("description")}
+        </p>
       </div>
 
       <Tabs defaultValue="decode" className="w-full" onValueChange={(value) => setMode(value as "decode" | "encode")}>
         <div className="mb-6">
-          <TabsList className="grid w-full grid-cols-2 h-14 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <TabsList className="grid h-14 w-full grid-cols-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] p-1.5">
             <TabsTrigger
               value="decode"
-              className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 transition-all duration-200"
+              className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-3 transition-colors data-[state=active]:bg-[var(--md-sys-color-primary-container)] data-[state=active]:text-[var(--md-sys-color-on-primary-container)] sm:px-4"
             >
               <Code className="h-5 w-5" />
-              <span className="text-sm font-medium">解码 Protobuf</span>
+              <span className="truncate text-sm font-medium">{t("decodeProtobuf")}</span>
             </TabsTrigger>
             <TabsTrigger
               value="encode"
-              className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300 transition-all duration-200"
+              className="flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-3 transition-colors data-[state=active]:bg-[var(--md-sys-color-primary-container)] data-[state=active]:text-[var(--md-sys-color-on-primary-container)] sm:px-4"
             >
               <Database className="h-5 w-5" />
-              <span className="text-sm font-medium">编码 JSON</span>
+              <span className="truncate text-sm font-medium">{t("encodeJson")}</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -651,22 +646,22 @@ export default function ProtobufTool() {
           onValueChange={(value) => setSchemaMode(value as "schemaless" | "schema")}
         >
           <div className="mb-6">
-            <TabsList className="grid w-full grid-cols-2 h-12 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <TabsList className="grid h-12 w-full grid-cols-2 rounded-lg bg-[var(--md-sys-color-surface-container)] p-1">
               <TabsTrigger 
                 value="schemaless" 
-                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 sm:gap-2 sm:px-3"
+                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3"
               >
                 <Zap className="h-4 w-4" />
-                <span className="text-sm sm:hidden">无 Schema</span>
-                <span className="hidden text-sm sm:inline">无 Schema 模式</span>
+                <span className="truncate text-sm sm:hidden">{t("schemalessShort")}</span>
+                <span className="hidden text-sm sm:inline">{t("schemalessMode")}</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="schema" 
-                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 sm:gap-2 sm:px-3"
+                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3"
               >
                 <Shield className="h-4 w-4" />
                 <span className="text-sm sm:hidden">Schema</span>
-                <span className="hidden text-sm sm:inline">Schema 模式</span>
+                <span className="hidden text-sm sm:inline">{t("schemaMode")}</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -676,13 +671,13 @@ export default function ProtobufTool() {
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5 text-green-600" />
-                    Schema 配置
+                    <FileText className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                    {t("schemaConfiguration")}
                   </CardTitle>
                   {(protoFile || protoContent) && (
                     <Button variant="outline" size="sm" onClick={removeProtoFile} className="w-full sm:ml-auto sm:w-auto">
                       <X className="mr-2 h-4 w-4" />
-                      移除 Schema
+                      {t("removeSchema")}
                     </Button>
                   )}
                 </div>
@@ -697,11 +692,11 @@ export default function ProtobufTool() {
                   <TabsList className="grid w-full grid-cols-2 mb-4">
                     <TabsTrigger value="text" className="flex items-center gap-2">
                       <Code className="h-4 w-4" />
-                      文本输入
+                      {t("textMode")}
                     </TabsTrigger>
                     <TabsTrigger value="file" className="flex items-center gap-2">
                       <Upload className="h-4 w-4" />
-                      文件上传
+                      {t("fileMode")}
                     </TabsTrigger>
                   </TabsList>
 
@@ -756,10 +751,19 @@ export default function ProtobufTool() {
                   <TabsContent value="file" className="space-y-4">
                     {!protoFile ? (
                       <div
-                        className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                        className="cursor-pointer rounded-xl border-2 border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-6 text-center transition-colors hover:bg-[var(--md-sys-color-surface-container-high)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
                         onDrop={handleProtoDrop}
                         onDragOver={handleDragOver}
                         onClick={() => protoFileInputRef.current?.click()}
+                        onKeyDown={(event) => {
+                          if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                            event.preventDefault()
+                            protoFileInputRef.current?.click()
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={t("selectProtoFile")}
                       >
                         <div className="space-y-2">
                           <div className="flex items-center justify-center">
@@ -791,10 +795,10 @@ export default function ProtobufTool() {
 
                 {messageTypes.length > 0 && (
                   <div className="space-y-2">
-                    <Label htmlFor="message-type" className="text-sm font-medium">消息类型</Label>
+                    <Label htmlFor="message-type" className="text-sm font-medium">{t("messageType")}</Label>
                     <Select value={selectedMessageType} onValueChange={setSelectedMessageType}>
                       <SelectTrigger id="message-type" className="w-full h-10">
-                        <SelectValue placeholder="选择消息类型" />
+                        <SelectValue placeholder={t("selectMessageType")} />
                       </SelectTrigger>
                       <SelectContent>
                         {messageTypes.map((type) => (
@@ -804,8 +808,8 @@ export default function ProtobufTool() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                      已找到 {messageTypes.length} 个消息类型
+                    <div className="rounded-lg bg-[var(--md-sys-color-surface-container-low)] p-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("messageTypesFound")}: {messageTypes.length}
                     </div>
                   </div>
                 )}
@@ -820,8 +824,8 @@ export default function ProtobufTool() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Upload className="h-5 w-5 text-purple-600" />
-                  Protobuf 输入
+                  <Upload className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  {t("protobufInput")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -833,11 +837,11 @@ export default function ProtobufTool() {
                   <TabsList className="grid w-full grid-cols-2 mb-4">
                     <TabsTrigger value="text" className="flex items-center gap-2">
                       <Code className="h-4 w-4" />
-                      文本输入
+                      {t("textMode")}
                     </TabsTrigger>
                     <TabsTrigger value="file" className="flex items-center gap-2">
                       <FileUp className="h-4 w-4" />
-                      文件上传
+                      {t("fileMode")}
                     </TabsTrigger>
                   </TabsList>
 
@@ -856,10 +860,19 @@ export default function ProtobufTool() {
 
                   <TabsContent value="file" className="space-y-4">
                     <div
-                      className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                      className="cursor-pointer rounded-xl border-2 border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-6 text-center transition-colors hover:bg-[var(--md-sys-color-surface-container-high)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
                       onDrop={handleDrop}
                       onDragOver={handleDragOver}
                       onClick={() => fileInputRef.current?.click()}
+                      onKeyDown={(event) => {
+                        if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                          event.preventDefault()
+                          fileInputRef.current?.click()
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={file ? t("replaceDataFile") : t("selectDataFile")}
                     >
                       {file ? (
                         <div className="space-y-2">
@@ -899,14 +912,19 @@ export default function ProtobufTool() {
                   </TabsContent>
                 </Tabs>
 
-                {error && <div className="mt-2 text-sm text-red-500">{error}</div>}
+                {error && (
+                  <div role="alert" className="mt-3 rounded-xl border border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
+                    {error}
+                  </div>
+                )}
 
-                <div className="flex justify-between mt-4">
-                  <Button variant="outline" onClick={clearAll}>
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-between">
+                  <Button variant="outline" onClick={clearAll} className="w-full sm:w-auto">
                     {t("clearInput")}
                   </Button>
                   <Button
                     onClick={parseProtobuf}
+                    className="w-full sm:w-auto"
                     disabled={
                       isProcessing || !inputData || (schemaMode === "schema" && (!root || !selectedMessageType))
                     }
@@ -932,8 +950,8 @@ export default function ProtobufTool() {
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5 text-green-600" />
-                    JSON 输出
+                    <FileText className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                    {t("jsonOutput")}
                   </CardTitle>
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
@@ -942,11 +960,11 @@ export default function ProtobufTool() {
                       ) : (
                         <Copy className="mr-2 h-4 w-4" />
                       )}
-                      {copied.main ? "已复制" : "复制"}
+                      {copied.main ? t("copied") : t("copy")}
                     </Button>
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={downloadOutput} disabled={!outputData}>
                       <Download className="mr-2 h-4 w-4" />
-                      下载
+                      {t("download")}
                     </Button>
                   </div>
                 </div>
@@ -955,47 +973,34 @@ export default function ProtobufTool() {
                 <div className="space-y-4">
                   <Textarea 
                     id="output-data" 
-                    className="font-mono h-[400px] bg-gray-50 dark:bg-gray-900" 
+                    className="h-[320px] bg-[var(--md-sys-color-surface-container-low)] font-mono sm:h-[400px]"
                     value={outputData} 
                     readOnly 
-                    placeholder="解析结果将在此显示..."
+                    placeholder={t("decodeResultPlaceholder")}
                   />
 
                   {outputData && <JsonTreeView jsonText={outputData} indentSize={indentSize} />}
                 </div>
 
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
-                  <Label className="text-sm font-medium">输出选项</Label>
+                <div className="mt-4 space-y-4 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-4">
+                  <Label className="text-sm font-medium">{t("options")}</Label>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="show-field-ids"
-                        checked={showFieldIds}
-                        onCheckedChange={(checked) => setShowFieldIds(!!checked)}
-                      />
-                      <Label htmlFor="show-field-ids" className="cursor-pointer text-sm">
-                        显示字段 ID
-                      </Label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor="indent-size" className="text-sm">缩进空格:</Label>
-                      <Input
-                        id="indent-size"
-                        type="number"
-                        min="0"
-                        max="8"
-                        value={indentSize}
-                        onChange={(e) => setIndentSize(Number.parseInt(e.target.value) || 0)}
-                        className="w-16 h-8"
-                      />
-                    </div>
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="indent-size" className="text-sm">{t("indentSize")}:</Label>
+                    <Input
+                      id="indent-size"
+                      type="number"
+                      min="0"
+                      max="8"
+                      value={indentSize}
+                      onChange={(e) => setIndentSize(Number.parseInt(e.target.value) || 0)}
+                      className="h-9 w-20"
+                    />
                   </div>
                   
                   {outputData && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t">
-                      输出长度: {outputData.length} 字符
+                    <div className="border-t border-[var(--md-sys-color-outline-variant)] pt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("outputLength")}: {outputData.length} {t("characters")}
                     </div>
                   )}
                 </div>
@@ -1010,33 +1015,33 @@ export default function ProtobufTool() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Code className="h-5 w-5 text-blue-600" />
-                  JSON 输入
+                  <Code className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  {t("jsonInput")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="json-input" className="text-sm font-medium">JSON 数据</Label>
+                    <Label htmlFor="json-input" className="text-sm font-medium">{t("jsonData")}</Label>
                     <Textarea
                       id="json-input"
                       placeholder='{"1": "Hello", "2": 123, "3": {"4": "World"}}'
-                      className="font-mono h-[400px] bg-gray-50 dark:bg-gray-900"
+                      className="h-[320px] bg-[var(--md-sys-color-surface-container-low)] font-mono sm:h-[400px]"
                       value={jsonInput}
                       onChange={(e) => setJsonInput(e.target.value)}
                     />
                   </div>
 
                   {error && (
-                    <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+                    <div role="alert" className="rounded-xl border border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] p-3">
+                      <div className="text-sm text-[var(--md-sys-color-on-error-container)]">{error}</div>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center pt-2">
-                    <Button variant="outline" onClick={clearAll} size="sm">
+                  <div className="grid grid-cols-2 items-center gap-2 pt-2 sm:flex sm:justify-between">
+                    <Button variant="outline" onClick={clearAll} size="sm" className="w-full sm:w-auto">
                       <X className="mr-2 h-4 w-4" />
-                      清空输入
+                      {t("clearInput")}
                     </Button>
                     <Button
                       onClick={parseProtobuf}
@@ -1044,25 +1049,25 @@ export default function ProtobufTool() {
                         isProcessing || !jsonInput || (schemaMode === "schema" && (!root || !selectedMessageType))
                       }
                       size="lg"
-                      className="px-6"
+                      className="w-full px-3 sm:w-auto sm:px-6"
                     >
                       {isProcessing ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          编码中...
+                          {t("encoding")}
                         </>
                       ) : (
                         <>
                           <Database className="mr-2 h-4 w-4" />
-                          编码为 Protobuf
+                          {t("encodeToProtobuf")}
                         </>
                       )}
                     </Button>
                   </div>
                   
                   {jsonInput && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t">
-                      输入长度: {jsonInput.length} 字符
+                    <div className="border-t border-[var(--md-sys-color-outline-variant)] pt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("inputLength")}: {jsonInput.length} {t("characters")}
                     </div>
                   )}
                 </div>
@@ -1074,8 +1079,8 @@ export default function ProtobufTool() {
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="flex min-w-0 flex-wrap items-center gap-2 text-lg">
-                    <Database className="h-5 w-5 text-purple-600" />
-                    Protobuf 输出
+                    <Database className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                    {t("protobufOutput")}
                   </CardTitle>
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
@@ -1084,11 +1089,11 @@ export default function ProtobufTool() {
                       ) : (
                         <Copy className="mr-2 h-4 w-4" />
                       )}
-                      {copied.main ? "已复制" : "复制"}
+                      {copied.main ? t("copied") : t("copy")}
                     </Button>
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={downloadOutput} disabled={!outputData}>
                       <Download className="mr-2 h-4 w-4" />
-                      下载
+                      {t("download")}
                     </Button>
                   </div>
                 </div>
@@ -1097,23 +1102,23 @@ export default function ProtobufTool() {
                 <div className="space-y-4">
                   <Textarea 
                     id="protobuf-output" 
-                    className="font-mono h-[400px] bg-gray-50 dark:bg-gray-900" 
+                    className="h-[320px] bg-[var(--md-sys-color-surface-container-low)] font-mono sm:h-[400px]"
                     value={outputData} 
                     readOnly 
-                    placeholder="编码结果将在此显示..."
+                    placeholder={t("encodeResultPlaceholder")}
                   />
                 </div>
 
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="mt-4 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-4">
+                  <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
                     {schemaMode === "schema" ? 
-                      "使用 Schema 模式进行编码，确保数据类型和字段映射正确。" : 
-                      "无 Schema 模式编码，字段号需要手动指定为数字键。"
+                      t("encodeSchemaHelp") :
+                      t("encodeHelp")
                     }
                   </div>
                   {outputData && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t">
-                      输出长度: {outputData.length} 字符 (Hex格式)
+                    <div className="mt-2 border-t border-[var(--md-sys-color-outline-variant)] pt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("outputLength")}: {outputData.length} {t("characters")} ({t("hexFormat")})
                     </div>
                   )}
                 </div>

@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import type React from "react"
 import {
   useCallback,
@@ -25,7 +27,7 @@ export default function TextStatsPage() {
   const [text, setText] = useState("")
   const [copied, setCopied] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deferredText = useDeferredValue(text)
   const isAnalyzing = deferredText !== text
 
@@ -57,7 +59,8 @@ ${t("readingTime")}: ${stats.readingTime} ${t("minutes")}
 ${t("speakingTime")}: ${stats.speakingTime} ${t("minutes")}
     `.trim()
     
-    navigator.clipboard.writeText(statsText).then(() => {
+    void copyTextToClipboard(statsText).then((success) => {
+      if (!success) return
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
       }

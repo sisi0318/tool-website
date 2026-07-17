@@ -1,14 +1,14 @@
 import {
-  deflateSync,
-  gzipSync,
-  gunzipSync,
-  inflateSync,
+  deflate,
+  gzip,
+  gunzip,
+  inflate,
   strFromU8,
   strToU8,
-  unzipSync,
-  unzlibSync,
-  zipSync,
-  zlibSync,
+  unzip,
+  unzlib,
+  zip,
+  zlib,
 } from "fflate"
 import { base64ToBytes, bytesToBase64, bytesToHex, hexToBytes } from "./binary"
 
@@ -61,6 +61,28 @@ async function runBrotli(bytes: Uint8Array, operation: CompressionOperation, lev
     : brotli.decompress(bytes)
 }
 
+function runFflate(
+  operation: (
+    callback: (error: Error | null, data: Uint8Array) => void,
+  ) => void,
+): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    operation((error, data) => {
+      if (error) reject(error)
+      else resolve(data)
+    })
+  })
+}
+
+function runUnzip(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
+  return new Promise((resolve, reject) => {
+    unzip(bytes, (error, entries) => {
+      if (error) reject(error)
+      else resolve(entries)
+    })
+  })
+}
+
 export async function transformCompression(
   input: string,
   options: CompressionOptions
@@ -76,31 +98,33 @@ export async function transformCompression(
   } else if (options.operation === "compress") {
     switch (options.format) {
       case "gzip":
-        transformed = gzipSync(source, { level })
+        transformed = await runFflate((callback) => gzip(source, { level }, callback))
         break
       case "zlib":
-        transformed = zlibSync(source, { level })
+        transformed = await runFflate((callback) => zlib(source, { level }, callback))
         break
       case "deflate":
-        transformed = deflateSync(source, { level })
+        transformed = await runFflate((callback) => deflate(source, { level }, callback))
         break
       case "zip":
-        transformed = zipSync({ [options.filename?.trim() || "data.txt"]: source }, { level })
+        transformed = await runFflate((callback) => {
+          zip({ [options.filename?.trim() || "data.txt"]: source }, { level }, callback)
+        })
         break
     }
   } else {
     switch (options.format) {
       case "gzip":
-        transformed = gunzipSync(source)
+        transformed = await runFflate((callback) => gunzip(source, callback))
         break
       case "zlib":
-        transformed = unzlibSync(source)
+        transformed = await runFflate((callback) => unzlib(source, callback))
         break
       case "deflate":
-        transformed = inflateSync(source)
+        transformed = await runFflate((callback) => inflate(source, callback))
         break
       case "zip": {
-        extractedEntries = unzipSync(source)
+        extractedEntries = await runUnzip(source)
         files = Object.keys(extractedEntries)
         if (files.length === 0) throw new Error("ZIP archive is empty")
         transformed = extractedEntries[files[0]]

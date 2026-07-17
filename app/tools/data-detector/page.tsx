@@ -15,9 +15,20 @@ export default function DataDetectorPage() {
   const [input, setInput] = useState("")
   const [result, setResult] = useState<DetectionResult | null>(null)
 
+  const localizedResult = useMemo(() => {
+    if (!result) return null
+    const localizeMatch = (match: DetectionResult["best"]) => ({
+      ...match,
+      label: t(`types.${match.type}`),
+    })
+    return {
+      best: localizeMatch(result.best),
+      matches: result.matches.map(localizeMatch),
+    }
+  }, [result, t])
   const output = useMemo(
-    () => result ? JSON.stringify(result, null, 2) : "",
-    [result]
+    () => localizedResult ? JSON.stringify(localizedResult, null, 2) : "",
+    [localizedResult],
   )
 
   const run = () => setResult(detectData(input))
@@ -38,9 +49,9 @@ export default function DataDetectorPage() {
       onSample={() => { setInput(SAMPLE); setResult(detectData(SAMPLE)) }}
       inputPlaceholder={t("placeholder")}
       outputLabel={t("result")}
-      footer={result && (
+      footer={localizedResult && (
         <div className="space-y-2">
-          {result.matches.slice(0, 5).map((match) => (
+          {localizedResult.matches.slice(0, 5).map((match) => (
             <div key={match.type} className="flex items-center gap-3 rounded-2xl bg-[var(--md-sys-color-surface-container-low)] px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-[var(--md-sys-color-on-surface)]">{match.label}</p>

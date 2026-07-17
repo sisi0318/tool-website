@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { useI18n } from "@/components/i18n-provider"
 import { Copy, Trash2, Clock, Calendar, Play, AlertCircle, Info, Zap, Settings, ChevronDown, ChevronUp, Download, History, Check } from "lucide-react"
 import {
   expandCronField,
@@ -26,9 +29,22 @@ import { downloadBlob } from "@/lib/object-url"
 interface TimelineProps {
   times: Date[]
   use24HourFormat: boolean
+  translate: (key: string) => string
+  locale: string
 }
 
-function CronTimeline({ times, use24HourFormat }: TimelineProps) {
+function formatTranslation(
+  translate: (key: string) => string,
+  key: string,
+  values: Record<string, string | number> = {},
+) {
+  return Object.entries(values).reduce(
+    (message, [name, value]) => message.replaceAll(`{{${name}}}`, String(value)),
+    translate(key),
+  )
+}
+
+function CronTimeline({ times, use24HourFormat, translate, locale }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   if (times.length < 2) return null
@@ -46,7 +62,7 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
   const maxInterval = Math.max(...intervals)
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString(undefined, {
+    return date.toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
       hour12: !use24HourFormat,
@@ -54,7 +70,7 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
   }
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString(undefined, {
+    return date.toLocaleDateString(locale, {
       month: "short",
       day: "numeric",
     })
@@ -62,15 +78,21 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
 
   const formatDuration = (ms: number) => {
     const seconds = Math.floor(ms / 1000)
-    if (seconds < 60) return `${seconds}秒`
+    if (seconds < 60) return formatTranslation(translate, "durationSeconds", { value: seconds })
     const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}分钟`
+    if (minutes < 60) return formatTranslation(translate, "durationMinutes", { value: minutes })
     const hours = Math.floor(minutes / 60)
     const remainMinutes = minutes % 60
-    if (hours < 24) return remainMinutes > 0 ? `${hours}小时${remainMinutes}分` : `${hours}小时`
+    if (hours < 24) {
+      return remainMinutes > 0
+        ? formatTranslation(translate, "durationHoursMinutes", { hours, minutes: remainMinutes })
+        : formatTranslation(translate, "durationHours", { value: hours })
+    }
     const days = Math.floor(hours / 24)
     const remainHours = hours % 24
-    return remainHours > 0 ? `${days}天${remainHours}小时` : `${days}天`
+    return remainHours > 0
+      ? formatTranslation(translate, "durationDaysHours", { days, hours: remainHours })
+      : formatTranslation(translate, "durationDays", { value: days })
   }
 
   // 按日期分组
@@ -90,25 +112,23 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
 
   return (
     <div className="space-y-4">
-      {/* 间隔统计 */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <div className="text-xs text-gray-500">最小间隔</div>
-          <div className="text-sm font-medium text-blue-700 dark:text-blue-300">{formatDuration(minInterval)}</div>
+        <div className="rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-2 text-center">
+          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{translate("minimumInterval")}</div>
+          <div className="text-sm font-medium text-[var(--md-sys-color-primary)]">{formatDuration(minInterval)}</div>
         </div>
-        <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-          <div className="text-xs text-gray-500">平均间隔</div>
-          <div className="text-sm font-medium text-green-700 dark:text-green-300">{formatDuration(avgInterval)}</div>
+        <div className="rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-2 text-center">
+          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{translate("averageInterval")}</div>
+          <div className="text-sm font-medium text-[var(--md-sys-color-primary)]">{formatDuration(avgInterval)}</div>
         </div>
-        <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-          <div className="text-xs text-gray-500">最大间隔</div>
-          <div className="text-sm font-medium text-orange-700 dark:text-orange-300">{formatDuration(maxInterval)}</div>
+        <div className="rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-2 text-center">
+          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{translate("maximumInterval")}</div>
+          <div className="text-sm font-medium text-[var(--md-sys-color-primary)]">{formatDuration(maxInterval)}</div>
         </div>
       </div>
 
-      {/* 24小时热力图 */}
       <div>
-        <div className="text-sm font-medium mb-2">24小时分布</div>
+        <div className="mb-2 text-sm font-medium">{translate("hourDistribution")}</div>
         <div className="flex gap-[2px]" ref={containerRef}>
           {hourCounts.map((count, hour) => {
             const intensity = count / maxHourCount
@@ -119,27 +139,27 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
                   style={{
                     height: "24px",
                     backgroundColor: count > 0
-                      ? `rgba(59, 130, 246, ${0.15 + intensity * 0.85})`
-                      : "rgba(0,0,0,0.05)",
+                      ? "var(--md-sys-color-primary)"
+                      : "var(--md-sys-color-surface-container-high)",
+                    opacity: count > 0 ? 0.15 + intensity * 0.85 : 1,
                   }}
-                  title={`${hour}:00 - ${count}次`}
+                  title={formatTranslation(translate, "hourRunCount", { hour, count })}
                 />
                 {hour % 6 === 0 && (
-                  <span className="text-[10px] text-gray-400">{hour}</span>
+                  <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">{hour}</span>
                 )}
               </div>
             )
           })}
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-[10px] text-gray-400">0:00</span>
-          <span className="text-[10px] text-gray-400">23:00</span>
+          <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">0:00</span>
+          <span className="text-[10px] text-[var(--md-sys-color-on-surface-variant)]">23:00</span>
         </div>
       </div>
 
-      {/* 时间线 */}
       <div>
-        <div className="text-sm font-medium mb-2">执行时间线</div>
+        <div className="mb-2 text-sm font-medium">{translate("executionTimeline")}</div>
         <div className="relative overflow-x-auto scrollbar-m3 pb-2">
           <div className="min-w-[400px]">
             {/* SVG 时间线 */}
@@ -152,7 +172,7 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
                     <text
                       x="0"
                       y={y + 4}
-                      className="text-[11px] fill-gray-500 dark:fill-gray-400"
+                      className="fill-[var(--md-sys-color-on-surface-variant)] text-[11px]"
                       fontWeight="500"
                     >
                       {formatDate(dateTimes[0])}
@@ -184,7 +204,7 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
                             cx={`${xPercent}%`}
                             cy={y}
                             r="5"
-                            className="fill-blue-500 dark:fill-blue-400"
+                            className="fill-[var(--md-sys-color-primary)]"
                             opacity={0.9}
                           >
                             <title>{formatTime(t)}</title>
@@ -193,7 +213,7 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
                             cx={`${xPercent}%`}
                             cy={y}
                             r="8"
-                            className="fill-blue-500 dark:fill-blue-400"
+                            className="fill-[var(--md-sys-color-primary)]"
                             opacity={0.15}
                           />
                           {/* 时间标签 - 只在点不太密集时显示 */}
@@ -202,7 +222,7 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
                               x={`${xPercent}%`}
                               y={y + 16}
                               textAnchor="middle"
-                              className="text-[9px] fill-gray-500 dark:fill-gray-400"
+                              className="fill-[var(--md-sys-color-on-surface-variant)] text-[9px]"
                             >
                               {formatTime(t)}
                             </text>
@@ -218,22 +238,21 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
         </div>
       </div>
 
-      {/* 每日执行次数 */}
       {dayGroups.size > 1 && (
         <div>
-          <div className="text-sm font-medium mb-2">每日执行次数</div>
+          <div className="mb-2 text-sm font-medium">{translate("dailyRunCount")}</div>
           <div className="space-y-1">
             {Array.from(dayGroups.entries()).map(([dateStr, dateTimes]) => (
               <div key={dateStr} className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 w-16 flex-shrink-0">{formatDate(dateTimes[0])}</span>
-                <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <span className="w-16 flex-shrink-0 text-xs text-[var(--md-sys-color-on-surface-variant)]">{formatDate(dateTimes[0])}</span>
+                <div className="h-5 flex-1 overflow-hidden rounded-full bg-[var(--md-sys-color-surface-container-high)]">
                   <div
-                    className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all flex items-center justify-end pr-2"
+                    className="flex h-full items-center justify-end rounded-full bg-[var(--md-sys-color-primary)] pr-2 transition-all"
                     style={{
                       width: `${Math.max(20, (dateTimes.length / Math.max(...Array.from(dayGroups.values()).map(d => d.length))) * 100)}%`,
                     }}
                   >
-                    <span className="text-[10px] text-white font-medium">{dateTimes.length}</span>
+                    <span className="text-[10px] font-medium text-[var(--md-sys-color-on-primary)]">{dateTimes.length}</span>
                   </div>
                 </div>
               </div>
@@ -247,6 +266,7 @@ function CronTimeline({ times, use24HourFormat }: TimelineProps) {
 
 export default function CrontabPage() {
   const t = useTranslations("crontab")
+  const { locale } = useI18n()
   const { toast } = useToast()
 
   const [expression, setExpression] = useState("* * * * *")
@@ -266,7 +286,8 @@ export default function CrontabPage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [selectedTimezone, setSelectedTimezone] = useState("local")
   const [showHistory, setShowHistory] = useState(false)
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const debounceTimerRef = useRef<number | null>(null)
+  const parseTimerRef = useRef<number | null>(null)
 
   // Builder state
   const [seconds, setSeconds] = useState("0")
@@ -288,52 +309,52 @@ export default function CrontabPage() {
   const presets = useMemo(
     () => [
       { 
-        category: "常用模板", 
+        category: t("presetCommon"),
         items: [
-          { name: "每分钟", value: "* * * * *", description: "每分钟执行一次" },
-          { name: "每5分钟", value: "*/5 * * * *", description: "每5分钟执行一次" },
-          { name: "每15分钟", value: "*/15 * * * *", description: "每15分钟执行一次" },
-          { name: "每30分钟", value: "*/30 * * * *", description: "每30分钟执行一次" },
-          { name: "每小时", value: "0 * * * *", description: "每小时的第0分钟执行" },
-          { name: "每天凌晨", value: "0 0 * * *", description: "每天凌晨0点执行" },
+          { name: t("presetEveryMinute"), value: "* * * * *", description: t("presetEveryMinuteDescription") },
+          { name: t("presetEvery5Minutes"), value: "*/5 * * * *", description: t("presetEvery5MinutesDescription") },
+          { name: t("presetEvery15Minutes"), value: "*/15 * * * *", description: t("presetEvery15MinutesDescription") },
+          { name: t("presetEvery30Minutes"), value: "*/30 * * * *", description: t("presetEvery30MinutesDescription") },
+          { name: t("presetEveryHour"), value: "0 * * * *", description: t("presetEveryHourDescription") },
+          { name: t("presetEveryDay"), value: "0 0 * * *", description: t("presetEveryDayDescription") },
         ]
       },
       {
-        category: "工作时间",
+        category: t("presetWorkHours"),
         items: [
-          { name: "工作日上午9点", value: "0 9 * * 1-5", description: "周一到周五上午9点" },
-          { name: "工作日下午6点", value: "0 18 * * 1-5", description: "周一到周五下午6点" },
-          { name: "工作时间每小时", value: "0 9-17 * * 1-5", description: "工作日9-17点每小时" },
-          { name: "午休时间", value: "0 12 * * 1-5", description: "工作日中午12点" },
+          { name: t("presetWeekday9"), value: "0 9 * * 1-5", description: t("presetWeekday9Description") },
+          { name: t("presetWeekday18"), value: "0 18 * * 1-5", description: t("presetWeekday18Description") },
+          { name: t("presetWorkHourly"), value: "0 9-17 * * 1-5", description: t("presetWorkHourlyDescription") },
+          { name: t("presetLunch"), value: "0 12 * * 1-5", description: t("presetLunchDescription") },
         ]
       },
       {
-        category: "备份与维护",
+        category: t("presetBackupMaintenance"),
         items: [
-          { name: "每日备份", value: "0 2 * * *", description: "每天凌晨2点备份" },
-          { name: "每周备份", value: "0 3 * * 0", description: "每周日凌晨3点备份" },
-          { name: "每月备份", value: "0 4 1 * *", description: "每月1号凌晨4点备份" },
-          { name: "日志清理", value: "0 1 * * *", description: "每天凌晨1点清理日志" },
-          { name: "系统维护", value: "0 5 * * 6", description: "每周六凌晨5点维护" },
+          { name: t("presetDailyBackup"), value: "0 2 * * *", description: t("presetDailyBackupDescription") },
+          { name: t("presetWeeklyBackup"), value: "0 3 * * 0", description: t("presetWeeklyBackupDescription") },
+          { name: t("presetMonthlyBackup"), value: "0 4 1 * *", description: t("presetMonthlyBackupDescription") },
+          { name: t("presetLogCleanup"), value: "0 1 * * *", description: t("presetLogCleanupDescription") },
+          { name: t("presetMaintenance"), value: "0 5 * * 6", description: t("presetMaintenanceDescription") },
         ]
       },
       {
-        category: "监控报告",
+        category: t("presetMonitoringReports"),
         items: [
-          { name: "健康检查", value: "*/10 * * * *", description: "每10分钟健康检查" },
-          { name: "性能监控", value: "*/30 * * * *", description: "每30分钟性能监控" },
-          { name: "日报生成", value: "0 8 * * 1-5", description: "工作日早8点生成日报" },
-          { name: "周报生成", value: "0 9 * * 1", description: "每周一早9点生成周报" },
-          { name: "月报生成", value: "0 10 1 * *", description: "每月1号早10点生成月报" },
+          { name: t("presetHealthCheck"), value: "*/10 * * * *", description: t("presetHealthCheckDescription") },
+          { name: t("presetPerformance"), value: "*/30 * * * *", description: t("presetPerformanceDescription") },
+          { name: t("presetDailyReport"), value: "0 8 * * 1-5", description: t("presetDailyReportDescription") },
+          { name: t("presetWeeklyReport"), value: "0 9 * * 1", description: t("presetWeeklyReportDescription") },
+          { name: t("presetMonthlyReport"), value: "0 10 1 * *", description: t("presetMonthlyReportDescription") },
         ]
       },
       {
-        category: "特殊时间",
+        category: t("presetSpecial"),
         items: [
-          { name: "节假日检查", value: "0 0 * * *", description: "每天检查是否为节假日" },
-          { name: "周末任务", value: "0 10 * * 6,0", description: "周末上午10点执行" },
-          { name: "月末处理", value: "0 23 28-31 * *", description: "每月最后几天晚11点" },
-          { name: "季度报告", value: "0 0 1 1,4,7,10 *", description: "每季度第一天" },
+          { name: t("presetHoliday"), value: "0 0 * * *", description: t("presetHolidayDescription") },
+          { name: t("presetWeekend"), value: "0 10 * * 6,0", description: t("presetWeekendDescription") },
+          { name: t("presetMonthEnd"), value: "0 23 28-31 * *", description: t("presetMonthEndDescription") },
+          { name: t("presetQuarterly"), value: "0 0 1 1,4,7,10 *", description: t("presetQuarterlyDescription") },
         ]
       }
     ],
@@ -341,14 +362,14 @@ export default function CrontabPage() {
   )
 
   // 时区选项
-  const timezones = [
-    { value: "local", label: "本地时区" },
+  const timezones = useMemo(() => [
+    { value: "local", label: t("timezoneLocal") },
     { value: "UTC", label: "UTC" },
-    { value: "Asia/Shanghai", label: "北京时间 (UTC+8)" },
-    { value: "America/New_York", label: "纽约时间 (UTC-5/-4)" },
-    { value: "Europe/London", label: "伦敦时间 (UTC+0/+1)" },
-    { value: "Asia/Tokyo", label: "东京时间 (UTC+9)" },
-  ]
+    { value: "Asia/Shanghai", label: t("timezoneShanghai") },
+    { value: "America/New_York", label: t("timezoneNewYork") },
+    { value: "Europe/London", label: t("timezoneLondon") },
+    { value: "Asia/Tokyo", label: t("timezoneTokyo") },
+  ], [t])
 
   // 添加到历史记录
   const addToHistory = useCallback((expr: string, desc: string) => {
@@ -397,49 +418,68 @@ export default function CrontabPage() {
     const parts = expr.trim().split(/\s+/)
     const expectedParts = includeSeconds ? 6 : 5
     
-    if (parts.length < expectedParts) {
-      errors.push(`表达式应包含${expectedParts}个部分，当前只有${parts.length}个`)
+    if (parts.length !== expectedParts && parts.length !== expectedParts + 1) {
+      errors.push(formatTranslation(t, "invalidPartCount", {
+        expected: `${expectedParts}-${expectedParts + 1}`,
+        actual: parts.length,
+      }))
       return { errors, warnings, isValid: false }
     }
     
     // 验证各字段范围
     const ranges = includeSeconds 
       ? [
-          { name: "秒", min: 0, max: 59, value: parts[0] },
-          { name: "分钟", min: 0, max: 59, value: parts[1] },
-          { name: "小时", min: 0, max: 23, value: parts[2] },
-          { name: "日期", min: 1, max: 31, value: parts[3] },
-          { name: "月份", min: 1, max: 12, value: parts[4] },
-          { name: "星期", min: 0, max: 7, value: parts[5] },
+          { name: t("seconds"), min: 0, max: 59, value: parts[0] },
+          { name: t("minute"), min: 0, max: 59, value: parts[1] },
+          { name: t("hour"), min: 0, max: 23, value: parts[2] },
+          { name: t("dayOfMonth"), min: 1, max: 31, value: parts[3] },
+          { name: t("month"), min: 1, max: 12, value: parts[4] },
+          { name: t("dayOfWeek"), min: 0, max: 7, value: parts[5] },
         ]
       : [
-          { name: "分钟", min: 0, max: 59, value: parts[0] },
-          { name: "小时", min: 0, max: 23, value: parts[1] },
-          { name: "日期", min: 1, max: 31, value: parts[2] },
-          { name: "月份", min: 1, max: 12, value: parts[3] },
-          { name: "星期", min: 0, max: 7, value: parts[4] },
+          { name: t("minute"), min: 0, max: 59, value: parts[0] },
+          { name: t("hour"), min: 0, max: 23, value: parts[1] },
+          { name: t("dayOfMonth"), min: 1, max: 31, value: parts[2] },
+          { name: t("month"), min: 1, max: 12, value: parts[3] },
+          { name: t("dayOfWeek"), min: 0, max: 7, value: parts[4] },
         ]
+
+    if (parts.length === expectedParts + 1) {
+      ranges.push({
+        name: t("year"),
+        min: 1970,
+        max: 2199,
+        value: parts[expectedParts],
+      })
+    }
     
     ranges.forEach(range => {
       const expanded = expandCronField(range.value, range.min, range.max)
       if (range.value !== "*" && range.value !== "?" && expanded.length === 0) {
-        errors.push(`${range.name}字段"${range.value}"无效，范围应为${range.min}-${range.max}`)
+        errors.push(formatTranslation(t, "invalidFieldRange", {
+          field: range.name,
+          value: range.value,
+          min: range.min,
+          max: range.max,
+        }))
       }
     })
     
     // 检查潜在问题
     if (parts[includeSeconds ? 3 : 2] !== "*" && parts[includeSeconds ? 5 : 4] !== "*") {
-      warnings.push("同时指定日期和星期可能导致意外行为")
+      warnings.push(t("dayAndWeekWarning"))
     }
     
     return { errors, warnings, isValid: errors.length === 0 }
-  }, [includeSeconds])
+  }, [includeSeconds, t])
 
   // Parse cron expression and generate description
   const parseCron = (expr: string) => {
     try {
-      // 防止重复处理
-      if (isProcessing) return
+      if (parseTimerRef.current !== null) {
+        window.clearTimeout(parseTimerRef.current)
+        parseTimerRef.current = null
+      }
       setIsProcessing(true)
 
       // 使用增强的验证函数
@@ -449,15 +489,14 @@ export default function CrontabPage() {
       setIsValid(validation.isValid)
 
       if (!validation.isValid) {
-        setDescription("表达式无效")
+        setDescription(t("invalidExpression"))
         setNextRuns([])
         setTimelineTimes([])
         setIsProcessing(false)
         return
       }
 
-      // 使用setTimeout来避免UI阻塞
-      setTimeout(() => {
+      parseTimerRef.current = window.setTimeout(() => {
         try {
           // 生成人类可读的描述
           const desc = generateCronDescription(expr, includeSeconds, t)
@@ -476,7 +515,7 @@ export default function CrontabPage() {
               hour12: !use24HourFormat,
               timeZone: selectedTimezone === "local" ? undefined : selectedTimezone,
             }
-            return date.toLocaleString(undefined, options)
+            return date.toLocaleString(locale, options)
           })
 
           setNextRuns(formattedTimes)
@@ -492,19 +531,20 @@ export default function CrontabPage() {
         } catch (error) {
           console.error("Error parsing cron:", error)
           setIsValid(false)
-          setDescription("解析错误")
+          setDescription(t("parseError"))
           setNextRuns([])
-          setErrors(["解析时发生错误"])
+          setErrors([t("parseFailed")])
         } finally {
           setIsProcessing(false)
+          parseTimerRef.current = null
         }
       }, 0)
     } catch (error) {
       console.error("Error in parseCron:", error)
       setIsValid(false)
-      setDescription("解析错误")
+      setDescription(t("parseError"))
       setNextRuns([])
-      setErrors(["解析时发生错误"])
+      setErrors([t("parseFailed")])
       setIsProcessing(false)
     }
   }
@@ -553,11 +593,12 @@ export default function CrontabPage() {
     setExpression(value)
     // 使用防抖处理输入，避免频繁计算
     if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
+      window.clearTimeout(debounceTimerRef.current)
     }
-    debounceTimerRef.current = setTimeout(() => {
+    debounceTimerRef.current = window.setTimeout(() => {
       parseCron(value)
       updateBuilderFromExpression(value)
+      debounceTimerRef.current = null
     }, 300)
   }
 
@@ -588,8 +629,8 @@ export default function CrontabPage() {
     )
     
     toast({
-      title: "配置已导出",
-      description: "Crontab 配置已保存为 JSON 文件",
+      title: t("exported"),
+      description: t("exportedDescription"),
       duration: 2000,
     })
   }
@@ -637,10 +678,10 @@ export default function CrontabPage() {
           <Label className="font-medium">{label}</Label>
           <div className="space-x-2">
             <Button variant="outline" size="sm" onClick={selectAll}>
-              全选
+              {t("selectAll")}
             </Button>
             <Button variant="outline" size="sm" onClick={selectNone}>
-              清空
+              {t("clearInput")}
             </Button>
           </div>
         </div>
@@ -653,17 +694,18 @@ export default function CrontabPage() {
                 key={value}
                 variant={isSelected ? "default" : "outline"}
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 min-w-0 px-1 text-xs"
                 onClick={() => toggleValue(value)}
+                aria-pressed={isSelected}
               >
-                {format ? format(value) : value}
+                <span className="truncate">{format ? format(value) : value}</span>
               </Button>
             )
           })}
         </div>
         {selected.length > 0 && (
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            已选择: {selected.join(", ")}
+          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+            {t("selected")}: {selected.join(", ")}
           </div>
         )}
       </div>
@@ -689,10 +731,12 @@ export default function CrontabPage() {
 
   // Copy expression to clipboard
   const handleCopy = () => {
-    navigator.clipboard.writeText(expression)
-    toast({
-      title: t("copied"),
-      duration: 2000,
+    void copyTextToClipboard(expression).then((success) => {
+      toast({
+        title: success ? t("copied") : t("copyFailed"),
+        duration: 2000,
+        variant: success ? "default" : "destructive",
+      })
     })
   }
 
@@ -704,9 +748,19 @@ export default function CrontabPage() {
     updateBuilderFromExpression(defaultExpression)
   }
 
-  // 初始化解析
   useEffect(() => {
     parseCron(expression)
+  }, [includeSeconds, use24HourFormat, selectedTimezone, t])
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current)
+      }
+      if (parseTimerRef.current !== null) {
+        window.clearTimeout(parseTimerRef.current)
+      }
+    }
   }, [])
 
   // 自动构建表达式
@@ -717,37 +771,36 @@ export default function CrontabPage() {
   }, [selectedMinutes, selectedHours, selectedDays, selectedMonths, selectedWeekdays, buildExpressionFromVisual, activeTab])
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-7xl">
-      {/* 页面标题和描述 */}
-      <div className="text-center space-y-4 mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          Crontab 表达式生成器
+    <div className="container mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
+      <div className="mb-6 space-y-2 text-center sm:mb-8">
+        <h1 className="text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          {t("title")}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          智能生成和解析 Crontab 表达式，支持可视化编辑和时间预览
+        <p className="mx-auto max-w-2xl text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("description")}
         </p>
       </div>
 
-      {/* 设置面板 */}
       <Card className="mb-6">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Settings className="h-5 w-5" />
-              全局设置
+              {t("globalSettings")}
             </CardTitle>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowAdvanced(!showAdvanced)}
+              aria-expanded={showAdvanced}
             >
               {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              {showAdvanced ? "收起" : "展开"}
+              {showAdvanced ? t("collapse") : t("expand")}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -758,11 +811,11 @@ export default function CrontabPage() {
                       onCheckedChange={handleIncludeSecondsChange}
                     />
                     <Label htmlFor="includeSeconds" className="cursor-pointer text-sm">
-                      包含秒字段
+                      {t("includeSeconds")}
                     </Label>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>启用6位表达式（包含秒）</TooltipContent>
+                <TooltipContent>{t("includeSecondsHelp")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -773,16 +826,16 @@ export default function CrontabPage() {
                 onCheckedChange={setUse24HourFormat}
               />
               <Label htmlFor="use24HourFormat" className="cursor-pointer text-sm">
-                24小时制
+                {t("use24HourFormat")}
               </Label>
             </div>
 
             {showAdvanced && (
               <>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="timezone" className="text-sm">时区:</Label>
+                <div className="flex min-w-0 items-center space-x-2">
+                  <Label htmlFor="timezone" className="shrink-0 text-sm">{t("displayTimezone")}:</Label>
                   <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="min-w-0 flex-1 lg:w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -795,7 +848,7 @@ export default function CrontabPage() {
                   </Select>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -803,7 +856,7 @@ export default function CrontabPage() {
                     className="flex items-center gap-2"
                   >
                     <History className="h-4 w-4" />
-                    历史记录
+                    {t("history")}
                   </Button>
                   <Button
                     variant="outline"
@@ -812,7 +865,7 @@ export default function CrontabPage() {
                     className="flex items-center gap-2"
                   >
                     <Download className="h-4 w-4" />
-                    导出
+                    {t("export")}
                   </Button>
                 </div>
               </>
@@ -821,42 +874,39 @@ export default function CrontabPage() {
         </CardContent>
       </Card>
 
-      {/* 主要内容区域 */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* 左侧：输入和构建区域 */}
         <div className="xl:col-span-2 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="visual" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                可视化
+            <TabsList className="grid h-auto w-full grid-cols-4 bg-[var(--md-sys-color-surface-container)] p-1">
+              <TabsTrigger value="visual" className="flex min-w-0 items-center gap-1 px-1 py-2.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                <Calendar className="hidden h-4 w-4 sm:block" />
+                <span className="truncate">{t("visual")}</span>
               </TabsTrigger>
-              <TabsTrigger value="expression" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                表达式
+              <TabsTrigger value="expression" className="flex min-w-0 items-center gap-1 px-1 py-2.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                <Clock className="hidden h-4 w-4 sm:block" />
+                <span className="truncate">{t("expressionTab")}</span>
               </TabsTrigger>
-              <TabsTrigger value="builder" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                构建器
+              <TabsTrigger value="builder" className="flex min-w-0 items-center gap-1 px-1 py-2.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                <Settings className="hidden h-4 w-4 sm:block" />
+                <span className="truncate">{t("builderTab")}</span>
               </TabsTrigger>
-              <TabsTrigger value="presets" className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                模板
+              <TabsTrigger value="presets" className="flex min-w-0 items-center gap-1 px-1 py-2.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                <Zap className="hidden h-4 w-4 sm:block" />
+                <span className="truncate">{t("templatesTab")}</span>
               </TabsTrigger>
             </TabsList>
 
-            {/* 可视化构建器 */}
             <TabsContent value="visual" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5" />
-                    可视化时间选择器
+                    {t("visualTimeSelector")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <TimeSelector
-                    label="分钟 (0-59)"
+                    label={t("minute_range")}
                     min={0}
                     max={59}
                     selected={selectedMinutes}
@@ -864,7 +914,7 @@ export default function CrontabPage() {
                   />
                   
                   <TimeSelector
-                    label="小时 (0-23)"
+                    label={t("hour_range")}
                     min={0}
                     max={23}
                     selected={selectedHours}
@@ -872,7 +922,7 @@ export default function CrontabPage() {
                   />
                   
                   <TimeSelector
-                    label="日期 (1-31)"
+                    label={t("day_range")}
                     min={1}
                     max={31}
                     selected={selectedDays}
@@ -880,39 +930,39 @@ export default function CrontabPage() {
                   />
                   
                   <TimeSelector
-                    label="月份 (1-12)"
+                    label={t("monthNumericRange")}
                     min={1}
                     max={12}
                     selected={selectedMonths}
                     onChange={setSelectedMonths}
                     format={(value) => {
-                      const months = ['一月', '二月', '三月', '四月', '五月', '六月',
-                                    '七月', '八月', '九月', '十月', '十一月', '十二月']
-                      return months[value - 1] || value.toString()
+                      return new Intl.DateTimeFormat(locale, { month: "short" })
+                        .format(new Date(2024, value - 1, 1))
                     }}
                   />
                   
                   <TimeSelector
-                    label="星期 (0-6，0=周日)"
+                    label={t("weekdayNumericRange")}
                     min={0}
                     max={6}
                     selected={selectedWeekdays}
                     onChange={setSelectedWeekdays}
                     format={(value) => {
-                      const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-                      return days[value] || value.toString()
+                      return new Intl.DateTimeFormat(locale, { weekday: "short" })
+                        .format(new Date(2024, 0, 7 + value))
                     }}
                   />
 
-                  <div className="border-t pt-4">
-                    <Label className="text-lg font-medium">生成的表达式</Label>
-                    <div className="mt-2 flex items-center gap-2">
+                  <div className="border-t border-[var(--md-sys-color-outline-variant)] pt-4">
+                    <Label className="text-lg font-medium">{t("generatedExpression")}</Label>
+                    <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                       <Input
                         value={expression}
                         readOnly
-                        className="font-mono text-lg"
+                        className="min-w-0 font-mono text-base sm:text-lg"
+                        aria-label={t("generatedExpression")}
                       />
-                      <Button variant="outline" size="icon" onClick={handleCopy}>
+                      <Button variant="outline" size="icon" onClick={handleCopy} aria-label={t("copy")}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
@@ -921,68 +971,67 @@ export default function CrontabPage() {
               </Card>
             </TabsContent>
 
-            {/* 表达式编辑器 */}
             <TabsContent value="expression">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    Cron 表达式编辑
+                    {t("expressionEditor")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>表达式</Label>
-                    <div className="flex gap-2">
+                    <Label htmlFor="cron-expression">{t("expression")}</Label>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
                       <Input
+                        id="cron-expression"
                         value={expression}
                         onChange={(e) => handleExpressionChange(e.target.value)}
-                        placeholder="输入 cron 表达式，例如：* * * * *"
-                        className={`text-lg font-mono ${!isValid ? "border-red-500" : ""}`}
+                        placeholder={t("expressionPlaceholder")}
+                        aria-invalid={!isValid}
+                        className={`min-w-0 font-mono text-base sm:text-lg ${!isValid ? "border-[var(--md-sys-color-error)]" : ""}`}
                       />
-                      <Button variant="outline" onClick={handleClear}>
+                      <Button variant="outline" size="icon" onClick={handleClear} aria-label={t("clearInput")}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" onClick={handleCopy}>
+                      <Button variant="outline" size="icon" onClick={handleCopy} aria-label={t("copy")}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                   
-                  {/* 格式说明 */}
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <Label className="font-medium">格式说明</Label>
-                    <pre className="text-xs mt-2 text-gray-600 dark:text-gray-400">
+                  <div className="rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-4">
+                    <Label className="font-medium">{t("formatGuide")}</Label>
+                    <pre className="mt-2 overflow-x-auto text-xs text-[var(--md-sys-color-on-surface-variant)]">
                       {includeSeconds
-                        ? "秒(0-59) 分(0-59) 时(0-23) 日(1-31) 月(1-12) 周(0-6)"
-                        : "分(0-59) 时(0-23) 日(1-31) 月(1-12) 周(0-6)"
+                        ? t("formatWithSeconds")
+                        : t("formatWithoutSeconds")
                       }
                     </pre>
-                    <div className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
-                      <div>• * = 任意值</div>
-                      <div>• , = 列表分隔符 (如: 1,3,5)</div>
-                      <div>• - = 范围 (如: 1-5)</div>
-                      <div>• / = 步长 (如: */5)</div>
+                    <div className="mt-2 space-y-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      <div>• {t("syntaxAny")}</div>
+                      <div>• {t("syntaxList")}</div>
+                      <div>• {t("syntaxRange")}</div>
+                      <div>• {t("syntaxStep")}</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* 手动构建器 */}
             <TabsContent value="builder">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Settings className="h-5 w-5" />
-                    手动构建器
+                    {t("manualBuilder")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {includeSeconds && (
                       <div>
-                        <Label htmlFor="seconds">秒 (0-59)</Label>
+                        <Label htmlFor="seconds">{t("seconds_range")}</Label>
                         <Input
                           id="seconds"
                           value={seconds}
@@ -993,7 +1042,7 @@ export default function CrontabPage() {
                       </div>
                     )}
                     <div>
-                      <Label htmlFor="minute">分钟 (0-59)</Label>
+                      <Label htmlFor="minute">{t("minute_range")}</Label>
                       <Input
                         id="minute"
                         value={minute}
@@ -1003,7 +1052,7 @@ export default function CrontabPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="hour">小时 (0-23)</Label>
+                      <Label htmlFor="hour">{t("hour_range")}</Label>
                       <Input
                         id="hour"
                         value={hour}
@@ -1013,7 +1062,7 @@ export default function CrontabPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="dayOfMonth">日期 (1-31)</Label>
+                      <Label htmlFor="dayOfMonth">{t("day_range")}</Label>
                       <Input
                         id="dayOfMonth"
                         value={dayOfMonth}
@@ -1023,7 +1072,7 @@ export default function CrontabPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="month">月份 (1-12)</Label>
+                      <Label htmlFor="month">{t("monthNumericRange")}</Label>
                       <Input
                         id="month"
                         value={month}
@@ -1033,7 +1082,7 @@ export default function CrontabPage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="dayOfWeek">星期 (0-6)</Label>
+                      <Label htmlFor="dayOfWeek">{t("weekdayShortRange")}</Label>
                       <Input
                         id="dayOfWeek"
                         value={dayOfWeek}
@@ -1042,23 +1091,33 @@ export default function CrontabPage() {
                         className="font-mono"
                       />
                     </div>
+                    <div>
+                      <Label htmlFor="year">{t("year_range")}</Label>
+                      <Input
+                        id="year"
+                        value={year}
+                        onChange={(event) => setYear(event.target.value)}
+                        placeholder={t("optional")}
+                        className="font-mono"
+                      />
+                    </div>
                   </div>
 
-                  <div className="flex gap-2 pt-4">
-                    <Button onClick={updateExpressionFromBuilder} className="flex items-center gap-2">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 pt-4 sm:flex">
+                    <Button onClick={updateExpressionFromBuilder} className="flex min-w-0 items-center gap-2">
                       <Play className="h-4 w-4" />
-                      生成表达式
+                      {t("generateExpression")}
                     </Button>
-                    <Button variant="outline" onClick={handleClear}>
+                    <Button variant="outline" size="icon" onClick={handleClear} aria-label={t("clearInput")}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
 
-                  <div className="border-t pt-4">
-                    <Label>生成的表达式</Label>
-                    <div className="flex gap-2 mt-2">
-                      <Input value={expression} readOnly className="font-mono" />
-                      <Button variant="outline" size="icon" onClick={handleCopy}>
+                  <div className="border-t border-[var(--md-sys-color-outline-variant)] pt-4">
+                    <Label>{t("generatedExpression")}</Label>
+                    <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                      <Input value={expression} readOnly className="min-w-0 font-mono" aria-label={t("generatedExpression")} />
+                      <Button variant="outline" size="icon" onClick={handleCopy} aria-label={t("copy")}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1067,7 +1126,6 @@ export default function CrontabPage() {
               </Card>
             </TabsContent>
 
-            {/* 预设模板 */}
             <TabsContent value="presets">
               <div className="space-y-6">
                 {presets.map((category) => (
@@ -1076,20 +1134,20 @@ export default function CrontabPage() {
                       <CardTitle className="text-lg">{category.category}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {category.items.map((preset) => (
                           <Button
                             key={preset.value}
                             variant="outline"
-                            className="justify-start h-auto py-4 px-4"
+                            className="h-auto min-w-0 justify-start px-4 py-4"
                             onClick={() => handlePresetSelect(preset.value)}
                           >
-                            <div className="text-left w-full">
+                            <div className="min-w-0 w-full text-left">
                               <div className="font-medium text-sm">{preset.name}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">
+                              <div className="mt-1 break-all font-mono text-xs text-[var(--md-sys-color-on-surface-variant)]">
                                 {preset.value}
                               </div>
-                              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              <div className="mt-1 whitespace-normal text-xs text-[var(--md-sys-color-on-surface-variant)]">
                                 {preset.description}
                               </div>
                             </div>
@@ -1104,17 +1162,15 @@ export default function CrontabPage() {
           </Tabs>
         </div>
 
-        {/* 右侧：结果显示区域 */}
         <div className="space-y-6">
-          {/* 错误和警告 */}
           {(errors.length > 0 || warnings.length > 0) && (
             <div className="space-y-3">
               {errors.length > 0 && (
-                <Alert>
+                <Alert className="border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-1">
-                      <div className="font-medium">错误</div>
+                      <div className="font-medium">{t("errors")}</div>
                       {errors.map((error, index) => (
                         <div key={index} className="text-sm">• {error}</div>
                       ))}
@@ -1124,13 +1180,13 @@ export default function CrontabPage() {
               )}
               
               {warnings.length > 0 && (
-                <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/10">
-                  <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                <Alert className="border-[var(--md-sys-color-tertiary)]/30 bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]">
+                  <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-1">
-                      <div className="font-medium text-yellow-800 dark:text-yellow-200">警告</div>
+                      <div className="font-medium">{t("warnings")}</div>
                       {warnings.map((warning, index) => (
-                        <div key={index} className="text-sm text-yellow-700 dark:text-yellow-300">• {warning}</div>
+                        <div key={index} className="text-sm">• {warning}</div>
                       ))}
                     </div>
                   </AlertDescription>
@@ -1139,39 +1195,40 @@ export default function CrontabPage() {
             </div>
           )}
 
-          {/* 表达式描述 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-blue-500" />
-                表达式描述
+                <Info className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                {t("expressionDescription")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="text-lg font-medium">
-                  {isProcessing ? "解析中..." : description}
+                  {isProcessing ? t("parsing") : description}
                 </div>
                 
                 {isValid && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary-container)]">
                       <Check className="h-3 w-3 mr-1" />
-                      有效表达式
+                      {t("validExpression")}
                     </Badge>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        navigator.clipboard.writeText(generateCrontabCommand("your-command"))
-                        toast({
-                          title: "已复制",
-                          description: "完整的 crontab 命令已复制到剪贴板",
-                          duration: 2000,
+                        void copyTextToClipboard(generateCrontabCommand("your-command")).then((success) => {
+                          toast({
+                            title: success ? t("copied") : t("copyFailed"),
+                            description: success ? t("commandCopiedDescription") : undefined,
+                            duration: 2000,
+                            variant: success ? "default" : "destructive",
+                          })
                         })
                       }}
                     >
-                      复制命令
+                      {t("copyCommand")}
                     </Button>
                   </div>
                 )}
@@ -1179,32 +1236,31 @@ export default function CrontabPage() {
             </CardContent>
           </Card>
 
-          {/* 执行时间预览 */}
           {isValid && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-green-500" />
-                  执行时间预览
+                  <Clock className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  {t("executionPreview")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {isProcessing ? (
-                  <div className="text-center py-4">
-                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                    <p className="mt-2 text-sm text-gray-500">计算中...</p>
+                  <div className="py-4 text-center" role="status">
+                    <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-[var(--md-sys-color-outline-variant)] border-t-[var(--md-sys-color-primary)]"></div>
+                    <p className="mt-2 text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("calculating")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {nextRuns.length > 0 ? (
                       nextRuns.map((run, index) => (
-                        <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="font-mono text-sm">{run}</span>
+                        <div key={index} className="flex items-start gap-2 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-2">
+                          <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--md-sys-color-primary)]"></div>
+                          <span className="min-w-0 break-words font-mono text-sm">{run}</span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-gray-500 text-center py-4">未找到执行时间</p>
+                      <p className="py-4 text-center text-[var(--md-sys-color-on-surface-variant)]">{t("noScheduledRuns")}</p>
                     )}
                   </div>
                 )}
@@ -1212,28 +1268,31 @@ export default function CrontabPage() {
             </Card>
           )}
 
-          {/* 时间线可视化 */}
           {isValid && timelineTimes.length >= 2 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-purple-500" />
-                  执行时间线
+                  <Calendar className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  {t("executionTimeline")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <CronTimeline times={timelineTimes} use24HourFormat={use24HourFormat} />
+                <CronTimeline
+                  times={timelineTimes}
+                  use24HourFormat={use24HourFormat}
+                  translate={t}
+                  locale={locale}
+                />
               </CardContent>
             </Card>
           )}
 
-          {/* 历史记录 */}
           {showHistory && history.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5 text-purple-500" />
-                  历史记录
+                  <History className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  {t("history")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1250,9 +1309,9 @@ export default function CrontabPage() {
                     >
                       <div className="text-left w-full">
                         <div className="font-mono text-sm">{item.expression}</div>
-                        <div className="text-xs text-gray-500 mt-1">{item.description}</div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {new Date(item.timestamp).toLocaleString()}
+                        <div className="mt-1 whitespace-normal text-xs text-[var(--md-sys-color-on-surface-variant)]">{item.description}</div>
+                        <div className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                          {new Date(item.timestamp).toLocaleString(locale)}
                         </div>
                       </div>
                     </Button>

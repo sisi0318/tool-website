@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useTranslations } from "@/hooks/use-translations"
 import { Button } from "@/components/ui/button"
@@ -12,6 +14,7 @@ import { Clock, Globe, Timer, AlarmClock, Plus, X, Copy, Check, Settings, Chevro
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
+import { useToolActivity } from "@/components/tool-activity"
 
 // Interface for the props
 // Time zone configuration
@@ -54,6 +57,7 @@ const ACTIVE_TAB_STORAGE_KEY = "time_active_tab"
 
 export default function TimePage() {
   const t = useTranslations("time")
+  const isToolActive = useToolActivity()
 
   // 基础状态
   const [showTimeInfo, setShowTimeInfo] = useState(false)
@@ -90,13 +94,17 @@ export default function TimePage() {
   const [utcResult, setUtcResult] = useState<{ local: string; timestamp: number } | null>(null)
 
   // Refs for timers
-  const clockInterval = useRef<NodeJS.Timeout | null>(null)
-  const stopwatchInterval = useRef<NodeJS.Timeout | null>(null)
-  const timerInterval = useRef<NodeJS.Timeout | null>(null)
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const clockInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const stopwatchInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const copyTimeoutRef = useRef<{ [key: string]: ReturnType<typeof setTimeout> | null }>({})
+  const stopwatchStartedAtRef = useRef<number | null>(null)
+  const stopwatchBaseTimeRef = useRef(0)
+  const timerEndsAtRef = useRef<number | null>(null)
 
   // Effect to update time every second
   useEffect(() => {
+    if (!isToolActive) return
     setCurrentTime(new Date())
     if (!autoRefresh) return
 
@@ -109,7 +117,7 @@ export default function TimePage() {
         clearInterval(clockInterval.current)
       }
     }
-  }, [autoRefresh])
+  }, [autoRefresh, isToolActive])
 
   // Load saved settings from localStorage
   useEffect(() => {
@@ -166,47 +174,58 @@ export default function TimePage() {
 
   // Stopwatch effect
   useEffect(() => {
-    if (stopwatchRunning) {
-      stopwatchInterval.current = setInterval(() => {
-        setStopwatchTime((prev) => prev + 10) // Increment by 10ms
-      }, 10)
-    } else if (stopwatchInterval.current) {
-      clearInterval(stopwatchInterval.current)
+    if (!isToolActive || !stopwatchRunning || stopwatchStartedAtRef.current === null) return
+
+    const updateStopwatch = () => {
+      const startedAt = stopwatchStartedAtRef.current
+      if (startedAt === null) return
+      setStopwatchTime(stopwatchBaseTimeRef.current + performance.now() - startedAt)
     }
 
+    updateStopwatch()
+    stopwatchInterval.current = setInterval(updateStopwatch, 30)
     return () => {
       if (stopwatchInterval.current) {
         clearInterval(stopwatchInterval.current)
+        stopwatchInterval.current = null
       }
     }
-  }, [stopwatchRunning])
+  }, [stopwatchRunning, isToolActive])
 
   // Timer effect
   useEffect(() => {
-    if (timerRunning && timerTime > 0) {
-      timerInterval.current = setInterval(() => {
-        setTimerTime((prev) => {
-          if (prev <= 1) {
-            setTimerRunning(false)
-            setTimerCompleted(true)
-            if (timerInterval.current) {
-              clearInterval(timerInterval.current)
-            }
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    } else if (timerInterval.current) {
-      clearInterval(timerInterval.current)
+    if (!isToolActive || !timerRunning || timerEndsAtRef.current === null) return
+
+    const updateTimer = () => {
+      const endsAt = timerEndsAtRef.current
+      if (endsAt === null) return
+
+      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
+      setTimerTime(remaining)
+      if (remaining === 0) {
+        timerEndsAtRef.current = null
+        setTimerRunning(false)
+        setTimerCompleted(true)
+      }
     }
 
+    updateTimer()
+    timerInterval.current = setInterval(updateTimer, 250)
     return () => {
       if (timerInterval.current) {
         clearInterval(timerInterval.current)
+        timerInterval.current = null
       }
     }
-  }, [timerRunning, timerTime])
+  }, [timerRunning, isToolActive])
+
+  useEffect(() => {
+    return () => {
+      Object.values(copyTimeoutRef.current).forEach((timeout) => {
+        if (timeout) clearTimeout(timeout)
+      })
+    }
+  }, [])
 
   // Format time based on settings
   const formatTime = useCallback(
@@ -311,10 +330,14 @@ export default function TimePage() {
   const copyToClipboard = (text: string, key: string = "main") => {
     if (!text) return
 
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) return
+      if (copyTimeoutRef.current[key]) {
+        clearTimeout(copyTimeoutRef.current[key]!)
+      }
       setCopied(prev => ({ ...prev, [key]: true }))
 
-      setTimeout(() => {
+      copyTimeoutRef.current[key] = setTimeout(() => {
         setCopied(prev => ({ ...prev, [key]: false }))
       }, 2000)
     })
@@ -327,34 +350,61 @@ export default function TimePage() {
   }
 
   // Stopwatch controls
-  const startStopwatch = () => setStopwatchRunning(true)
-  const pauseStopwatch = () => setStopwatchRunning(false)
+  const startStopwatch = () => {
+    stopwatchBaseTimeRef.current = stopwatchTime
+    stopwatchStartedAtRef.current = performance.now()
+    setStopwatchRunning(true)
+  }
+  const pauseStopwatch = () => {
+    if (stopwatchStartedAtRef.current !== null) {
+      const elapsed =
+        stopwatchBaseTimeRef.current + performance.now() - stopwatchStartedAtRef.current
+      stopwatchBaseTimeRef.current = elapsed
+      stopwatchStartedAtRef.current = null
+      setStopwatchTime(elapsed)
+    }
+    setStopwatchRunning(false)
+  }
   const resetStopwatch = () => {
     setStopwatchRunning(false)
     setStopwatchTime(0)
     setStopwatchLaps([])
+    stopwatchBaseTimeRef.current = 0
+    stopwatchStartedAtRef.current = null
   }
   const lapStopwatch = () => {
-    if (stopwatchRunning) {
-      setStopwatchLaps([...stopwatchLaps, stopwatchTime])
-    }
+    if (!stopwatchRunning || stopwatchStartedAtRef.current === null) return
+    const elapsed =
+      stopwatchBaseTimeRef.current + performance.now() - stopwatchStartedAtRef.current
+    setStopwatchTime(elapsed)
+    setStopwatchLaps((current) => [...current, elapsed])
   }
 
   // Timer controls
   const startTimer = () => {
-    if (timerTime === 0) {
-      setTimerTime(timerDuration)
-      setTimerCompleted(false)
-    }
+    const remaining = timerTime === 0 ? timerDuration : timerTime
+    if (remaining <= 0) return
+    timerEndsAtRef.current = Date.now() + remaining * 1000
+    setTimerTime(remaining)
+    setTimerCompleted(false)
     setTimerRunning(true)
   }
-  const pauseTimer = () => setTimerRunning(false)
+  const pauseTimer = () => {
+    if (timerEndsAtRef.current !== null) {
+      setTimerTime(Math.max(0, Math.ceil((timerEndsAtRef.current - Date.now()) / 1000)))
+      timerEndsAtRef.current = null
+    }
+    setTimerRunning(false)
+  }
   const resetTimer = () => {
+    timerEndsAtRef.current = null
     setTimerRunning(false)
     setTimerTime(timerDuration)
     setTimerCompleted(false)
   }
   const setCustomTimerDuration = (seconds: number) => {
+    timerEndsAtRef.current = null
+    setTimerRunning(false)
     setTimerDuration(seconds)
     setTimerTime(seconds)
     setTimerCompleted(false)

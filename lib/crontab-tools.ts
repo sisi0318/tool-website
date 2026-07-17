@@ -80,7 +80,8 @@ function dayMatches(
   const dayOfWeekMatches = validDaysOfWeek.includes(date.getDay())
 
   if (!dayOfMonthWildcard && !dayOfWeekWildcard) {
-    return dayOfMonthMatches && dayOfWeekMatches
+    // Traditional Vixie/POSIX cron treats these two restricted fields as OR.
+    return dayOfMonthMatches || dayOfWeekMatches
   }
   if (!dayOfMonthWildcard) return dayOfMonthMatches
   if (!dayOfWeekWildcard) return dayOfWeekMatches
@@ -201,19 +202,100 @@ export function getNextExecutionTimes(
   return results
 }
 
-function describeSelection(field: string, label: (value: number) => string, unit: string): string {
-  if (field.startsWith("*/")) return `每${field.slice(2)}${unit}`
+type CronTranslator = (key: string) => string
+
+const defaultCronText: Record<string, string> = {
+  cronCommonEveryMinute: "每分钟执行",
+  cronCommonEveryHour: "每小时执行（整点）",
+  cronCommonEveryDay: "每天凌晨执行",
+  cronCommonEveryWeekday: "每工作日凌晨执行",
+  cronCommonFirstDay: "每月1号凌晨执行",
+  cronCommonEvery5Minutes: "每5分钟执行",
+  cronCommonEvery2Hours: "每2小时执行",
+  cronCommonSunday: "每周日凌晨执行",
+  cronCommonWeekday9: "工作日上午9点执行",
+  cronInvalid: "无效的表达式",
+  cronEvery: "每{{step}}{{unit}}",
+  cronRangeEvery: "{{start}}到{{end}}之间每{{step}}{{unit}}",
+  cronRange: "{{start}}到{{end}}",
+  cronListSeparator: "、",
+  cronPartSeparator: "，",
+  cronEverySecond: "每秒",
+  cronEveryMinute: "每分钟",
+  cronAt: "在{{value}}",
+  cronOn: "在{{value}}",
+  cronIn: "在{{value}}",
+  cronWeekdays: "工作日",
+  cronSecondLabel: "第{{value}}秒",
+  cronMinuteLabel: "第{{value}}分钟",
+  cronHourLabel: "{{value}}点",
+  cronDayLabel: "{{value}}号",
+  cronMonthLabel: "{{value}}月",
+  cronYearLabel: "{{value}}年",
+  cronSunday: "周日",
+  cronMonday: "周一",
+  cronTuesday: "周二",
+  cronWednesday: "周三",
+  cronThursday: "周四",
+  cronFriday: "周五",
+  cronSaturday: "周六",
+  cronSecondsUnit: "秒",
+  cronMinutesUnit: "分钟",
+  cronHoursUnit: "小时",
+  cronDaysUnit: "天",
+  cronMonthsUnit: "个月",
+  cronYearsUnit: "年",
+  cronDescriptionResult: "{{parts}}执行",
+}
+
+function translateCron(
+  key: string,
+  translate?: CronTranslator,
+  values: Record<string, string | number> = {},
+): string {
+  const template = translate ? translate(key) : defaultCronText[key] ?? key
+  return Object.entries(values).reduce(
+    (message, [name, value]) => message.replaceAll(`{{${name}}}`, String(value)),
+    template,
+  )
+}
+
+function describeSelection(
+  field: string,
+  label: (value: number) => string,
+  unitKey: string,
+  translate?: CronTranslator,
+): string {
+  if (field.startsWith("*/")) {
+    return translateCron("cronEvery", translate, {
+      step: field.slice(2),
+      unit: translateCron(unitKey, translate),
+    })
+  }
 
   const rangeStepMatch = field.match(/^(\d+)-(\d+)\/(\d+)$/)
   if (rangeStepMatch) {
-    return `${label(Number(rangeStepMatch[1]))}到${label(Number(rangeStepMatch[2]))}之间每${rangeStepMatch[3]}${unit}`
+    return translateCron("cronRangeEvery", translate, {
+      start: label(Number(rangeStepMatch[1])),
+      end: label(Number(rangeStepMatch[2])),
+      step: rangeStepMatch[3],
+      unit: translateCron(unitKey, translate),
+    })
   }
 
   const rangeMatch = field.match(/^(\d+)-(\d+)$/)
-  if (rangeMatch) return `${label(Number(rangeMatch[1]))}到${label(Number(rangeMatch[2]))}`
+  if (rangeMatch) {
+    return translateCron("cronRange", translate, {
+      start: label(Number(rangeMatch[1])),
+      end: label(Number(rangeMatch[2])),
+    })
+  }
 
   if (field.includes(",")) {
-    return field.split(",").map((value) => label(Number.parseInt(value, 10))).join("、")
+    return field
+      .split(",")
+      .map((value) => label(Number.parseInt(value, 10)))
+      .join(translateCron("cronListSeparator", translate))
   }
 
   return label(Number.parseInt(field, 10))
@@ -222,63 +304,123 @@ function describeSelection(field: string, label: (value: number) => string, unit
 export function generateCronDescription(
   expression: string,
   includeSeconds = false,
-  _translate?: unknown,
+  translate?: CronTranslator,
 ): string {
   const commonExpressions: Record<string, string> = {
-    "* * * * *": "每分钟执行",
-    "0 * * * *": "每小时执行（整点）",
-    "0 0 * * *": "每天凌晨执行",
-    "0 0 * * 1-5": "每工作日凌晨执行",
-    "0 0 1 * *": "每月1号凌晨执行",
-    "*/5 * * * *": "每5分钟执行",
-    "0 */2 * * *": "每2小时执行",
-    "0 0 * * 0": "每周日凌晨执行",
-    "0 9 * * 1-5": "工作日上午9点执行",
+    "* * * * *": "cronCommonEveryMinute",
+    "0 * * * *": "cronCommonEveryHour",
+    "0 0 * * *": "cronCommonEveryDay",
+    "0 0 * * 1-5": "cronCommonEveryWeekday",
+    "0 0 1 * *": "cronCommonFirstDay",
+    "*/5 * * * *": "cronCommonEvery5Minutes",
+    "0 */2 * * *": "cronCommonEvery2Hours",
+    "0 0 * * 0": "cronCommonSunday",
+    "0 9 * * 1-5": "cronCommonWeekday9",
   }
-  if (!includeSeconds && commonExpressions[expression]) return commonExpressions[expression]
+  if (!includeSeconds && commonExpressions[expression]) {
+    return translateCron(commonExpressions[expression], translate)
+  }
 
   const parsed = parseCronExpression(expression, includeSeconds)
-  if (!parsed) return "无效的表达式"
+  if (!parsed) return translateCron("cronInvalid", translate)
 
   const parts: string[] = []
+  const withContext = (field: string, contextKey: "cronAt" | "cronOn" | "cronIn", selection: string) =>
+    field.includes("/")
+      ? selection
+      : translateCron(contextKey, translate, { value: selection })
+
   if (includeSeconds) {
     if (parsed.seconds === "*") {
-      parts.push("每秒")
+      parts.push(translateCron("cronEverySecond", translate))
     } else {
-      parts.push(describeSelection(parsed.seconds, (value) => `在第${value}秒`, "秒"))
+      const selection = describeSelection(
+        parsed.seconds,
+        (value) => translateCron("cronSecondLabel", translate, { value }),
+        "cronSecondsUnit",
+        translate,
+      )
+      parts.push(withContext(parsed.seconds, "cronAt", selection))
     }
   }
 
   if (!(includeSeconds && parsed.seconds === "*" && parsed.minutes === "*")) {
     if (parsed.minutes === "*") {
-      parts.push("每分钟")
+      parts.push(translateCron("cronEveryMinute", translate))
     } else {
-      parts.push(describeSelection(parsed.minutes, (value) => `第${value}分钟`, "分钟").replace(/^第/, "在第"))
+      const selection = describeSelection(
+        parsed.minutes,
+        (value) => translateCron("cronMinuteLabel", translate, { value }),
+        "cronMinutesUnit",
+        translate,
+      )
+      parts.push(withContext(parsed.minutes, "cronAt", selection))
     }
   }
 
   if (parsed.hours !== "*") {
-    parts.push(`在${describeSelection(parsed.hours, (value) => `${value}点`, "小时")}`)
+    const selection = describeSelection(
+      parsed.hours,
+      (value) => translateCron("cronHourLabel", translate, { value }),
+      "cronHoursUnit",
+      translate,
+    )
+    parts.push(withContext(parsed.hours, "cronAt", selection))
   }
   if (parsed.dayOfMonth !== "*" && parsed.dayOfMonth !== "?") {
-    parts.push(`在${describeSelection(parsed.dayOfMonth, (value) => `${value}号`, "天")}`)
+    const selection = describeSelection(
+      parsed.dayOfMonth,
+      (value) => translateCron("cronDayLabel", translate, { value }),
+      "cronDaysUnit",
+      translate,
+    )
+    parts.push(withContext(parsed.dayOfMonth, "cronOn", selection))
   }
   if (parsed.month !== "*") {
-    parts.push(`在${describeSelection(parsed.month, (value) => `${value}月`, "个月")}`)
+    const selection = describeSelection(
+      parsed.month,
+      (value) => translateCron("cronMonthLabel", translate, { value }),
+      "cronMonthsUnit",
+      translate,
+    )
+    parts.push(withContext(parsed.month, "cronIn", selection))
   }
 
   if (parsed.dayOfWeek !== "*" && parsed.dayOfWeek !== "?") {
-    const dayNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    const dayNameKeys = [
+      "cronSunday",
+      "cronMonday",
+      "cronTuesday",
+      "cronWednesday",
+      "cronThursday",
+      "cronFriday",
+      "cronSaturday",
+      "cronSunday",
+    ]
     if (parsed.dayOfWeek === "1-5") {
-      parts.push("在工作日")
+      parts.push(translateCron("cronOn", translate, { value: translateCron("cronWeekdays", translate) }))
     } else {
-      parts.push(`在${describeSelection(parsed.dayOfWeek, (value) => dayNames[value] ?? `周${value}`, "天")}`)
+      const selection = describeSelection(
+        parsed.dayOfWeek,
+        (value) => translateCron(dayNameKeys[value] ?? "cronSunday", translate),
+        "cronDaysUnit",
+        translate,
+      )
+      parts.push(withContext(parsed.dayOfWeek, "cronOn", selection))
     }
   }
 
   if (parsed.year && parsed.year !== "*") {
-    parts.push(`在${describeSelection(parsed.year, (value) => `${value}年`, "年")}`)
+    const selection = describeSelection(
+      parsed.year,
+      (value) => translateCron("cronYearLabel", translate, { value }),
+      "cronYearsUnit",
+      translate,
+    )
+    parts.push(withContext(parsed.year, "cronIn", selection))
   }
 
-  return `${parts.join("，")}执行`
+  return translateCron("cronDescriptionResult", translate, {
+    parts: parts.join(translateCron("cronPartSeparator", translate)),
+  })
 }

@@ -9,6 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
 import { bytesToBase64, type BinaryEncoding } from "@/lib/compression"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
 import { processHexBinary, type HexBinaryOperation, type HexBinaryResult } from "@/lib/hex-binary-tools"
 
 const SAMPLE_PNG = "89504e470d0a1a0a0000000d49484452"
@@ -26,22 +31,35 @@ export default function HexBinaryPage() {
   const run = () => {
     try {
       const next = processHexBinary(input, operation, encoding, Number(width))
-      setResult(next)
-      setOutput(next.output)
+      const localizedSignature = {
+        ...next.signature,
+        name: t(`signatures.${next.signature.id}`),
+      }
+      setResult({ ...next, signature: localizedSignature })
+      setOutput(operation === "signature" ? JSON.stringify(localizedSignature, null, 2) : next.output)
       setError("")
-    } catch (cause) {
+    } catch {
       setResult(null)
       setOutput("")
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     }
   }
 
   const loadFile = async (file: File) => {
+    if (!isFileWithinLimit(file, FILE_SIZE_LIMITS.binaryTool)) {
+      setError(t("fileTooLarge").replace(
+        "{size}",
+        formatFileSizeLimit(FILE_SIZE_LIMITS.binaryTool),
+      ))
+      return
+    }
+
     setInput(bytesToBase64(new Uint8Array(await file.arrayBuffer())))
     setEncoding("base64")
     setOperation("hexdump")
     setOutput("")
     setResult(null)
+    setError("")
   }
 
   return (

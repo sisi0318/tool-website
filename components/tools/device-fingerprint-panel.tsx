@@ -7,6 +7,8 @@ import { JsonTreeView } from "@/components/json-tree-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useI18n } from "@/components/i18n-provider"
+import { useTranslations } from "@/hooks/use-translations"
 import type { DeviceFingerprint, FingerprintSignal, FingerprintSignalStatus } from "@/lib/device-fingerprint"
 
 interface DeviceFingerprintPanelProps {
@@ -16,16 +18,31 @@ interface DeviceFingerprintPanelProps {
   onCopy: (text: string, key: string) => void
 }
 
-const STATUS_META: Record<FingerprintSignalStatus, { label: string; className: string }> = {
-  ready: { label: "可用", className: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" },
-  limited: { label: "受限", className: "bg-amber-500/12 text-amber-700 dark:text-amber-300" },
-  unsupported: { label: "不支持", className: "bg-slate-500/12 text-slate-700 dark:text-slate-300" },
-  blocked: { label: "已阻止", className: "bg-orange-500/12 text-orange-700 dark:text-orange-300" },
-  error: { label: "失败", className: "bg-red-500/12 text-red-700 dark:text-red-300" },
+const STATUS_META: Record<FingerprintSignalStatus, { labelKey: string; className: string }> = {
+  ready: {
+    labelKey: "statusReady",
+    className: "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]",
+  },
+  limited: {
+    labelKey: "statusLimited",
+    className: "bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]",
+  },
+  unsupported: {
+    labelKey: "statusUnsupported",
+    className: "bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface-variant)]",
+  },
+  blocked: {
+    labelKey: "statusBlocked",
+    className: "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]",
+  },
+  error: {
+    labelKey: "statusError",
+    className: "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]",
+  },
 }
 
-function formatFingerprintId(id: string): string {
-  if (!id || id === "unavailable") return "暂不可用"
+function formatFingerprintId(id: string, unavailableLabel: string): string {
+  if (!id || id === "unavailable") return unavailableLabel
   return id.slice(0, 32).match(/.{1,8}/g)?.join("-") ?? id.slice(0, 32)
 }
 
@@ -42,49 +59,62 @@ interface SignalCardProps {
 }
 
 function SignalCard({ id, title, icon, signal, copied, showDetails, onCopy, children, details }: SignalCardProps) {
+  const t = useTranslations("device")
   const status = STATUS_META[signal.status]
+  const noteKey = `fingerprintNotes.${signal.note}`
+  const translatedNote = t(noteKey)
+  const note = (translatedNote === `device.${noteKey}` ? signal.note : translatedNote)
+    .replace("{count}", String(signal.noteValue ?? 0))
 
   return (
-    <Card data-testid={`fingerprint-signal-${id}`} className="min-w-0 rounded-2xl border-[var(--md-sys-color-outline-variant)]/70">
-      <CardHeader className="flex-row items-center gap-2 space-y-0 p-4 pb-3 sm:p-5 sm:pb-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
+    <Card
+      data-testid={`fingerprint-signal-${id}`}
+      className="min-w-0 rounded-2xl border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)]"
+    >
+      <CardHeader className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 p-4 pb-3 sm:p-5 sm:pb-3">
+        <span className="row-span-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
           {icon}
         </span>
-        <CardTitle className="min-w-0 flex-1 text-base">{title}</CardTitle>
-        <Badge className={`shrink-0 border-0 text-[11px] ${status.className}`}>{status.label}</Badge>
+        <CardTitle className="min-w-0 self-end text-base leading-5">{title}</CardTitle>
+        <Badge className={`col-start-2 row-start-2 w-fit shrink-0 border-0 text-[11px] ${status.className}`}>
+          {t(status.labelKey)}
+        </Badge>
         <Button
           type="button"
           variant="ghost"
           size="icon"
           disabled={!signal.digest}
           onClick={() => signal.digest && onCopy(signal.digest, `${id}Fingerprint`)}
-          aria-label={copied ? `${title}摘要已复制` : `复制${title}摘要`}
-          className="h-10 w-10 shrink-0 rounded-full"
+          aria-label={(copied ? t("copiedDigestAria") : t("copyDigestAria")).replace("{title}", title)}
+          className="col-start-3 row-span-2 row-start-1 h-10 w-10 shrink-0 rounded-full"
         >
-          {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+          {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
         </Button>
       </CardHeader>
       <CardContent className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0">
         {signal.previewUrl && (
           <img
             src={signal.previewUrl}
-            alt="Canvas 指纹渲染预览"
+            alt={t("canvasPreviewAlt")}
             className="h-auto max-h-20 w-full rounded-xl border border-[var(--md-sys-color-outline-variant)] object-cover"
           />
         )}
         <div className="min-w-0 rounded-xl bg-[var(--md-sys-color-surface-container-low)] px-3 py-2">
           <code className="block break-all text-xs leading-5 text-[var(--md-sys-color-on-surface)]">
-            {signal.digest ?? "没有可用摘要"}
+            {signal.digest ?? t("noDigest")}
           </code>
         </div>
-        <p className="text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">{signal.note}</p>
+        <p className="text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">{note}</p>
         {children}
         {showDetails && signal.raw && (
           <details className="rounded-xl border border-[var(--md-sys-color-outline-variant)]/70">
             <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
-              查看原始详情
+              {t("showRawDetails")}
             </summary>
-            <div className="max-h-64 overflow-auto border-t border-[var(--md-sys-color-outline-variant)] p-3">
+            <div
+              className="max-h-[min(24rem,60dvh)] min-w-0 touch-pan-y overflow-auto overscroll-contain border-t border-[var(--md-sys-color-outline-variant)] p-3 [-webkit-overflow-scrolling:touch]"
+              tabIndex={0}
+            >
               {details ?? <pre className="whitespace-pre-wrap break-all text-xs leading-5">{signal.raw}</pre>}
             </div>
           </details>
@@ -95,33 +125,38 @@ function SignalCard({ id, title, icon, signal, copied, showDetails, onCopy, chil
 }
 
 export function DeviceFingerprintPanel({ fingerprint, copied, showDetails, onCopy }: DeviceFingerprintPanelProps) {
+  const t = useTranslations("device")
+  const { locale } = useI18n()
   const { signals } = fingerprint
   const collectedTime = Number.isNaN(Date.parse(fingerprint.collectedAt))
-    ? "未知"
-    : new Date(fingerprint.collectedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    ? t("unknown")
+    : new Date(fingerprint.collectedAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
 
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <Card data-testid="fingerprint-summary" className="overflow-hidden rounded-2xl border-indigo-500/25 bg-indigo-500/[0.05]">
+    <div className="min-w-0 space-y-3 sm:space-y-4">
+      <Card
+        data-testid="fingerprint-summary"
+        className="min-w-0 overflow-hidden rounded-2xl border-[var(--md-sys-color-primary)]/25 bg-[var(--md-sys-color-primary-container)]/30"
+      >
         <CardContent className="space-y-3 p-4 sm:p-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
               <Fingerprint className="h-6 w-6" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="font-bold text-[var(--md-sys-color-on-surface)]">综合浏览器指纹</h2>
+              <h2 className="font-bold text-[var(--md-sys-color-on-surface)]">{t("compositeFingerprint")}</h2>
               <p className="mt-0.5 text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                本地采集 · {collectedTime}
+                {t("collectedLocally")} · {collectedTime}
               </p>
+              <Badge variant="secondary" className="mt-2 w-fit">
+                {fingerprint.readySignals}/{fingerprint.totalSignals} {t("signals")}
+              </Badge>
             </div>
-            <Badge variant="secondary" className="shrink-0">
-              {fingerprint.readySignals}/{fingerprint.totalSignals} 信号
-            </Badge>
           </div>
 
           <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[var(--md-sys-color-surface-container-lowest)] p-2 pl-3">
             <code className="min-w-0 flex-1 truncate text-xs font-semibold tracking-wide" title={fingerprint.id}>
-              {formatFingerprintId(fingerprint.id)}
+              {formatFingerprintId(fingerprint.id, t("fingerprintUnavailable"))}
             </code>
             <Button
               type="button"
@@ -129,15 +164,15 @@ export function DeviceFingerprintPanel({ fingerprint, copied, showDetails, onCop
               size="icon"
               disabled={fingerprint.id === "unavailable"}
               onClick={() => onCopy(fingerprint.id, "compositeFingerprint")}
-              aria-label={copied.compositeFingerprint ? "综合指纹已复制" : "复制综合指纹"}
+              aria-label={copied.compositeFingerprint ? t("compositeCopiedAria") : t("copyCompositeAria")}
               className="h-10 w-10 shrink-0 rounded-full"
             >
-              {copied.compositeFingerprint ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+              {copied.compositeFingerprint ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
 
           <p className="text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">
-            该值用于比较同一浏览器环境，不代表真实身份。隐私模式、系统升级或浏览器抗指纹策略可能让结果变化。
+            {t("fingerprintPrivacyNotice")}
           </p>
         </CardContent>
       </Card>
@@ -163,7 +198,7 @@ export function DeviceFingerprintPanel({ fingerprint, copied, showDetails, onCop
         />
         <SignalCard
           id="audio"
-          title="离线音频"
+          title={t("offlineAudio")}
           icon={<Shield className="h-4 w-4" />}
           signal={signals.audio}
           copied={Boolean(copied.audioFingerprint)}
@@ -172,7 +207,7 @@ export function DeviceFingerprintPanel({ fingerprint, copied, showDetails, onCop
         />
         <SignalCard
           id="fonts"
-          title="字体"
+          title={t("fontsLabel")}
           icon={<Monitor className="h-4 w-4" />}
           signal={signals.fonts}
           copied={Boolean(copied.fontsFingerprint)}
@@ -197,7 +232,7 @@ export function DeviceFingerprintPanel({ fingerprint, copied, showDetails, onCop
         <div className="sm:col-span-2">
           <SignalCard
             id="navigator"
-            title="浏览器环境"
+            title={t("browserEnvironment")}
             icon={<Globe className="h-4 w-4" />}
             signal={signals.navigator}
             copied={Boolean(copied.navigatorFingerprint)}

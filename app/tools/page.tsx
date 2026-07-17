@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import type React from "react"
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
@@ -66,6 +68,7 @@ import { M3BottomSheet } from "@/components/m3/bottom-sheet"
 import { useBreakpoint } from "@/hooks/use-breakpoint"
 import { useSwipe } from "@/hooks/use-swipe"
 import { ToolRuntimeParamsProvider, type ToolRuntimeParams } from "@/components/tool-runtime-params"
+import { ToolActivityProvider } from "@/components/tool-activity"
 import { useToolPreferences } from "@/hooks/use-tool-preferences"
 import { haveEqualToolParams, uniqueToolIds } from "@/lib/tool-workspace"
 
@@ -808,7 +811,8 @@ export default function ToolsPage() {
       const tab = tabs.find((t) => t.id === tabId)
       if (!tab || !tab.shareableUrl) return
 
-      navigator.clipboard.writeText(tab.shareableUrl).then(() => {
+      void copyTextToClipboard(tab.shareableUrl).then((success) => {
+        if (!success) return
         setShareTooltip((prev) => ({ ...prev, [tabId]: true }))
         setTimeout(() => {
           setShareTooltip((prev) => ({ ...prev, [tabId]: false }))
@@ -1142,7 +1146,8 @@ export default function ToolsPage() {
     const url = createMultiTabShareLink()
     if (!url) return
 
-    navigator.clipboard.writeText(url).then(() => {
+    void copyTextToClipboard(url).then((success) => {
+      if (!success) return
       setShareTooltip((prev) => ({ ...prev, multiTab: true }))
       setTimeout(() => {
         setShareTooltip((prev) => ({ ...prev, multiTab: false }))
@@ -1468,9 +1473,14 @@ export default function ToolsPage() {
               } : undefined}
             >
               {tabs.map((tab) => (
-                <div key={tab.id} className={activeTab === tab.id ? "block" : "hidden"}>
-                  {tab.component}
-                </div>
+                <ToolActivityProvider key={tab.id} active={activeTab === tab.id}>
+                  <div
+                    className={activeTab === tab.id ? "block" : "hidden"}
+                    aria-hidden={activeTab !== tab.id}
+                  >
+                    {tab.component}
+                  </div>
+                </ToolActivityProvider>
               ))}
             </div>
           </div>

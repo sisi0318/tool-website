@@ -407,6 +407,57 @@ describe("canvas store execution", () => {
     expect(harness.useCanvasStore.getState().nodeOutputs.c).toEqual({ out: "AB" })
   })
 
+  it("hasOutput 配置端口输出有效配置值，并保留上游输入覆盖", async () => {
+    const harness = await createTestHarness()
+    registerDefinition(harness, "source", async () => ({ out: "upstream" }))
+    harness.registry.registerNode({
+      type: "relay",
+      category: "basic",
+      label: "relay",
+      icon: () => null,
+      config: [
+        {
+          id: "setting",
+          name: "Setting",
+          dataType: "string",
+          defaultValue: "fallback",
+          hasInput: true,
+          hasOutput: true,
+        },
+      ],
+      outputs: [{ id: "out", name: "Output", dataType: "string" }],
+      execute: async (inputs, config) => ({
+        out: inputs.setting ?? config.setting ?? "fallback",
+      }),
+    })
+    registerDefinition(harness, "sink", async (inputs) => ({ out: inputs.in }))
+
+    harness.useCanvasStore.setState({
+      nodes: [
+        node("a", "source"),
+        node("b", "relay", { x: 0, y: 0 }, { setting: "configured" }),
+        node("c", "sink"),
+      ],
+      edges: [
+        edge("a-b", "a", "b", "out", "setting"),
+        edge("b-c", "b", "c", "setting", "in"),
+      ],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    await harness.useCanvasStore.getState().executeAll()
+
+    expect(harness.useCanvasStore.getState().nodeOutputs.b).toEqual({
+      setting: "upstream",
+      out: "upstream",
+    })
+    expect(harness.useCanvasStore.getState().nodeOutputs.c).toEqual({
+      out: "upstream",
+    })
+  })
+
   it("executeNode 按可达子图拓扑执行，菱形汇合只运行一次", async () => {
     const harness = await createTestHarness()
     const executeRoot = vi.fn(async () => ({ out: "root" }))

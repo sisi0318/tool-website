@@ -42,7 +42,7 @@ export interface ResponsiveLayoutProps {
 function useLayoutTransition(layoutMode: M3LayoutMode) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [previousMode, setPreviousMode] = useState<M3LayoutMode>(layoutMode);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (layoutMode !== previousMode) {

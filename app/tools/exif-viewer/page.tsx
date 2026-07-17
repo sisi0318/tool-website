@@ -1,5 +1,8 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { createClientId } from "@/lib/client-id"
+
 import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -88,7 +91,7 @@ export default function ExifViewerPage() {
 
   // 处理单个文件
   const processFile = useCallback(async (file: File): Promise<ProcessedImage> => {
-    const imageId = Math.random().toString(36).substr(2, 9)
+    const imageId = createClientId("exif")
     const imageUrl = objectUrls.create(file)
 
     const processedImage: ProcessedImage = {
@@ -260,7 +263,7 @@ export default function ExifViewerPage() {
   // 复制到剪贴板
   const copyToClipboard = async (text: string, label: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      if (!await writeClipboardText(text)) throw new Error("Clipboard unavailable")
       toast({
         title: "已复制",
         description: `${label} 已复制到剪贴板`,

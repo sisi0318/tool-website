@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import type React from "react"
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
@@ -28,7 +30,7 @@ export default function UUIDPage() {
   const [generatedUUIDs, setGeneratedUUIDs] = useState<string[]>([])
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
 
-  const copyTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({})
+  const copyTimeoutRef = useRef<{ [key: string]: ReturnType<typeof setTimeout> | null }>({})
 
   // 格式化 UUID
   const formatUUID = useCallback(
@@ -87,7 +89,8 @@ export default function UUIDPage() {
 
   // 复制单个 UUID
   const copyToClipboard = useCallback((text: string, key: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) return
       if (copyTimeoutRef.current[key]) {
         clearTimeout(copyTimeoutRef.current[key]!)
       }

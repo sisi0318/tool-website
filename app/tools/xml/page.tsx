@@ -21,11 +21,12 @@ export default function XmlToolsPage() {
 
   const run = () => {
     try {
-      setOutput(processXml(input, operation, xpath))
+      const next = processXml(input, operation, xpath)
+      setOutput(operation === "validate" ? t("validXml") : next)
       setError("")
-    } catch (cause) {
+    } catch {
       setOutput("")
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     }
   }
 

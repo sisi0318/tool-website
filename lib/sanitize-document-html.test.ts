@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { sanitizeDocumentHtml } from "./sanitize-document-html"
 
 describe("sanitizeDocumentHtml", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it("removes executable content while keeping document markup", () => {
     const sanitized = sanitizeDocumentHtml(`
       <table><tr><td onclick="alert(1)">safe</td></tr></table>
@@ -24,5 +28,11 @@ describe("sanitizeDocumentHtml", () => {
 
     expect(sanitized).not.toMatch(/form|input|style=/i)
     expect(sanitized).toContain("<p>text</p>")
+  })
+
+  it("returns no markup during server-side rendering", () => {
+    vi.stubGlobal("window", undefined)
+
+    expect(sanitizeDocumentHtml("<p>server preview</p>")).toBe("")
   })
 })

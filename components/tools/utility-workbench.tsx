@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { copyTextToClipboard } from "@/lib/clipboard"
 
 export interface WorkbenchOperation {
   value: string
@@ -75,7 +76,7 @@ export function UtilityWorkbench({
     if (copyFeedbackTimeoutRef.current) clearTimeout(copyFeedbackTimeoutRef.current)
 
     try {
-      await navigator.clipboard.writeText(output)
+      if (!await copyTextToClipboard(output)) throw new Error("Clipboard unavailable")
       setCopyError("")
       setCopied(true)
       copyFeedbackTimeoutRef.current = setTimeout(() => setCopied(false), 1500)

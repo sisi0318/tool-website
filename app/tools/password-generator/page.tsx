@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Check, Clipboard, Copy, Dices, KeyRound, RefreshCw, ShieldCheck } from "lucide-react"
 
@@ -38,10 +40,10 @@ const STRENGTH_WIDTH: Record<PasswordStrength, string> = {
 }
 
 const STRENGTH_COLOR: Record<PasswordStrength, string> = {
-  weak: "bg-red-500",
-  fair: "bg-amber-500",
-  good: "bg-sky-500",
-  strong: "bg-emerald-500",
+  weak: "bg-[var(--md-sys-color-error)]",
+  fair: "bg-[var(--md-sys-color-warning)]",
+  good: "bg-[var(--md-sys-color-tertiary)]",
+  strong: "bg-[var(--md-sys-color-success)]",
 }
 
 export default function PasswordGeneratorPage() {
@@ -98,7 +100,7 @@ export default function PasswordGeneratorPage() {
   }, [generate])
 
   const copy = async (value: string, key: string) => {
-    await navigator.clipboard.writeText(value)
+    if (!await copyTextToClipboard(value)) return
     setCopied(key)
     window.setTimeout(() => setCopied(null), 1600)
   }
@@ -243,7 +245,7 @@ export default function PasswordGeneratorPage() {
             </CardHeader>
             <CardContent>
               {error ? (
-                <p className="rounded-2xl bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300">{error}</p>
+                <p className="rounded-2xl bg-[var(--md-sys-color-error-container)] p-4 text-sm text-[var(--md-sys-color-on-error-container)]">{error}</p>
               ) : (
                 <div className="space-y-2">
                   {results.map((result, index) => (
@@ -251,7 +253,7 @@ export default function PasswordGeneratorPage() {
                       <Dices className="h-5 w-5 shrink-0 text-[var(--md-sys-color-primary)]" />
                       <code className="min-w-0 flex-1 break-all text-sm font-semibold text-[var(--md-sys-color-on-surface)] sm:text-base">{result.value}</code>
                       <button type="button" onClick={() => copy(result.value, String(index))} aria-label={t("copy")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-[var(--md-sys-color-primary)]/[0.08]">
-                        {copied === String(index) ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                        {copied === String(index) ? <Check className="h-4 w-4 text-[var(--md-sys-color-success)]" /> : <Copy className="h-4 w-4" />}
                       </button>
                     </div>
                   ))}

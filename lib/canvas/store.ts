@@ -663,7 +663,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })
 
     try {
-      const outputs = await definition.execute(inputs, node.config)
+      const computedOutputs = await definition.execute(inputs, node.config)
+      const configOutputs = Object.fromEntries(
+        definition.config
+          .filter((field) => field.hasOutput)
+          .map((field) => {
+            const hasInputValue = Object.prototype.hasOwnProperty.call(
+              inputs,
+              field.id
+            )
+            const value = hasInputValue
+              ? inputs[field.id]
+              : node.config[field.id] ?? field.defaultValue
+            return [field.id, value]
+          })
+      )
+      const outputs = { ...configOutputs, ...computedOutputs }
 
       if (
         executionRevision !== planRevision ||

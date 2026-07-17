@@ -125,3 +125,26 @@ export async function calculateHmac(
 
   return options.outputFormat === "base64" ? bytesToBase64(digest) : bytesToHex(digest)
 }
+
+export function verifyHmac(
+  expected: string,
+  candidate: string,
+  outputFormat: HmacOutputFormat,
+): boolean {
+  const normalize = (value: string) => {
+    const trimmed = value.trim()
+    return outputFormat === "hex" ? trimmed.toLowerCase() : trimmed
+  }
+  const normalizedExpected = normalize(expected)
+  const normalizedCandidate = normalize(candidate)
+  const length = Math.max(normalizedExpected.length, normalizedCandidate.length)
+  let difference = normalizedExpected.length ^ normalizedCandidate.length
+
+  for (let index = 0; index < length; index += 1) {
+    difference |=
+      (normalizedExpected.charCodeAt(index) || 0) ^
+      (normalizedCandidate.charCodeAt(index) || 0)
+  }
+
+  return difference === 0
+}

@@ -1,7 +1,7 @@
 import { createHmac, webcrypto } from "node:crypto"
 import { describe, expect, it } from "vitest"
 
-import { calculateHmac } from "./hmac-tools"
+import { calculateHmac, verifyHmac } from "./hmac-tools"
 
 const message = "The quick brown fox jumps over the lazy dog"
 
@@ -51,5 +51,14 @@ describe("calculateHmac", () => {
         webcrypto.subtle as SubtleCrypto,
       ),
     ).resolves.toBe(expected)
+  })
+
+  it("verifies hexadecimal output case-insensitively", () => {
+    expect(verifyHmac("A0B1C2", "a0b1c2", "hex")).toBe(true)
+  })
+
+  it("keeps Base64 verification case-sensitive", () => {
+    expect(verifyHmac("AbCd==", "abcd==", "base64")).toBe(false)
+    expect(verifyHmac("AbCd==", "AbCd==", "base64")).toBe(true)
   })
 })

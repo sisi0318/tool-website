@@ -1,38 +1,67 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { JsonTreeView } from "@/components/json-tree-view"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useObjectUrl } from "@/hooks/use-object-url"
-import { useToast } from "@/hooks/use-toast"
-import { downloadBlob } from "@/lib/object-url"
-import { 
-  Upload, Image as ImageIcon, ScanLine, Copy, 
-  Download, History, RefreshCw, Settings, 
-  ExternalLink, Wifi, Phone, Mail, MapPin, User, 
-  FileText, AlertTriangle, CheckCircle2, RotateCcw, 
-  Eye, EyeOff, Trash2
+import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  Copy,
+  Download,
+  ExternalLink,
+  FileText,
+  History,
+  Image as ImageIcon,
+  Mail,
+  MapPin,
+  Phone,
+  RefreshCw,
+  RotateCcw,
+  ScanLine,
+  Settings,
+  Trash2,
+  Upload,
+  User,
+  Wifi,
+  X,
 } from "lucide-react"
 import jsQR from "jsqr"
+
+import { useI18n } from "@/components/i18n-provider"
+import { JsonTreeView } from "@/components/json-tree-view"
+import { useToolActivity } from "@/components/tool-activity"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { useObjectUrl } from "@/hooks/use-object-url"
+import { useToast } from "@/hooks/use-toast"
+import { useTranslations } from "@/hooks/use-translations"
+import { createClientId } from "@/lib/client-id"
+import { copyTextToClipboard } from "@/lib/clipboard"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
+import { downloadBlob, withObjectUrl } from "@/lib/object-url"
+import {
+  csvCell,
+  parseQRContent,
+  type QRContentType,
+} from "@/lib/qr-content-tools"
 
 interface QRResult {
   id: string
   data: string
   timestamp: number
-  type: string
-  details?: any
+  type: QRContentType
+  details: Record<string, unknown>
   fileName?: string
 }
 
@@ -44,1121 +73,934 @@ interface ImageEnhancement {
   grayscale: boolean
 }
 
-export default function QRCodeDecoder() {
-  const { toast } = useToast()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+const DEFAULT_ENHANCEMENT: ImageEnhancement = {
+  brightness: 100,
+  contrast: 100,
+  rotation: 0,
+  scale: 100,
+  grayscale: false,
+}
 
-  // 基本状态
+const MAX_CANVAS_PIXELS = 16_000_000
+const MAX_CANVAS_DIMENSION = 4096
+const HISTORY_PAGE_SIZE = 20
+const QR_CARD_CLASS =
+  "min-w-0 rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm"
+
+async function yieldToMainThread(): Promise<void> {
+  const scheduler = (globalThis as typeof globalThis & {
+    scheduler?: { yield?: () => Promise<void> }
+  }).scheduler
+
+  if (scheduler?.yield) {
+    await scheduler.yield()
+    return
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+}
+
+function loadImage(url: string, errorMessage: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error(errorMessage))
+    image.src = url
+  })
+}
+
+function getConstrainedCanvasGeometry(
+  sourceWidth: number,
+  sourceHeight: number,
+  enhancement: ImageEnhancement,
+) {
+  const radians = (enhancement.rotation * Math.PI) / 180
+  const cosine = Math.abs(Math.cos(radians))
+  const sine = Math.abs(Math.sin(radians))
+  let drawWidth = Math.max(1, sourceWidth * (enhancement.scale / 100))
+  let drawHeight = Math.max(1, sourceHeight * (enhancement.scale / 100))
+
+  const calculateBounds = () => ({
+    width: Math.max(1, Math.ceil(drawWidth * cosine + drawHeight * sine)),
+    height: Math.max(1, Math.ceil(drawWidth * sine + drawHeight * cosine)),
+  })
+
+  let bounds = calculateBounds()
+  const constraint = Math.min(
+    1,
+    MAX_CANVAS_DIMENSION / bounds.width,
+    MAX_CANVAS_DIMENSION / bounds.height,
+    Math.sqrt(MAX_CANVAS_PIXELS / (bounds.width * bounds.height)),
+  )
+  drawWidth = Math.max(1, drawWidth * constraint)
+  drawHeight = Math.max(1, drawHeight * constraint)
+  bounds = calculateBounds()
+
+  return {
+    radians,
+    drawWidth,
+    drawHeight,
+    canvasWidth: bounds.width,
+    canvasHeight: bounds.height,
+  }
+}
+
+function renderEnhancedImage(
+  image: HTMLImageElement,
+  enhancement: ImageEnhancement,
+  contextError: string,
+): ImageData {
+  const canvas = document.createElement("canvas")
+  const context = canvas.getContext("2d", { willReadFrequently: true })
+  if (!context) throw new Error(contextError)
+
+  const geometry = getConstrainedCanvasGeometry(
+    image.naturalWidth,
+    image.naturalHeight,
+    enhancement,
+  )
+  canvas.width = geometry.canvasWidth
+  canvas.height = geometry.canvasHeight
+  context.imageSmoothingEnabled = true
+  context.imageSmoothingQuality = "high"
+  context.filter = [
+    `brightness(${enhancement.brightness}%)`,
+    `contrast(${enhancement.contrast}%)`,
+    enhancement.grayscale ? "grayscale(100%)" : "",
+  ].filter(Boolean).join(" ")
+  context.translate(canvas.width / 2, canvas.height / 2)
+  context.rotate(geometry.radians)
+  context.drawImage(
+    image,
+    -geometry.drawWidth / 2,
+    -geometry.drawHeight / 2,
+    geometry.drawWidth,
+    geometry.drawHeight,
+  )
+
+  return context.getImageData(0, 0, canvas.width, canvas.height)
+}
+
+function detailText(details: Record<string, unknown>, key: string): string {
+  const value = details[key]
+  return value === undefined || value === null ? "" : String(value)
+}
+
+export default function QRCodeDecoder() {
+  const t = useTranslations("qrcodeDecoder")
+  const { locale } = useI18n()
+  const { toast } = useToast()
+  const isToolActive = useToolActivity()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const processingRunRef = useRef(0)
+
   const [activeTab, setActiveTab] = useState("upload")
   const [files, setFiles] = useState<File[]>([])
   const [selectedFileIndex, setSelectedFileIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingProgress, setProcessingProgress] = useState(0)
-
-  // 结果状态
   const [results, setResults] = useState<QRResult[]>([])
-  const [selectedResult, setSelectedResult] = useState<QRResult | null>(null)
   const [history, setHistory] = useState<QRResult[]>([])
+  const [historyLimit, setHistoryLimit] = useState(HISTORY_PAGE_SIZE)
   const [error, setError] = useState<string | null>(null)
-
-  // 图像增强状态
-  const [imageEnhancement, setImageEnhancement] = useState<ImageEnhancement>({
-    brightness: 100,
-    contrast: 100,
-    rotation: 0,
-    scale: 100,
-    grayscale: false
-  })
+  const [imageEnhancement, setImageEnhancement] = useState<ImageEnhancement>(DEFAULT_ENHANCEMENT)
   const [showEnhancement, setShowEnhancement] = useState(false)
-
-  // 设置状态
   const [batchMode, setBatchMode] = useState(false)
-  const [maxFileSize] = useState(10 * 1024 * 1024) // 10MB
-  const previewUrl = useObjectUrl(batchMode ? null : files[selectedFileIndex])
+  const [isDragging, setIsDragging] = useState(false)
+  const previewUrl = useObjectUrl(files[selectedFileIndex])
 
-  // 智能内容解析
-  const parseQRContent = useCallback((data: string) => {
-    const result: any = { type: 'text', details: {} }
-
-    // URL 检测
-    if (data.match(/^https?:\/\//)) {
-      result.type = 'url'
-      result.details = { url: data }
-    }
-    // WiFi 配置检测
-    else if (data.startsWith('WIFI:')) {
-      result.type = 'wifi'
-      const match = data.match(/WIFI:T:([^;]*);S:([^;]*);P:([^;]*);H:([^;]*);/)
-      if (match) {
-        result.details = {
-          type: match[1],
-          ssid: match[2],
-          password: match[3],
-          hidden: match[4] === 'true'
-        }
-      }
-    }
-    // 电话号码检测
-    else if (data.startsWith('tel:') || data.match(/^[\+]?[\d\s\-\(\)]{10,}$/)) {
-      result.type = 'phone'
-      result.details = { phone: data.replace('tel:', '') }
-    }
-    // 邮箱检测
-    else if (data.startsWith('mailto:') || data.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      result.type = 'email'
-      result.details = { email: data.replace('mailto:', '') }
-    }
-    // 地理位置检测
-    else if (data.startsWith('geo:')) {
-      result.type = 'location'
-      const match = data.match(/geo:([^,]+),([^,?]+)/)
-      if (match) {
-        result.details = { 
-          latitude: parseFloat(match[1]), 
-          longitude: parseFloat(match[2]),
-          url: `https://maps.google.com/maps?q=${match[1]},${match[2]}`
-        }
-      }
-    }
-    // vCard 检测
-    else if (data.startsWith('BEGIN:VCARD')) {
-      result.type = 'vcard'
-      const lines = data.split('\n')
-      const details: any = {}
-      lines.forEach(line => {
-        const colonIndex = line.indexOf(':')
-        if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex)
-          const value = line.substring(colonIndex + 1)
-          details[key.toLowerCase()] = value
-        }
-      })
-      result.details = details
-    }
-    // JSON 检测
-    else if (data.startsWith('{') && data.endsWith('}')) {
-      try {
-        result.type = 'json'
-        result.details = JSON.parse(data)
-      } catch {
-        result.type = 'text'
-      }
-    }
-
-    return result
+  useEffect(() => () => {
+    processingRunRef.current += 1
   }, [])
 
-  // 应用图像增强
-  const applyImageEnhancement = useCallback((canvas: HTMLCanvasElement, enhancement: ImageEnhancement) => {
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return null
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const data = imageData.data
-
-    // 应用亮度和对比度
-    for (let i = 0; i < data.length; i += 4) {
-      // 亮度调整
-      data[i] = Math.min(255, Math.max(0, data[i] * (enhancement.brightness / 100)))
-      data[i + 1] = Math.min(255, Math.max(0, data[i + 1] * (enhancement.brightness / 100)))
-      data[i + 2] = Math.min(255, Math.max(0, data[i + 2] * (enhancement.brightness / 100)))
-
-      // 对比度调整
-      const contrast = (enhancement.contrast / 100)
-      data[i] = Math.min(255, Math.max(0, ((data[i] / 255 - 0.5) * contrast + 0.5) * 255))
-      data[i + 1] = Math.min(255, Math.max(0, ((data[i + 1] / 255 - 0.5) * contrast + 0.5) * 255))
-      data[i + 2] = Math.min(255, Math.max(0, ((data[i + 2] / 255 - 0.5) * contrast + 0.5) * 255))
-
-      // 灰度处理
-      if (enhancement.grayscale) {
-        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-        data[i] = gray
-        data[i + 1] = gray
-        data[i + 2] = gray
-      }
-    }
-
-    ctx.putImageData(imageData, 0, 0)
-    return imageData
-  }, [])
-
-  // 解码二维码 - 增强版本，多种策略尝试
-  const decodeQRCode = useCallback(async (imageData: ImageData, fileName?: string): Promise<QRResult | null> => {
-    // 多种解码策略
-    const strategies: Array<NonNullable<Parameters<typeof jsQR>[3]>> = [
-      // 策略1: 标准解码
-      { inversionAttempts: "dontInvert" },
-      // 策略2: 尝试反色
-      { inversionAttempts: "onlyInvert" },
-      // 策略3: 同时尝试正常和反色
-      { inversionAttempts: "attemptBoth" },
-      // 策略4: 更多反色尝试
-      { inversionAttempts: "invertFirst" }
-    ]
-
-    for (const strategy of strategies) {
-      try {
-        const code = jsQR(imageData.data, imageData.width, imageData.height, strategy)
-        
-        if (code && code.data) {
-          const parsed = parseQRContent(code.data)
-          const result: QRResult = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            data: code.data,
-            timestamp: Date.now(),
-            type: parsed.type,
-            details: parsed.details,
-            fileName
-          }
-          return result
-        }
-      } catch (error) {
-        console.error('QR解码策略失败:', strategy, error)
-        continue
-      }
-    }
-
-    return null
-  }, [parseQRContent])
-
-  // 处理图像文件 - 增强版本，多种预处理策略
-  const processImageFile = useCallback(async (file: File, index: number, total: number) => {
-    console.log(`开始处理图像文件: ${file.name} (${index + 1}/${total})`)
-    return new Promise<QRResult | null>((resolve) => {
-      if (!file.type.startsWith('image/')) {
-        console.error('不支持的文件类型:', file.type)
-        setError('只支持图像文件')
-        resolve(null)
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        if (!e.target?.result) {
-          resolve(null)
-          return
-        }
-
-        const img = new Image()
-        img.crossOrigin = "anonymous"
-        img.onload = async () => {
-          console.log(`图像加载成功: ${file.name}, 尺寸: ${img.width}x${img.height}`)
-          const canvas = document.createElement('canvas')
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            console.error('无法获取Canvas 2D上下文')
-            resolve(null)
-            return
-          }
-
-          // 多种图像预处理策略
-          const preprocessStrategies = [
-            // 策略1: 用户设置的增强
-            imageEnhancement,
-            // 策略2: 高对比度 + 灰度
-            { ...imageEnhancement, contrast: 150, brightness: 120, grayscale: true },
-            // 策略3: 更高对比度
-            { ...imageEnhancement, contrast: 200, brightness: 100, grayscale: true },
-            // 策略4: 原始尺寸，无增强
-            { brightness: 100, contrast: 100, rotation: 0, scale: 100, grayscale: false },
-            // 策略5: 放大 + 高对比度
-            { brightness: 110, contrast: 180, rotation: 0, scale: 150, grayscale: true },
-            // 策略6: 缩小 + 锐化
-            { brightness: 120, contrast: 160, rotation: 0, scale: 80, grayscale: true }
-          ]
-
-          for (let strategyIndex = 0; strategyIndex < preprocessStrategies.length; strategyIndex++) {
-            const strategy = preprocessStrategies[strategyIndex]
-            
-            try {
-              // 设置画布尺寸
-              const scale = strategy.scale / 100
-              canvas.width = img.width * scale
-              canvas.height = img.height * scale
-
-              // 清空画布
-              ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-              // 处理旋转
-              ctx.save()
-              if (strategy.rotation !== 0) {
-                ctx.translate(canvas.width / 2, canvas.height / 2)
-                ctx.rotate((strategy.rotation * Math.PI) / 180)
-                ctx.translate(-canvas.width / 2, -canvas.height / 2)
-              }
-
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-              ctx.restore()
-
-              // 应用图像增强
-              const enhancedImageData = applyImageEnhancement(canvas, strategy)
-              
-              if (enhancedImageData) {
-                const result = await decodeQRCode(enhancedImageData, file.name)
-                if (result) {
-                  // 成功解码，记录使用的策略
-                  console.log(`成功解码使用策略 ${strategyIndex + 1}:`, strategy)
-                  setProcessingProgress(((index + 1) / total) * 100)
-                  resolve(result)
-                  return
-                }
-              }
-          } catch (error) {
-              console.warn(`预处理策略 ${strategyIndex + 1} 失败:`, error)
-              continue
-          }
-          }
-
-          // 所有策略都失败
-          setProcessingProgress(((index + 1) / total) * 100)
-          resolve(null)
-        }
-
-        img.onerror = () => {
-          console.error('图像加载失败:', file.name)
-          setError('图像加载失败')
-          resolve(null)
-        }
-
-        img.src = e.target.result as string
-      }
-
-      reader.onerror = () => {
-        console.error('文件读取失败:', file.name)
-        setError('文件读取失败')
-        resolve(null)
-      }
-
-      reader.readAsDataURL(file)
-    })
-  }, [imageEnhancement, applyImageEnhancement, decodeQRCode])
-
-  // 批量处理文件
-  const processBatchFiles = useCallback(async (filesToProcess?: File[]) => {
-    const targetFiles = filesToProcess || files
-    console.log('批量处理文件:', targetFiles.length, '个文件')
-    
-    if (targetFiles.length === 0) {
-      console.warn('没有文件需要处理')
-      return
-    }
-
-    setIsProcessing(true)
-    setProcessingProgress(0)
-    setError(null)
-    const newResults: QRResult[] = []
-
-    for (let i = 0; i < targetFiles.length; i++) {
-      console.log(`处理第 ${i + 1} 个文件:`, targetFiles[i].name)
-      const result = await processImageFile(targetFiles[i], i, targetFiles.length)
-      if (result) {
-        newResults.push(result)
-        console.log('解码成功:', result.data.substring(0, 50))
-      } else {
-        console.log('解码失败')
-      }
-    }
-
-    setResults(newResults)
-    if (newResults.length > 0) {
-      setHistory(prev => [...newResults, ...prev].slice(0, 100))
-      setSelectedResult(newResults[0])
-      toast({
-        title: "解码完成",
-        description: `成功解码 ${newResults.length} 个二维码`,
-      })
-    } else {
-      setError('未检测到二维码')
-    }
-
+  useEffect(() => {
+    if (isToolActive) return
+    processingRunRef.current += 1
     setIsProcessing(false)
     setProcessingProgress(0)
-  }, [files, processImageFile, toast])
+  }, [isToolActive])
 
-  // 处理单个文件
-  const processSingleFile = useCallback(async (filesToProcess?: File[], fileIndex?: number) => {
-    const targetFiles = filesToProcess || files
-    const targetIndex = fileIndex !== undefined ? fileIndex : selectedFileIndex
-    console.log('处理单个文件:', targetFiles.length, '个文件，索引:', targetIndex)
-    
-    if (targetFiles.length === 0 || targetIndex >= targetFiles.length) {
-      console.warn('没有有效文件或索引超出范围')
-      return
-    }
+  const decodeImageFile = useCallback(async (file: File, runId: number): Promise<QRResult | null> => {
+    return withObjectUrl(file, async (url) => {
+      const image = await loadImage(url, t("imageLoadError"))
+      const strategies = [
+        imageEnhancement,
+        { ...imageEnhancement, contrast: 150, brightness: 120, grayscale: true },
+        DEFAULT_ENHANCEMENT,
+        { ...DEFAULT_ENHANCEMENT, brightness: 110, contrast: 180, scale: 150, grayscale: true },
+      ].filter((strategy, index, list) =>
+        list.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(strategy)) === index,
+      )
 
-    console.log('开始处理文件:', targetFiles[targetIndex].name)
-    setIsProcessing(true)
-    setError(null)
-    
-    const result = await processImageFile(targetFiles[targetIndex], 0, 1)
-    
-    if (result) {
-      console.log('单个文件解码成功:', result.data.substring(0, 50))
-      setResults([result])
-      setHistory(prev => [result, ...prev].slice(0, 100))
-      setSelectedResult(result)
-      toast({
-        title: "解码成功",
-        description: result.data.length > 50 ? result.data.substring(0, 50) + '...' : result.data,
-      })
-    } else {
-      console.log('单个文件解码失败')
-      setError('未检测到二维码')
-    }
-
-    setIsProcessing(false)
-  }, [files, selectedFileIndex, processImageFile, toast])
-
-  // 文件上传处理 - 添加自动解析
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || [])
-    console.log('文件上传事件触发，选择了', selectedFiles.length, '个文件')
-    
-    const validFiles = selectedFiles.filter(file => {
-      if (file.size > maxFileSize) {
-        toast({
-          title: "文件太大",
-          description: `${file.name} 超过了 ${maxFileSize / 1024 / 1024}MB 限制`,
-          variant: "destructive"
+      for (const strategy of strategies) {
+        if (runId !== processingRunRef.current) return null
+        await yieldToMainThread()
+        const imageData = renderEnhancedImage(image, strategy, t("canvasContextError"))
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "attemptBoth",
         })
-        return false
+        if (!code?.data) continue
+
+        const parsed = parseQRContent(code.data)
+        return {
+          id: createClientId("qr"),
+          data: code.data,
+          timestamp: Date.now(),
+          type: parsed.type,
+          details: parsed.details,
+          fileName: file.name,
+        }
       }
-      return true
+
+      return null
     })
+  }, [imageEnhancement, t])
 
-    console.log('有效文件数量:', validFiles.length)
-    if (validFiles.length === 0) {
-      console.warn('没有有效文件')
-      return
-    }
+  const processFiles = useCallback(async (
+    targetFiles: File[],
+    processAll: boolean,
+    fileIndex = 0,
+  ) => {
+    const selectedFiles = processAll
+      ? targetFiles
+      : targetFiles[fileIndex]
+        ? [targetFiles[fileIndex]]
+        : []
+    if (selectedFiles.length === 0) return
 
-    setFiles(validFiles)
-    setSelectedFileIndex(0)
+    const runId = ++processingRunRef.current
+    setIsProcessing(true)
+    setProcessingProgress(0)
     setResults([])
     setError(null)
 
-    // 直接开始解析，传递有效文件
-    console.log('准备自动解析，批量模式:', batchMode)
-    setTimeout(() => {
-      if (batchMode) {
-        console.log('调用批量处理函数')
-        processBatchFiles(validFiles)
-      } else {
-        console.log('调用单个文件处理函数')
-        processSingleFile(validFiles, 0)
+    const decoded: QRResult[] = []
+    let failedFiles = 0
+
+    try {
+      for (let index = 0; index < selectedFiles.length; index += 1) {
+        if (runId !== processingRunRef.current) return
+        try {
+          const result = await decodeImageFile(selectedFiles[index], runId)
+          if (result) decoded.push(result)
+        } catch (processError) {
+          failedFiles += 1
+          console.error("QR image processing failed:", processError)
+        }
+        if (runId !== processingRunRef.current) return
+        setProcessingProgress(((index + 1) / selectedFiles.length) * 100)
       }
-    }, 100) // 短暂延迟确保状态更新完成
-  }, [maxFileSize, toast, batchMode, processBatchFiles, processSingleFile])
 
-  // 拖拽处理 - 添加自动解析
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
+      if (runId !== processingRunRef.current) return
+      setResults(decoded)
+      if (decoded.length > 0) {
+        setHistory((previous) => [...decoded, ...previous].slice(0, 100))
+        toast({
+          title: t(processAll ? "batchComplete" : "decodeSuccess"),
+          description: `${t("decodedCountPrefix")} ${decoded.length} ${t("decodedCountSuffix")}`,
+        })
+      } else {
+        setError(failedFiles > 0 ? t("imageProcessingError") : t("noQrCodeFound"))
+      }
+    } finally {
+      if (runId === processingRunRef.current) {
+        setIsProcessing(false)
+        setProcessingProgress(0)
+      }
+    }
+  }, [decodeImageFile, t, toast])
 
-    const droppedFiles = Array.from(e.dataTransfer.files)
-    const imageFiles = droppedFiles.filter(file => file.type.startsWith('image/'))
+  const cancelProcessing = useCallback(() => {
+    processingRunRef.current += 1
+    setIsProcessing(false)
+    setProcessingProgress(0)
+  }, [])
 
+  const validateAndProcessFiles = useCallback((incomingFiles: File[]) => {
+    const imageFiles = incomingFiles.filter((file) => file.type.startsWith("image/"))
     if (imageFiles.length === 0) {
       toast({
-        title: "无效文件",
-        description: "请上传图像文件",
-        variant: "destructive"
+        title: t("invalidFile"),
+        description: t("notAnImage"),
+        variant: "destructive",
       })
       return
     }
 
-    // 检查文件大小
-    const validFiles = imageFiles.filter(file => {
-      if (file.size > maxFileSize) {
-        toast({
-          title: "文件太大",
-          description: `${file.name} 超过了 ${maxFileSize / 1024 / 1024}MB 限制`,
-          variant: "destructive"
-        })
-        return false
-      }
-      return true
+    const validFiles = imageFiles.filter((file) => {
+      if (isFileWithinLimit(file, FILE_SIZE_LIMITS.qrDecodeImage)) return true
+      toast({
+        title: t("fileTooLarge"),
+        description: `${file.name}: ${t("maximum")} ${formatFileSizeLimit(FILE_SIZE_LIMITS.qrDecodeImage)}`,
+        variant: "destructive",
+      })
+      return false
     })
-
     if (validFiles.length === 0) return
 
     setFiles(validFiles)
     setSelectedFileIndex(0)
     setResults([])
     setError(null)
+    void processFiles(validFiles, batchMode, 0)
+  }, [batchMode, processFiles, t, toast])
 
-    // 直接开始解析，传递有效文件
-    setTimeout(() => {
-      if (batchMode) {
-        processBatchFiles(validFiles)
-    } else {
-        processSingleFile(validFiles, 0)
+  const openFilePicker = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+      fileInputRef.current.click()
+    }
+  }, [])
+
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragging(false)
+    validateAndProcessFiles(Array.from(event.dataTransfer.files))
+  }, [validateAndProcessFiles])
+
+  const handlePaste = useCallback((event: React.ClipboardEvent<HTMLDivElement>) => {
+    const pastedFiles = Array.from(event.clipboardData.files)
+    if (pastedFiles.length === 0) return
+    event.preventDefault()
+    validateAndProcessFiles(pastedFiles)
+  }, [validateAndProcessFiles])
+
+  const pasteFromClipboard = useCallback(async () => {
+    try {
+      if (!navigator.clipboard?.read) throw new Error("Clipboard read is unavailable")
+      const clipboardItems = await navigator.clipboard.read()
+      const pastedFiles: File[] = []
+      for (const item of clipboardItems) {
+        const imageType = item.types.find((type) => type.startsWith("image/"))
+        if (!imageType) continue
+        const blob = await item.getType(imageType)
+        const extension = imageType.split("/")[1]?.replace("jpeg", "jpg") || "png"
+        pastedFiles.push(new File([blob], `clipboard-${Date.now()}.${extension}`, { type: imageType }))
       }
-    }, 100) // 短暂延迟确保状态更新完成
-  }, [toast, maxFileSize, batchMode, processBatchFiles, processSingleFile])
+      if (pastedFiles.length === 0) throw new Error("No image in clipboard")
+      validateAndProcessFiles(pastedFiles)
+    } catch {
+      toast({
+        title: t("clipboardReadFailed"),
+        description: t("clipboardReadHint"),
+        variant: "destructive",
+      })
+    }
+  }, [t, toast, validateAndProcessFiles])
 
-  // 复制功能
-  const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(text)
+  const clearCurrentFiles = useCallback(() => {
+    cancelProcessing()
+    setFiles([])
+    setSelectedFileIndex(0)
+    setResults([])
+    setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }, [cancelProcessing])
+
+  const selectFile = useCallback((index: number) => {
+    setSelectedFileIndex(index)
+    if (!batchMode) void processFiles(files, false, index)
+  }, [batchMode, files, processFiles])
+
+  const updateBatchMode = useCallback((enabled: boolean) => {
+    setBatchMode(enabled)
+    if (files.length > 0) void processFiles(files, enabled, selectedFileIndex)
+  }, [files, processFiles, selectedFileIndex])
+
+  const copyValue = useCallback(async (value: string) => {
+    const success = await copyTextToClipboard(value)
     toast({
-      title: "已复制",
-      description: "内容已复制到剪贴板",
+      title: success ? t("copied") : t("copyFailed"),
+      description: success ? t("copiedDescription") : undefined,
+      variant: success ? "default" : "destructive",
     })
-  }, [toast])
+  }, [t, toast])
 
-  // 导出历史记录
   const exportHistory = useCallback(() => {
     if (history.length === 0) {
       toast({
-        title: "没有数据",
-        description: "没有历史记录可导出",
-        variant: "destructive"
+        title: t("noData"),
+        description: t("noHistoryToExport"),
+        variant: "destructive",
       })
       return
     }
 
-    const csvContent = [
-      'Timestamp,Type,Data,Details',
-      ...history.map(record => 
-        `${new Date(record.timestamp).toISOString()},${record.type},"${record.data.replace(/"/g, '""')}","${JSON.stringify(record.details).replace(/"/g, '""')}"`
-      )
-    ].join('\n')
-
+    const rows = [
+      ["Timestamp", "Type", "Data", "Details"].map(csvCell).join(","),
+      ...history.map((record) => [
+        new Date(record.timestamp).toISOString(),
+        record.type,
+        record.data,
+        record.details,
+      ].map(csvCell).join(",")),
+    ]
     downloadBlob(
-      new Blob([csvContent], { type: 'text/csv' }),
-      `qr_decode_history_${new Date().toISOString().split('T')[0]}.csv`,
+      new Blob(["\uFEFF", rows.join("\r\n")], { type: "text/csv;charset=utf-8" }),
+      `qr_decode_history_${new Date().toISOString().slice(0, 10)}.csv`,
     )
+    toast({ title: t("exportComplete"), description: t("exportDescription") })
+  }, [history, t, toast])
 
-    toast({
-      title: "导出完成",
-      description: "历史记录已导出为CSV文件",
-    })
-  }, [history, toast])
-
-  // 渲染内容详情
-  const renderContentDetails = useCallback((result: QRResult) => {
-    const { type, details } = result
-
-    switch (type) {
-      case 'url':
-        return (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" />
-              <span className="font-medium">网址链接</span>
-            </div>
-            <Button
-              onClick={() => window.open(details.url, '_blank')}
-              className="w-full"
-            >
-              打开链接
-            </Button>
-          </div>
-        )
-
-      case 'wifi':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Wifi className="h-4 w-4" />
-              <span className="font-medium">WiFi 配置</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>网络名称:</div>
-              <div className="font-mono">{details.ssid}</div>
-              <div>加密类型:</div>
-              <div>{details.type || 'WPA'}</div>
-              <div>密码:</div>
-              <div className="font-mono break-all">{details.password}</div>
-              <div>隐藏网络:</div>
-              <div>{details.hidden ? '是' : '否'}</div>
-            </div>
-          </div>
-        )
-
-      case 'phone':
-        return (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              <span className="font-medium">电话号码</span>
-            </div>
-            <Button
-              onClick={() => window.open(`tel:${details.phone}`, '_self')}
-              className="w-full"
-            >
-              拨打电话
-            </Button>
-          </div>
-        )
-
-      case 'email':
-        return (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              <span className="font-medium">邮箱地址</span>
-            </div>
-            <Button
-              onClick={() => window.open(`mailto:${details.email}`, '_self')}
-              className="w-full"
-            >
-              发送邮件
-            </Button>
-          </div>
-        )
-
-      case 'location':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              <span className="font-medium">地理位置</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>纬度:</div>
-              <div className="font-mono">{details.latitude}</div>
-              <div>经度:</div>
-              <div className="font-mono">{details.longitude}</div>
-            </div>
-            <Button
-              onClick={() => window.open(details.url, '_blank')}
-              className="w-full"
-            >
-              在地图中查看
-            </Button>
-          </div>
-        )
-
-      case 'vcard':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span className="font-medium">联系人信息</span>
-            </div>
-            <div className="space-y-1 text-sm">
-              {details.fn && <div><strong>姓名:</strong> {details.fn}</div>}
-              {details.org && <div><strong>组织:</strong> {details.org}</div>}
-              {details.tel && <div><strong>电话:</strong> {details.tel}</div>}
-              {details.email && <div><strong>邮箱:</strong> {details.email}</div>}
-              {details.url && <div><strong>网址:</strong> {details.url}</div>}
-            </div>
-          </div>
-        )
-
-      case 'json':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="font-medium">JSON 数据</span>
-            </div>
-            <JsonTreeView jsonText={JSON.stringify(details, null, 2)} indentSize={2} />
-          </div>
-        )
-
-      default:
-        return (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="font-medium">纯文本</span>
-            </div>
-            <div className="text-sm text-gray-600">
-              文本长度: {result.data.length} 字符
-            </div>
-          </div>
-        )
-    }
+  const openExternal = useCallback((url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer")
   }, [])
 
+  const renderContentDetails = useCallback((result: QRResult) => {
+    const { type, details } = result
+    const typeTitle = t(`type${type[0].toUpperCase()}${type.slice(1)}`)
+
+    if (type === "url") {
+      const url = detailText(details, "url")
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 font-medium">
+            <ExternalLink className="h-4 w-4" />
+            {typeTitle}
+          </div>
+          <Button type="button" className="w-full rounded-full" onClick={() => openExternal(url)}>
+            {t("openUrl")}
+          </Button>
+        </div>
+      )
+    }
+
+    if (type === "wifi") {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 font-medium">
+            <Wifi className="h-4 w-4" />
+            {typeTitle}
+          </div>
+          <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{t("networkName")}</dt>
+            <dd className="min-w-0 break-all font-mono">{detailText(details, "ssid") || t("notProvided")}</dd>
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{t("encryptionType")}</dt>
+            <dd>{detailText(details, "type") || "WPA"}</dd>
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{t("password")}</dt>
+            <dd className="min-w-0 break-all font-mono">{detailText(details, "password") || t("notProvided")}</dd>
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{t("hiddenNetwork")}</dt>
+            <dd>{details.hidden ? t("yes") : t("no")}</dd>
+          </dl>
+        </div>
+      )
+    }
+
+    if (type === "phone") {
+      const phone = detailText(details, "phone")
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 font-medium"><Phone className="h-4 w-4" />{typeTitle}</div>
+          <Button type="button" className="w-full rounded-full" onClick={() => { window.location.href = `tel:${phone}` }}>
+            {t("callPhone")}
+          </Button>
+        </div>
+      )
+    }
+
+    if (type === "email") {
+      const email = detailText(details, "email")
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 font-medium"><Mail className="h-4 w-4" />{typeTitle}</div>
+          <Button type="button" className="w-full rounded-full" onClick={() => { window.location.href = `mailto:${email}` }}>
+            {t("sendEmail")}
+          </Button>
+        </div>
+      )
+    }
+
+    if (type === "location") {
+      const url = detailText(details, "url")
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 font-medium"><MapPin className="h-4 w-4" />{typeTitle}</div>
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{t("latitude")}</dt>
+            <dd className="font-mono">{detailText(details, "latitude")}</dd>
+            <dt className="text-[var(--md-sys-color-on-surface-variant)]">{t("longitude")}</dt>
+            <dd className="font-mono">{detailText(details, "longitude")}</dd>
+          </dl>
+          <Button type="button" className="w-full rounded-full" onClick={() => openExternal(url)}>
+            {t("viewOnMap")}
+          </Button>
+        </div>
+      )
+    }
+
+    if (type === "vcard") {
+      const fields = [
+        ["fn", t("name")],
+        ["org", t("organization")],
+        ["tel", t("phone")],
+        ["email", t("email")],
+        ["url", t("website")],
+      ] as const
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 font-medium"><User className="h-4 w-4" />{typeTitle}</div>
+          <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+            {fields.map(([key, label]) => detailText(details, key) ? (
+              <div key={key} className="contents">
+                <dt className="text-[var(--md-sys-color-on-surface-variant)]">{label}</dt>
+                <dd className="min-w-0 break-all">{detailText(details, key)}</dd>
+              </div>
+            ) : null)}
+          </dl>
+        </div>
+      )
+    }
+
+    if (type === "json") {
+      return (
+        <div className="min-w-0 space-y-3">
+          <div className="flex items-center gap-2 font-medium"><FileText className="h-4 w-4" />{typeTitle}</div>
+          <div className="max-h-[28rem] min-w-0 touch-pan-y overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+            <JsonTreeView jsonText={JSON.stringify(details.value, null, 2)} indentSize={2} />
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 font-medium"><FileText className="h-4 w-4" />{typeTitle}</div>
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+          {t("textLength")} {result.data.length} {t("characters")}
+        </p>
+      </div>
+    )
+  }, [openExternal, t])
+
+  const renderResultCard = useCallback((result: QRResult) => (
+    <article
+      key={result.id}
+      className="min-w-0 space-y-4 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4"
+    >
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Badge variant="secondary">{t(`type${result.type[0].toUpperCase()}${result.type.slice(1)}`)}</Badge>
+          <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+            {new Date(result.timestamp).toLocaleTimeString(locale)}
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 shrink-0 rounded-full"
+          aria-label={t("copyResultAria")}
+          onClick={() => void copyValue(result.data)}
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {renderContentDetails(result)}
+
+      <div className="min-w-0 border-t border-[var(--md-sys-color-outline-variant)] pt-3">
+        <Label className="text-sm font-medium text-[var(--md-sys-color-on-surface-variant)]">{t("rawData")}</Label>
+        <Textarea value={result.data} readOnly rows={4} className="mt-2 min-w-0 resize-y font-mono text-xs" />
+      </div>
+      {result.fileName && (
+        <p className="break-all text-xs text-[var(--md-sys-color-on-surface-variant)]">
+          {t("source")} {result.fileName}
+        </p>
+      )}
+    </article>
+  ), [copyValue, locale, renderContentDetails, t])
+
   return (
-    <TooltipProvider>
-      <div className="container mx-auto py-6 px-4 max-w-6xl">
-        {/* 页面标题 */}
-        <div className="text-center space-y-4 mb-8">
-          <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-            <ScanLine className="h-8 w-8 text-blue-500" />
-            二维码解码器
+    <div className="container mx-auto max-w-6xl overflow-x-clip px-3 py-4 sm:px-4 sm:py-6">
+      <header className="mb-5 flex items-center gap-3 sm:mb-7 sm:justify-center">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+          <ScanLine className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 sm:text-center">
+          <h1 className="text-xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+            {t("title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            上传图片自动解码二维码，支持批量处理、多策略识别和智能内容解析
+          <p className="mt-0.5 text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)] sm:text-sm">
+            {t("description")}
           </p>
         </div>
+      </header>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="upload" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              图片上传
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              历史记录
-            </TabsTrigger>
-          </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
+        <TabsList className="mb-5 grid h-auto w-full grid-cols-2 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-1">
+          <TabsTrigger value="upload" className="min-h-11 rounded-xl data-[state=active]:bg-[var(--md-sys-color-secondary-container)]">
+            <Upload className="mr-2 h-4 w-4" />
+            {t("uploadTab")}
+          </TabsTrigger>
+          <TabsTrigger value="history" className="min-h-11 rounded-xl data-[state=active]:bg-[var(--md-sys-color-secondary-container)]">
+            <History className="mr-2 h-4 w-4" />
+            {t("historyTab")} ({history.length})
+          </TabsTrigger>
+        </TabsList>
 
-          {/* 图片上传页面 */}
-          <TabsContent value="upload" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 左侧：上传区域 */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* 文件上传 */}
-                <Card>
-        <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <ImageIcon className="h-5 w-5" />
-                        图片上传
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="batch-mode"
-                            checked={batchMode}
-                            onCheckedChange={setBatchMode}
-                          />
-                          <Label htmlFor="batch-mode" className="text-sm">批量模式</Label>
-                        </div>
-                      </div>
+        <TabsContent value="upload" className="min-w-0 space-y-4">
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+            <section className="contents lg:order-1 lg:col-span-2 lg:block">
+              <Card className={`order-1 ${QR_CARD_CLASS}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <ImageIcon className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                      {t("uploadImage")}
+                    </CardTitle>
+                    <div className="flex items-center justify-between gap-3 rounded-full bg-[var(--md-sys-color-surface-container)] px-3 py-2 sm:justify-start">
+                      <Label htmlFor="batch-mode" className="cursor-pointer text-sm">{t("batchMode")}</Label>
+                      <Switch id="batch-mode" checked={batchMode} onCheckedChange={updateBatchMode} />
                     </div>
-        </CardHeader>
-        <CardContent>
-          <div
-                      className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                        files.length > 0 ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-300 dark:border-gray-700 hover:border-gray-400"
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-            }}
-            onDrop={handleDrop}
-          >
-                      {files.length === 0 ? (
-                        <div className="space-y-4">
-                          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-                            <Upload className="h-8 w-8 text-gray-600 dark:text-gray-400" />
-                </div>
-                          <div>
-                            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                              拖拽图片到这里
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              支持 JPG、PNG、GIF、WEBP 格式，最大 10MB
-                            </p>
-                            <p className="text-xs text-blue-600 mt-2">
-                              上传后将自动解析二维码，支持多种识别策略
-                            </p>
-                          </div>
-                          <Button onClick={() => fileInputRef.current?.click()} size="lg">
-                            <Upload className="mr-2 h-5 w-5" />
-                            选择图片
-                  </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                            multiple={batchMode}
-                    onChange={handleFileChange}
+                    multiple={batchMode}
+                    aria-label={t("chooseImages")}
+                    onChange={(event) => validateAndProcessFiles(Array.from(event.target.files ?? []))}
                     className="hidden"
                   />
-                </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                            <span className="font-medium">
-                              已选择 {files.length} 个文件
-                            </span>
-                          </div>
-                          
-                          {!batchMode && files.length > 0 && (
-                            <div className="space-y-2">
-                              <Label>选择要处理的文件:</Label>
-                              <Select
-                                value={selectedFileIndex.toString()}
-                                onValueChange={(value) => setSelectedFileIndex(parseInt(value))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {files.map((file, index) => (
-                                    <SelectItem key={index} value={index.toString()}>
-                                      {file.name} ({(file.size / 1024).toFixed(1)}KB)
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t("dropzoneAria")}
+                    onClick={openFilePicker}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault()
+                        openFilePicker()
+                      }
+                    }}
+                    onPaste={handlePaste}
+                    onDragEnter={() => setIsDragging(true)}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={handleDrop}
+                    className={`cursor-pointer rounded-2xl border-2 border-dashed p-5 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] sm:p-8 ${
+                      isDragging
+                        ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/45"
+                        : files.length > 0
+                          ? "border-[var(--md-sys-color-primary)]/50 bg-[var(--md-sys-color-primary-container)]/25"
+                          : "border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]"
+                    }`}
+                  >
+                    <Upload className="mx-auto mb-3 h-10 w-10 text-[var(--md-sys-color-primary)]" />
+                    <p className="font-medium text-[var(--md-sys-color-on-surface)]">{t("dropImageHere")}</p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("supportedFormats")} · {t("maximum")} {formatFileSizeLimit(FILE_SIZE_LIMITS.qrDecodeImage)}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("autoDecodeHint")}</p>
+                  </div>
 
-                          <div className="flex gap-2 justify-center">
-                            {isProcessing ? (
-                              <div className="flex items-center gap-2 text-blue-600">
-                                <RefreshCw className="h-5 w-5 animate-spin" />
-                                <span className="font-medium">正在自动解析...</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-green-600">
-                                <CheckCircle2 className="h-5 w-5" />
-                                <span className="font-medium">
-                                  {results.length > 0 ? '解析完成' : '等待解析结果'}
-                                </span>
-                              </div>
-                            )}
-                            
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setFiles([])
-                                setResults([])
-                                setSelectedFileIndex(0)
-                                setError(null)
-                                if (fileInputRef.current) fileInputRef.current.value = ""
-                              }}
-                              disabled={isProcessing}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              清空
-                  </Button>
-                </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" className="rounded-full" onClick={openFilePicker}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      {t("chooseImages")}
+                    </Button>
+                    <Button type="button" variant="outline" className="rounded-full" onClick={() => void pasteFromClipboard()}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      {t("pasteImage")}
+                    </Button>
+                  </div>
 
-                          {isProcessing && (
-                            <div className="space-y-2">
-                              <Progress value={processingProgress} className="w-full" />
-                              <p className="text-sm text-gray-500 text-center">
-                                {processingProgress.toFixed(0)}% 完成
-                              </p>
-                            </div>
-                          )}
-              </div>
-            )}
-          </div>
-
-                    {/* 文件列表 */}
-                    {files.length > 0 && (
-                      <div className="mt-4">
-                        <Label className="text-sm font-medium">文件列表:</Label>
-                        <ScrollArea className="h-32 mt-2">
-                          <div className="space-y-1">
-                            {files.map((file, index) => (
-                              <div
-                                key={index}
-                                className={`flex items-center justify-between p-2 rounded border ${
-                                  index === selectedFileIndex && !batchMode ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <ImageIcon className="h-4 w-4" />
-                                  <span className="text-sm truncate">{file.name}</span>
-                                </div>
-                                <Badge variant="outline" className="text-xs">
-                                  {(file.size / 1024).toFixed(1)}KB
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-            </div>
-          )}
-                  </CardContent>
-                </Card>
-
-                {/* 图像增强 */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Settings className="h-5 w-5" />
-                        图像增强 (可选)
-                      </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowEnhancement(!showEnhancement)}
-                      >
-                        {showEnhancement ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  {showEnhancement && (
-                    <CardContent className="space-y-4">
-                      <div className="text-sm text-gray-600 dark:text-gray-400 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          <ScanLine className="h-4 w-4 text-blue-500" />
-                          <span className="font-medium">智能识别说明</span>
+                  {files.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <CheckCircle2 className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                          <span>{t("selectedFilesPrefix")} {files.length} {t("selectedFilesSuffix")}</span>
                         </div>
-                        <p className="text-xs">
-                          系统会自动尝试多种图像处理策略来提高识别率，您可以手动调整参数来匹配特定的二维码图片。
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm">亮度: {imageEnhancement.brightness}%</Label>
-                          <Slider
-                            value={[imageEnhancement.brightness]}
-                            onValueChange={([value]) => setImageEnhancement(prev => ({ ...prev, brightness: value }))}
-                            min={50}
-                            max={200}
-                            step={5}
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">对比度: {imageEnhancement.contrast}%</Label>
-                          <Slider
-                            value={[imageEnhancement.contrast]}
-                            onValueChange={([value]) => setImageEnhancement(prev => ({ ...prev, contrast: value }))}
-                            min={50}
-                            max={200}
-                            step={5}
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">旋转: {imageEnhancement.rotation}°</Label>
-                          <Slider
-                            value={[imageEnhancement.rotation]}
-                            onValueChange={([value]) => setImageEnhancement(prev => ({ ...prev, rotation: value }))}
-                            min={-180}
-                            max={180}
-                            step={15}
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">缩放: {imageEnhancement.scale}%</Label>
-                          <Slider
-                            value={[imageEnhancement.scale]}
-                            onValueChange={([value]) => setImageEnhancement(prev => ({ ...prev, scale: value }))}
-                            min={50}
-                            max={200}
-                            step={5}
-                            className="mt-2"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="grayscale"
-                          checked={imageEnhancement.grayscale}
-                          onCheckedChange={(checked) => setImageEnhancement(prev => ({ ...prev, grayscale: checked }))}
-                        />
-                        <Label htmlFor="grayscale" className="text-sm">灰度处理</Label>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => setImageEnhancement({
-                          brightness: 100,
-                          contrast: 100,
-                          rotation: 0,
-                          scale: 100,
-                          grayscale: false
-                        })}
-                        className="w-full"
-                      >
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        重置设置
-                      </Button>
-                    </CardContent>
-                  )}
-                </Card>
-              </div>
-
-              {/* 右侧：预览和即时结果 */}
-              <div className="space-y-6">
-                {/* 文件预览 */}
-                {files.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">文件预览</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {!batchMode && files[selectedFileIndex] && (
-                        <div className="space-y-3">
-                          {previewUrl && (
-                            <img
-                              src={previewUrl}
-                              alt="预览"
-                              className="w-full max-h-48 object-contain rounded border"
-                            />
-                          )}
-                          <div className="text-sm text-gray-600">
-                            <div>文件: {files[selectedFileIndex].name}</div>
-                            <div>大小: {(files[selectedFileIndex].size / 1024).toFixed(1)}KB</div>
-                          </div>
-            </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 错误提示 */}
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {/* 即时结果 */}
-                {results.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">解码结果</CardTitle>
                         <Button
+                          type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            const allData = results.map(r => r.data).join('\n')
-                            copyToClipboard(allData)
-                          }}
+                          className="rounded-full"
+                          onClick={clearCurrentFiles}
                         >
-                        <Copy className="mr-2 h-4 w-4" />
-                          复制全部
+                          <Trash2 className="mr-1 h-4 w-4" />
+                          {t("clear")}
                         </Button>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-80">
-                        <div className="space-y-4">
-                          {results.map((result, index) => (
-                            <div key={result.id} className="p-4 border rounded-lg">
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">
-                                      {result.type.toUpperCase()}
-                                    </Badge>
-                                    <span className="text-xs text-gray-500">
-                                      {new Date(result.timestamp).toLocaleTimeString()}
-                      </span>
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => copyToClipboard(result.data)}
-                                  >
-                                    <Copy className="h-4 w-4" />
-                  </Button>
-                                </div>
 
-                                {/* 智能内容解析结果 */}
-                                {renderContentDetails(result)}
+                      <div className="max-h-44 space-y-1 touch-pan-y overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch]">
+                        {files.map((file, index) => (
+                          <button
+                            key={`${file.name}-${file.lastModified}-${index}`}
+                            type="button"
+                            onClick={() => selectFile(index)}
+                            className={`flex min-h-11 w-full min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
+                              index === selectedFileIndex
+                                ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/35"
+                                : "border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]"
+                            }`}
+                          >
+                            <ImageIcon className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
+                            <Badge variant="secondary" className="shrink-0 text-[10px]">
+                              {(file.size / 1024).toFixed(1)} KB
+                            </Badge>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                                <div className="border-t pt-3">
-                                  <Label className="text-sm font-medium text-gray-500">原始数据:</Label>
-                                  <Textarea
-                                    value={result.data}
-                                    readOnly
-                                    rows={3}
-                                    className="text-xs font-mono mt-1"
-                                  />
-                                </div>
+                  {isProcessing && (
+                    <div className="space-y-3 rounded-2xl bg-[var(--md-sys-color-surface-container-low)] p-3">
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="flex items-center gap-2 font-medium">
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          {t("decoding")}
+                        </span>
+                        <Button type="button" variant="ghost" size="sm" className="rounded-full" onClick={cancelProcessing}>
+                          <X className="mr-1 h-4 w-4" />
+                          {t("cancel")}
+                        </Button>
+                      </div>
+                      <Progress value={processingProgress} />
+                      <p className="text-right text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                        {processingProgress.toFixed(0)}%
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                                {result.fileName && (
-                                  <div className="text-xs text-gray-500">
-                                    来源: {result.fileName}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* 历史记录页面 */}
-          <TabsContent value="history" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>历史记录 ({history.length})</CardTitle>
-                  <div className="flex gap-2">
+              <Card className={`order-3 mt-4 ${QR_CARD_CLASS}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Settings className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                      {t("imageEnhancement")}
+                    </CardTitle>
                     <Button
-                      variant="outline"
+                      type="button"
+                      variant="ghost"
                       size="sm"
-                      onClick={exportHistory}
-                      disabled={history.length === 0}
+                      className="rounded-full"
+                      onClick={() => setShowEnhancement((visible) => !visible)}
+                      aria-expanded={showEnhancement}
                     >
-                      <Download className="mr-2 h-4 w-4" />
-                      导出CSV
+                      {showEnhancement ? t("collapse") : t("expand")}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setHistory([])}
-                      disabled={history.length === 0}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      清空记录
-                  </Button>
-                </div>
-              </div>
-              </CardHeader>
-              <CardContent>
-                {history.length === 0 ? (
-                  <div className="text-center py-12">
-                    <History className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
-                      暂无历史记录
-                    </p>
-                    <p className="text-gray-500">
-                      解码的二维码记录将在这里显示
-                    </p>
                   </div>
-                ) : (
-                  <ScrollArea className="h-96">
-                    <div className="space-y-3">
-                      {history.map((record) => (
-                        <div key={record.id} className="p-4 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {record.type.toUpperCase()}
-                              </Badge>
-                              <span className="text-xs text-gray-500">
-                                {new Date(record.timestamp).toLocaleString()}
-                              </span>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(record.data)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          
-                          <div className="text-sm break-all">
-                            {record.data.length > 150 ? record.data.substring(0, 150) + '...' : record.data}
-                          </div>
-                          
-                          {record.fileName && (
-                            <div className="text-xs text-gray-500 mt-2">
-                              来源: {record.fileName}
-            </div>
-                          )}
+                </CardHeader>
+                {showEnhancement && (
+                  <CardContent className="space-y-5">
+                    <p className="rounded-xl bg-[var(--md-sys-color-secondary-container)] px-3 py-2 text-xs leading-5 text-[var(--md-sys-color-on-secondary-container)]">
+                      {t("enhancementDescription")}
+                    </p>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      {([
+                        ["brightness", t("brightness"), 50, 200, 5, "%"],
+                        ["contrast", t("contrast"), 50, 200, 5, "%"],
+                        ["rotation", t("rotation"), -180, 180, 15, "°"],
+                        ["scale", t("scale"), 50, 200, 5, "%"],
+                      ] as const).map(([key, label, minimum, maximum, step, suffix]) => (
+                        <div key={key} className="space-y-2">
+                          <Label className="text-sm">{label}: {imageEnhancement[key]}{suffix}</Label>
+                          <Slider
+                            value={[imageEnhancement[key]]}
+                            onValueChange={([value]) => setImageEnhancement((previous) => ({ ...previous, [key]: value }))}
+                            min={minimum}
+                            max={maximum}
+                            step={step}
+                          />
                         </div>
                       ))}
                     </div>
-                  </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
-          </TabsContent>
-        </Tabs>
+                    <div className="flex items-center justify-between rounded-xl bg-[var(--md-sys-color-surface-container)] px-3 py-2">
+                      <Label htmlFor="grayscale" className="cursor-pointer text-sm">{t("grayscale")}</Label>
+                      <Switch
+                        id="grayscale"
+                        checked={imageEnhancement.grayscale}
+                        onCheckedChange={(checked) => setImageEnhancement((previous) => ({ ...previous, grayscale: checked }))}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={() => setImageEnhancement(DEFAULT_ENHANCEMENT)}
+                      >
+                        <RotateCcw className="mr-1 h-4 w-4" />
+                        {t("resetSettings")}
+                      </Button>
+                      <Button
+                        type="button"
+                        className="rounded-full"
+                        disabled={files.length === 0 || isProcessing}
+                        onClick={() => void processFiles(files, batchMode, selectedFileIndex)}
+                      >
+                        <ScanLine className="mr-1 h-4 w-4" />
+                        {t("decodeAgain")}
+                      </Button>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            </section>
+
+            <section className="order-2 min-w-0 space-y-4 lg:col-span-1">
+              {files[selectedFileIndex] && (
+                <Card className={QR_CARD_CLASS}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">{t("filePreview")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {previewUrl && (
+                      <img
+                        src={previewUrl}
+                        alt={t("previewAlt")}
+                        className="max-h-64 w-full rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] object-contain"
+                      />
+                    )}
+                    <div className="min-w-0 text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">
+                      <p className="break-all">{t("file")} {files[selectedFileIndex].name}</p>
+                      <p>{t("size")} {(files[selectedFileIndex].size / 1024).toFixed(1)} KB</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {error && (
+                <Alert variant="destructive" className="rounded-2xl">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {results.length > 0 && (
+                <Card className={QR_CARD_CLASS}>
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <CardTitle className="text-lg">{t("decodedResult")} ({results.length})</CardTitle>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-fit rounded-full"
+                        onClick={() => void copyValue(results.map((result) => result.data).join("\n"))}
+                      >
+                        <Copy className="mr-1 h-4 w-4" />
+                        {t("copyAll")}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {results.map(renderResultCard)}
+                  </CardContent>
+                </Card>
+              )}
+            </section>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="history" className="min-w-0">
+          <Card className={QR_CARD_CLASS}>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle>{t("historyTab")} ({history.length})</CardTitle>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={exportHistory}
+                    disabled={history.length === 0}
+                  >
+                    <Download className="mr-1 h-4 w-4" />
+                    {t("exportCsv")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => setHistory([])}
+                    disabled={history.length === 0}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    {t("clearHistory")}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {history.length === 0 ? (
+                <div className="py-12 text-center text-[var(--md-sys-color-on-surface-variant)]">
+                  <History className="mx-auto mb-4 h-12 w-12" />
+                  <p className="font-medium">{t("noHistory")}</p>
+                  <p className="mt-1 text-sm">{t("historyDescription")}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {history.slice(0, historyLimit).map((record) => (
+                    <article
+                      key={record.id}
+                      className="min-w-0 rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4"
+                    >
+                      <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <Badge variant="secondary">{t(`type${record.type[0].toUpperCase()}${record.type.slice(1)}`)}</Badge>
+                          <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                            {new Date(record.timestamp).toLocaleString(locale)}
+                          </span>
+                        </div>
+                        <div className="flex shrink-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-full"
+                            aria-label={t("copyResultAria")}
+                            onClick={() => void copyValue(record.data)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-full"
+                            aria-label={t("deleteHistoryAria")}
+                            onClick={() => setHistory((previous) => previous.filter((item) => item.id !== record.id))}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="break-all text-sm leading-6">
+                        {record.data.length > 300 ? `${record.data.slice(0, 300)}…` : record.data}
+                      </p>
+                      {record.fileName && (
+                        <p className="mt-2 break-all text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                          {t("source")} {record.fileName}
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                  {historyLimit < history.length && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full rounded-full"
+                      onClick={() => setHistoryLimit((limit) => limit + HISTORY_PAGE_SIZE)}
+                    >
+                      {t("showMore")}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
-    </TooltipProvider>
   )
 }

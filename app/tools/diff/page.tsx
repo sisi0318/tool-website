@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import type React from "react"
 import {
   useCallback,
@@ -39,7 +41,7 @@ export default function DiffPage() {
   
   const oldTextareaRef = useRef<HTMLTextAreaElement>(null)
   const newTextareaRef = useRef<HTMLTextAreaElement>(null)
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deferredOldText = useDeferredValue(oldText)
   const deferredNewText = useDeferredValue(newText)
   const isCalculating = deferredOldText !== oldText || deferredNewText !== newText
@@ -67,7 +69,8 @@ export default function DiffPage() {
       }
     }).join("\n")
     
-    navigator.clipboard.writeText(diffText).then(() => {
+    void copyTextToClipboard(diffText).then((success) => {
+      if (!success) return
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
       }

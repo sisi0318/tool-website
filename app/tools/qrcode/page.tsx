@@ -1,9 +1,12 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import type React from "react"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useReducer } from "react"
 import { useTranslations } from "@/hooks/use-translations"
+import { useObjectUrl } from "@/hooks/use-object-url"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { QRCodeSVG } from "qrcode.react"
-import { Download, Copy, Check, Link, FileText, Phone, Mail, MapPin, Calendar, CreditCard, Settings, ChevronUp, ChevronDown, QrCode, Zap, Palette, Upload } from "lucide-react"
+import { Download, Copy, Check, Link, FileText, Phone, Mail, MapPin, Calendar, CreditCard, Settings, ChevronUp, ChevronDown, QrCode, Zap, Palette, Upload, UserRound, Wifi } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -24,87 +27,216 @@ import {
 } from "@/lib/object-url"
 import { buildPaymentQrValue } from "@/lib/qrcode-tools"
 
-// QR Code error correction levels
-const errorCorrectionLevels = [
-  { value: "L", label: "Low (7%)" },
-  { value: "M", label: "Medium (15%)" },
-  { value: "Q", label: "Quartile (25%)" },
-  { value: "H", label: "High (30%)" },
-]
-
 // QR Code content types
 type ContentType = "text" | "url" | "contact" | "phone" | "email" | "location" | "event" | "wifi" | "payment"
+type ErrorCorrectionLevel = "L" | "M" | "Q" | "H"
+
+const errorCorrectionLevels: Array<{ value: ErrorCorrectionLevel; labelKey: string }> = [
+  { value: "L", labelKey: "errorCorrectionLow" },
+  { value: "M", labelKey: "errorCorrectionMedium" },
+  { value: "Q", labelKey: "errorCorrectionQuartile" },
+  { value: "H", labelKey: "errorCorrectionHigh" },
+]
+
+const contentTypeOptions = [
+  { value: "text", labelKey: "text", Icon: FileText },
+  { value: "url", labelKey: "url", Icon: Link },
+  { value: "contact", labelKey: "contact", Icon: UserRound },
+  { value: "phone", labelKey: "phone", Icon: Phone },
+  { value: "email", labelKey: "email", Icon: Mail },
+  { value: "location", labelKey: "location", Icon: MapPin },
+  { value: "event", labelKey: "event", Icon: Calendar },
+  { value: "wifi", labelKey: "wifi", Icon: Wifi },
+  { value: "payment", labelKey: "payment", Icon: CreditCard },
+] as const
+
+interface QrUiState {
+  autoGenerate: boolean
+  locationError: string
+  logoError: string
+  showPreview: boolean
+  showQrSettings: boolean
+}
+
+interface QrContentState {
+  contactAddress: string
+  contactCompany: string
+  contactEmail: string
+  contactName: string
+  contactPhone: string
+  contactTitle: string
+  contactWebsite: string
+  contentType: ContentType
+  emailAddress: string
+  emailBody: string
+  emailSubject: string
+  eventDescription: string
+  eventEndDate: string
+  eventLocation: string
+  eventStartDate: string
+  eventTitle: string
+  latitude: string
+  locationName: string
+  longitude: string
+  paymentAmount: string
+  paymentCurrency: string
+  paymentMessage: string
+  paymentName: string
+  phoneNumber: string
+  text: string
+  url: string
+  wifiEncryption: string
+  wifiHidden: boolean
+  wifiPassword: string
+  wifiSsid: string
+}
+
+interface QrAppearanceState {
+  bgColor: string
+  errorCorrection: ErrorCorrectionLevel
+  fgColor: string
+  includeMargin: boolean
+  logoEnabled: boolean
+  logoFile: File | null
+  logoSizePercent: number
+  logoUrl: string
+  size: number
+}
+
+type SetFieldAction<State> = {
+  [Field in keyof State]: { field: Field; value: State[Field] }
+}[keyof State]
+
+const uiReducer = (state: QrUiState, action: SetFieldAction<QrUiState>): QrUiState => ({
+  ...state,
+  [action.field]: action.value,
+})
+
+const contentReducer = (state: QrContentState, action: SetFieldAction<QrContentState>): QrContentState => ({
+  ...state,
+  [action.field]: action.value,
+})
+
+const appearanceReducer = (
+  state: QrAppearanceState,
+  action: SetFieldAction<QrAppearanceState>,
+): QrAppearanceState => ({
+  ...state,
+  [action.field]: action.value,
+})
+
+const INITIAL_UI_STATE: QrUiState = {
+  autoGenerate: true,
+  locationError: "",
+  logoError: "",
+  showPreview: true,
+  showQrSettings: false,
+}
+
+const INITIAL_CONTENT_STATE: QrContentState = {
+  contactAddress: "",
+  contactCompany: "",
+  contactEmail: "",
+  contactName: "",
+  contactPhone: "",
+  contactTitle: "",
+  contactWebsite: "",
+  contentType: "text",
+  emailAddress: "",
+  emailBody: "",
+  emailSubject: "",
+  eventDescription: "",
+  eventEndDate: "",
+  eventLocation: "",
+  eventStartDate: "",
+  eventTitle: "",
+  latitude: "",
+  locationName: "",
+  longitude: "",
+  paymentAmount: "",
+  paymentCurrency: "USD",
+  paymentMessage: "",
+  paymentName: "",
+  phoneNumber: "",
+  text: "",
+  url: "https://",
+  wifiEncryption: "WPA",
+  wifiHidden: false,
+  wifiPassword: "",
+  wifiSsid: "",
+}
+
+const INITIAL_APPEARANCE_STATE: QrAppearanceState = {
+  bgColor: "#FFFFFF",
+  errorCorrection: "M",
+  fgColor: "#000000",
+  includeMargin: true,
+  logoEnabled: false,
+  logoFile: null,
+  logoSizePercent: 25,
+  logoUrl: "",
+  size: 200,
+}
 
 export default function QRCodePage() {
   const t = useTranslations("qrcode")
-
-  // 基础状态
-  const [showQrSettings, setShowQrSettings] = useState(false)
-  const [autoGenerate, setAutoGenerate] = useState(true)
-  const [showPreview, setShowPreview] = useState(true)
+  const [uiState, dispatchUi] = useReducer(uiReducer, INITIAL_UI_STATE)
+  const [contentState, dispatchContent] = useReducer(contentReducer, INITIAL_CONTENT_STATE)
+  const [appearance, dispatchAppearance] = useReducer(appearanceReducer, INITIAL_APPEARANCE_STATE)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
-
-  // Basic states
-  const [contentType, setContentType] = useState<ContentType>("text")
-  const [text, setText] = useState("")
-  const [url, setUrl] = useState("https://")
   const [qrValue, setQrValue] = useState("")
-  const [size, setSize] = useState(200)
-  const [fgColor, setFgColor] = useState("#000000")
-  const [bgColor, setBgColor] = useState("#FFFFFF")
-  const [errorCorrection, setErrorCorrection] = useState("M")
-  const [includeMargin, setIncludeMargin] = useState(true)
-  const [logoEnabled, setLogoEnabled] = useState(false)
-  const [logoSizePercent, setLogoSizePercent] = useState(25) // As percentage of QR code size
-  const [logoUrl, setLogoUrl] = useState("")
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
+  const previousErrorCorrectionRef = useRef<ErrorCorrectionLevel>("M")
+  const logoPreviewUrl = useObjectUrl(appearance.logoFile)
 
-  // Contact form states
-  const [contactName, setContactName] = useState("")
-  const [contactPhone, setContactPhone] = useState("")
-  const [contactEmail, setContactEmail] = useState("")
-  const [contactAddress, setContactAddress] = useState("")
-  const [contactCompany, setContactCompany] = useState("")
-  const [contactTitle, setContactTitle] = useState("")
-  const [contactWebsite, setContactWebsite] = useState("")
-
-  // Phone state
-  const [phoneNumber, setPhoneNumber] = useState("")
-
-  // Email states
-  const [emailAddress, setEmailAddress] = useState("")
-  const [emailSubject, setEmailSubject] = useState("")
-  const [emailBody, setEmailBody] = useState("")
-
-  // Location states
-  const [latitude, setLatitude] = useState("")
-  const [longitude, setLongitude] = useState("")
-  const [locationName, setLocationName] = useState("")
-
-  // Event states
-  const [eventTitle, setEventTitle] = useState("")
-  const [eventLocation, setEventLocation] = useState("")
-  const [eventDescription, setEventDescription] = useState("")
-  const [eventStartDate, setEventStartDate] = useState("")
-  const [eventEndDate, setEventEndDate] = useState("")
-
-  // WiFi states
-  const [wifiSsid, setWifiSsid] = useState("")
-  const [wifiPassword, setWifiPassword] = useState("")
-  const [wifiEncryption, setWifiEncryption] = useState("WPA")
-  const [wifiHidden, setWifiHidden] = useState(false)
-
-  // Payment states
-  const [paymentName, setPaymentName] = useState("")
-  const [paymentAmount, setPaymentAmount] = useState("")
-  const [paymentCurrency, setPaymentCurrency] = useState("USD")
-  const [paymentMessage, setPaymentMessage] = useState("")
+  const { autoGenerate, locationError, logoError, showPreview, showQrSettings } = uiState
+  const {
+    contactAddress,
+    contactCompany,
+    contactEmail,
+    contactName,
+    contactPhone,
+    contactTitle,
+    contactWebsite,
+    contentType,
+    emailAddress,
+    emailBody,
+    emailSubject,
+    eventDescription,
+    eventEndDate,
+    eventLocation,
+    eventStartDate,
+    eventTitle,
+    latitude,
+    locationName,
+    longitude,
+    paymentAmount,
+    paymentCurrency,
+    paymentMessage,
+    paymentName,
+    phoneNumber,
+    text,
+    url,
+    wifiEncryption,
+    wifiHidden,
+    wifiPassword,
+    wifiSsid,
+  } = contentState
+  const {
+    bgColor,
+    errorCorrection,
+    fgColor,
+    includeMargin,
+    logoEnabled,
+    logoFile,
+    logoSizePercent,
+    logoUrl,
+    size,
+  } = appearance
 
   // Refs
   const qrCodeRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const copyTimeoutRef = useRef<number | null>(null)
 
   // Generate QR code value based on content type
   const generateQrValue = useCallback(() => {
@@ -215,27 +347,34 @@ END:VEVENT`
     if (autoGenerate) generateQrValue()
   }, [autoGenerate, generateQrValue])
 
-  // Add this new useEffect after the existing QR value generation useEffect
-  useEffect(() => {
-    // Automatically set higher error correction when logo is enabled
-    if (logoEnabled) {
-      // Set to highest error correction level when logo is enabled
-      setErrorCorrection("H")
+  const handleLogoEnabledChange = (enabled: boolean) => {
+    if (enabled) {
+      previousErrorCorrectionRef.current = errorCorrection
+      dispatchAppearance({ field: "errorCorrection", value: "H" })
+    } else {
+      dispatchAppearance({ field: "errorCorrection", value: previousErrorCorrectionRef.current })
     }
-  }, [logoEnabled])
+    dispatchAppearance({ field: "logoEnabled", value: enabled })
+  }
 
   // Handle logo file upload
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setLogoFile(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string
-        setLogoDataUrl(dataUrl)
-      }
-      reader.readAsDataURL(file)
+    e.target.value = ""
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      dispatchUi({ field: "logoError", value: t("logoImageRequired") })
+      return
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      dispatchUi({ field: "logoError", value: t("logoTooLarge") })
+      return
+    }
+
+    dispatchUi({ field: "logoError", value: "" })
+    dispatchAppearance({ field: "logoFile", value: file })
   }
 
   // Download QR code as PNG
@@ -267,7 +406,7 @@ END:VEVENT`
         }, "image/png")
       }
 
-      const logoSource = logoEnabled ? (logoDataUrl || logoUrl) : ""
+      const logoSource = logoEnabled ? (logoPreviewUrl || logoUrl) : ""
       if (!logoSource) {
         finishDownload()
         return
@@ -293,10 +432,12 @@ END:VEVENT`
   const copyToClipboard = (text: string, key: string = "main") => {
     if (!text) return
 
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) return
       setCopied(prev => ({ ...prev, [key]: true }))
 
-      setTimeout(() => {
+      if (copyTimeoutRef.current) window.clearTimeout(copyTimeoutRef.current)
+      copyTimeoutRef.current = window.setTimeout(() => {
         setCopied(prev => ({ ...prev, [key]: false }))
       }, 2000)
     })
@@ -311,33 +452,37 @@ END:VEVENT`
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current)
+        window.clearTimeout(copyTimeoutRef.current)
       }
     }
   }, [])
 
   // Get current location for the location tab
   const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLatitude(position.coords.latitude.toString())
-          setLongitude(position.coords.longitude.toString())
-        },
-        (error) => {
-          console.error("Error getting location:", error)
-        },
-      )
+    if (!navigator.geolocation) {
+      dispatchUi({ field: "locationError", value: t("geolocationUnavailable") })
+      return
     }
+
+    dispatchUi({ field: "locationError", value: "" })
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        dispatchContent({ field: "latitude", value: position.coords.latitude.toString() })
+        dispatchContent({ field: "longitude", value: position.coords.longitude.toString() })
+      },
+      () => {
+        dispatchUi({ field: "locationError", value: t("geolocationFailed") })
+      },
+    )
   }
 
   return (
-    <div className="container mx-auto px-4 py-4 max-w-6xl">
+    <div className="container mx-auto max-w-6xl px-3 py-4 sm:px-4">
       {/* 页面标题 */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <QrCode className="h-8 w-8 text-indigo-600" />
-          二维码生成器
+        <h1 className="mb-4 flex items-center justify-center gap-2 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          <QrCode className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
+          {t("title")}
         </h1>
       </div>
 
@@ -346,8 +491,8 @@ END:VEVENT`
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setShowQrSettings(!showQrSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          onClick={() => dispatchUi({ field: "showQrSettings", value: !showQrSettings })}
+          className="w-full text-sm text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
         >
           <div className="flex items-center gap-2">
             {showQrSettings ? (
@@ -356,10 +501,10 @@ END:VEVENT`
               <ChevronDown className="h-4 w-4" />
             )}
             <Settings className="h-4 w-4" />
-            <span>二维码设置</span>
+            <span>{t("settings")}</span>
             {!showQrSettings && (
               <Badge variant="secondary" className="text-xs ml-auto">
-                点击查看
+                {t("clickToView")}
               </Badge>
             )}
           </div>
@@ -368,33 +513,24 @@ END:VEVENT`
         {showQrSettings && (
           <Card className="mt-3 card-modern">
             <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
                   <Label htmlFor="auto-generate" className="cursor-pointer text-sm">
-                    手动生成
+                    {t("autoGenerate")}
                   </Label>
-                  <Switch id="auto-generate" checked={autoGenerate} onCheckedChange={setAutoGenerate} />
-                  <Label htmlFor="auto-generate" className="cursor-pointer text-sm text-blue-600">
-                    自动生成
-                  </Label>
+                  <Switch id="auto-generate" checked={autoGenerate} onCheckedChange={(value) => dispatchUi({ field: "autoGenerate", value })} />
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
                   <Label htmlFor="show-preview" className="cursor-pointer text-sm">
-                    隐藏预览
+                    {t("showPreview")}
                   </Label>
-                  <Switch id="show-preview" checked={showPreview} onCheckedChange={setShowPreview} />
-                  <Label htmlFor="show-preview" className="cursor-pointer text-sm text-green-600">
-                    显示预览
-                  </Label>
+                  <Switch id="show-preview" checked={showPreview} onCheckedChange={(value) => dispatchUi({ field: "showPreview", value })} />
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
                   <Label htmlFor="include-margin" className="cursor-pointer text-sm">
-                    无边距
+                    {t("includeMargin")}
                   </Label>
-                  <Switch id="include-margin" checked={includeMargin} onCheckedChange={setIncludeMargin} />
-                  <Label htmlFor="include-margin" className="cursor-pointer text-sm text-purple-600">
-                    包含边距
-                  </Label>
+                  <Switch id="include-margin" checked={includeMargin} onCheckedChange={(value) => dispatchAppearance({ field: "includeMargin", value })} />
                 </div>
               </div>
             </CardContent>
@@ -409,99 +545,31 @@ END:VEVENT`
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-indigo-600" />
-                内容类型
+                <FileText className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                {t("contentType")}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs value={contentType} onValueChange={(value) => setContentType(value as ContentType)}>
-                <TabsList className="grid grid-cols-3 mb-4 h-auto p-1">
-                  <TabsTrigger value="text" className="flex items-center gap-1 text-xs py-2">
-                    <FileText className="h-3 w-3" />
-                    文本
-                  </TabsTrigger>
-                  <TabsTrigger value="url" className="flex items-center gap-1 text-xs py-2">
-                    <Link className="h-3 w-3" />
-                    网址
-                  </TabsTrigger>
-                  <TabsTrigger value="contact" className="flex items-center gap-1 text-xs py-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-3 w-3"
-                    >
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    联系人
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsList className="grid grid-cols-3 mb-4 h-auto p-1">
-                  <TabsTrigger value="phone" className="flex items-center gap-1 text-xs py-2">
-                    <Phone className="h-3 w-3" />
-                    电话
-                  </TabsTrigger>
-                  <TabsTrigger value="email" className="flex items-center gap-1 text-xs py-2">
-                    <Mail className="h-3 w-3" />
-                    邮件
-                  </TabsTrigger>
-                  <TabsTrigger value="location" className="flex items-center gap-1 text-xs py-2">
-                    <MapPin className="h-3 w-3" />
-                    位置
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsList className="grid grid-cols-3 h-auto p-1">
-                  <TabsTrigger value="event" className="flex items-center gap-1 text-xs py-2">
-                    <Calendar className="h-3 w-3" />
-                    事件
-                  </TabsTrigger>
-                  <TabsTrigger value="wifi" className="flex items-center gap-1 text-xs py-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-3 w-3"
-                    >
-                      <path d="M5 13a10 10 0 0 1 14 0"></path>
-                      <path d="M8.5 16.5a5 5 0 0 1 7 0"></path>
-                      <path d="M2 8.82a15 15 0 0 1 20 0"></path>
-                      <line x1="12" y1="20" x2="12" y2="20"></line>
-                    </svg>
-                    WiFi
-                  </TabsTrigger>
-                  <TabsTrigger value="payment" className="flex items-center gap-1 text-xs py-2">
-                    <CreditCard className="h-3 w-3" />
-                    支付
-                  </TabsTrigger>
+              <Tabs value={contentType} onValueChange={(value) => dispatchContent({ field: "contentType", value: value as ContentType })}>
+                <TabsList className="mb-4 grid h-auto grid-cols-3 gap-1 p-1">
+                  {contentTypeOptions.map(({ value, labelKey, Icon }) => (
+                    <TabsTrigger key={value} value={value} className="flex min-h-10 min-w-0 items-center justify-center gap-1 px-1 py-2 text-xs">
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{t(labelKey)}</span>
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
 
               {/* Text Content */}
               <TabsContent value="text" className="mt-6">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="text-input" className="text-sm font-medium">文本内容</Label>
+                    <Label htmlFor="text-input" className="text-sm font-medium">{t("textContent")}</Label>
                     <Textarea
                       id="text-input"
-                      placeholder="输入要生成二维码的文本内容..."
+                      placeholder={t("textPlaceholder")}
                       value={text}
-                      onChange={(e) => setText(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "text", value: e.target.value })}
                       rows={6}
                       className="mt-1"
                     />
@@ -513,12 +581,12 @@ END:VEVENT`
               <TabsContent value="url" className="mt-6">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="url-input" className="text-sm font-medium">网址链接</Label>
+                    <Label htmlFor="url-input" className="text-sm font-medium">{t("urlContent")}</Label>
                     <Input
                       id="url-input"
                       placeholder="https://example.com"
                       value={url}
-                      onChange={(e) => setUrl(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "url", value: e.target.value })}
                       className="mt-1 h-10"
                     />
                   </div>
@@ -534,17 +602,17 @@ END:VEVENT`
                       id="contact-name"
                       placeholder={t("namePlaceholder")}
                       value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "contactName", value: e.target.value })}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="contact-phone">{t("phone")}</Label>
                       <Input
                         id="contact-phone"
                         placeholder={t("phonePlaceholder")}
                         value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "contactPhone", value: e.target.value })}
                       />
                     </div>
                     <div>
@@ -553,7 +621,7 @@ END:VEVENT`
                         id="contact-email"
                         placeholder={t("emailPlaceholder")}
                         value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "contactEmail", value: e.target.value })}
                       />
                     </div>
                   </div>
@@ -563,26 +631,26 @@ END:VEVENT`
                       id="contact-address"
                       placeholder={t("addressPlaceholder")}
                       value={contactAddress}
-                      onChange={(e) => setContactAddress(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "contactAddress", value: e.target.value })}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="contact-company">{t("company")}</Label>
                       <Input
                         id="contact-company"
                         placeholder={t("companyPlaceholder")}
                         value={contactCompany}
-                        onChange={(e) => setContactCompany(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "contactCompany", value: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="contact-title">{t("title")}</Label>
+                      <Label htmlFor="contact-title">{t("jobTitle")}</Label>
                       <Input
                         id="contact-title"
                         placeholder={t("titlePlaceholder")}
                         value={contactTitle}
-                        onChange={(e) => setContactTitle(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "contactTitle", value: e.target.value })}
                       />
                     </div>
                   </div>
@@ -592,7 +660,7 @@ END:VEVENT`
                       id="contact-website"
                       placeholder="https://example.com"
                       value={contactWebsite}
-                      onChange={(e) => setContactWebsite(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "contactWebsite", value: e.target.value })}
                     />
                   </div>
                 </div>
@@ -607,7 +675,7 @@ END:VEVENT`
                       id="phone-number"
                       placeholder="+1234567890"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "phoneNumber", value: e.target.value })}
                     />
                   </div>
                 </div>
@@ -622,7 +690,7 @@ END:VEVENT`
                       id="email-address"
                       placeholder="example@example.com"
                       value={emailAddress}
-                      onChange={(e) => setEmailAddress(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "emailAddress", value: e.target.value })}
                     />
                   </div>
                   <div>
@@ -631,7 +699,7 @@ END:VEVENT`
                       id="email-subject"
                       placeholder={t("subjectPlaceholder")}
                       value={emailSubject}
-                      onChange={(e) => setEmailSubject(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "emailSubject", value: e.target.value })}
                     />
                   </div>
                   <div>
@@ -640,7 +708,7 @@ END:VEVENT`
                       id="email-body"
                       placeholder={t("bodyPlaceholder")}
                       value={emailBody}
-                      onChange={(e) => setEmailBody(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "emailBody", value: e.target.value })}
                       rows={3}
                     />
                   </div>
@@ -650,14 +718,14 @@ END:VEVENT`
               {/* Location Content */}
               <TabsContent value="location" className="mt-4">
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="latitude">{t("latitude")}</Label>
                       <Input
                         id="latitude"
                         placeholder="37.7749"
                         value={latitude}
-                        onChange={(e) => setLatitude(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "latitude", value: e.target.value })}
                       />
                     </div>
                     <div>
@@ -666,7 +734,7 @@ END:VEVENT`
                         id="longitude"
                         placeholder="-122.4194"
                         value={longitude}
-                        onChange={(e) => setLongitude(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "longitude", value: e.target.value })}
                       />
                     </div>
                   </div>
@@ -676,12 +744,17 @@ END:VEVENT`
                       id="location-name"
                       placeholder={t("locationNamePlaceholder")}
                       value={locationName}
-                      onChange={(e) => setLocationName(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "locationName", value: e.target.value })}
                     />
                   </div>
                   <Button onClick={getCurrentLocation} variant="outline" className="w-full">
                     {t("getCurrentLocation")}
                   </Button>
+                  {locationError && (
+                    <p className="rounded-xl bg-[var(--md-sys-color-error-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-error-container)]">
+                      {locationError}
+                    </p>
+                  )}
                 </div>
               </TabsContent>
 
@@ -694,7 +767,7 @@ END:VEVENT`
                       id="event-title"
                       placeholder={t("eventTitlePlaceholder")}
                       value={eventTitle}
-                      onChange={(e) => setEventTitle(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "eventTitle", value: e.target.value })}
                     />
                   </div>
                   <div>
@@ -703,7 +776,7 @@ END:VEVENT`
                       id="event-location"
                       placeholder={t("eventLocationPlaceholder")}
                       value={eventLocation}
-                      onChange={(e) => setEventLocation(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "eventLocation", value: e.target.value })}
                     />
                   </div>
                   <div>
@@ -712,18 +785,18 @@ END:VEVENT`
                       id="event-description"
                       placeholder={t("eventDescriptionPlaceholder")}
                       value={eventDescription}
-                      onChange={(e) => setEventDescription(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "eventDescription", value: e.target.value })}
                       rows={2}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="event-start-date">{t("startDate")}</Label>
                       <Input
                         id="event-start-date"
                         type="datetime-local"
                         value={eventStartDate}
-                        onChange={(e) => setEventStartDate(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "eventStartDate", value: e.target.value })}
                       />
                     </div>
                     <div>
@@ -732,7 +805,7 @@ END:VEVENT`
                         id="event-end-date"
                         type="datetime-local"
                         value={eventEndDate}
-                        onChange={(e) => setEventEndDate(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "eventEndDate", value: e.target.value })}
                       />
                     </div>
                   </div>
@@ -748,7 +821,7 @@ END:VEVENT`
                       id="wifi-ssid"
                       placeholder={t("networkNamePlaceholder")}
                       value={wifiSsid}
-                      onChange={(e) => setWifiSsid(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "wifiSsid", value: e.target.value })}
                     />
                   </div>
                   <div>
@@ -758,24 +831,24 @@ END:VEVENT`
                       type="password"
                       placeholder={t("passwordPlaceholder")}
                       value={wifiPassword}
-                      onChange={(e) => setWifiPassword(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "wifiPassword", value: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label htmlFor="wifi-encryption">{t("encryption")}</Label>
-                    <Select value={wifiEncryption} onValueChange={setWifiEncryption}>
+                    <Select value={wifiEncryption} onValueChange={(value) => dispatchContent({ field: "wifiEncryption", value })}>
                       <SelectTrigger id="wifi-encryption">
                         <SelectValue placeholder={t("selectEncryption")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="WPA">WPA/WPA2</SelectItem>
                         <SelectItem value="WEP">WEP</SelectItem>
-                        <SelectItem value="nopass">None</SelectItem>
+                        <SelectItem value="nopass">{t("noEncryption")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Switch id="wifi-hidden" checked={wifiHidden} onCheckedChange={setWifiHidden} />
+                    <Switch id="wifi-hidden" checked={wifiHidden} onCheckedChange={(value) => dispatchContent({ field: "wifiHidden", value })} />
                     <Label htmlFor="wifi-hidden">{t("hiddenNetwork")}</Label>
                   </div>
                 </div>
@@ -790,10 +863,10 @@ END:VEVENT`
                       id="payment-name"
                       placeholder={t("recipientNamePlaceholder")}
                       value={paymentName}
-                      onChange={(e) => setPaymentName(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "paymentName", value: e.target.value })}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <Label htmlFor="payment-amount">{t("amount")}</Label>
                       <Input
@@ -802,12 +875,12 @@ END:VEVENT`
                         step="0.01"
                         placeholder="0.00"
                         value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        onChange={(e) => dispatchContent({ field: "paymentAmount", value: e.target.value })}
                       />
                     </div>
                     <div>
                       <Label htmlFor="payment-currency">{t("currency")}</Label>
-                      <Select value={paymentCurrency} onValueChange={setPaymentCurrency}>
+                      <Select value={paymentCurrency} onValueChange={(value) => dispatchContent({ field: "paymentCurrency", value })}>
                         <SelectTrigger id="payment-currency">
                           <SelectValue placeholder={t("selectCurrency")} />
                         </SelectTrigger>
@@ -828,7 +901,7 @@ END:VEVENT`
                       id="payment-message"
                       placeholder={t("messagePlaceholder")}
                       value={paymentMessage}
-                      onChange={(e) => setPaymentMessage(e.target.value)}
+                      onChange={(e) => dispatchContent({ field: "paymentMessage", value: e.target.value })}
                     />
                   </div>
                 </div>
@@ -841,8 +914,8 @@ END:VEVENT`
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Palette className="h-4 w-4 text-purple-600" />
-                样式自定义
+                <Palette className="h-4 w-4 text-[var(--md-sys-color-tertiary)]" />
+                {t("customization")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -850,8 +923,8 @@ END:VEVENT`
 
                 <div>
                   <Label htmlFor="qr-size" className="flex justify-between text-sm font-medium">
-                    <span>二维码尺寸</span>
-                    <span className="text-indigo-600">{size}px</span>
+                    <span>{t("qrSize")}</span>
+                    <span className="text-[var(--md-sys-color-primary)]">{size}px</span>
                   </Label>
                   <Slider
                     id="qr-size"
@@ -859,44 +932,44 @@ END:VEVENT`
                     max={500}
                     step={10}
                     value={[size]}
-                    onValueChange={(value) => setSize(value[0])}
+                    onValueChange={(value) => dispatchAppearance({ field: "size", value: value[0] })}
                     className="mt-2"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="fg-color" className="text-sm font-medium">前景色</Label>
+                    <Label htmlFor="fg-color" className="text-sm font-medium">{t("foregroundColor")}</Label>
                     <div className="flex mt-1 gap-2">
                       <Input
                         id="fg-color"
                         type="color"
                         value={fgColor}
-                        onChange={(e) => setFgColor(e.target.value)}
+                        onChange={(e) => dispatchAppearance({ field: "fgColor", value: e.target.value })}
                         className="w-12 h-10 p-1 border-2"
                       />
                       <Input
                         type="text"
                         value={fgColor}
-                        onChange={(e) => setFgColor(e.target.value)}
+                        onChange={(e) => dispatchAppearance({ field: "fgColor", value: e.target.value })}
                         className="flex-1 h-10"
                       />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="bg-color" className="text-sm font-medium">背景色</Label>
+                    <Label htmlFor="bg-color" className="text-sm font-medium">{t("backgroundColor")}</Label>
                     <div className="flex mt-1 gap-2">
                       <Input
                         id="bg-color"
                         type="color"
                         value={bgColor}
-                        onChange={(e) => setBgColor(e.target.value)}
+                        onChange={(e) => dispatchAppearance({ field: "bgColor", value: e.target.value })}
                         className="w-12 h-10 p-1 border-2"
                       />
                       <Input
                         type="text"
                         value={bgColor}
-                        onChange={(e) => setBgColor(e.target.value)}
+                        onChange={(e) => dispatchAppearance({ field: "bgColor", value: e.target.value })}
                         className="flex-1 h-10"
                       />
                     </div>
@@ -904,32 +977,36 @@ END:VEVENT`
                 </div>
 
                 <div>
-                  <Label htmlFor="error-correction" className="text-sm font-medium">容错等级</Label>
-                  <Select value={errorCorrection} onValueChange={setErrorCorrection}>
+                  <Label htmlFor="error-correction" className="text-sm font-medium">{t("errorCorrection")}</Label>
+                  <Select value={errorCorrection} onValueChange={(value) => dispatchAppearance({ field: "errorCorrection", value: value as ErrorCorrectionLevel })} disabled={logoEnabled}>
                     <SelectTrigger id="error-correction" className="mt-1 h-10">
-                      <SelectValue placeholder="选择容错等级" />
+                      <SelectValue placeholder={t("selectErrorCorrection")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="L">低 (7%)</SelectItem>
-                      <SelectItem value="M">中 (15%)</SelectItem>
-                      <SelectItem value="Q">四分之一 (25%)</SelectItem>
-                      <SelectItem value="H">高 (30%)</SelectItem>
+                      {errorCorrectionLevels.map((level) => (
+                        <SelectItem key={level.value} value={level.value}>{t(level.labelKey)}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  {logoEnabled && (
+                    <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("logoErrorCorrectionHint")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Switch id="logo-enabled" checked={logoEnabled} onCheckedChange={setLogoEnabled} />
-                    <Label htmlFor="logo-enabled" className="text-sm font-medium">添加LOGO</Label>
+                    <Switch id="logo-enabled" checked={logoEnabled} onCheckedChange={handleLogoEnabledChange} />
+                    <Label htmlFor="logo-enabled" className="text-sm font-medium">{t("includeLogo")}</Label>
                   </div>
 
                   {logoEnabled && (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-4">
+                    <div className="space-y-4 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-4">
                       <div>
                         <Label htmlFor="logo-size" className="flex justify-between text-sm font-medium">
-                          <span>LOGO尺寸</span>
-                          <span className="text-purple-600">
+                          <span>{t("logoSize")}</span>
+                          <span className="text-[var(--md-sys-color-tertiary)]">
                             {logoSizePercent}% ({Math.round((size * logoSizePercent) / 100)}px)
                           </span>
                         </Label>
@@ -939,24 +1016,24 @@ END:VEVENT`
                           max={30}
                           step={1}
                           value={[logoSizePercent]}
-                          onValueChange={(value) => setLogoSizePercent(value[0])}
+                          onValueChange={(value) => dispatchAppearance({ field: "logoSizePercent", value: value[0] })}
                           className="mt-2"
                         />
                       </div>
 
                       <div>
-                        <Label htmlFor="logo-url" className="text-sm font-medium">LOGO网址</Label>
+                        <Label htmlFor="logo-url" className="text-sm font-medium">{t("logoUrl")}</Label>
                         <Input
                           id="logo-url"
                           placeholder="https://example.com/logo.png"
                           value={logoUrl}
-                          onChange={(e) => setLogoUrl(e.target.value)}
+                          onChange={(e) => dispatchAppearance({ field: "logoUrl", value: e.target.value })}
                           className="mt-1 h-10"
                         />
                       </div>
 
                       <div>
-                        <Label htmlFor="logo-file" className="text-sm font-medium">或上传文件</Label>
+                        <Label htmlFor="logo-file" className="text-sm font-medium">{t("orUploadLogo")}</Label>
                         <div className="flex items-center mt-1">
                           <Input
                             id="logo-file"
@@ -972,16 +1049,21 @@ END:VEVENT`
                             className="w-full justify-center h-10"
                           >
                             <Upload className="h-4 w-4 mr-2" />
-                            {logoFile ? logoFile.name : "选择LOGO文件"}
+                            {logoFile ? logoFile.name : t("chooseLogo")}
                           </Button>
                         </div>
+                        {logoError && (
+                          <p className="mt-2 rounded-xl bg-[var(--md-sys-color-error-container)] px-3 py-2 text-sm text-[var(--md-sys-color-on-error-container)]">
+                            {logoError}
+                          </p>
+                        )}
                       </div>
 
-                      {logoDataUrl && (
-                        <div className="flex justify-center p-2 bg-white dark:bg-gray-700 rounded border-2 border-dashed border-gray-300">
+                      {logoPreviewUrl && (
+                        <div className="flex justify-center rounded border-2 border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] p-2">
                           <img
-                            src={logoDataUrl}
-                            alt="Logo preview"
+                            src={logoPreviewUrl}
+                            alt={t("logoPreview")}
                             className="max-h-16 object-contain"
                           />
                         </div>
@@ -1000,12 +1082,12 @@ END:VEVENT`
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <QrCode className="h-4 w-4 text-indigo-600" />
-                  二维码预览
+                  <QrCode className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                  {t("preview")}
                   {autoGenerate && (
                     <Badge variant="secondary" className="text-xs">
                       <Zap className="h-3 w-3 mr-1" />
-                      自动生成
+                      {t("autoGenerate")}
                     </Badge>
                   )}
                 </CardTitle>
@@ -1013,19 +1095,23 @@ END:VEVENT`
               <CardContent>
                 <div className="flex flex-col items-center space-y-6">
                   {/* 二维码显示区域 */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-2xl p-8 w-full flex justify-center">
-                    <div ref={qrCodeRef} className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="flex w-full overflow-auto rounded-2xl bg-[var(--md-sys-color-surface-container-low)] p-4 sm:p-8">
+                    <div
+                      ref={qrCodeRef}
+                      className="mx-auto w-max rounded-lg p-4 shadow-sm"
+                      style={{ backgroundColor: bgColor }}
+                    >
                       <QRCodeSVG
                         value={qrValue || " "}
                         size={size}
                         bgColor={bgColor}
                         fgColor={fgColor}
-                        level={errorCorrection as "L" | "M" | "Q" | "H"}
+                        level={errorCorrection}
                         includeMargin={includeMargin}
                         imageSettings={
-                          logoEnabled && (logoUrl || logoDataUrl)
+                          logoEnabled && (logoUrl || logoPreviewUrl)
                             ? {
-                                src: logoDataUrl || logoUrl,
+                                src: logoPreviewUrl || logoUrl,
                                 x: undefined,
                                 y: undefined,
                                 height: Math.round((size * logoSizePercent) / 100),
@@ -1042,13 +1128,13 @@ END:VEVENT`
                   <div className="w-full space-y-3">
                     <Button onClick={downloadQRCode} className="w-full h-12" size="lg">
                       <Download className="h-4 w-4 mr-2" />
-                      下载二维码
+                      {t("downloadQRCode")}
                     </Button>
                     
                     {!autoGenerate && (
                       <Button variant="outline" className="w-full h-10" onClick={generateQrValue}>
                         <Zap className="h-4 w-4 mr-2" />
-                        手动生成
+                        {t("manualGenerate")}
                       </Button>
                     )}
                   </div>
@@ -1061,19 +1147,19 @@ END:VEVENT`
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-green-600" />
-                二维码内容
+                <FileText className="h-4 w-4 text-[var(--md-sys-color-success)]" />
+                {t("qrCodeValue")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <Label className="text-sm font-medium">编码内容</Label>
+                <Label className="text-sm font-medium">{t("encodedContent")}</Label>
                 <div className="relative">
                   <Textarea 
                     value={qrValue} 
                     readOnly 
                     rows={4} 
-                    className="pr-10 text-sm bg-gray-50 dark:bg-gray-800" 
+                    className="bg-[var(--md-sys-color-surface-container-low)] pr-10 text-sm"
                   />
                   <Button
                     variant="ghost"
@@ -1086,8 +1172,8 @@ END:VEVENT`
                 </div>
                 
                 {qrValue && (
-                  <div className="text-xs text-gray-500 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
-                    <span className="font-medium">内容长度:</span> {qrValue.length} 字符
+                  <div className="rounded bg-[var(--md-sys-color-secondary-container)] p-2 text-xs text-[var(--md-sys-color-on-secondary-container)]">
+                    {t("contentLength").replace("{count}", String(qrValue.length))}
                   </div>
                 )}
               </div>

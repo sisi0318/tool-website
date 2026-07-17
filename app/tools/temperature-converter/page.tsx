@@ -1,8 +1,20 @@
 "use client"
 
-import type React from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Minus,
+  Plus,
+  Settings,
+  Snowflake,
+  Sun,
+  Thermometer,
+  type LucideIcon,
+} from "lucide-react"
 
-import { useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,268 +22,261 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Minus, Plus, Copy, Thermometer, Settings, ChevronUp, ChevronDown, Check, Snowflake, Sun } from "lucide-react"
+import { copyTextToClipboard } from "@/lib/clipboard"
+import { useToast } from "@/hooks/use-toast"
+import { useTranslations } from "@/hooks/use-translations"
 
-// Temperature scales and their conversion formulas
-const temperatureScales = [
+type TemperatureScaleId =
+  | "kelvin"
+  | "celsius"
+  | "fahrenheit"
+  | "rankine"
+  | "delisle"
+  | "newton"
+  | "reaumur"
+  | "romer"
+
+type ScaleCategory = "common" | "scientific" | "historical"
+
+interface TemperatureScale {
+  id: TemperatureScaleId
+  symbol: string
+  category: ScaleCategory
+  icon: string
+  toKelvin: (value: number) => number
+  fromKelvin: (kelvin: number) => number
+}
+
+const TEMPERATURE_SCALES: readonly TemperatureScale[] = [
   {
     id: "kelvin",
-    name: "Kelvin",
-    chineseName: "开尔文",
     symbol: "K",
     category: "common",
-    color: "text-purple-600",
     icon: "⚗️",
-    toKelvin: (value: number) => value,
-    fromKelvin: (kelvin: number) => kelvin,
-    description: "热力学温标的基本单位",
+    toKelvin: (value) => value,
+    fromKelvin: (kelvin) => kelvin,
   },
   {
     id: "celsius",
-    name: "Celsius",
-    chineseName: "摄氏度",
     symbol: "°C",
     category: "common",
-    color: "text-blue-600",
     icon: "🌡️",
-    toKelvin: (celsius: number) => celsius + 273.15,
-    fromKelvin: (kelvin: number) => kelvin - 273.15,
-    description: "最常用的温度单位",
+    toKelvin: (value) => value + 273.15,
+    fromKelvin: (kelvin) => kelvin - 273.15,
   },
   {
     id: "fahrenheit",
-    name: "Fahrenheit",
-    chineseName: "华氏度",
     symbol: "°F",
     category: "common",
-    color: "text-red-600",
     icon: "🇺🇸",
-    toKelvin: (fahrenheit: number) => (fahrenheit + 459.67) * (5 / 9),
-    fromKelvin: (kelvin: number) => kelvin * (9 / 5) - 459.67,
-    description: "美国常用的温度单位",
+    toKelvin: (value) => (value + 459.67) * (5 / 9),
+    fromKelvin: (kelvin) => kelvin * (9 / 5) - 459.67,
   },
   {
     id: "rankine",
-    name: "Rankine",
-    chineseName: "兰金",
     symbol: "°R",
     category: "scientific",
-    color: "text-orange-600",
     icon: "🔬",
-    toKelvin: (rankine: number) => rankine * (5 / 9),
-    fromKelvin: (kelvin: number) => kelvin * (9 / 5),
-    description: "工程热力学中使用",
+    toKelvin: (value) => value * (5 / 9),
+    fromKelvin: (kelvin) => kelvin * (9 / 5),
   },
   {
     id: "delisle",
-    name: "Delisle",
-    chineseName: "德莱尔",
     symbol: "°De",
     category: "historical",
-    color: "text-green-600",
     icon: "📜",
-    toKelvin: (delisle: number) => 373.15 - (delisle * 2) / 3,
-    fromKelvin: (kelvin: number) => (373.15 - kelvin) * (3 / 2),
-    description: "18世纪德国天文学家发明",
+    toKelvin: (value) => 373.15 - (value * 2) / 3,
+    fromKelvin: (kelvin) => (373.15 - kelvin) * (3 / 2),
   },
   {
     id: "newton",
-    name: "Newton",
-    chineseName: "牛顿",
     symbol: "°N",
     category: "historical",
-    color: "text-indigo-600",
     icon: "🍎",
-    toKelvin: (newton: number) => newton * (100 / 33) + 273.15,
-    fromKelvin: (kelvin: number) => (kelvin - 273.15) * (33 / 100),
-    description: "牛顿提出的温度标度",
+    toKelvin: (value) => value * (100 / 33) + 273.15,
+    fromKelvin: (kelvin) => (kelvin - 273.15) * (33 / 100),
   },
   {
     id: "reaumur",
-    name: "Réaumur",
-    chineseName: "雷奥穆尔",
     symbol: "°Ré",
     category: "historical",
-    color: "text-pink-600",
     icon: "🇫🇷",
-    toKelvin: (reaumur: number) => reaumur * (5 / 4) + 273.15,
-    fromKelvin: (kelvin: number) => (kelvin - 273.15) * (4 / 5),
-    description: "法国科学家雷奥穆尔发明",
+    toKelvin: (value) => value * (5 / 4) + 273.15,
+    fromKelvin: (kelvin) => (kelvin - 273.15) * (4 / 5),
   },
   {
     id: "romer",
-    name: "Rømer",
-    chineseName: "罗默",
     symbol: "°Rø",
     category: "historical",
-    color: "text-cyan-600",
     icon: "🇩🇰",
-    toKelvin: (romer: number) => (romer - 7.5) * (40 / 21) + 273.15,
-    fromKelvin: (kelvin: number) => (kelvin - 273.15) * (21 / 40) + 7.5,
-    description: "丹麦天文学家罗默发明",
+    toKelvin: (value) => (value - 7.5) * (40 / 21) + 273.15,
+    fromKelvin: (kelvin) => (kelvin - 273.15) * (21 / 40) + 7.5,
   },
 ]
 
-// Common temperature presets
-const temperaturePresets = [
-  { name: "绝对零度", nameEn: "Absolute Zero", kelvin: 0, icon: "❄️", category: "science" },
-  { name: "液氮沸点", nameEn: "Liquid Nitrogen", kelvin: 77.36, icon: "🧪", category: "science" },
-  { name: "干冰升华", nameEn: "Dry Ice", kelvin: 194.65, icon: "🧊", category: "science" },
-  { name: "水的冰点", nameEn: "Water Freezing", kelvin: 273.15, icon: "🧊", category: "daily" },
-  { name: "室温", nameEn: "Room Temperature", kelvin: 293.15, icon: "🏠", category: "daily" },
-  { name: "人体体温", nameEn: "Body Temperature", kelvin: 310.15, icon: "🩺", category: "daily" },
-  { name: "水的沸点", nameEn: "Water Boiling", kelvin: 373.15, icon: "💨", category: "daily" },
-  { name: "烘焙温度", nameEn: "Baking Temperature", kelvin: 453.15, icon: "🍞", category: "cooking" },
-  { name: "太阳表面", nameEn: "Sun Surface", kelvin: 5778, icon: "☀️", category: "astronomy" },
-  { name: "地球核心", nameEn: "Earth Core", kelvin: 6000, icon: "🌍", category: "geology" },
+const SCALE_GROUPS: readonly {
+  id: ScaleCategory
+  icon: LucideIcon
+  gridClass: string
+}[] = [
+  { id: "common", icon: Thermometer, gridClass: "md:grid-cols-2 lg:grid-cols-3" },
+  { id: "scientific", icon: Sun, gridClass: "md:grid-cols-2 lg:grid-cols-3" },
+  { id: "historical", icon: Snowflake, gridClass: "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" },
 ]
 
+const TEMPERATURE_PRESETS = [
+  { id: "absoluteZero", kelvin: 0, icon: "❄️" },
+  { id: "liquidNitrogen", kelvin: 77.36, icon: "🧪" },
+  { id: "dryIce", kelvin: 194.65, icon: "🧊" },
+  { id: "waterFreezing", kelvin: 273.15, icon: "🧊" },
+  { id: "roomTemperature", kelvin: 293.15, icon: "🏠" },
+  { id: "bodyTemperature", kelvin: 310.15, icon: "🩺" },
+  { id: "waterBoiling", kelvin: 373.15, icon: "💨" },
+  { id: "bakingTemperature", kelvin: 453.15, icon: "🍞" },
+  { id: "sunSurface", kelvin: 5778, icon: "☀️" },
+  { id: "earthCore", kelvin: 6000, icon: "🌍" },
+] as const
+
+function temperaturesFromKelvin(kelvin: number): Record<TemperatureScaleId, number> {
+  return Object.fromEntries(
+    TEMPERATURE_SCALES.map((scale) => [scale.id, scale.fromKelvin(kelvin)]),
+  ) as Record<TemperatureScaleId, number>
+}
+
+function parseTemperatureInput(value: string): number | null {
+  const normalized = value.trim().replace(",", ".")
+  if (!normalized) return null
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export default function TemperatureConverterPage() {
-  // 设置状态
-  const [showTemperatureSettings, setShowTemperatureSettings] = useState(false)
+  const t = useTranslations("temperatureConverter")
+  const { toast } = useToast()
+  const [showSettings, setShowSettings] = useState(false)
   const [autoFormat, setAutoFormat] = useState(true)
   const [showDescription, setShowDescription] = useState(false)
   const [compactDisplay, setCompactDisplay] = useState(false)
   const [precision, setPrecision] = useState(2)
-  
-  // 主要状态
-  const [temperatures, setTemperatures] = useState<Record<string, number>>(
-    Object.fromEntries(temperatureScales.map((scale) => [scale.id, scale.id === "celsius" ? 20 : scale.fromKelvin(293.15)])),
+  const [temperatures, setTemperatures] = useState<Record<TemperatureScaleId, number>>(
+    () => temperaturesFromKelvin(293.15),
   )
-  const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
+  const [copied, setCopied] = useState<Record<string, boolean>>({})
+  const copyTimeoutsRef = useRef<Record<string, number>>({})
 
-  // Update all temperatures based on the changed scale
-  const updateTemperatures = useCallback((value: number, scaleId: string) => {
-    const scale = temperatureScales.find((s) => s.id === scaleId)
-    if (!scale) return
-
-    // Convert to Kelvin first
-    const kelvin = scale.toKelvin(value)
-
-    // Then convert from Kelvin to all other scales
-    const newTemperatures = Object.fromEntries(temperatureScales.map((s) => [s.id, s.fromKelvin(kelvin)]))
-
-    setTemperatures(newTemperatures)
+  useEffect(() => {
+    const timeouts = copyTimeoutsRef.current
+    return () => {
+      Object.values(timeouts).forEach(window.clearTimeout)
+    }
   }, [])
 
-  // Handle input change
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>, scaleId: string) => {
-      const value = Number.parseFloat(e.target.value)
-      if (!isNaN(value)) {
-        updateTemperatures(value, scaleId)
-      }
-    },
-    [updateTemperatures],
-  )
+  const updateTemperatures = useCallback((value: number, scaleId: TemperatureScaleId) => {
+    const scale = TEMPERATURE_SCALES.find((item) => item.id === scaleId)
+    if (!scale || !Number.isFinite(value)) return
+    setTemperatures(temperaturesFromKelvin(scale.toKelvin(value)))
+  }, [])
 
-  // Handle increment/decrement
   const handleIncrement = useCallback(
-    (scaleId: string, amount: number) => {
-      const currentValue = temperatures[scaleId]
-      updateTemperatures(currentValue + amount, scaleId)
+    (scaleId: TemperatureScaleId, amount: number) => {
+      updateTemperatures(temperatures[scaleId] + amount, scaleId)
     },
     [temperatures, updateTemperatures],
   )
 
-  // Copy value to clipboard
-  const copyToClipboard = useCallback((text: string, key: string = "main") => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(prev => ({ ...prev, [key]: true }))
-      setTimeout(() => setCopied(prev => ({ ...prev, [key]: false })), 2000)
-    })
-  }, [])
+  const copyValue = useCallback(
+    async (text: string, key: string) => {
+      const success = await copyTextToClipboard(text)
+      if (!success) {
+        toast({ title: t("copyFailed"), variant: "destructive" })
+        return
+      }
 
-  // Format temperature value
-  const formatTemperature = useCallback((value: number) => {
-    if (!autoFormat) return value.toString()
-    
-    // 根据精度设置格式化
-    const formatted = value.toFixed(precision)
-    
-    // 移除不必要的小数点后的零
-    return formatted.replace(/\.?0+$/, "")
-  }, [autoFormat, precision])
+      window.clearTimeout(copyTimeoutsRef.current[key])
+      setCopied((current) => ({ ...current, [key]: true }))
+      copyTimeoutsRef.current[key] = window.setTimeout(() => {
+        setCopied((current) => ({ ...current, [key]: false }))
+        delete copyTimeoutsRef.current[key]
+      }, 2000)
+    },
+    [t, toast],
+  )
+
+  const formatTemperature = useCallback(
+    (value: number) => {
+      const normalized = Object.is(value, -0) ? 0 : value
+      if (!autoFormat) return normalized.toString()
+      return normalized.toFixed(precision).replace(/\.?0+$/, "")
+    },
+    [autoFormat, precision],
+  )
 
   return (
-    <div className="container mx-auto px-4 py-4 max-w-7xl">
-      {/* 页面标题 */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <Thermometer className="h-8 w-8 text-red-600" />
-          温度转换器
+    <div className="container mx-auto max-w-7xl px-4 py-4 sm:py-6">
+      <div className="mb-6 text-center sm:mb-8">
+        <h1 className="mb-2 flex items-center justify-center gap-2 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          <Thermometer className="h-7 w-7 text-[var(--md-sys-color-primary)] sm:h-8 sm:w-8" />
+          {t("title")}
         </h1>
+        <p className="mx-auto max-w-3xl text-sm text-[var(--md-sys-color-on-surface-variant)]">
+          {t("description")}
+        </p>
       </div>
 
-      {/* 温度设置折叠区域 */}
       <div className="mb-6">
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setShowTemperatureSettings(!showTemperatureSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          onClick={() => setShowSettings((visible) => !visible)}
+          className="w-full justify-start text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
+          aria-expanded={showSettings}
         >
-          <div className="flex items-center gap-2">
-            {showTemperatureSettings ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            <Settings className="h-4 w-4" />
-            <span>温度设置</span>
-            {!showTemperatureSettings && (
-              <Badge variant="secondary" className="text-xs ml-auto">
-                点击查看
-              </Badge>
-            )}
-          </div>
+          {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <Settings className="h-4 w-4" />
+          <span>{t("settings")}</span>
+          {!showSettings && (
+            <Badge variant="secondary" className="ml-auto text-xs">
+              {t("clickToView")}
+            </Badge>
+          )}
         </Button>
 
-        {showTemperatureSettings && (
-          <Card className="mt-3 card-modern">
+        {showSettings && (
+          <Card className="card-modern mt-3">
             <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="auto-format" className="cursor-pointer text-sm">
-                    关闭格式化
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <SettingSwitch
+                  id="temperature-auto-format"
+                  label={t("autoFormat")}
+                  checked={autoFormat}
+                  onCheckedChange={setAutoFormat}
+                />
+                <SettingSwitch
+                  id="temperature-description"
+                  label={t("showDescriptions")}
+                  checked={showDescription}
+                  onCheckedChange={setShowDescription}
+                />
+                <SettingSwitch
+                  id="temperature-compact"
+                  label={t("compactDisplay")}
+                  checked={compactDisplay}
+                  onCheckedChange={setCompactDisplay}
+                />
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
+                  <Label htmlFor="temperature-precision" className="cursor-pointer text-sm">
+                    {t("precision")}
                   </Label>
-                  <Switch id="auto-format" checked={autoFormat} onCheckedChange={setAutoFormat} />
-                  <Label htmlFor="auto-format" className="cursor-pointer text-sm text-blue-600">
-                    自动格式化
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="show-description" className="cursor-pointer text-sm">
-                    隐藏说明
-                  </Label>
-                  <Switch id="show-description" checked={showDescription} onCheckedChange={setShowDescription} />
-                  <Label htmlFor="show-description" className="cursor-pointer text-sm text-purple-600">
-                    显示说明
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
-                  <Label htmlFor="compact-display" className="cursor-pointer text-sm">
-                    详细显示
-                  </Label>
-                  <Switch id="compact-display" checked={compactDisplay} onCheckedChange={setCompactDisplay} />
-                  <Label htmlFor="compact-display" className="cursor-pointer text-sm text-orange-600">
-                    紧凑显示
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg col-span-full md:col-span-1">
-                  <Label htmlFor="precision" className="cursor-pointer text-sm">
-                    精度:
-                  </Label>
-                  <Select value={precision.toString()} onValueChange={(value) => setPrecision(Number.parseInt(value))}>
-                    <SelectTrigger className="w-20 h-8">
+                  <Select value={precision.toString()} onValueChange={(value) => setPrecision(Number(value))}>
+                    <SelectTrigger id="temperature-precision" className="h-9 w-28">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="0">0位</SelectItem>
-                      <SelectItem value="1">1位</SelectItem>
-                      <SelectItem value="2">2位</SelectItem>
-                      <SelectItem value="3">3位</SelectItem>
-                      <SelectItem value="4">4位</SelectItem>
+                      {[0, 1, 2, 3, 4].map((digits) => (
+                        <SelectItem key={digits} value={digits.toString()}>
+                          {digits} {t("decimalPlaces")}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -281,140 +286,69 @@ export default function TemperatureConverterPage() {
         )}
       </div>
 
-      {/* 温度转换器 - 所有单位统一显示 */}
-      <div className="space-y-8">
-        {/* 常用单位区域 */}
-        <Card className="card-modern">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Thermometer className="h-6 w-6 text-blue-600" />
-              常用温度单位
-              <Badge variant="secondary" className="text-xs">
-                日常使用
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {temperatureScales
-                .filter(scale => scale.category === "common")
-                .map((scale) => (
-                  <TemperatureCard
-                    key={scale.id}
-                    scale={scale}
-                    value={temperatures[scale.id]}
-                    formatTemperature={formatTemperature}
-                    onInputChange={handleInputChange}
-                    onIncrement={handleIncrement}
-                    onCopy={copyToClipboard}
-                    copied={copied}
-                    showDescription={showDescription}
-                    compactDisplay={compactDisplay}
-                  />
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 科学单位区域 */}
-        <Card className="card-modern">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Sun className="h-6 w-6 text-orange-600" />
-              科学温度单位
-              <Badge variant="secondary" className="text-xs">
-                科学研究
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {temperatureScales
-                .filter(scale => scale.category === "scientific")
-                .map((scale) => (
-                  <TemperatureCard
-                    key={scale.id}
-                    scale={scale}
-                    value={temperatures[scale.id]}
-                    formatTemperature={formatTemperature}
-                    onInputChange={handleInputChange}
-                    onIncrement={handleIncrement}
-                    onCopy={copyToClipboard}
-                    copied={copied}
-                    showDescription={showDescription}
-                    compactDisplay={compactDisplay}
-                  />
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 历史单位区域 */}
-        <Card className="card-modern">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Snowflake className="h-6 w-6 text-cyan-600" />
-              历史温度单位
-              <Badge variant="secondary" className="text-xs">
-                历史参考
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {temperatureScales
-                .filter(scale => scale.category === "historical")
-                .map((scale) => (
-                  <TemperatureCard
-                    key={scale.id}
-                    scale={scale}
-                    value={temperatures[scale.id]}
-                    formatTemperature={formatTemperature}
-                    onInputChange={handleInputChange}
-                    onIncrement={handleIncrement}
-                    onCopy={copyToClipboard}
-                    copied={copied}
-                    showDescription={showDescription}
-                    compactDisplay={compactDisplay}
-                  />
-                ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="space-y-5 sm:space-y-8">
+        {SCALE_GROUPS.map((group) => {
+          const Icon = group.icon
+          return (
+            <Card key={group.id} className="card-modern">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-lg sm:text-xl">
+                  <Icon className="h-5 w-5 text-[var(--md-sys-color-primary)] sm:h-6 sm:w-6" />
+                  {t(`categories.${group.id}.title`)}
+                  <Badge variant="secondary" className="text-xs">
+                    {t(`categories.${group.id}.badge`)}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${group.gridClass}`}>
+                  {TEMPERATURE_SCALES.filter((scale) => scale.category === group.id).map((scale) => (
+                    <TemperatureCard
+                      key={scale.id}
+                      scale={scale}
+                      value={temperatures[scale.id]}
+                      formatTemperature={formatTemperature}
+                      onValueChange={updateTemperatures}
+                      onIncrement={handleIncrement}
+                      onCopy={copyValue}
+                      copied={copied}
+                      showDescription={showDescription}
+                      compactDisplay={compactDisplay}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
-      {/* 预设温度 */}
-      <Card className="mt-8 card-modern">
+      <Card className="card-modern mt-6 sm:mt-8">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Sun className="h-5 w-5 text-yellow-600" />
-            常见温度预设
+          <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+            <Sun className="h-5 w-5 text-[var(--md-sys-color-secondary)]" />
+            {t("presetsTitle")}
             <Badge variant="secondary" className="text-xs">
-              点击快速设置
+              {t("clickToSet")}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-            {temperaturePresets.map((preset, index) => (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            {TEMPERATURE_PRESETS.map((preset) => (
               <Button
-                key={index}
+                key={preset.id}
                 variant="outline"
-                className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                onClick={() => {
-                  const presetTemperatures = Object.fromEntries(
-                    temperatureScales.map((scale) => [scale.id, scale.fromKelvin(preset.kelvin)]),
-                  )
-                  setTemperatures(presetTemperatures)
-                }}
+                className="h-auto min-w-0 flex-col gap-2 whitespace-normal p-3 hover:bg-[var(--md-sys-color-primary-container)] sm:p-4"
+                onClick={() => setTemperatures(temperaturesFromKelvin(preset.kelvin))}
               >
-                <span className="text-2xl">{preset.icon}</span>
-                <div className="text-center">
-                  <div className="font-medium text-sm">{preset.name}</div>
-                  <div className="text-xs text-gray-500">
+                <span className="text-2xl" aria-hidden="true">{preset.icon}</span>
+                <span className="min-w-0 text-center">
+                  <span className="block text-sm font-medium">{t(`presets.${preset.id}`)}</span>
+                  <span className="block text-xs text-[var(--md-sys-color-on-surface-variant)]">
                     {formatTemperature(preset.kelvin - 273.15)} °C
-                  </div>
-                </div>
+                  </span>
+                </span>
               </Button>
             ))}
           </div>
@@ -424,23 +358,30 @@ export default function TemperatureConverterPage() {
   )
 }
 
-// Temperature card component
+interface SettingSwitchProps {
+  id: string
+  label: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}
+
+function SettingSwitch({ id, label, checked, onCheckedChange }: SettingSwitchProps) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
+      <Label htmlFor={id} className="cursor-pointer text-sm">{label}</Label>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  )
+}
+
 interface TemperatureCardProps {
-  scale: {
-    id: string
-    name: string
-    chineseName: string
-    symbol: string
-    color: string
-    icon: string
-    description: string
-  }
+  scale: TemperatureScale
   value: number
   formatTemperature: (value: number) => string
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement>, scaleId: string) => void
-  onIncrement: (scaleId: string, amount: number) => void
+  onValueChange: (value: number, scaleId: TemperatureScaleId) => void
+  onIncrement: (scaleId: TemperatureScaleId, amount: number) => void
   onCopy: (text: string, key: string) => void
-  copied: { [key: string]: boolean }
+  copied: Record<string, boolean>
   showDescription: boolean
   compactDisplay: boolean
 }
@@ -449,80 +390,109 @@ function TemperatureCard({
   scale,
   value,
   formatTemperature,
-  onInputChange,
+  onValueChange,
   onIncrement,
   onCopy,
   copied,
   showDescription,
   compactDisplay,
 }: TemperatureCardProps) {
+  const t = useTranslations("temperatureConverter")
   const copyKey = `temp-${scale.id}`
+  const focusedRef = useRef(false)
+  const [draft, setDraft] = useState(() => formatTemperature(value))
+
+  useEffect(() => {
+    const draftValue = parseTemperatureInput(draft)
+    const matchesValue =
+      draftValue !== null && Math.abs(draftValue - value) <= Math.max(1, Math.abs(value)) * 1e-12
+    if (!focusedRef.current || !matchesValue) setDraft(formatTemperature(value))
+  }, [draft, formatTemperature, value])
+
+  const scaleName = t(`scales.${scale.id}.name`)
 
   return (
-    <Card className="card-modern">
+    <Card className="card-modern min-w-0">
       <CardHeader className="pb-3">
-        <CardTitle className={`text-lg flex items-center gap-2 ${scale.color}`}>
-          <span className="text-xl">{scale.icon}</span>
-          <div className="flex-1">
-            <div className="font-semibold">{scale.chineseName}</div>
-            <div className="text-sm font-normal text-gray-500">{scale.name}</div>
-          </div>
+        <CardTitle className="flex items-center gap-2 text-lg text-[var(--md-sys-color-primary)]">
+          <span className="text-xl" aria-hidden="true">{scale.icon}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">{scaleName}</span>
+            <span className="block text-sm font-normal text-[var(--md-sys-color-on-surface-variant)]">
+              {scale.symbol}
+            </span>
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-      <div className="space-y-4">
-          {/* 温度值显示 */}
-          <div className={`${compactDisplay ? 'p-3' : 'p-4'} bg-gray-50 dark:bg-gray-900 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700`}>
-            <div className="flex items-center gap-2">
+        <div className="space-y-4">
+          <div className={`rounded-xl border-2 border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] ${compactDisplay ? "p-3" : "p-4"}`}>
+            <div className="flex min-w-0 items-center gap-2">
               <Input
                 type="text"
-                value={formatTemperature(value)}
-                onChange={(e) => onInputChange(e, scale.id)}
-                className={`font-mono text-center ${compactDisplay ? 'text-lg h-10' : 'text-2xl h-12'} border-0 bg-transparent shadow-none focus-visible:ring-0`}
+                inputMode="decimal"
+                value={draft}
+                aria-label={`${scaleName} (${scale.symbol})`}
+                onFocus={() => {
+                  focusedRef.current = true
+                }}
+                onBlur={() => {
+                  focusedRef.current = false
+                  const parsed = parseTemperatureInput(draft)
+                  if (parsed !== null) onValueChange(parsed, scale.id)
+                  setDraft(formatTemperature(parsed ?? value))
+                }}
+                onChange={(event) => {
+                  const nextDraft = event.target.value
+                  setDraft(nextDraft)
+                  const parsed = parseTemperatureInput(nextDraft)
+                  if (parsed !== null) onValueChange(parsed, scale.id)
+                }}
+                className={`min-w-0 border-0 bg-transparent text-center font-mono shadow-none focus-visible:ring-0 ${compactDisplay ? "h-10 text-lg" : "h-12 text-2xl"}`}
               />
-              <div className={`flex items-center justify-center font-semibold ${scale.color} ${compactDisplay ? 'text-lg' : 'text-xl'} min-w-[3rem]`}>
+              <span className={`min-w-12 text-center font-semibold text-[var(--md-sys-color-primary)] ${compactDisplay ? "text-lg" : "text-xl"}`}>
                 {scale.symbol}
-              </div>
+              </span>
             </div>
           </div>
 
-          {/* 控制按钮 */}
-          <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
+          <div className="grid grid-cols-[1fr_minmax(7rem,1.4fr)_1fr] gap-2">
+            <Button
+              variant="outline"
+              size="icon"
               onClick={() => onIncrement(scale.id, -1)}
-              className="flex-1"
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
+              className="w-full"
+              aria-label={`${t("decrease")} ${scaleName}`}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => onCopy(formatTemperature(value), copyKey)}
-              className="flex-1"
+              className="min-w-0 px-2"
             >
               {copied[copyKey] ? (
-                <Check className="h-4 w-4 mr-2 text-green-500" />
+                <Check className="mr-2 h-4 w-4 shrink-0 text-[var(--md-sys-color-tertiary)]" />
               ) : (
-                <Copy className="h-4 w-4 mr-2" />
+                <Copy className="mr-2 h-4 w-4 shrink-0" />
               )}
-              {copied[copyKey] ? "已复制" : "复制"}
-              </Button>
+              <span className="truncate">{copied[copyKey] ? t("copied") : t("copy")}</span>
+            </Button>
             <Button
               variant="outline"
               size="icon"
               onClick={() => onIncrement(scale.id, 1)}
-              className="flex-1"
+              className="w-full"
+              aria-label={`${t("increase")} ${scaleName}`}
             >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* 说明文字 */}
           {showDescription && (
-            <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-              {scale.description}
-            </div>
+            <p className="rounded-lg bg-[var(--md-sys-color-surface-container-low)] p-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+              {t(`scales.${scale.id}.description`)}
+            </p>
           )}
         </div>
       </CardContent>

@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useObjectUrlRegistry } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import { mapWithConcurrency } from "@/lib/async-pool"
+import { createClientId } from "@/lib/client-id"
 import {
   triggerDownload,
   withObjectUrl,
@@ -182,7 +184,7 @@ export default function ImageCompressPage() {
 
   // 处理单个文件
   const processFile = useCallback(async (file: File): Promise<CompressedImage> => {
-    const imageId = Math.random().toString(36).substr(2, 9)
+    const imageId = createClientId("compress")
     const originalUrl = objectUrls.create(file)
 
     // 获取原始图片尺寸
@@ -260,9 +262,7 @@ export default function ImageCompressPage() {
         return
       }
 
-      const processedImages = await Promise.all(
-        validFiles.map(file => processFile(file))
-      )
+      const processedImages = await mapWithConcurrency(validFiles, 3, processFile)
 
       if (!mountedRef.current) {
         return
@@ -313,9 +313,7 @@ export default function ImageCompressPage() {
     setIsProcessing(true)
     
     try {
-      const processedImages = await Promise.all(
-        files.map(file => processFile(file))
-      )
+      const processedImages = await mapWithConcurrency(files, 3, processFile)
 
       if (!mountedRef.current) {
         return

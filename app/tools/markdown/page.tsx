@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo, useState } from "react"
 import { FileText } from "lucide-react"
 
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { useTranslations } from "@/hooks/use-translations"
 import { processMarkdown, type MarkdownOperation } from "@/lib/markdown-tools"
+import { sanitizeDocumentHtml } from "@/lib/sanitize-document-html"
 
 const SAMPLE = `# Release notes
 
@@ -23,23 +24,15 @@ export default function MarkdownPage() {
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<MarkdownOperation>("to-html")
   const [error, setError] = useState("")
-  const [safePreview, setSafePreview] = useState("")
-
-  useEffect(() => {
-    let active = true
-    void import("dompurify").then(({ default: purifier }) => {
-      if (active) setSafePreview(purifier.sanitize(output))
-    })
-    return () => { active = false }
-  }, [output])
+  const safePreview = useMemo(() => sanitizeDocumentHtml(output), [output])
 
   const run = () => {
     try {
       setOutput(processMarkdown(input, operation))
       setError("")
-    } catch (cause) {
+    } catch {
       setOutput("")
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     }
   }
 

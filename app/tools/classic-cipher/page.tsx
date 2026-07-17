@@ -1,7 +1,9 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import { useState, useRef, useEffect } from "react"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
@@ -12,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Copy, 
   Check, 
-  X, 
   ArrowLeftRight,
   ArrowRight,
   ArrowLeft,
@@ -23,25 +24,23 @@ import {
   ChevronDown,
   Shield,
   AlertTriangle,
-  Info,
   Trash2
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // 经典密码算法
 const classicAlgorithms = [
-  { id: "caesar", name: "凯撒密码", category: "substitution" },
-  { id: "rot13", name: "ROT13", category: "substitution" },
-  { id: "atbash", name: "埃特巴什密码", category: "substitution" },
-  { id: "vigenere", name: "维吉尼亚密码", category: "polyalphabetic" },
-  { id: "playfair", name: "普莱费尔密码", category: "polygram" },
-  { id: "rail-fence", name: "栅栏密码", category: "transposition" },
-  { id: "columnar", name: "列移位密码", category: "transposition" },
-  { id: "affine", name: "仿射密码", category: "mathematical" },
+  { id: "caesar", category: "substitution" },
+  { id: "rot13", category: "substitution" },
+  { id: "atbash", category: "substitution" },
+  { id: "vigenere", category: "polyalphabetic" },
+  { id: "playfair", category: "polygram" },
+  { id: "rail-fence", category: "transposition" },
+  { id: "columnar", category: "transposition" },
+  { id: "affine", category: "mathematical" },
 ]
 
 export default function ClassicCipherPage() {
@@ -50,6 +49,7 @@ export default function ClassicCipherPage() {
   // 基础状态
   const [algorithm, setAlgorithm] = useState("caesar")
   const [showCipherInfo, setShowCipherInfo] = useState(false)
+  const algorithmName = t(`algorithms.${algorithm}`)
   
   // 实时转换状态
   const [leftInput, setLeftInput] = useState("")
@@ -72,7 +72,7 @@ export default function ClassicCipherPage() {
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [error, setError] = useState<{ left?: string; right?: string }>({})
 
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const copyTimeoutRef = useRef<number | null>(null)
 
   // 凯撒密码加密
   const caesarEncrypt = (text: string, shift: number): string => {
@@ -457,15 +457,15 @@ export default function ClassicCipherPage() {
         case "atbash":
           return atbashCipher(text)
         case "vigenere":
-          if (!key) throw new Error("维吉尼亚密码需要密钥")
+          if (!key) throw new Error(t("vigenereKeyRequired"))
           return encrypt ? vigenereEncrypt(text, key) : vigenereDecrypt(text, key)
         case "playfair":
-          if (!key) throw new Error("普莱费尔密码需要密钥")
+          if (!key) throw new Error(t("playfairKeyRequired"))
           return playfairCipher(text, key, encrypt)
         case "rail-fence":
           return encrypt ? railFenceEncrypt(text, railCount) : railFenceDecrypt(text, railCount)
         case "columnar":
-          if (!colKey) throw new Error("列移位密码需要密钥")
+          if (!colKey) throw new Error(t("columnarKeyRequired"))
           return encrypt ? columnarEncrypt(text, colKey) : columnarDecrypt(text, colKey)
         case "affine":
           return encrypt ? affineEncrypt(text, affineA, affineB) : affineDecrypt(text, affineA, affineB)
@@ -508,7 +508,7 @@ export default function ClassicCipherPage() {
         setRightInput(result)
         setRightInputLength(result.length)
       } catch (error) {
-        setError(prev => ({ ...prev, left: error instanceof Error ? error.message : "转换失败" }))
+        setError(prev => ({ ...prev, left: error instanceof Error ? error.message : t("transformFailed") }))
       }
     }
   }
@@ -524,7 +524,7 @@ export default function ClassicCipherPage() {
       setRightInputLength(result.length)
       setError(prev => ({ ...prev, left: undefined, right: undefined }))
     } catch (error) {
-      setError(prev => ({ ...prev, left: error instanceof Error ? error.message : "转换失败" }))
+      setError(prev => ({ ...prev, left: error instanceof Error ? error.message : t("transformFailed") }))
     }
   }
 
@@ -538,7 +538,7 @@ export default function ClassicCipherPage() {
       setLeftInputLength(result.length)
       setError(prev => ({ ...prev, left: undefined, right: undefined }))
     } catch (error) {
-      setError(prev => ({ ...prev, right: error instanceof Error ? error.message : "转换失败" }))
+      setError(prev => ({ ...prev, right: error instanceof Error ? error.message : t("transformFailed") }))
     }
   }
 
@@ -569,9 +569,11 @@ export default function ClassicCipherPage() {
   const copyToClipboard = (text: string, key: string) => {
     if (!text) return
 
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) return
       setCopied(prev => ({ ...prev, [key]: true }))
-      setTimeout(() => {
+      if (copyTimeoutRef.current) window.clearTimeout(copyTimeoutRef.current)
+      copyTimeoutRef.current = window.setTimeout(() => {
         setCopied(prev => ({ ...prev, [key]: false }))
       }, 2000)
     })
@@ -579,127 +581,78 @@ export default function ClassicCipherPage() {
 
   // 获取密码说明
   const getCipherDescription = (algorithm: string) => {
-    const descriptions: Record<string, JSX.Element> = {
-      caesar: (
-        <div>
-          <p><strong>原理</strong>: 将字母表中的每个字母向后（或向前）移动固定位数</p>
-          <p><strong>特点</strong>: 最简单的替换密码，容易被频率分析破解</p>
-          <p><strong>应用</strong>: 历史上用于军事通信，现在主要用于教学</p>
-        </div>
-      ),
-      rot13: (
-        <div>
-          <p><strong>原理</strong>: 凯撒密码的特例，固定移位13位</p>
-          <p><strong>特点</strong>: 加密和解密过程相同，自反性</p>
-          <p><strong>应用</strong>: 网络论坛隐藏剧透内容，简单文本混淆</p>
-        </div>
-      ),
-      atbash: (
-        <div>
-          <p><strong>原理</strong>: 将字母表首尾对应替换（A↔Z, B↔Y...）</p>
-          <p><strong>特点</strong>: 古代希伯来密码，加密解密过程相同</p>
-          <p><strong>应用</strong>: 《圣经》中的密码，简单替换加密</p>
-        </div>
-      ),
-      vigenere: (
-        <div>
-          <p><strong>原理</strong>: 使用关键词进行多字母替换加密</p>
-          <p><strong>特点</strong>: 曾被称为"不可破译的密码"</p>
-          <p><strong>应用</strong>: 16-19世纪广泛使用的密码系统</p>
-        </div>
-      ),
-      playfair: (
-        <div>
-          <p><strong>原理</strong>: 使用5×5字母矩阵，按字母对进行加密</p>
-          <p><strong>特点</strong>: 第一个实用的双字母替换密码</p>
-          <p><strong>应用</strong>: 第一次世界大战期间的军事密码</p>
-        </div>
-      ),
-      "rail-fence": (
-        <div>
-          <p><strong>原理</strong>: 将文本按锯齿形写在多条"栅栏"上</p>
-          <p><strong>特点</strong>: 经典的换位密码，改变字母顺序</p>
-          <p><strong>应用</strong>: 古代军事通信，现代密码学教学</p>
-        </div>
-      ),
-      columnar: (
-        <div>
-          <p><strong>原理</strong>: 将文本写成矩形，按密钥顺序重排列</p>
-          <p><strong>特点</strong>: 换位密码的改进版本</p>
-          <p><strong>应用</strong>: 军事密码系统，商业保密通信</p>
-        </div>
-      ),
-      affine: (
-        <div>
-          <p><strong>原理</strong>: 使用数学函数 (ax + b) mod 26 进行替换</p>
-          <p><strong>特点</strong>: 结合了数学理论的替换密码</p>
-          <p><strong>应用</strong>: 密码学理论研究，数学教学</p>
-        </div>
-      )
+    if (!classicAlgorithms.some((item) => item.id === algorithm)) {
+      return <p>{t("unknownAlgorithm")}</p>
     }
-    
-    return descriptions[algorithm] || <p>未知密码算法</p>
+
+    return (
+      <div className="space-y-2">
+        {(["principle", "features", "uses"] as const).map((detail) => (
+          <p key={detail}>
+            <strong>{t(`descriptionLabels.${detail}`)}</strong>: {t(`descriptions.${algorithm}.${detail}`)}
+          </p>
+        ))}
+      </div>
+    )
   }
 
   // 获取密码示例
   const getCipherExample = (algorithm: string) => {
-    const examples: Record<string, JSX.Element> = {
-      caesar: (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-blue-600">密文:</span> KHOOR ZRUOG (移位3)</div>
-        </div>
-      ),
-      rot13: (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-blue-600">密文:</span> URYYB JBEYQ</div>
-        </div>
-      ),
-      atbash: (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-blue-600">密文:</span> SVOOL DLIOW</div>
-        </div>
-      ),
-      vigenere: (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-purple-600">密钥:</span> KEY</div>
-          <div><span className="text-blue-600">密文:</span> RIJVS UYVJN</div>
-        </div>
-      ),
-      playfair: (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-purple-600">密钥:</span> KEYWORD</div>
-          <div><span className="text-blue-600">密文:</span> DMYRANVQDB</div>
-        </div>
-      ),
-      "rail-fence": (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-purple-600">栅栏:</span> 3层</div>
-          <div><span className="text-blue-600">密文:</span> HOREL LOWLD</div>
-        </div>
-      ),
-      columnar: (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-purple-600">密钥:</span> KEY</div>
-          <div><span className="text-blue-600">密文:</span> ELHLROWLOD</div>
-        </div>
-      ),
-      affine: (
-        <div className="space-y-2 text-xs">
-          <div><span className="text-green-600">明文:</span> HELLO WORLD</div>
-          <div><span className="text-purple-600">参数:</span> a=5, b=8</div>
-          <div><span className="text-blue-600">密文:</span> RCLLA IMALX</div>
-        </div>
-      )
+    const examples: Record<string, Array<{ label: string; value: string; tone: "plain" | "cipher" | "parameter" }>> = {
+      caesar: [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("ciphertext"), value: `KHOOR ZRUOG (${t("shift")} 3)`, tone: "cipher" },
+      ],
+      rot13: [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("ciphertext"), value: "URYYB JBEYQ", tone: "cipher" },
+      ],
+      atbash: [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("ciphertext"), value: "SVOOL DLIOW", tone: "cipher" },
+      ],
+      vigenere: [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("key"), value: "KEY", tone: "parameter" },
+        { label: t("ciphertext"), value: "RIJVS UYVJN", tone: "cipher" },
+      ],
+      playfair: [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("key"), value: "KEYWORD", tone: "parameter" },
+        { label: t("ciphertext"), value: "DMYRANVQDB", tone: "cipher" },
+      ],
+      "rail-fence": [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("rails"), value: t("railLevels").replace("{count}", "3"), tone: "parameter" },
+        { label: t("ciphertext"), value: "HOREL LOWLD", tone: "cipher" },
+      ],
+      columnar: [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("key"), value: "KEY", tone: "parameter" },
+        { label: t("ciphertext"), value: "ELHLROWLOD", tone: "cipher" },
+      ],
+      affine: [
+        { label: t("plaintext"), value: "HELLO WORLD", tone: "plain" },
+        { label: t("parameters"), value: "a=5, b=8", tone: "parameter" },
+        { label: t("ciphertext"), value: "RCLLA IMALX", tone: "cipher" },
+      ],
     }
-    
-    return examples[algorithm] || <div className="text-xs">暂无示例</div>
+    const example = examples[algorithm]
+
+    if (!example) return <div className="text-xs">{t("noExample")}</div>
+
+    return (
+      <div className="space-y-2 text-xs">
+        {example.map((item) => (
+          <div key={`${item.label}-${item.value}`}>
+            <span className={item.tone === "plain" ? "text-[var(--md-sys-color-success)]" : item.tone === "cipher" ? "text-[var(--md-sys-color-tertiary)]" : "text-[var(--md-sys-color-primary)]"}>
+              {item.label}:
+            </span>{" "}
+            {item.value}
+          </div>
+        ))}
+      </div>
+    )
   }
 
   // 自动切换效果
@@ -723,24 +676,28 @@ export default function ClassicCipherPage() {
     }
   }, [algorithm, shift, key, railCount, colKey, affineA, affineB, autoSwitch])
 
+  useEffect(() => () => {
+    if (copyTimeoutRef.current) window.clearTimeout(copyTimeoutRef.current)
+  }, [])
+
   return (
-    <div className="container mx-auto px-4 py-4 max-w-6xl">
+    <div className="container mx-auto max-w-6xl px-3 py-4 sm:px-4">
       {/* 页面标题和控制 */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4">
-          经典密码工具
+        <h1 className="mb-4 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          {t("title")}
         </h1>
         <div className="mb-4 flex flex-wrap items-center justify-center gap-3">
-          <div className="flex items-center space-x-2 rounded-lg bg-gray-100 p-2 dark:bg-gray-800">
+          <div className="flex items-center space-x-2 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-2">
             <Switch id="auto-mode" checked={autoMode} onCheckedChange={setAutoMode} />
             <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
-              输入时实时转换
+              {t("liveTransform")}
             </Label>
           </div>
-          <div className="flex items-center space-x-2 rounded-lg bg-gray-100 p-2 dark:bg-gray-800">
+          <div className="flex items-center space-x-2 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-2">
             <Switch id="auto-switch" checked={autoSwitch} onCheckedChange={setAutoSwitch} />
             <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
-              切换算法时重新转换
+              {t("reprocessOnAlgorithmChange")}
             </Label>
           </div>
         </div>
@@ -749,14 +706,14 @@ export default function ClassicCipherPage() {
           {/* 密码算法选择 */}
           <div className="mb-6">
             <Tabs value={algorithm} onValueChange={setAlgorithm} className="w-full">
-              <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1 w-full bg-gray-100 dark:bg-gray-800 p-1 h-auto flex-wrap justify-center">
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-[var(--md-sys-color-surface-container)] p-1 sm:grid-cols-4 lg:grid-cols-8">
               {classicAlgorithms.map((algo) => (
                   <TabsTrigger
                     key={algo.id}
                     value={algo.id}
-                    className="text-xs px-2 py-1.5 whitespace-nowrap data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm min-w-0 flex-shrink-0"
+                    className="min-w-0 whitespace-nowrap px-2 py-1.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] data-[state=active]:shadow-sm"
                   >
-                  {algo.name}
+                  {t(`algorithms.${algo.id}`)}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -768,7 +725,7 @@ export default function ClassicCipherPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowCipherInfo(!showCipherInfo)}
-                className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                className="w-full text-sm text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
               >
                 <div className="flex items-center gap-2">
                   {showCipherInfo ? (
@@ -777,10 +734,10 @@ export default function ClassicCipherPage() {
                     <ChevronDown className="h-4 w-4" />
                   )}
                   <Shield className="h-4 w-4" />
-                  <span>{classicAlgorithms.find(a => a.id === algorithm)?.name} 密码说明</span>
+                  <span>{t("cipherInfo").replace("{algorithm}", algorithmName)}</span>
                   {!showCipherInfo && (
                     <Badge variant="secondary" className="text-xs ml-auto">
-                      点击查看
+                      {t("clickToView")}
                     </Badge>
                   )}
         </div>
@@ -792,22 +749,22 @@ export default function ClassicCipherPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* 密码说明 */}
                       <div className="space-y-3">
-                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                          <Shield className="h-4 w-4 text-green-600" />
-                          算法说明
+                        <h4 className="flex items-center gap-2 font-semibold text-[var(--md-sys-color-on-surface)]">
+                          <Shield className="h-4 w-4 text-[var(--md-sys-color-success)]" />
+                          {t("algorithmDescription")}
                         </h4>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                        <div className="space-y-2 text-sm text-[var(--md-sys-color-on-surface-variant)]">
                           {getCipherDescription(algorithm)}
                         </div>
                       </div>
                       
                       {/* 示例 */}
                       <div className="space-y-3">
-                        <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-blue-600" />
-                          加密示例
+                        <h4 className="flex items-center gap-2 font-semibold text-[var(--md-sys-color-on-surface)]">
+                          <Zap className="h-4 w-4 text-[var(--md-sys-color-tertiary)]" />
+                          {t("encryptionExample")}
                         </h4>
-                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+                        <div className="space-y-2 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3">
                           {getCipherExample(algorithm)}
                         </div>
                       </div>
@@ -822,8 +779,8 @@ export default function ClassicCipherPage() {
           <Card className="mb-6 card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Settings className="h-4 w-4 text-blue-600" />
-                密码参数
+                <Settings className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                {t("cipherParameters")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -831,7 +788,7 @@ export default function ClassicCipherPage() {
                 {/* 各种密码参数 */}
         {algorithm === "caesar" && (
           <div className="space-y-2">
-                    <Label htmlFor="shift" className="text-sm">移位数 (1-25)</Label>
+                    <Label htmlFor="shift" className="text-sm">{t("shiftRange")}</Label>
             <Input
               id="shift"
               type="number"
@@ -846,12 +803,12 @@ export default function ClassicCipherPage() {
 
         {algorithm === "vigenere" && (
           <div className="space-y-2">
-                    <Label htmlFor="key" className="text-sm">密钥 (字母)</Label>
+                    <Label htmlFor="key" className="text-sm">{t("letterKey")}</Label>
                     <Input 
                       id="key" 
                       value={key} 
                       onChange={(e) => setKey(e.target.value.replace(/[^a-zA-Z]/g, ''))} 
-                      placeholder="输入密钥..."
+                      placeholder={t("keyPlaceholder")}
                       className="h-8"
                     />
           </div>
@@ -859,12 +816,12 @@ export default function ClassicCipherPage() {
 
                 {algorithm === "playfair" && (
                   <div className="space-y-2">
-                    <Label htmlFor="playfair-key" className="text-sm">密钥 (字母)</Label>
+                    <Label htmlFor="playfair-key" className="text-sm">{t("letterKey")}</Label>
                     <Input 
                       id="playfair-key" 
                       value={key} 
                       onChange={(e) => setKey(e.target.value.replace(/[^a-zA-Z]/g, ''))} 
-                      placeholder="输入密钥..."
+                      placeholder={t("keyPlaceholder")}
                       className="h-8"
                     />
                   </div>
@@ -872,7 +829,7 @@ export default function ClassicCipherPage() {
 
                 {algorithm === "rail-fence" && (
               <div className="space-y-2">
-                    <Label htmlFor="rails" className="text-sm">栅栏数 (2-10)</Label>
+                    <Label htmlFor="rails" className="text-sm">{t("railRange")}</Label>
                     <Input
                       id="rails"
                       type="number"
@@ -887,12 +844,12 @@ export default function ClassicCipherPage() {
 
                 {algorithm === "columnar" && (
                   <div className="space-y-2">
-                    <Label htmlFor="col-key" className="text-sm">密钥 (字母)</Label>
+                    <Label htmlFor="col-key" className="text-sm">{t("letterKey")}</Label>
                     <Input 
                       id="col-key" 
                       value={colKey} 
                       onChange={(e) => setColKey(e.target.value.replace(/[^a-zA-Z]/g, ''))} 
-                      placeholder="输入密钥..."
+                      placeholder={t("keyPlaceholder")}
                       className="h-8"
                 />
               </div>
@@ -901,7 +858,7 @@ export default function ClassicCipherPage() {
                 {algorithm === "affine" && (
                   <>
               <div className="space-y-2">
-                      <Label htmlFor="affine-a" className="text-sm">参数 a (与26互质)</Label>
+                      <Label htmlFor="affine-a" className="text-sm">{t("affineA")}</Label>
                       <Input
                         id="affine-a"
                         type="number"
@@ -913,7 +870,7 @@ export default function ClassicCipherPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="affine-b" className="text-sm">参数 b (0-25)</Label>
+                      <Label htmlFor="affine-b" className="text-sm">{t("affineB")}</Label>
                       <Input
                         id="affine-b"
                         type="number"
@@ -936,10 +893,10 @@ export default function ClassicCipherPage() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${leftType === "plaintext" ? "bg-green-500" : "bg-blue-500"}`} />
-                  {leftType === "plaintext" ? "明文输入" : "密文输入"}
+                  <div className={`h-3 w-3 rounded-full ${leftType === "plaintext" ? "bg-[var(--md-sys-color-success)]" : "bg-[var(--md-sys-color-tertiary)]"}`} />
+                  {leftType === "plaintext" ? t("plaintextInput") : t("ciphertextInput")}
                   <Badge variant="outline" className="text-xs ml-auto">
-                    {leftInputLength} 字符
+                    {t("characters").replace("{count}", String(leftInputLength))}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -947,13 +904,13 @@ export default function ClassicCipherPage() {
                 <Textarea
                   value={leftInput}
                   onChange={(e) => handleLeftInputChange(e.target.value)}
-                  aria-label={leftType === "plaintext" ? "待加密明文" : "待解密密文"}
-                  placeholder={leftType === "plaintext" ? "输入要加密的明文..." : "输入要解密的密文..."}
+                  aria-label={leftType === "plaintext" ? t("plaintextToEncrypt") : t("ciphertextToDecrypt")}
+                  placeholder={leftType === "plaintext" ? t("plaintextPlaceholder") : t("ciphertextPlaceholder")}
                   rows={8}
                   className="font-mono text-sm resize-none"
                 />
                 {error.left && (
-                  <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                  <div className="mt-2 flex items-center gap-1 text-sm text-[var(--md-sys-color-error)]">
                     <AlertTriangle className="h-3 w-3" />
                     {error.left}
                   </div>
@@ -975,13 +932,13 @@ export default function ClassicCipherPage() {
                           variant="outline"
                           size="sm"
                           className="p-2"
-                          aria-label={leftType === "plaintext" ? "加密" : "解密"}
+                           aria-label={leftType === "plaintext" ? t("encrypt") : t("decrypt")}
                         >
                           <ArrowRight className="h-4 w-4" />
                     </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {leftType === "plaintext" ? "加密" : "解密"}
+                        {leftType === "plaintext" ? t("encrypt") : t("decrypt")}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -995,13 +952,13 @@ export default function ClassicCipherPage() {
                           variant="outline"
                           size="sm"
                           className="p-2"
-                          aria-label={leftType === "plaintext" ? "将结果解密回输入" : "将结果加密回输入"}
+                          aria-label={leftType === "plaintext" ? t("decryptBackToInput") : t("encryptBackToInput")}
                         >
                           <ArrowLeft className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
                       <TooltipContent>
-                        {leftType === "plaintext" ? "解密" : "加密"}
+                        {leftType === "plaintext" ? t("decrypt") : t("encrypt")}
                       </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -1011,19 +968,19 @@ export default function ClassicCipherPage() {
               {/* 算法类型指示 */}
               <div className="text-center">
                 <Badge variant="secondary" className="text-xs">
-                  {classicAlgorithms.find(a => a.id === algorithm)?.name}
+                  {algorithmName}
                 </Badge>
                 <div className="flex flex-col items-center gap-1 mt-2">
                   {autoMode && (
-                    <div className="flex items-center gap-1 text-xs text-green-600">
+                    <div className="flex items-center gap-1 text-xs text-[var(--md-sys-color-success)]">
                       <Zap className="h-3 w-3" />
-                      实时转换
+                      {t("liveTransformShort")}
                 </div>
                   )}
                   {autoSwitch && (
-                    <div className="flex items-center gap-1 text-xs text-blue-600">
+                    <div className="flex items-center gap-1 text-xs text-[var(--md-sys-color-tertiary)]">
                       <RefreshCw className="h-3 w-3" />
-                      智能切换
+                      {t("smartSwitch")}
               </div>
                   )}
             </div>
@@ -1039,12 +996,12 @@ export default function ClassicCipherPage() {
                         variant="outline"
                         size="sm"
                         className="p-2"
-                        aria-label="交换输入与结果并反向转换"
+                        aria-label={t("swapAria")}
                       >
                         <ArrowLeftRight className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>交换内容</TooltipContent>
+                    <TooltipContent>{t("swapContent")}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
 
@@ -1055,13 +1012,13 @@ export default function ClassicCipherPage() {
                         onClick={clearAllInputs}
                   variant="outline"
                   size="sm"
-                        className="text-red-500 hover:text-red-700 p-2"
-                        aria-label="清空输入和结果"
+                        className="p-2 text-[var(--md-sys-color-error)] hover:text-[var(--md-sys-color-error)]"
+                        aria-label={t("clearAria")}
                 >
                         <Trash2 className="h-4 w-4" />
                 </Button>
                     </TooltipTrigger>
-                    <TooltipContent>清空所有</TooltipContent>
+                    <TooltipContent>{t("clearAll")}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                   </div>
@@ -1071,10 +1028,10 @@ export default function ClassicCipherPage() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${leftType === "plaintext" ? "bg-blue-500" : "bg-green-500"}`} />
-                  {leftType === "plaintext" ? "密文输出" : "明文输出"}
+                  <div className={`h-3 w-3 rounded-full ${leftType === "plaintext" ? "bg-[var(--md-sys-color-tertiary)]" : "bg-[var(--md-sys-color-success)]"}`} />
+                  {leftType === "plaintext" ? t("ciphertextOutput") : t("plaintextOutput")}
                   <Badge variant="outline" className="text-xs ml-auto">
-                    {rightInputLength} 字符
+                    {t("characters").replace("{count}", String(rightInputLength))}
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -1083,8 +1040,8 @@ export default function ClassicCipherPage() {
                   <Textarea
                     value={rightInput}
                     readOnly
-                    aria-label={leftType === "plaintext" ? "加密结果" : "解密结果"}
-                    placeholder={leftType === "plaintext" ? "加密结果将在这里显示..." : "解密结果将在这里显示..."}
+                    aria-label={leftType === "plaintext" ? t("encryptionResult") : t("decryptionResult")}
+                    placeholder={leftType === "plaintext" ? t("encryptionResultPlaceholder") : t("decryptionResultPlaceholder")}
                     rows={8}
                     className="font-mono text-sm resize-none pr-10"
                   />
@@ -1097,17 +1054,17 @@ export default function ClassicCipherPage() {
                           variant="ghost"
                           size="sm"
                           className="absolute top-2 right-2 p-1 h-6 w-6"
-                          aria-label={copied.right ? "已复制结果" : "复制结果"}
+                          aria-label={copied.right ? t("resultCopied") : t("copyResult")}
                         >
-                          {copied.right ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                          {copied.right ? <Check className="h-3 w-3 text-[var(--md-sys-color-success)]" /> : <Copy className="h-3 w-3" />}
                     </Button>
                       </TooltipTrigger>
-                      <TooltipContent>复制结果</TooltipContent>
+                      <TooltipContent>{t("copyResult")}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   </div>
                 {error.right && (
-                  <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                  <div className="mt-2 flex items-center gap-1 text-sm text-[var(--md-sys-color-error)]">
                     <AlertTriangle className="h-3 w-3" />
                     {error.right}
               </div>
@@ -1120,7 +1077,7 @@ export default function ClassicCipherPage() {
           <Alert className="mb-6">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              <strong>安全提示：</strong>经典密码算法主要用于教学和演示目的，不应用于保护敏感信息。现代应用请使用AES、RSA等现代加密算法。
+              <strong>{t("securityNoticeTitle")}</strong>{t("securityNotice")}
             </AlertDescription>
           </Alert>
     </div>

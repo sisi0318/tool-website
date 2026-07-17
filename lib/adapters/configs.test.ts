@@ -48,7 +48,7 @@ describe("Adapter Config Validation", () => {
     { type: "hash", expectedConfigCount: 4, hasLinkedOptions: true },
     { type: "hmac", expectedConfigCount: 4, hasLinkedOptions: false },
     { type: "encoding", expectedConfigCount: 3, hasLinkedOptions: false },
-    { type: "classic-cipher", expectedConfigCount: 3, hasLinkedOptions: true },
+    { type: "classic-cipher", expectedConfigCount: 3, hasLinkedOptions: false },
     { type: "json-format", expectedConfigCount: 3, hasLinkedOptions: false },
     { type: "protobuf", expectedConfigCount: 3, hasLinkedOptions: false },
     { type: "image-compress", expectedConfigCount: 3, hasLinkedOptions: false },
@@ -81,6 +81,16 @@ describe("Adapter Config Validation", () => {
       })
     }
   }
+
+  it("classic-cipher: Caesar shift is a conditional numeric slider", () => {
+    const def = getNodeDefinition("classic-cipher")!
+    const shift = def.config.find((field) => field.id === "shift")!
+
+    expect(shift.slider).toEqual({ min: 1, max: 25, step: 1 })
+    expect(shift.dynamicOptions).toBeUndefined()
+    expect(shift.visible?.({ algorithm: "caesar" })).toBe(true)
+    expect(shift.visible?.({ algorithm: "rot13" })).toBe(false)
+  })
 })
 
 describe("Port Design Validation", () => {

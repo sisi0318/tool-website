@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -19,13 +21,9 @@ import { getDockerInlineOptionValue, tokenizeDockerCommand } from "@/lib/docker-
 // 定义配置项接口
 interface ConfigItem {
   id: string
-  type: "port" | "volume" | "env" | "label" | "restart" | "network" | "memory" | "cpu" | 
-        "healthcheck" | "depends_on" | "build" | "workdir" | "user" | "command" | "entrypoint" |
-        "privileged" | "cap_add" | "cap_drop" | "tmpfs" | "shm_size" | "ulimit" | "log_driver"
+  type: "port" | "volume" | "env" | "restart" | "network" | "memory" | "cpu"
   value: string
-  hostValue?: string // 用于端口映射和卷挂载的主机部分
-  additionalValue?: string // 用于某些需要多个值的配置项
-  options?: string[] // 用于存储多个选项
+  hostValue?: string
 }
 
 // Docker 服务配置接口
@@ -50,12 +48,6 @@ interface DockerService {
     retries?: number
     start_period?: string
   }
-  depends_on?: string[]
-  build?: {
-    context?: string
-    dockerfile?: string
-    args?: string[]
-  }
   mem_limit?: string
   mem_reservation?: string
   cpus?: string
@@ -64,7 +56,6 @@ interface DockerService {
   cap_drop?: string[]
   tmpfs?: string[]
   shm_size?: string
-  ulimits?: any
   logging?: {
     driver?: string
     options?: Record<string, string>
@@ -74,8 +65,6 @@ interface DockerService {
 // 解析结果接口
 interface ParseResult {
   services: Record<string, DockerService>
-  networks?: Record<string, any>
-  volumes?: Record<string, any>
   errors: string[]
   warnings: string[]
 }
@@ -84,16 +73,15 @@ export default function DockerConverterPage() {
   const t = useTranslations("dockerConverter")
   const [dockerRunCommand, setDockerRunCommand] = useState("")
   const [dockerComposeYaml, setDockerComposeYaml] = useState("")
-  const [copied, setCopied] = useState(false)
-  const yamlRef = useRef<HTMLDivElement>(null)
-
   // 自定义配置项状态
   const [imageName, setImageName] = useState("nginx")
   const [containerName, setContainerName] = useState("")
   const [configItems, setConfigItems] = useState<ConfigItem[]>([])
   const [generatedDockerRun, setGeneratedDockerRun] = useState("")
   const [generatedDockerCompose, setGeneratedDockerCompose] = useState("")
-  const [copiedGenerated, setCopiedGenerated] = useState(false)
+  const [copiedTarget, setCopiedTarget] = useState<"converted" | "run" | "generatedCompose" | null>(null)
+  const [copyFailed, setCopyFailed] = useState(false)
+  const copyResetTimerRef = useRef<number | null>(null)
 
   // 新增状态
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
@@ -125,7 +113,7 @@ export default function DockerConverterPage() {
       const cleanCommand = command.trim().replace(/\\\s*\r?\n\s*/g, " ")
       
       if (!/^docker\s+run(?:\s|$)/.test(cleanCommand)) {
-        result.errors.push('命令必须以 "docker run" 开头')
+        result.errors.push(t("mustStartWithDockerRun"))
         return result
       }
 
@@ -136,7 +124,7 @@ export default function DockerConverterPage() {
       const args = tokenizeDockerCommand(commandPart)
       
       if (args.length === 0) {
-        result.errors.push('未找到有效的参数或镜像名')
+        result.errors.push(t("noArgumentsOrImage"))
         return result
       }
 
@@ -148,6 +136,12 @@ export default function DockerConverterPage() {
       // 解析参数
       for (let i = 0; i < args.length; i++) {
         const arg = args[i]
+
+        // Everything after the image belongs to the container command, even flags.
+        if (imageFound) {
+          service.command = service.command ? `${service.command} ${arg}` : arg
+          continue
+        }
 
         // 如果不是选项且镜像未找到，则认为是镜像名
         if (!arg.startsWith('-') && !imageFound) {
@@ -167,7 +161,7 @@ export default function DockerConverterPage() {
               serviceName = args[++i].replace(/[^a-zA-Z0-9_-]/g, '_')
               service.container_name = args[i]
             } else {
-              result.errors.push('--name 参数需要一个值')
+              result.errors.push(`--name ${t("requiresValue")}`)
             }
             break
 
@@ -177,7 +171,7 @@ export default function DockerConverterPage() {
               if (!service.ports) service.ports = []
               service.ports.push(args[++i])
             } else {
-              result.errors.push('-p/--publish 参数需要一个值')
+              result.errors.push(`-p/--publish ${t("requiresValue")}`)
             }
             break
 
@@ -188,7 +182,7 @@ export default function DockerConverterPage() {
               if (!service.volumes) service.volumes = []
               service.volumes.push(args[++i])
             } else {
-              result.errors.push('-v/--volume 参数需要一个值')
+              result.errors.push(`-v/--volume ${t("requiresValue")}`)
             }
             break
 
@@ -198,14 +192,14 @@ export default function DockerConverterPage() {
               if (!service.environment) service.environment = []
               service.environment.push(args[++i])
             } else {
-              result.errors.push('-e/--env 参数需要一个值')
+              result.errors.push(`-e/--env ${t("requiresValue")}`)
             }
             break
 
           case '--env-file':
             if (i + 1 < args.length) {
               i++ // 跳过文件名
-              result.warnings.push('env-file 不能直接转换，需要手动处理环境变量文件')
+              result.warnings.push(t("envFileWarning"))
             }
             break
 
@@ -215,7 +209,7 @@ export default function DockerConverterPage() {
               if (!service.labels) service.labels = []
               service.labels.push(args[++i])
             } else {
-              result.errors.push('-l/--label 参数需要一个值')
+              result.errors.push(`-l/--label ${t("requiresValue")}`)
             }
             break
 
@@ -223,7 +217,7 @@ export default function DockerConverterPage() {
             if (i + 1 < args.length) {
               service.restart = args[++i]
             } else {
-              result.errors.push('--restart 参数需要一个值')
+              result.errors.push(`--restart ${t("requiresValue")}`)
             }
             break
 
@@ -367,11 +361,11 @@ export default function DockerConverterPage() {
           case '--interactive':
           case '-t':
           case '--tty':
-            result.warnings.push('交互式选项 (-it) 在 docker-compose 中需要使用 stdin_open 和 tty 配置')
+            result.warnings.push(t("interactiveWarning"))
             break
 
           case '--rm':
-            result.warnings.push('--rm 选项在 docker-compose 中不适用')
+            result.warnings.push(t("removeWarning"))
             break
 
           default:
@@ -440,29 +434,34 @@ export default function DockerConverterPage() {
               service.entrypoint = getDockerInlineOptionValue(arg, "--entrypoint") ?? ""
             } else if (arg.startsWith('--memory-reservation=')) {
               service.mem_reservation = getDockerInlineOptionValue(arg, "--memory-reservation") ?? ""
+            } else if (arg.startsWith('--publish=')) {
+              if (!service.ports) service.ports = []
+              service.ports.push(getDockerInlineOptionValue(arg, "--publish") ?? "")
+            } else if (arg.startsWith('--volume=')) {
+              if (!service.volumes) service.volumes = []
+              service.volumes.push(getDockerInlineOptionValue(arg, "--volume") ?? "")
+            } else if (arg.startsWith('--env=')) {
+              if (!service.environment) service.environment = []
+              service.environment.push(getDockerInlineOptionValue(arg, "--env") ?? "")
+            } else if (arg.startsWith('--label=')) {
+              if (!service.labels) service.labels = []
+              service.labels.push(getDockerInlineOptionValue(arg, "--label") ?? "")
             } else if (arg.startsWith('-') && !imageFound) {
-              result.warnings.push(`未识别的选项: ${arg}`)
-            } else if (!arg.startsWith('-') && imageFound) {
-              // 可能是命令参数
-              if (!service.command) {
-                service.command = arg
-              } else {
-                service.command += ' ' + arg
-              }
+              result.warnings.push(`${t("unrecognizedOption")}: ${arg}`)
             }
             break
         }
       }
 
       if (!imageFound) {
-        result.errors.push('未找到镜像名称')
+        result.errors.push(t("imageNotFound"))
         return result
       }
 
       result.services[serviceName] = service
 
     } catch (error) {
-      result.errors.push(`解析错误: ${(error as Error).message}`)
+      result.errors.push(`${t("parseError")}: ${(error as Error).message}`)
     }
 
     return result
@@ -495,8 +494,8 @@ export default function DockerConverterPage() {
       setValidationErrors([])
 
     } catch (error) {
-      console.error("转换错误:", error)
-      const errorMessage = `转换失败: ${(error as Error).message}`
+      console.error("Docker conversion error:", error)
+      const errorMessage = `${t("conversionFailed")}: ${(error as Error).message}`
       setDockerComposeYaml(errorMessage)
       setValidationErrors([errorMessage])
     } finally {
@@ -648,15 +647,22 @@ export default function DockerConverterPage() {
       
       // 资源限制
       const limits: string[] = []
-      if (service.mem_limit) limits.push(`      memory: ${service.mem_limit}`)
-      if (service.mem_reservation) limits.push(`      memory_reservation: ${service.mem_reservation}`)
-      if (service.cpus) limits.push(`      cpus: '${service.cpus}'`)
+      if (service.mem_limit) limits.push(`          memory: ${service.mem_limit}`)
+      if (service.cpus) limits.push(`          cpus: '${service.cpus}'`)
       
       if (limits.length > 0) {
         yaml += "    deploy:\n"
         yaml += "      resources:\n"
         yaml += "        limits:\n"
         yaml += limits.join('\n') + '\n'
+      }
+      if (service.mem_reservation) {
+        if (limits.length === 0) {
+          yaml += "    deploy:\n"
+          yaml += "      resources:\n"
+        }
+        yaml += "        reservations:\n"
+        yaml += `          memory: ${service.mem_reservation}\n`
       }
       
       // 健康检查
@@ -708,58 +714,92 @@ export default function DockerConverterPage() {
     return yaml.trim()
   }
 
-  const copyToClipboard = (text: string, setCopiedState: (copied: boolean) => void) => {
+  const copyToClipboard = (text: string, target: "converted" | "run" | "generatedCompose") => {
     if (text) {
-      navigator.clipboard.writeText(text)
-      setCopiedState(true)
-      setTimeout(() => setCopiedState(false), 2000)
+      void copyTextToClipboard(text).then((success) => {
+        if (!success) {
+          setCopyFailed(true)
+          return
+        }
+
+        setCopyFailed(false)
+        setCopiedTarget(target)
+        if (copyResetTimerRef.current !== null) {
+          window.clearTimeout(copyResetTimerRef.current)
+        }
+        copyResetTimerRef.current = window.setTimeout(() => {
+          setCopiedTarget(null)
+          copyResetTimerRef.current = null
+        }, 2000)
+      })
     }
   }
 
   // 自动转换监听
   useEffect(() => {
-    if (autoConvert && dockerRunCommand.trim()) {
-      const timer = setTimeout(() => {
-        convertToDockerCompose()
-      }, 500) // 500ms 延迟避免频繁转换
-      
-      return () => clearTimeout(timer)
+    if (!autoConvert) return
+
+    if (!dockerRunCommand.trim()) {
+      setParseResult(null)
+      setDockerComposeYaml("")
+      setValidationErrors([])
+      return
     }
-  }, [dockerRunCommand, autoConvert])
+
+    const timer = window.setTimeout(() => {
+      convertToDockerCompose()
+    }, 500)
+
+    return () => window.clearTimeout(timer)
+  }, [dockerRunCommand, autoConvert, composeVersion])
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleExampleClick = (example: string) => {
     setDockerRunCommand(example)
     if (!autoConvert) {
-      setTimeout(() => {
-        convertToDockerCompose()
-      }, 100)
+      const result = parseDockerRunCommand(example)
+      setParseResult(result)
+      if (result.errors.length === 0) {
+        setDockerComposeYaml(generateDockerComposeYaml(result, composeVersion))
+        setValidationErrors([])
+      } else {
+        setDockerComposeYaml("")
+        setValidationErrors(result.errors)
+      }
     }
   }
 
   // 示例命令
   const examples = [
     {
-      name: "Nginx 服务器",
+      name: t("exampleNginx"),
       command: "docker run --name nginx-server -p 80:80 -p 443:443 -v /var/www/html:/usr/share/nginx/html:ro -v /etc/nginx/nginx.conf:/etc/nginx/nginx.conf:ro --restart unless-stopped nginx:latest"
     },
     {
-      name: "MySQL 数据库",
+      name: t("exampleMySql"),
       command: "docker run --name mysql-db -e MYSQL_ROOT_PASSWORD=rootpass -e MYSQL_DATABASE=myapp -e MYSQL_USER=appuser -e MYSQL_PASSWORD=apppass -p 3306:3306 -v mysql-data:/var/lib/mysql --restart always mysql:8.0"
     },
     {
-      name: "Redis 缓存",
+      name: t("exampleRedis"),
       command: "docker run --name redis-cache -p 6379:6379 -v redis-data:/data --restart always --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 redis:alpine redis-server --appendonly yes"
     },
     {
-      name: "Node.js 应用",
+      name: t("exampleNode"),
       command: 'docker run --name node-app -p 3000:3000 -e NODE_ENV=production -e PORT=3000 -v /app/uploads:/app/uploads -w /app --user 1000:1000 --memory=512m --cpus=0.5 --health-cmd="curl -f http://localhost:3000/health || exit 1" --health-interval=30s --health-timeout=3s --health-retries=3 node:18-alpine npm start'
     },
     {
-      name: "PostgreSQL 数据库",
+      name: t("examplePostgres"),
       command: "docker run --name postgres-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=myapp -e POSTGRES_USER=appuser -p 5432:5432 -v postgres-data:/var/lib/postgresql/data --restart always --shm-size=256m postgres:15-alpine"
     },
     {
-      name: "复杂应用示例",
+      name: t("exampleComplex"),
       command: 'docker run --name complex-app -p 8080:8080 -p 8443:8443 -e APP_ENV=production -e DATABASE_URL="postgres://user:pass@db:5432/app" -v /app/logs:/var/log/app -v /app/uploads:/var/uploads --network=app-network --restart=unless-stopped --memory=1g --cpus=1.0 --cap-add=NET_ADMIN --cap-drop=ALL --tmpfs /tmp:rw,size=100m --log-driver=fluentd --log-opt fluentd-address=localhost:24224 --log-opt tag=app.{{.Name}} --health-cmd="curl -f http://localhost:8080/api/health" --health-interval=30s --health-timeout=10s --health-retries=3 --health-start-period=60s myapp:latest'
     }
   ]
@@ -767,22 +807,24 @@ export default function DockerConverterPage() {
   // 添加配置项
   const addConfigItem = (type: ConfigItem["type"]) => {
     const newItem: ConfigItem = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       type,
       value: "",
       hostValue: type === "port" || type === "volume" ? "" : undefined,
     }
-    setConfigItems([...configItems, newItem])
+    setConfigItems((currentItems) => [...currentItems, newItem])
   }
 
   // 删除配置项
   const removeConfigItem = (id: string) => {
-    setConfigItems(configItems.filter((item) => item.id !== id))
+    setConfigItems((currentItems) => currentItems.filter((item) => item.id !== id))
   }
 
   // 更新配置项
   const updateConfigItem = (id: string, field: "value" | "hostValue", value: string) => {
-    setConfigItems(configItems.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
+    setConfigItems((currentItems) =>
+      currentItems.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    )
   }
 
   // 生成docker run命令和docker-compose文件
@@ -814,11 +856,6 @@ export default function DockerConverterPage() {
           case "env":
             if (item.value) {
               runCmd += ` -e ${item.value}`
-            }
-            break
-          case "label":
-            if (item.value) {
-              runCmd += ` -l ${item.value}`
             }
             break
           case "restart":
@@ -884,15 +921,6 @@ export default function DockerConverterPage() {
         })
       }
 
-      // 添加标签
-      const labels = configItems.filter((item) => item.type === "label" && item.value)
-      if (labels.length > 0) {
-        composeYaml += "    labels:\n"
-        labels.forEach((label) => {
-          composeYaml += `      - '${label.value}'\n`
-        })
-      }
-
       // 添加重启策略
       const restartItem = configItems.find((item) => item.type === "restart")
       if (restartItem && restartItem.value) {
@@ -919,7 +947,7 @@ export default function DockerConverterPage() {
 
       setGeneratedDockerCompose(composeYaml)
     } catch (error) {
-      console.error("生成错误:", error)
+      console.error("Docker command generation error:", error)
       setGeneratedDockerRun(t("generationError") + ": " + (error as Error).message)
       setGeneratedDockerCompose(t("generationError") + ": " + (error as Error).message)
     }
@@ -930,21 +958,27 @@ export default function DockerConverterPage() {
     switch (item.type) {
       case "port":
         return (
-          <div className="flex gap-2 items-center" key={item.id}>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]" key={item.id}>
             <Input
               value={item.hostValue || ""}
               onChange={(e) => updateConfigItem(item.id, "hostValue", e.target.value)}
               placeholder={t("hostPort")}
-              className="w-1/3"
+              className="min-w-0"
             />
-            <ArrowRight className="h-4 w-4 flex-shrink-0" />
+            <ArrowRight className="hidden h-4 w-4 flex-shrink-0 sm:block" aria-hidden="true" />
             <Input
               value={item.value}
               onChange={(e) => updateConfigItem(item.id, "value", e.target.value)}
               placeholder={t("containerPort")}
-              className="w-1/3"
+              className="min-w-0"
             />
-            <Button variant="ghost" size="icon" onClick={() => removeConfigItem(item.id)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeConfigItem(item.id)}
+              className="col-start-2 row-span-2 row-start-1 sm:col-start-4 sm:row-span-1"
+              aria-label={t("removeConfiguration")}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -952,21 +986,27 @@ export default function DockerConverterPage() {
 
       case "volume":
         return (
-          <div className="flex gap-2 items-center" key={item.id}>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]" key={item.id}>
             <Input
               value={item.hostValue || ""}
               onChange={(e) => updateConfigItem(item.id, "hostValue", e.target.value)}
               placeholder={t("hostPath")}
-              className="w-1/3"
+              className="min-w-0"
             />
-            <ArrowRight className="h-4 w-4 flex-shrink-0" />
+            <ArrowRight className="hidden h-4 w-4 flex-shrink-0 sm:block" aria-hidden="true" />
             <Input
               value={item.value}
               onChange={(e) => updateConfigItem(item.id, "value", e.target.value)}
               placeholder={t("containerPath")}
-              className="w-1/3"
+              className="min-w-0"
             />
-            <Button variant="ghost" size="icon" onClick={() => removeConfigItem(item.id)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeConfigItem(item.id)}
+              className="col-start-2 row-span-2 row-start-1 sm:col-start-4 sm:row-span-1"
+              aria-label={t("removeConfiguration")}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -974,9 +1014,9 @@ export default function DockerConverterPage() {
 
       case "restart":
         return (
-          <div className="flex gap-2 items-center" key={item.id}>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2" key={item.id}>
             <Select value={item.value} onValueChange={(value) => updateConfigItem(item.id, "value", value)}>
-              <SelectTrigger className="w-2/3">
+              <SelectTrigger className="min-w-0">
                 <SelectValue placeholder={t("selectRestartPolicy")} />
               </SelectTrigger>
               <SelectContent>
@@ -986,7 +1026,7 @@ export default function DockerConverterPage() {
                 <SelectItem value="unless-stopped">unless-stopped</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="ghost" size="icon" onClick={() => removeConfigItem(item.id)}>
+            <Button variant="ghost" size="icon" onClick={() => removeConfigItem(item.id)} aria-label={t("removeConfiguration")}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -994,14 +1034,14 @@ export default function DockerConverterPage() {
 
       default:
         return (
-          <div className="flex gap-2 items-center" key={item.id}>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2" key={item.id}>
             <Input
               value={item.value}
               onChange={(e) => updateConfigItem(item.id, "value", e.target.value)}
               placeholder={t(`${item.type}Placeholder`)}
-              className="w-2/3"
+              className="min-w-0"
             />
-            <Button variant="ghost" size="icon" onClick={() => removeConfigItem(item.id)}>
+            <Button variant="ghost" size="icon" onClick={() => removeConfigItem(item.id)} aria-label={t("removeConfiguration")}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -1010,50 +1050,55 @@ export default function DockerConverterPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-8 max-w-7xl">
-      {/* 页面标题和描述 */}
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          Docker Run 转换器
+    <div className="container mx-auto max-w-7xl space-y-6 px-3 py-4 sm:space-y-8 sm:px-4 sm:py-6">
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          {t("title")}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          将 Docker Run 命令智能转换为 Docker Compose 文件，支持复杂参数解析和多种配置选项
+        <p className="mx-auto max-w-2xl text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("description")}
         </p>
       </div>
 
       <Tabs defaultValue="converter" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="converter" className="flex items-center gap-2">
+        <TabsList className="grid h-auto w-full grid-cols-2 bg-[var(--md-sys-color-surface-container)] p-1">
+          <TabsTrigger value="converter" className="flex min-w-0 items-center gap-1.5 px-2 py-2.5 data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2">
             <RefreshCw className="h-4 w-4" />
-            命令转换器
+            <span className="truncate">{t("converterTab")}</span>
           </TabsTrigger>
-          <TabsTrigger value="generator" className="flex items-center gap-2">
+          <TabsTrigger value="generator" className="flex min-w-0 items-center gap-1.5 px-2 py-2.5 data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2">
             <Zap className="h-4 w-4" />
-            配置生成器
+            <span className="truncate">{t("generatorTab")}</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* 转换器选项卡内容 */}
+        {copyFailed && (
+          <Alert className="mt-4 border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{t("copyError")}</AlertDescription>
+          </Alert>
+        )}
+
         <TabsContent value="converter" className="space-y-6">
-          {/* 设置选项卡 */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <Settings className="h-5 w-5" />
-                  转换设置
+                  {t("conversionSettings")}
                 </CardTitle>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowAdvanced(!showAdvanced)}
+                  aria-expanded={showAdvanced}
                 >
-                  {showAdvanced ? "收起" : "高级设置"}
+                  {showAdvanced ? t("collapse") : t("advancedSettings")}
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex flex-wrap items-center gap-4">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1064,12 +1109,12 @@ export default function DockerConverterPage() {
                           onCheckedChange={setAutoConvert}
                         />
                         <Label htmlFor="auto-convert" className="cursor-pointer">
-                          自动转换
+                          {t("autoConvert")}
                         </Label>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      输入命令时自动转换为 Docker Compose
+                      {t("autoConvertHelp")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1078,7 +1123,7 @@ export default function DockerConverterPage() {
                   <>
                     <div className="flex items-center space-x-2">
                       <Label htmlFor="compose-version" className="text-sm">
-                        Compose 版本:
+                        {t("composeVersion")}:
                       </Label>
                       <Select value={composeVersion} onValueChange={setComposeVersion}>
                         <SelectTrigger className="w-24">
@@ -1098,28 +1143,28 @@ export default function DockerConverterPage() {
             </CardContent>
           </Card>
 
-          {/* 命令输入区域 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-blue-500" />
-                Docker Run 命令
+                <Info className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                {t("dockerRunCommand")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <Label htmlFor="docker-run-command" className="sr-only">{t("dockerRunCommand")}</Label>
               <Textarea
+                id="docker-run-command"
                 value={dockerRunCommand}
                 onChange={(e) => setDockerRunCommand(e.target.value)}
-                placeholder="粘贴或输入您的 docker run 命令..."
-                className="font-mono text-sm min-h-[120px] resize-y"
+                placeholder={t("commandPlaceholder")}
+                className="min-h-[140px] resize-y font-mono text-sm"
                 rows={6}
               />
               
-              {/* 示例命令 */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-green-500" />
-                  <span className="text-sm font-medium">示例命令</span>
+                  <Zap className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                  <span className="text-sm font-medium">{t("examples")}</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
                   {examples.map((example, index) => (
@@ -1132,7 +1177,7 @@ export default function DockerConverterPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-xs">{example.name}</div>
-                        <div className="text-xs text-gray-500 mt-1 truncate">
+                        <div className="mt-1 truncate text-xs text-[var(--md-sys-color-on-surface-variant)]">
                           {example.command.substring(0, 50)}...
                         </div>
                       </div>
@@ -1141,7 +1186,6 @@ export default function DockerConverterPage() {
                 </div>
               </div>
 
-              {/* 转换按钮 */}
               <div className="grid gap-2 sm:flex">
                 <Button 
                   onClick={convertToDockerCompose}
@@ -1153,7 +1197,7 @@ export default function DockerConverterPage() {
                   ) : (
                     <ArrowRight className="h-4 w-4" />
                   )}
-                  {isParsingCommand ? "转换中..." : "转换为 Compose"}
+                  {isParsingCommand ? t("converting") : t("convertToCompose")}
                 </Button>
                 <Button
                   variant="outline"
@@ -1166,21 +1210,20 @@ export default function DockerConverterPage() {
                   }}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  清空
+                  {t("clear")}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* 错误和警告显示 */}
           {(validationErrors.length > 0 || (parseResult && parseResult.warnings.length > 0)) && (
             <div className="space-y-3">
               {validationErrors.length > 0 && (
-                <Alert>
+                <Alert className="border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-1">
-                      <div className="font-medium">解析错误:</div>
+                      <div className="font-medium">{t("parseErrors")}:</div>
                       {validationErrors.map((error, index) => (
                         <div key={index} className="text-sm">• {error}</div>
                       ))}
@@ -1190,13 +1233,13 @@ export default function DockerConverterPage() {
               )}
               
               {parseResult && parseResult.warnings.length > 0 && (
-                <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/10">
-                  <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                <Alert className="border-[var(--md-sys-color-tertiary)]/30 bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]">
+                  <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-1">
-                      <div className="font-medium text-yellow-800 dark:text-yellow-200">注意事项:</div>
+                      <div className="font-medium">{t("notices")}:</div>
                       {parseResult.warnings.map((warning, index) => (
-                        <div key={index} className="text-sm text-yellow-700 dark:text-yellow-300">• {warning}</div>
+                        <div key={index} className="text-sm">• {warning}</div>
                       ))}
                     </div>
                   </AlertDescription>
@@ -1205,30 +1248,29 @@ export default function DockerConverterPage() {
             </div>
           )}
 
-          {/* 解析结果显示 */}
           {parseResult && Object.keys(parseResult.services).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-green-500" />
-                  解析结果
+                  <Check className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  {t("parseResult")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {Object.entries(parseResult.services).map(([serviceName, service]) => (
-                    <div key={serviceName} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="flex items-center gap-2 mb-3">
+                    <div key={serviceName} className="rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3 sm:p-4">
+                      <div className="mb-3 flex min-w-0 flex-wrap items-center gap-2">
                         <Badge variant="secondary">{serviceName}</Badge>
                         {service.image && (
-                          <Badge variant="outline">{service.image}</Badge>
+                          <Badge variant="outline" className="max-w-full truncate">{service.image}</Badge>
                         )}
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
                         {service.ports && service.ports.length > 0 && (
                           <div>
-                            <span className="font-medium text-blue-600">端口:</span>
+                            <span className="font-medium text-[var(--md-sys-color-primary)]">{t("ports")}:</span>
                             <div className="mt-1 space-y-1">
                               {(() => {
                                 const portKey = `${serviceName}-ports`
@@ -1239,7 +1281,7 @@ export default function DockerConverterPage() {
                                 return (
                                   <>
                                     {visiblePorts.map((port, idx) => (
-                                      <div key={idx} className="font-mono text-xs bg-white dark:bg-gray-900 px-2 py-1 rounded">
+                                      <div key={idx} className="break-all rounded-lg bg-[var(--md-sys-color-surface-container-lowest)] px-2 py-1 font-mono text-xs">
                                         {port}
                                       </div>
                                     ))}
@@ -1248,12 +1290,13 @@ export default function DockerConverterPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => toggleExpanded(portKey)}
-                                        className="h-6 text-xs text-gray-500 hover:text-gray-700 p-1"
+                                        className="h-7 p-1 text-xs text-[var(--md-sys-color-on-surface-variant)]"
+                                        aria-expanded={Boolean(isExpanded)}
                                       >
                                         {isExpanded ? (
-                                          <>收起 ({service.ports!.length})</>
+                                          <>{t("collapse")} ({service.ports!.length})</>
                                         ) : (
-                                          <>+{service.ports!.length - 3} 更多...</>
+                                          <>+{service.ports!.length - 3} {t("more")}</>
                                         )}
                                       </Button>
                                     )}
@@ -1266,7 +1309,7 @@ export default function DockerConverterPage() {
                         
                         {service.volumes && service.volumes.length > 0 && (
                           <div>
-                            <span className="font-medium text-green-600">卷挂载:</span>
+                            <span className="font-medium text-[var(--md-sys-color-primary)]">{t("volumes")}:</span>
                             <div className="mt-1 space-y-1">
                               {(() => {
                                 const volumeKey = `${serviceName}-volumes`
@@ -1277,7 +1320,7 @@ export default function DockerConverterPage() {
                                 return (
                                   <>
                                     {visibleVolumes.map((volume, idx) => (
-                                      <div key={idx} className="font-mono text-xs bg-white dark:bg-gray-900 px-2 py-1 rounded">
+                                      <div key={idx} className="break-all rounded-lg bg-[var(--md-sys-color-surface-container-lowest)] px-2 py-1 font-mono text-xs">
                                         {volume}
                                       </div>
                                     ))}
@@ -1286,12 +1329,13 @@ export default function DockerConverterPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => toggleExpanded(volumeKey)}
-                                        className="h-6 text-xs text-gray-500 hover:text-gray-700 p-1"
+                                        className="h-7 p-1 text-xs text-[var(--md-sys-color-on-surface-variant)]"
+                                        aria-expanded={Boolean(isExpanded)}
                                       >
                                         {isExpanded ? (
-                                          <>收起 ({service.volumes!.length})</>
+                                          <>{t("collapse")} ({service.volumes!.length})</>
                                         ) : (
-                                          <>+{service.volumes!.length - 3} 更多...</>
+                                          <>+{service.volumes!.length - 3} {t("more")}</>
                                         )}
                                       </Button>
                                     )}
@@ -1304,7 +1348,7 @@ export default function DockerConverterPage() {
                         
                         {service.environment && service.environment.length > 0 && (
                           <div>
-                            <span className="font-medium text-purple-600">环境变量:</span>
+                            <span className="font-medium text-[var(--md-sys-color-primary)]">{t("environmentVariables")}:</span>
                             <div className="mt-1 space-y-1">
                               {(() => {
                                 const envKey = `${serviceName}-env`
@@ -1315,7 +1359,7 @@ export default function DockerConverterPage() {
                                 return (
                                   <>
                                     {visibleEnvs.map((env, idx) => (
-                                      <div key={idx} className="font-mono text-xs bg-white dark:bg-gray-900 px-2 py-1 rounded">
+                                      <div key={idx} className="break-all rounded-lg bg-[var(--md-sys-color-surface-container-lowest)] px-2 py-1 font-mono text-xs">
                                         {env}
                                       </div>
                                     ))}
@@ -1324,12 +1368,13 @@ export default function DockerConverterPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => toggleExpanded(envKey)}
-                                        className="h-6 text-xs text-gray-500 hover:text-gray-700 p-1"
+                                        className="h-7 p-1 text-xs text-[var(--md-sys-color-on-surface-variant)]"
+                                        aria-expanded={Boolean(isExpanded)}
                                       >
                                         {isExpanded ? (
-                                          <>收起 ({service.environment!.length})</>
+                                          <>{t("collapse")} ({service.environment!.length})</>
                                         ) : (
-                                          <>+{service.environment!.length - 3} 更多...</>
+                                          <>+{service.environment!.length - 3} {t("more")}</>
                                         )}
                                       </Button>
                                     )}
@@ -1347,28 +1392,27 @@ export default function DockerConverterPage() {
             </Card>
           )}
 
-          {/* Docker Compose 输出 */}
           {dockerComposeYaml && (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="flex items-center gap-2">
-                    <Check className="h-5 w-5 text-green-500" />
-                    Docker Compose 文件
+                    <Check className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                    {t("dockerComposeFile")}
                   </CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(dockerComposeYaml, setCopied)}
+                    onClick={() => copyToClipboard(dockerComposeYaml, "converted")}
                     className="flex items-center gap-2"
                   >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copied ? "已复制" : "复制"}
+                    {copiedTarget === "converted" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedTarget === "converted" ? t("copied") : t("copy")}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div ref={yamlRef} className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto">
+                <div className="max-w-full overflow-auto rounded-xl bg-[var(--md-sys-color-inverse-surface)] p-3 text-[var(--md-sys-color-inverse-on-surface)] sm:p-4">
                   <pre className="text-sm font-mono whitespace-pre">{dockerComposeYaml}</pre>
                 </div>
               </CardContent>
@@ -1376,143 +1420,141 @@ export default function DockerConverterPage() {
           )}
         </TabsContent>
 
-        {/* 生成器选项卡内容 */}
         <TabsContent value="generator" className="space-y-6">
-          {/* 基本配置 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                基本配置
+                {t("basicConfiguration")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="imageName">镜像名称 *</Label>
+                  <Label htmlFor="imageName">{t("imageName")} *</Label>
                   <Input
                     id="imageName"
                     value={imageName}
                     onChange={(e) => setImageName(e.target.value)}
                     placeholder="nginx:latest"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="containerName">容器名称</Label>
+                  <Label htmlFor="containerName">{t("containerName")}</Label>
                   <Input
                     id="containerName"
                     value={containerName}
                     onChange={(e) => setContainerName(e.target.value)}
-                    placeholder="my-container (可选)"
+                    placeholder={t("containerNamePlaceholder")}
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* 配置项管理 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
-                配置项管理
+                {t("configurationManagement")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* 配置项列表 */}
               {configItems.length > 0 && (
                 <div className="space-y-3">
                   {configItems.map((item) => renderConfigItemInput(item))}
                 </div>
               )}
 
-              {/* 添加配置项按钮 */}
               <div className="space-y-3">
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  添加配置项:
+                <div className="text-sm font-medium text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("addConfiguration")}:
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
                   <Button variant="outline" size="sm" onClick={() => addConfigItem("port")}>
-                    <Plus className="h-4 w-4 mr-1" /> 端口
+                    <Plus className="h-4 w-4 mr-1" /> {t("port")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => addConfigItem("volume")}>
-                    <Plus className="h-4 w-4 mr-1" /> 卷挂载
+                    <Plus className="h-4 w-4 mr-1" /> {t("volume")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => addConfigItem("env")}>
-                    <Plus className="h-4 w-4 mr-1" /> 环境变量
+                    <Plus className="h-4 w-4 mr-1" /> {t("environment")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => addConfigItem("restart")}>
-                    <Plus className="h-4 w-4 mr-1" /> 重启策略
+                    <Plus className="h-4 w-4 mr-1" /> {t("restartPolicy")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => addConfigItem("network")}>
-                    <Plus className="h-4 w-4 mr-1" /> 网络
+                    <Plus className="h-4 w-4 mr-1" /> {t("network")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => addConfigItem("memory")}>
-                    <Plus className="h-4 w-4 mr-1" /> 内存
+                    <Plus className="h-4 w-4 mr-1" /> {t("memory")}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => addConfigItem("cpu")}>
-                    <Plus className="h-4 w-4 mr-1" /> CPU
+                    <Plus className="h-4 w-4 mr-1" /> {t("cpu")}
                   </Button>
                 </div>
               </div>
 
-              <Button onClick={generateDockerCommands} className="w-full flex items-center gap-2">
+              <Button
+                onClick={generateDockerCommands}
+                disabled={!imageName.trim()}
+                className="flex w-full items-center gap-2"
+              >
                 <Zap className="h-4 w-4" />
-                生成 Docker 命令
+                {t("generateDockerCommands")}
               </Button>
             </CardContent>
           </Card>
 
-          {/* 生成的Docker命令输出 */}
           {generatedDockerRun && (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="flex items-center gap-2">
-                    <Check className="h-5 w-5 text-green-500" />
-                    Docker Run 命令
+                    <Check className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                    {t("dockerRunOutput")}
                   </CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(generatedDockerRun, setCopiedGenerated)}
+                    onClick={() => copyToClipboard(generatedDockerRun, "run")}
                     className="flex items-center gap-2"
                   >
-                    {copiedGenerated ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copiedGenerated ? "已复制" : "复制"}
+                    {copiedTarget === "run" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedTarget === "run" ? t("copied") : t("copy")}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto">
+                <div className="max-w-full overflow-auto rounded-xl bg-[var(--md-sys-color-inverse-surface)] p-3 text-[var(--md-sys-color-inverse-on-surface)] sm:p-4">
                   <pre className="text-sm font-mono whitespace-pre-wrap break-all">{generatedDockerRun}</pre>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* 生成的Docker Compose输出 */}
           {generatedDockerCompose && (
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="flex items-center gap-2">
-                    <Check className="h-5 w-5 text-green-500" />
-                    Docker Compose 文件
+                    <Check className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                    {t("dockerComposeFile")}
                   </CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(generatedDockerCompose, setCopiedGenerated)}
+                    onClick={() => copyToClipboard(generatedDockerCompose, "generatedCompose")}
                     className="flex items-center gap-2"
                   >
-                    {copiedGenerated ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copiedGenerated ? "已复制" : "复制"}
+                    {copiedTarget === "generatedCompose" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedTarget === "generatedCompose" ? t("copied") : t("copy")}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto">
+                <div className="max-w-full overflow-auto rounded-xl bg-[var(--md-sys-color-inverse-surface)] p-3 text-[var(--md-sys-color-inverse-on-surface)] sm:p-4">
                   <pre className="text-sm font-mono whitespace-pre">{generatedDockerCompose}</pre>
                 </div>
               </CardContent>

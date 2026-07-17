@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard } from "@/lib/clipboard"
+
 import { useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,6 +13,7 @@ import {
 } from "lucide-react"
 import { M3Chip } from "@/components/m3/chip"
 import { toUnicodeSentenceCase, toUnicodeTitleCase } from "@/lib/case-converter-tools"
+import { useTranslations } from "@/hooks/use-translations"
 
 type CaseType = 
   | 'uppercase' 
@@ -27,30 +30,30 @@ type CaseType =
 
 interface CaseOption {
   id: CaseType
-  name: string
   description: string
   icon: React.ReactNode
 }
 
+const CASE_OPTIONS: CaseOption[] = [
+  { id: "uppercase", description: "HELLO WORLD", icon: <CaseUpper className="h-4 w-4" /> },
+  { id: "lowercase", description: "hello world", icon: <CaseLower className="h-4 w-4" /> },
+  { id: "capitalize", description: "Hello world", icon: <CaseSensitive className="h-4 w-4" /> },
+  { id: "title", description: "Hello World", icon: <Type className="h-4 w-4" /> },
+  { id: "sentence", description: "Hello world. This is text.", icon: <Type className="h-4 w-4" /> },
+  { id: "toggle", description: "hELLO wORLD", icon: <ArrowRightLeft className="h-4 w-4" /> },
+  { id: "camel", description: "helloWorld", icon: <Type className="h-4 w-4" /> },
+  { id: "pascal", description: "HelloWorld", icon: <Type className="h-4 w-4" /> },
+  { id: "snake", description: "hello_world", icon: <Type className="h-4 w-4" /> },
+  { id: "kebab", description: "hello-world", icon: <Type className="h-4 w-4" /> },
+  { id: "constant", description: "HELLO_WORLD", icon: <Type className="h-4 w-4" /> },
+]
+
 export default function CaseConverterPage() {
   const { toast } = useToast()
+  const t = useTranslations("caseConverter")
   const [inputText, setInputText] = useState("")
   const [outputText, setOutputText] = useState("")
   const [selectedCase, setSelectedCase] = useState<CaseType>("uppercase")
-
-  const caseOptions: CaseOption[] = [
-    { id: 'uppercase', name: '全大写', description: 'HELLO WORLD', icon: <CaseUpper className="h-4 w-4" /> },
-    { id: 'lowercase', name: '全小写', description: 'hello world', icon: <CaseLower className="h-4 w-4" /> },
-    { id: 'capitalize', name: '首字母大写', description: 'Hello world', icon: <CaseSensitive className="h-4 w-4" /> },
-    { id: 'title', name: '标题格式', description: 'Hello World', icon: <Type className="h-4 w-4" /> },
-    { id: 'sentence', name: '句子格式', description: 'Hello world. This is text.', icon: <Type className="h-4 w-4" /> },
-    { id: 'toggle', name: '大小写反转', description: 'hELLO wORLD', icon: <ArrowRightLeft className="h-4 w-4" /> },
-    { id: 'camel', name: '驼峰命名', description: 'helloWorld', icon: <Type className="h-4 w-4" /> },
-    { id: 'pascal', name: '帕斯卡命名', description: 'HelloWorld', icon: <Type className="h-4 w-4" /> },
-    { id: 'snake', name: '蛇形命名', description: 'hello_world', icon: <Type className="h-4 w-4" /> },
-    { id: 'kebab', name: '短横线命名', description: 'hello-world', icon: <Type className="h-4 w-4" /> },
-    { id: 'constant', name: '常量命名', description: 'HELLO_WORLD', icon: <Type className="h-4 w-4" /> },
-  ]
 
   // 转换函数
   const convertCase = useCallback((text: string, caseType: CaseType): string => {
@@ -141,12 +144,12 @@ export default function CaseConverterPage() {
   const copyToClipboard = useCallback(async () => {
     if (!outputText) return
     try {
-      await navigator.clipboard.writeText(outputText)
-      toast({ title: "已复制", description: "结果已复制到剪贴板" })
+      if (!await copyTextToClipboard(outputText)) throw new Error("Clipboard unavailable")
+      toast({ title: t("copied"), description: t("copiedDescription") })
     } catch {
-      toast({ title: "复制失败", variant: "destructive" })
+      toast({ title: t("copyFailed"), variant: "destructive" })
     }
-  }, [outputText, toast])
+  }, [outputText, t, toast])
 
   // 清空
   const clearAll = useCallback(() => {
@@ -168,14 +171,14 @@ export default function CaseConverterPage() {
   }, [outputText, selectedCase, convertCase])
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-4xl">
+    <div className="container mx-auto max-w-4xl px-4 py-4 sm:py-6">
       {/* 页面标题 */}
       <div className="text-center space-y-4 mb-8">
         <h1 className="text-3xl font-bold text-[var(--md-sys-color-on-surface)]">
-          大小写转换工具
+          {t("title")}
         </h1>
         <p className="text-[var(--md-sys-color-on-surface-variant)] max-w-2xl mx-auto">
-          快速转换文本大小写，支持多种命名格式
+          {t("description")}
         </p>
       </div>
 
@@ -185,12 +188,12 @@ export default function CaseConverterPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-[var(--md-sys-color-on-surface)]">
               <Type className="h-5 w-5" />
-              转换类型
+              {t("conversionType")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {caseOptions.map((option) => (
+              {CASE_OPTIONS.map((option) => (
                 <M3Chip
                   key={option.id}
                   variant={selectedCase === option.id ? "filter" : "suggestion"}
@@ -200,13 +203,13 @@ export default function CaseConverterPage() {
                 >
                   <span className="flex items-center gap-1">
                     {option.icon}
-                    {option.name}
+                    {t(`options.${option.id}`)}
                   </span>
                 </M3Chip>
               ))}
             </div>
             <p className="mt-3 text-sm text-[var(--md-sys-color-on-surface-variant)]">
-              示例: {caseOptions.find(o => o.id === selectedCase)?.description}
+              {t("example")}: {CASE_OPTIONS.find((option) => option.id === selectedCase)?.description}
             </p>
           </CardContent>
         </Card>
@@ -214,63 +217,63 @@ export default function CaseConverterPage() {
         {/* 输入输出区域 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 输入 */}
-          <Card className="card-elevated">
+          <Card className="card-elevated min-w-0">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-[var(--md-sys-color-on-surface)]">输入文本</CardTitle>
-                <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-[var(--md-sys-color-on-surface)]">{t("inputText")}</CardTitle>
+                <div className="flex flex-wrap items-center gap-1">
                   <Button variant="ghost" size="sm" onClick={loadExample}>
                     <FileText className="h-4 w-4 mr-1" />
-                    示例
+                    {t("loadExample")}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={clearAll}>
                     <Trash2 className="h-4 w-4 mr-1" />
-                    清空
+                    {t("clear")}
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <Textarea
-                aria-label="输入文本"
-                placeholder="在此输入要转换的文本..."
+                aria-label={t("inputText")}
+                placeholder={t("inputPlaceholder")}
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 className="min-h-[200px] resize-none"
               />
               <div className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                字符数: {inputText.length}
+                {t("characterCount")}: {inputText.length}
               </div>
             </CardContent>
           </Card>
 
           {/* 输出 */}
-          <Card className="card-elevated">
+          <Card className="card-elevated min-w-0">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-[var(--md-sys-color-on-surface)]">转换结果</CardTitle>
-                <div className="flex gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-[var(--md-sys-color-on-surface)]">{t("result")}</CardTitle>
+                <div className="flex flex-wrap gap-1">
                   <Button variant="ghost" size="sm" onClick={swapText} disabled={!outputText}>
                     <ArrowRightLeft className="h-4 w-4 mr-1" />
-                    交换
+                    {t("swap")}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={copyToClipboard} disabled={!outputText}>
                     <Copy className="h-4 w-4 mr-1" />
-                    复制
+                    {t("copy")}
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <Textarea
-                aria-label="转换结果"
+                aria-label={t("result")}
                 value={outputText}
                 readOnly
                 className="min-h-[200px] resize-none bg-[var(--md-sys-color-surface-container-low)]"
-                placeholder="转换结果将显示在这里..."
+                placeholder={t("outputPlaceholder")}
               />
               <div className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                字符数: {outputText.length}
+                {t("characterCount")}: {outputText.length}
               </div>
             </CardContent>
           </Card>

@@ -14,6 +14,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { useObjectUrl } from "@/hooks/use-object-url"
+import { useTranslations } from "@/hooks/use-translations"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
+import { copyTextToClipboard } from "@/lib/clipboard"
+import { createClientId } from "@/lib/client-id"
+import {
+  coordinateFromManualInput,
+  coordinateFromRelativePosition,
+  type ImageCoordinate as Coordinate,
+  type ImageCoordinateFormat as CoordinateFormat,
+} from "@/lib/image-coordinate-tools"
 import {
   Upload,
   Trash2,
@@ -30,49 +45,55 @@ import {
   Plus,
 } from "lucide-react"
 
-type CoordinateFormat = "pixel" | "percent" | "permille" | "permyriad"
-
-interface Coordinate {
-  x: number
-  y: number
-  pixelX: number
-  pixelY: number
-}
-
 interface SavedPoint {
-  id: number
+  id: string
   coord: Coordinate
   color: string
 }
 
+const POINT_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"]
+const COORDINATE_CARD_CLASS =
+  "min-w-0 rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm"
+const COORDINATE_ICON_CLASS = "text-[var(--md-sys-color-primary)]"
+
 export default function ImageCoordinatesPage() {
-  // 图片状态
-  const [imageUrl, setImageUrl] = useState<string>("")
+  const t = useTranslations("imageCoordinates")
+  const [sourceFile, setSourceFile] = useState<File | null>(null)
+  const imageUrl = useObjectUrl(sourceFile)
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
-  const [fileName, setFileName] = useState<string>("")
+  const [uploadError, setUploadError] = useState("")
   
-  // 坐标状态
   const [currentCoord, setCurrentCoord] = useState<Coordinate | null>(null)
   const [savedPoints, setSavedPoints] = useState<SavedPoint[]>([])
   const [coordinateFormat, setCoordinateFormat] = useState<CoordinateFormat>("percent")
   
-  // UI 状态
   const [isDragging, setIsDragging] = useState(false)
   const [zoom, setZoom] = useState(100)
   const [showCrosshair, setShowCrosshair] = useState(true)
   const [showGrid, setShowGrid] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [manualError, setManualError] = useState("")
   
-  // 手动输入坐标
   const [manualX, setManualX] = useState("")
   const [manualY, setManualY] = useState("")
   const [manualFormat, setManualFormat] = useState<CoordinateFormat>("percent")
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const pointerFrameRef = useRef<number | null>(null)
+  const pendingPointerRef = useRef<{ clientX: number; clientY: number } | null>(null)
+  const pointerStartRef = useRef<{ pointerId: number; clientX: number; clientY: number } | null>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 格式化坐标
+  useEffect(() => () => {
+    if (pointerFrameRef.current !== null) {
+      cancelAnimationFrame(pointerFrameRef.current)
+    }
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current)
+    }
+  }, [])
+
   const formatCoordinate = useCallback((coord: Coordinate, format: CoordinateFormat): string => {
     switch (format) {
       case "pixel":
@@ -88,38 +109,25 @@ export default function ImageCoordinatesPage() {
     }
   }, [])
 
-  // 获取格式标签
-  const getFormatLabel = (format: CoordinateFormat): string => {
-    switch (format) {
-      case "pixel": return "像素"
-      case "percent": return "百分比 (%)"
-      case "permille": return "千分比 (‰)"
-      case "permyriad": return "万分比 (‱)"
-      default: return "百分比"
-    }
-  }
-
-  // 处理文件上传
   const handleFileUpload = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) return
-    
-    setFileName(file.name)
+    if (!file.type.startsWith("image/")) {
+      setUploadError(t("invalidImage"))
+      return
+    }
+    if (!isFileWithinLimit(file, FILE_SIZE_LIMITS.coordinateImage)) {
+      setUploadError(`${t("imageTooLarge")} ${formatFileSizeLimit(FILE_SIZE_LIMITS.coordinateImage)}`)
+      return
+    }
+
+    setSourceFile(file)
+    setImageSize(null)
+    setUploadError("")
     setSavedPoints([])
     setCurrentCoord(null)
-    
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        setImageSize({ width: img.width, height: img.height })
-        setImageUrl(e.target?.result as string)
-      }
-      img.src = e.target?.result as string
-    }
-    reader.readAsDataURL(file)
-  }, [])
+    setManualError("")
+    setZoom(100)
+  }, [t])
 
-  // 拖放处理
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
@@ -127,165 +135,168 @@ export default function ImageCoordinatesPage() {
     if (file) handleFileUpload(file)
   }, [handleFileUpload])
 
-  // 清除图片
   const clearImage = useCallback(() => {
-    setImageUrl("")
+    setSourceFile(null)
     setImageSize(null)
-    setFileName("")
+    setUploadError("")
     setSavedPoints([])
     setCurrentCoord(null)
+    setManualError("")
+    setZoom(100)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
   }, [])
 
-  // 处理鼠标移动
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
-    if (!imageRef.current || !imageSize) return
-    
-    const rect = imageRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
-    // 计算相对于显示尺寸的百分比
-    const percentX = (x / rect.width) * 100
-    const percentY = (y / rect.height) * 100
-    
-    // 计算实际像素坐标
-    const pixelX = Math.round((x / rect.width) * imageSize.width)
-    const pixelY = Math.round((y / rect.height) * imageSize.height)
-    
-    setCurrentCoord({
-      x: percentX,
-      y: percentY,
-      pixelX: Math.max(0, Math.min(pixelX, imageSize.width - 1)),
-      pixelY: Math.max(0, Math.min(pixelY, imageSize.height - 1))
-    })
+  const getCoordinateAt = useCallback((clientX: number, clientY: number): Coordinate | null => {
+    const image = imageRef.current
+    if (!image || !imageSize) return null
+
+    const rect = image.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return null
+
+    return coordinateFromRelativePosition(
+      clientX - rect.left,
+      clientY - rect.top,
+      rect.width,
+      rect.height,
+      imageSize,
+    )
   }, [imageSize])
 
-  // 处理鼠标离开
-  const handleMouseLeave = useCallback(() => {
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLImageElement>) => {
+    if (e.pointerType !== "mouse" && e.pointerType !== "pen") return
+    pendingPointerRef.current = { clientX: e.clientX, clientY: e.clientY }
+    if (pointerFrameRef.current !== null) return
+
+    pointerFrameRef.current = requestAnimationFrame(() => {
+      pointerFrameRef.current = null
+      const pointer = pendingPointerRef.current
+      if (!pointer) return
+      setCurrentCoord(getCoordinateAt(pointer.clientX, pointer.clientY))
+    })
+  }, [getCoordinateAt])
+
+  const handlePointerLeave = useCallback((event: React.PointerEvent<HTMLImageElement>) => {
+    if (event.pointerType !== "mouse" && event.pointerType !== "pen") return
+    pendingPointerRef.current = null
+    if (pointerFrameRef.current !== null) {
+      cancelAnimationFrame(pointerFrameRef.current)
+      pointerFrameRef.current = null
+    }
     setCurrentCoord(null)
   }, [])
 
-  // 保存当前坐标点
-  const saveCurrentPoint = useCallback(() => {
-    if (!currentCoord) return
-    
-    const colors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"]
+  const showCopiedFeedback = useCallback((key: string) => {
+    setCopiedKey(key)
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    copyTimeoutRef.current = setTimeout(() => setCopiedKey(null), 1500)
+  }, [])
+
+  const savePoint = useCallback((coord: Coordinate) => {
     const newPoint: SavedPoint = {
-      id: Date.now(),
-      coord: { ...currentCoord },
-      color: colors[savedPoints.length % colors.length]
+      id: createClientId("coordinate"),
+      coord: { ...coord },
+      color: POINT_COLORS[savedPoints.length % POINT_COLORS.length],
     }
     setSavedPoints(prev => [...prev, newPoint])
-  }, [currentCoord, savedPoints.length])
+  }, [savedPoints.length])
 
-  // 删除保存的点
-  const removePoint = useCallback((id: number) => {
+  const saveCurrentPoint = useCallback(() => {
+    if (!currentCoord) return
+    savePoint(currentCoord)
+  }, [currentCoord, savePoint])
+
+  const removePoint = useCallback((id: string) => {
     setSavedPoints(prev => prev.filter(p => p.id !== id))
   }, [])
 
-  // 复制坐标
-  const copyCoordinate = useCallback(async (coord: Coordinate) => {
+  const copyCoordinate = useCallback(async (coord: Coordinate, key: string) => {
     const text = formatCoordinate(coord, coordinateFormat)
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }, [coordinateFormat, formatCoordinate])
+    if (await copyTextToClipboard(text)) showCopiedFeedback(key)
+  }, [coordinateFormat, formatCoordinate, showCopiedFeedback])
 
-  // 复制所有保存的点
   const copyAllPoints = useCallback(async () => {
     if (savedPoints.length === 0) return
     const text = savedPoints
-      .map((p, i) => `点${i + 1}: ${formatCoordinate(p.coord, coordinateFormat)}`)
+      .map((p, i) => `${t("point")} ${i + 1}: ${formatCoordinate(p.coord, coordinateFormat)}`)
       .join("\n")
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }, [savedPoints, coordinateFormat, formatCoordinate])
+    if (await copyTextToClipboard(text)) showCopiedFeedback("all")
+  }, [savedPoints, coordinateFormat, formatCoordinate, showCopiedFeedback, t])
 
-  // 处理点击保存
-  const handleImageClick = useCallback(() => {
-    saveCurrentPoint()
-  }, [saveCurrentPoint])
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLImageElement>) => {
+    pointerStartRef.current = {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    }
+  }, [])
 
-  // 手动添加坐标点
+  const openFilePicker = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+      fileInputRef.current.click()
+    }
+  }, [])
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLImageElement>) => {
+    const start = pointerStartRef.current
+    pointerStartRef.current = null
+    if (!start || start.pointerId !== event.pointerId) return
+    if (Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) > 8) return
+
+    const coord = getCoordinateAt(event.clientX, event.clientY)
+    if (!coord) return
+    setCurrentCoord(coord)
+    savePoint(coord)
+  }, [getCoordinateAt, savePoint])
+
   const addManualPoint = useCallback(() => {
     if (!imageSize) return
     
     const x = parseFloat(manualX)
     const y = parseFloat(manualY)
     
-    if (isNaN(x) || isNaN(y)) return
-    
-    let percentX: number
-    let percentY: number
-    let pixelX: number
-    let pixelY: number
-    
-    switch (manualFormat) {
-      case "pixel":
-        pixelX = Math.max(0, Math.min(x, imageSize.width - 1))
-        pixelY = Math.max(0, Math.min(y, imageSize.height - 1))
-        percentX = (pixelX / imageSize.width) * 100
-        percentY = (pixelY / imageSize.height) * 100
-        break
-      case "percent":
-        percentX = Math.max(0, Math.min(x, 100))
-        percentY = Math.max(0, Math.min(y, 100))
-        pixelX = Math.round((percentX / 100) * imageSize.width)
-        pixelY = Math.round((percentY / 100) * imageSize.height)
-        break
-      case "permille":
-        percentX = Math.max(0, Math.min(x / 10, 100))
-        percentY = Math.max(0, Math.min(y / 10, 100))
-        pixelX = Math.round((percentX / 100) * imageSize.width)
-        pixelY = Math.round((percentY / 100) * imageSize.height)
-        break
-      case "permyriad":
-        percentX = Math.max(0, Math.min(x / 100, 100))
-        percentY = Math.max(0, Math.min(y / 100, 100))
-        pixelX = Math.round((percentX / 100) * imageSize.width)
-        pixelY = Math.round((percentY / 100) * imageSize.height)
-        break
-      default:
-        return
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      setManualError(t("invalidCoordinates"))
+      return
     }
     
-    const colors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"]
-    const newPoint: SavedPoint = {
-      id: Date.now(),
-      coord: { x: percentX, y: percentY, pixelX, pixelY },
-      color: colors[savedPoints.length % colors.length]
+    const coord = coordinateFromManualInput(x, y, manualFormat, imageSize)
+    if (!coord) {
+      setManualError(t("invalidCoordinates"))
+      return
     }
-    setSavedPoints(prev => [...prev, newPoint])
+
+    savePoint(coord)
     setManualX("")
     setManualY("")
-  }, [manualX, manualY, manualFormat, imageSize, savedPoints.length])
+    setManualError("")
+  }, [manualX, manualY, manualFormat, imageSize, savePoint, t])
 
   return (
-    <div className="container mx-auto px-4 py-4 max-w-7xl">
-      {/* 页面标题 */}
-      <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center justify-center gap-2">
-          <Crosshair className="h-8 w-8 text-blue-600" />
-          图片坐标拾取
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          上传图片，获取鼠标位置的精确坐标
-        </p>
+    <div className="container mx-auto max-w-7xl overflow-x-clip px-3 py-4 sm:px-4 sm:py-6">
+      <div className="mb-5 flex items-center gap-3 sm:mb-6 sm:justify-center">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+          <Crosshair className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 sm:text-center">
+          <h1 className="text-xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+            {t("title")}
+          </h1>
+          <p className="mt-0.5 text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)] sm:text-sm">
+            {t("description")}
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* 左侧控制面板 */}
-        <div className="lg:col-span-1 space-y-4">
-          {/* 文件上传 */}
-          <Card>
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-4 lg:gap-6">
+        <aside className="contents lg:order-1 lg:col-span-1 lg:block">
+          <Card className={`order-1 ${COORDINATE_CARD_CLASS}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Upload className="h-4 w-4 text-blue-600" />
-                上传图片
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Upload className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />
+                {t("uploadImage")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -293,53 +304,67 @@ export default function ImageCoordinatesPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                aria-label={t("chooseImage")}
+                onChange={(event) => event.target.files?.[0] && handleFileUpload(event.target.files[0])}
                 className="hidden"
               />
               <div
-                onClick={() => {
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = ""
+                role="button"
+                tabIndex={0}
+                aria-label={t("dropzoneAria")}
+                onClick={openFilePicker}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    openFilePicker()
                   }
-                  fileInputRef.current?.click()
                 }}
                 onDrop={handleDrop}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setIsDragging(true)
+                }}
                 onDragLeave={() => setIsDragging(false)}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                className={`cursor-pointer rounded-xl border-2 border-dashed p-5 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
                   isDragging
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                    : "border-gray-300 dark:border-gray-700 hover:border-blue-400"
+                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/45"
+                    : "border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)]"
                 }`}
               >
-                <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  点击或拖放图片
+                <Upload className="mx-auto mb-2 h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]" />
+                <p className="text-sm text-[var(--md-sys-color-on-surface)]">{t("dropzone")}</p>
+                <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("maximum")} {formatFileSizeLimit(FILE_SIZE_LIMITS.coordinateImage)}
                 </p>
               </div>
-              
+
+              {uploadError && (
+                <p className="mt-3 rounded-lg bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
+                  {uploadError}
+                </p>
+              )}
+
               {imageSize && (
                 <div className="mt-3 space-y-2">
-                  <p className="text-sm truncate" title={fileName}>{fileName}</p>
-                  <p className="text-xs text-gray-500">
-                    {imageSize.width} × {imageSize.height} 像素
+                  <p className="truncate text-sm" title={sourceFile?.name}>{sourceFile?.name}</p>
+                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    {imageSize.width} × {imageSize.height} {t("pixels")}
                   </p>
-                  <Button variant="outline" size="sm" onClick={clearImage} className="w-full">
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    清除
+                  <Button variant="outline" size="sm" onClick={clearImage} className="w-full rounded-full">
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    {t("clearImage")}
                   </Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-
-          {/* 坐标格式 */}
-          <Card>
+          <div className="order-3 space-y-4 lg:mt-4">
+          <Card className={COORDINATE_CARD_CLASS}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Ruler className="h-4 w-4 text-blue-600" />
-                坐标格式
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Ruler className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />
+                {t("coordinateFormat")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -348,33 +373,32 @@ export default function ImageCoordinatesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pixel">像素 (px)</SelectItem>
-                  <SelectItem value="percent">百分比 (%)</SelectItem>
-                  <SelectItem value="permille">千分比 (‰)</SelectItem>
-                  <SelectItem value="permyriad">万分比 (‱)</SelectItem>
+                  <SelectItem value="pixel">{t("pixelFormat")}</SelectItem>
+                  <SelectItem value="percent">{t("percentFormat")}</SelectItem>
+                  <SelectItem value="permille">{t("permilleFormat")}</SelectItem>
+                  <SelectItem value="permyriad">{t("permyriadFormat")}</SelectItem>
                 </SelectContent>
               </Select>
               
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>• 像素: 实际图片像素位置</p>
-                <p>• 百分比: 0-100%</p>
-                <p>• 千分比: 0-1000‰</p>
-                <p>• 万分比: 0-10000‱</p>
+              <div className="space-y-1 text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">
+                <p>• {t("pixelDescription")}</p>
+                <p>• {t("percentDescription")}</p>
+                <p>• {t("permilleDescription")}</p>
+                <p>• {t("permyriadDescription")}</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* 显示设置 */}
-          <Card>
+          <Card className={COORDINATE_CARD_CLASS}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Grid3X3 className="h-4 w-4 text-blue-600" />
-                显示设置
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Grid3X3 className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />
+                {t("displaySettings")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="show-crosshair">显示十字线</Label>
+                <Label htmlFor="show-crosshair">{t("showCrosshair")}</Label>
                 <Switch
                   id="show-crosshair"
                   checked={showCrosshair}
@@ -382,7 +406,7 @@ export default function ImageCoordinatesPage() {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="show-grid">显示网格</Label>
+                <Label htmlFor="show-grid">{t("showGrid")}</Label>
                 <Switch
                   id="show-grid"
                   checked={showGrid}
@@ -390,19 +414,32 @@ export default function ImageCoordinatesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm">缩放: {zoom}%</Label>
+                <Label className="text-sm">{t("zoom")}: {zoom}%</Label>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={t("zoomOut")}
+                    className="h-10 w-10 rounded-full p-0"
                     onClick={() => setZoom(Math.max(25, zoom - 25))}
                   >
                     <ZoomOut className="h-4 w-4" />
                   </Button>
-                  <div className="flex-1 text-center text-sm">{zoom}%</div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-10 flex-1 rounded-full text-sm"
+                    onClick={() => setZoom(100)}
+                    title={t("resetZoom")}
+                  >
+                    {zoom}%
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={t("zoomIn")}
+                    className="h-10 w-10 rounded-full p-0"
                     onClick={() => setZoom(Math.min(200, zoom + 25))}
                   >
                     <ZoomIn className="h-4 w-4" />
@@ -412,13 +449,12 @@ export default function ImageCoordinatesPage() {
             </CardContent>
           </Card>
 
-          {/* 手动输入坐标 */}
           {imageSize && (
-            <Card>
+            <Card className={COORDINATE_CARD_CLASS}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Plus className="h-4 w-4 text-blue-600" />
-                  手动添加坐标
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Plus className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />
+                  {t("manualAdd")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -427,10 +463,10 @@ export default function ImageCoordinatesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pixel">像素 (px)</SelectItem>
-                    <SelectItem value="percent">百分比 (%)</SelectItem>
-                    <SelectItem value="permille">千分比 (‰)</SelectItem>
-                    <SelectItem value="permyriad">万分比 (‱)</SelectItem>
+                    <SelectItem value="pixel">{t("pixelFormat")}</SelectItem>
+                    <SelectItem value="percent">{t("percentFormat")}</SelectItem>
+                    <SelectItem value="permille">{t("permilleFormat")}</SelectItem>
+                    <SelectItem value="permyriad">{t("permyriadFormat")}</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -441,7 +477,12 @@ export default function ImageCoordinatesPage() {
                       type="number"
                       placeholder="X"
                       value={manualX}
-                      onChange={(e) => setManualX(e.target.value)}
+                      min={0}
+                      step="any"
+                      onChange={(event) => {
+                        setManualX(event.target.value)
+                        setManualError("")
+                      }}
                       onKeyDown={(e) => e.key === "Enter" && addManualPoint()}
                     />
                   </div>
@@ -451,7 +492,12 @@ export default function ImageCoordinatesPage() {
                       type="number"
                       placeholder="Y"
                       value={manualY}
-                      onChange={(e) => setManualY(e.target.value)}
+                      min={0}
+                      step="any"
+                      onChange={(event) => {
+                        setManualY(event.target.value)
+                        setManualError("")
+                      }}
                       onKeyDown={(e) => e.key === "Enter" && addManualPoint()}
                     />
                   </div>
@@ -463,44 +509,49 @@ export default function ImageCoordinatesPage() {
                   disabled={!manualX || !manualY}
                 >
                   <MapPin className="h-4 w-4 mr-1" />
-                  添加标记点
+                  {t("addMarker")}
                 </Button>
-                
-                <div className="text-xs text-gray-500">
-                  {manualFormat === "pixel" && <p>范围: 0-{imageSize.width}, 0-{imageSize.height}</p>}
-                  {manualFormat === "percent" && <p>范围: 0-100</p>}
-                  {manualFormat === "permille" && <p>范围: 0-1000</p>}
-                  {manualFormat === "permyriad" && <p>范围: 0-10000</p>}
+
+                {manualError && (
+                  <p className="rounded-xl bg-[var(--md-sys-color-error-container)] px-3 py-2 text-xs text-[var(--md-sys-color-on-error-container)]">
+                    {manualError}
+                  </p>
+                )}
+
+                <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  {manualFormat === "pixel" && <p>{t("range")}: 0-{imageSize.width - 1}, 0-{imageSize.height - 1}</p>}
+                  {manualFormat === "percent" && <p>{t("range")}: 0-100</p>}
+                  {manualFormat === "permille" && <p>{t("range")}: 0-1000</p>}
+                  {manualFormat === "permyriad" && <p>{t("range")}: 0-10000</p>}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* 当前坐标 */}
           {currentCoord && (
-            <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+            <Card className="min-w-0 rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-primary)]/30 bg-[var(--md-sys-color-primary-container)]/35">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <MousePointer2 className="h-4 w-4 text-blue-600" />
-                  当前位置
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MousePointer2 className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />
+                  {t("currentPosition")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-2xl font-mono font-bold text-blue-700 dark:text-blue-400">
+                <div className="break-words font-mono text-xl font-bold text-[var(--md-sys-color-on-primary-container)] [overflow-wrap:anywhere] sm:text-2xl">
                   {formatCoordinate(currentCoord, coordinateFormat)}
                 </div>
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p>像素: ({currentCoord.pixelX}, {currentCoord.pixelY})</p>
-                  <p>百分比: ({currentCoord.x.toFixed(2)}%, {currentCoord.y.toFixed(2)}%)</p>
+                <div className="space-y-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  <p>{t("pixels")}: ({currentCoord.pixelX}, {currentCoord.pixelY})</p>
+                  <p>{t("percentage")}: ({currentCoord.x.toFixed(2)}%, {currentCoord.y.toFixed(2)}%)</p>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    onClick={() => copyCoordinate(currentCoord)}
+                    onClick={() => copyCoordinate(currentCoord, "current")}
                     className="flex-1"
                   >
-                    {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                    复制
+                    {copiedKey === "current" ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+                    {copiedKey === "current" ? t("copied") : t("copy")}
                   </Button>
                   <Button
                     size="sm"
@@ -509,173 +560,196 @@ export default function ImageCoordinatesPage() {
                     className="flex-1"
                   >
                     <MapPin className="h-4 w-4 mr-1" />
-                    保存
+                    {t("save")}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
-        </div>
+          </div>
+        </aside>
 
-        {/* 右侧预览区域 */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* 图片预览 */}
-          <Card className="min-h-[500px]">
+        <main className="order-2 min-w-0 space-y-4 lg:col-span-3">
+          <Card className={`min-h-[20rem] sm:min-h-[31.25rem] ${COORDINATE_CARD_CLASS}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center justify-between">
+              <CardTitle className="flex flex-col gap-2 text-base sm:flex-row sm:items-center sm:justify-between">
                 <span className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-blue-600" />
-                  图片预览
+                  <ImageIcon className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />
+                  {t("preview")}
                 </span>
                 {imageSize && (
-                  <Badge variant="outline">
-                    点击图片保存坐标点
+                  <Badge variant="outline" className="w-fit whitespace-normal text-left">
+                    {t("tapHint")}
                   </Badge>
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0">
               {!imageUrl ? (
-                <div className="flex flex-col items-center justify-center h-[400px] text-gray-400">
-                  <ImageIcon className="h-16 w-16 mb-4" />
-                  <p>请上传图片</p>
-                </div>
-              ) : (
-                <div 
-                  ref={containerRef}
-                  className="relative overflow-auto max-h-[600px] scrollbar-m3"
+                <button
+                  type="button"
+                  onClick={openFilePicker}
+                  className="flex h-[15rem] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:border-[var(--md-sys-color-primary)] sm:h-[25rem]"
                 >
-                  <div 
-                    className="relative inline-block"
-                    style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
-                  >
-                    {/* 网格覆盖层 */}
-                    {showGrid && (
-                      <div 
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          backgroundImage: `
-                            linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
-                          `,
-                          backgroundSize: "10% 10%"
-                        }}
-                      />
-                    )}
-                    
-                    {/* 图片 */}
-                    <img
-                      ref={imageRef}
-                      src={imageUrl}
-                      alt="Preview"
-                      className="max-w-none cursor-crosshair"
-                      onMouseMove={handleMouseMove}
-                      onMouseLeave={handleMouseLeave}
-                      onClick={handleImageClick}
-                      draggable={false}
-                    />
-                    
-                    {/* 十字线 */}
-                    {showCrosshair && currentCoord && imageRef.current && (
-                      <>
-                        <div
-                          className="absolute pointer-events-none bg-red-500"
-                          style={{
-                            left: `${currentCoord.x}%`,
-                            top: 0,
-                            width: "1px",
-                            height: "100%",
-                            opacity: 0.7
-                          }}
-                        />
-                        <div
-                          className="absolute pointer-events-none bg-red-500"
-                          style={{
-                            left: 0,
-                            top: `${currentCoord.y}%`,
-                            width: "100%",
-                            height: "1px",
-                            opacity: 0.7
-                          }}
-                        />
-                      </>
-                    )}
-                    
-                    {/* 保存的点 */}
-                    {savedPoints.map((point) => (
-                      <div
-                        key={point.id}
-                        className="absolute pointer-events-none"
-                        style={{
-                          left: `${point.coord.x}%`,
-                          top: `${point.coord.y}%`,
-                          transform: "translate(-50%, -50%)"
-                        }}
+                  <ImageIcon className="mb-4 h-14 w-14" />
+                  <span>{t("uploadPrompt")}</span>
+                  <span className="mt-1 text-xs">{t("uploadPromptHint")}</span>
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  {currentCoord && (
+                    <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl bg-[var(--md-sys-color-surface-container-low)] px-3 py-2 sm:hidden">
+                      <code className="min-w-0 flex-1 truncate text-xs font-semibold" title={formatCoordinate(currentCoord, coordinateFormat)}>
+                        {formatCoordinate(currentCoord, coordinateFormat)}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0 rounded-full"
+                        aria-label={t("copyCurrentAria")}
+                        onClick={() => copyCoordinate(currentCoord, "preview-current")}
                       >
+                        {copiedKey === "preview-current" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  )}
+                  <div
+                    className="scrollbar-m3 relative max-h-[min(70dvh,37.5rem)] min-w-0 touch-pan-x touch-pan-y overflow-auto overscroll-contain rounded-xl bg-[var(--md-sys-color-surface-container-low)] [-webkit-overflow-scrolling:touch]"
+                    tabIndex={0}
+                    aria-label={t("imageCanvasAria")}
+                  >
+                    <div
+                      className="relative inline-block max-w-full origin-top-left"
+                      style={{ transform: `scale(${zoom / 100})` }}
+                    >
+                      {showGrid && (
                         <div
-                          className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
-                          style={{ backgroundColor: point.color }}
+                          className="pointer-events-none absolute inset-0"
+                          style={{
+                            backgroundImage: `
+                              linear-gradient(color-mix(in srgb, var(--md-sys-color-outline) 28%, transparent) 1px, transparent 1px),
+                              linear-gradient(90deg, color-mix(in srgb, var(--md-sys-color-outline) 28%, transparent) 1px, transparent 1px)
+                            `,
+                            backgroundSize: "10% 10%",
+                          }}
                         />
-                      </div>
-                    ))}
+                      )}
+
+                      <img
+                        ref={imageRef}
+                        src={imageUrl}
+                        alt={t("previewAlt")}
+                        className="block h-auto max-w-full cursor-crosshair select-none"
+                        onLoad={(event) => {
+                          setImageSize({
+                            width: event.currentTarget.naturalWidth,
+                            height: event.currentTarget.naturalHeight,
+                          })
+                        }}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerCancel={() => {
+                          pointerStartRef.current = null
+                        }}
+                        onPointerLeave={handlePointerLeave}
+                        draggable={false}
+                      />
+
+                      {showCrosshair && currentCoord && imageRef.current && (
+                        <>
+                          <div
+                            className="pointer-events-none absolute top-0 h-full w-px bg-[var(--md-sys-color-error)] opacity-70"
+                            style={{ left: `${currentCoord.x}%` }}
+                          />
+                          <div
+                            className="pointer-events-none absolute left-0 h-px w-full bg-[var(--md-sys-color-error)] opacity-70"
+                            style={{ top: `${currentCoord.y}%` }}
+                          />
+                        </>
+                      )}
+
+                      {savedPoints.map((point, index) => (
+                        <div
+                          key={point.id}
+                          className="pointer-events-none absolute"
+                          style={{
+                            left: `${point.coord.x}%`,
+                            top: `${point.coord.y}%`,
+                            transform: "translate(-50%, -50%)",
+                          }}
+                        >
+                          <div
+                            className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--md-sys-color-surface)] text-[9px] font-bold text-white shadow-lg"
+                            style={{ backgroundColor: point.color }}
+                          >
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* 保存的坐标点 */}
           {savedPoints.length > 0 && (
-            <Card>
+            <Card className={COORDINATE_CARD_CLASS}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-blue-600" />
-                    保存的坐标点 ({savedPoints.length})
-                  </span>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={copyAllPoints}>
-                      <Copy className="h-4 w-4 mr-1" />
-                      复制全部
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <MapPin className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />
+                    {t("savedPoints")} ({savedPoints.length})
+                  </CardTitle>
+                  <div className="grid grid-cols-2 gap-2 sm:flex">
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={copyAllPoints}>
+                      {copiedKey === "all" ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+                      {copiedKey === "all" ? t("copied") : t("copyAll")}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setSavedPoints([])}>
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      清空
+                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => setSavedPoints([])}>
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      {t("clearAll")}
                     </Button>
                   </div>
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {savedPoints.map((point, index) => (
                     <div
                       key={point.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                      className="flex min-w-0 items-center gap-3 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-3"
                     >
                       <div
                         className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: point.color }}
                       />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">点 {index + 1}</p>
-                        <p className="text-xs text-gray-500 font-mono truncate">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{t("point")} {index + 1}</p>
+                        <p className="truncate font-mono text-xs text-[var(--md-sys-color-on-surface-variant)]">
                           {formatCoordinate(point.coord, coordinateFormat)}
                         </p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex shrink-0 gap-1">
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          onClick={() => copyCoordinate(point.coord)}
+                          className="h-10 w-10 rounded-full"
+                          aria-label={`${t("copy")} ${t("point")} ${index + 1}`}
+                          onClick={() => copyCoordinate(point.coord, point.id)}
                         >
-                          <Copy className="h-3 w-3" />
+                          {copiedKey === point.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
+                          className="h-10 w-10 rounded-full"
+                          aria-label={`${t("delete")} ${t("point")} ${index + 1}`}
                           onClick={() => removePoint(point.id)}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -684,7 +758,7 @@ export default function ImageCoordinatesPage() {
               </CardContent>
             </Card>
           )}
-        </div>
+        </main>
       </div>
     </div>
   )

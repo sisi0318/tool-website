@@ -5,6 +5,7 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { formatCanvasValue } from "@/lib/canvas/format-value"
 import { useTranslations } from "@/hooks/use-translations"
+import { copyTextToClipboard } from "@/lib/clipboard"
 import { Check, Copy, LoaderCircle, Play, RotateCcw, Trash2, X } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { ConfigInput } from "./nodes/ConfigInput"
@@ -17,7 +18,7 @@ function OutputField({ label, value }: { label: string; value: unknown }) {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(text)
+      if (!await copyTextToClipboard(text)) throw new Error("Clipboard unavailable")
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {

@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import type React from "react"
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -486,7 +488,8 @@ export default function JceTool() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const copyToClipboard = useCallback((text: string, key = "main") => {
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) return
       setCopied((p) => ({ ...p, [key]: true }))
       setTimeout(() => setCopied((p) => ({ ...p, [key]: false })), 2000)
     })
@@ -617,12 +620,19 @@ export default function JceTool() {
   useEffect(() => {
     if (!autoFormat) return
     const src = mode === "decode" ? inputData : jsonInput
-    if (src && src.length < 10000) {
-      parseJce()
-    } else if (!src) {
+    if (!src) {
       setOutputData("")
       setDetailedOutput("")
+      return
     }
+
+    if (src.length >= 10000) return
+
+    const timeout = window.setTimeout(() => {
+      void parseJce()
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
   }, [inputData, jsonInput, mode, autoFormat, parseJce])
 
   return (

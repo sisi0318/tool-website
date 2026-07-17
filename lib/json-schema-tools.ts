@@ -1,4 +1,4 @@
-import Ajv, { type ErrorObject } from "ajv"
+import Ajv, { type ErrorObject, type ValidateFunction } from "ajv"
 import addFormats from "ajv-formats"
 
 export type JsonSchemaOperation = "validate" | "infer"
@@ -9,6 +9,11 @@ export interface JsonSchemaValidationResult {
   valid: boolean
   errors: Array<{ path: string; message: string; keyword: string; params: Record<string, unknown> }>
 }
+
+const ajv = new Ajv({ allErrors: true, strict: false, allowUnionTypes: true })
+addFormats(ajv, { mode: "fast" })
+const validatorCache = new Map<string, ValidateFunction>()
+const MAX_VALIDATOR_CACHE_SIZE = 50
 
 function parseJson(value: unknown, label: string): unknown {
   if (typeof value !== "string") return value
@@ -79,9 +84,16 @@ export function validateJsonSchema(dataInput: unknown, schemaInput: unknown): Js
   const schema = parseJson(schemaInput, "Schema") as object
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) throw new Error("Schema must be a JSON object")
 
-  const ajv = new Ajv({ allErrors: true, strict: false, allowUnionTypes: true })
-  addFormats(ajv, { mode: "fast" })
-  const validate = ajv.compile(schema)
+  const key = schemaKey(schema as JsonSchema)
+  let validate = validatorCache.get(key)
+  if (!validate) {
+    validate = ajv.compile(schema)
+    if (validatorCache.size >= MAX_VALIDATOR_CACHE_SIZE) {
+      const oldestKey = validatorCache.keys().next().value
+      if (oldestKey) validatorCache.delete(oldestKey)
+    }
+    validatorCache.set(key, validate)
+  }
   const valid = Boolean(validate(data))
   return { valid, errors: normalizeErrors(validate.errors) }
 }

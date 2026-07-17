@@ -12,6 +12,13 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { withObjectUrl } from "@/lib/object-url"
+import { createClientId } from "@/lib/client-id"
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
 import { 
   Clipboard, Download, Upload, X, ImageIcon, 
   FileImage, Eye, Trash2, RefreshCw, AlertCircle,
@@ -20,13 +27,123 @@ import {
 
 interface ProcessedImage {
   id: string
-  file: File
-  dataUrl: string
-  previewUrl: string // 添加预览图片URL
+  name: string
+  mimeType: string
+  previewUrl: string
   base64: string
   dimensions: { width: number; height: number }
   size: number
   format: string
+}
+
+type OutputFormat = "base64" | "dataUrl" | "css" | "html"
+
+const SUPPORTED_FORMATS = {
+  "image/jpeg": { ext: "jpg", name: "JPEG" },
+  "image/png": { ext: "png", name: "PNG" },
+  "image/gif": { ext: "gif", name: "GIF" },
+  "image/webp": { ext: "webp", name: "WebP" },
+  "image/bmp": { ext: "bmp", name: "BMP" },
+  "image/svg+xml": { ext: "svg", name: "SVG" },
+} as const
+
+function getImageDataUrl(image: Pick<ProcessedImage, "mimeType" | "base64">): string {
+  return `data:${image.mimeType};base64,${image.base64}`
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : ""
+      const separatorIndex = result.indexOf(",")
+      if (separatorIndex === -1) {
+        reject(new Error("文件读取失败"))
+        return
+      }
+      resolve(result.slice(separatorIndex + 1))
+    }
+    reader.onerror = () => reject(new Error("文件读取失败"))
+    reader.readAsDataURL(file)
+  })
+}
+
+function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return withObjectUrl(file, (url) => new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+    image.onerror = () => reject(new Error("图片尺寸获取失败"))
+    image.src = url
+  }))
+}
+
+function generateImageOutput(
+  image: ProcessedImage,
+  outputFormat: OutputFormat,
+  includePrefix: boolean,
+): string {
+  const dataUrl = getImageDataUrl(image)
+  switch (outputFormat) {
+    case "base64":
+      return includePrefix ? dataUrl : image.base64
+    case "dataUrl":
+      return dataUrl
+    case "css":
+      return `background-image: url(${dataUrl});`
+    case "html":
+      return `<img src="${dataUrl}" alt="${image.name}" />`
+    default:
+      return image.base64
+  }
+}
+
+function VirtualizedTextArea({
+  value,
+  isLarge = false,
+  virtualizeText,
+  showFullBase64,
+  onToggleFull,
+}: {
+  value: string
+  isLarge?: boolean
+  virtualizeText: boolean
+  showFullBase64: boolean
+  onToggleFull: () => void
+}) {
+  const displayValue = useMemo(() => {
+    if (!virtualizeText || !isLarge || value.length < 50000 || showFullBase64) {
+      return value
+    }
+
+    const start = value.slice(0, 1000)
+    const end = value.slice(-1000)
+    const hiddenLength = value.length - 2000
+    return `${start}\n\n... [隐藏 ${hiddenLength.toLocaleString()} 个字符] ...\n\n${end}`
+  }, [value, isLarge, showFullBase64, virtualizeText])
+
+  const shouldShowToggle = virtualizeText && isLarge && value.length >= 50000
+
+  return (
+    <div className="space-y-2">
+      <Textarea
+        value={displayValue}
+        readOnly
+        className="font-mono text-xs h-[300px] resize-none"
+      />
+      {shouldShowToggle && (
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>
+            {showFullBase64
+              ? "显示完整内容"
+              : `仅显示部分内容 (${displayValue.length.toLocaleString()}/${value.length.toLocaleString()} 字符)`}
+          </span>
+          <Button variant="ghost" size="sm" onClick={onToggleFull}>
+            {showFullBase64 ? "收起" : "显示全部"}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function ImageToBase64() {
@@ -39,7 +156,7 @@ export default function ImageToBase64() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [includePrefix, setIncludePrefix] = useState(false)
-  const [outputFormat, setOutputFormat] = useState<'base64' | 'dataUrl' | 'css' | 'html'>('base64')
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("base64")
   const [copied, setCopied] = useState<Record<string, boolean>>({})
   
   // 性能优化相关状态
@@ -47,6 +164,7 @@ export default function ImageToBase64() {
   const [previewQuality, setPreviewQuality] = useState(0.7) // 预览图片质量
   const [virtualizeText, setVirtualizeText] = useState(true) // 是否虚拟化长文本
   const [processingProgress, setProcessingProgress] = useState(0)
+  const [showOriginalPreview, setShowOriginalPreview] = useState(false)
 
   // Base64 转图片相关状态
   const [base64Input, setBase64Input] = useState("")
@@ -96,37 +214,25 @@ export default function ImageToBase64() {
     }))
   }, [previewQuality])
 
-  // 支持的图片格式
-  const supportedFormats = {
-    'image/jpeg': { ext: 'jpg', name: 'JPEG' },
-    'image/png': { ext: 'png', name: 'PNG' },
-    'image/gif': { ext: 'gif', name: 'GIF' },
-    'image/webp': { ext: 'webp', name: 'WebP' },
-    'image/bmp': { ext: 'bmp', name: 'BMP' },
-    'image/svg+xml': { ext: 'svg', name: 'SVG' }
-  }
-
   // 处理单个文件（优化版本）
   const processFile = useCallback(async (file: File, onProgress?: (progress: number) => void): Promise<ProcessedImage | null> => {
     try {
       onProgress?.(10)
       
       // 验证文件类型
-      if (!Object.keys(supportedFormats).includes(file.type)) {
+      if (!Object.keys(SUPPORTED_FORMATS).includes(file.type)) {
         toast({
           title: "不支持的文件格式",
-          description: `支持的格式：${Object.values(supportedFormats).map(f => f.name).join(', ')}`,
+          description: `支持的格式：${Object.values(SUPPORTED_FORMATS).map(f => f.name).join(", ")}`,
           variant: "destructive",
         })
         return null
       }
 
-      // 验证文件大小（最大100MB）
-      const maxSize = 100 * 1024 * 1024
-      if (file.size > maxSize) {
+      if (!isFileWithinLimit(file, FILE_SIZE_LIMITS.imageBase64)) {
         toast({
           title: "文件过大",
-          description: "文件大小不能超过100MB",
+          description: `文件大小不能超过 ${formatFileSizeLimit(FILE_SIZE_LIMITS.imageBase64)}`,
           variant: "destructive",
         })
         return null
@@ -134,48 +240,24 @@ export default function ImageToBase64() {
 
       onProgress?.(30)
 
-      // 并行处理：同时生成预览图片和读取原始文件
-      const [dataUrl, previewUrl] = await Promise.all([
-        // 读取原始文件
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = (e) => resolve(e.target?.result as string)
-          reader.onerror = () => reject(new Error('文件读取失败'))
-          reader.readAsDataURL(file)
-        }),
-        // 生成预览图片
-        createPreviewImage(file).catch(() => {
-          // 如果预览生成失败，使用原图
-          return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = (e) => resolve(e.target?.result as string)
-            reader.onerror = () => reject(new Error('预览图片生成失败'))
-            reader.readAsDataURL(file)
-          })
-        })
+      // 并行读取编码、生成小尺寸预览并获取尺寸；只把 Base64 主体保存在状态中。
+      const [base64, previewUrl, dimensions] = await Promise.all([
+        readFileAsBase64(file),
+        createPreviewImage(file).catch(() => ""),
+        getImageDimensions(file),
       ])
-
-      onProgress?.(70)
-
-      // 获取图片尺寸
-      const dimensions = await new Promise<{ width: number, height: number }>((resolve, reject) => {
-        const img = new Image()
-        img.onload = () => resolve({ width: img.width, height: img.height })
-        img.onerror = () => reject(new Error('图片尺寸获取失败'))
-        img.src = dataUrl
-      })
 
       onProgress?.(90)
 
       const processedImage: ProcessedImage = {
-        id: Math.random().toString(36).substr(2, 9),
-        file,
-        dataUrl,
+        id: createClientId("image"),
+        name: file.name,
+        mimeType: file.type,
         previewUrl,
-        base64: dataUrl.split(',')[1],
+        base64,
         dimensions,
         size: file.size,
-        format: supportedFormats[file.type as keyof typeof supportedFormats]?.name || file.type,
+        format: SUPPORTED_FORMATS[file.type as keyof typeof SUPPORTED_FORMATS]?.name || file.type,
       }
 
       onProgress?.(100)
@@ -216,6 +298,7 @@ export default function ImageToBase64() {
       if (processedImages.length > 0) {
         setImages(prev => [...prev, ...processedImages])
         setSelectedImageId(processedImages[0].id)
+        setShowOriginalPreview(false)
         
         toast({
           title: "处理完成",
@@ -269,6 +352,7 @@ export default function ImageToBase64() {
       if (processedImages.length > 0) {
         setImages(prev => [...prev, ...processedImages])
         setSelectedImageId(processedImages[0].id)
+        setShowOriginalPreview(false)
       }
     } finally {
       setIsProcessing(false)
@@ -282,6 +366,7 @@ export default function ImageToBase64() {
     if (selectedImageId === id) {
       const remaining = images.filter(img => img.id !== id)
       setSelectedImageId(remaining.length > 0 ? remaining[0].id : null)
+      setShowOriginalPreview(false)
     }
   }
 
@@ -289,6 +374,7 @@ export default function ImageToBase64() {
   const clearAllImages = () => {
     setImages([])
     setSelectedImageId(null)
+    setShowOriginalPreview(false)
   }
 
   // 处理Base64输入解码
@@ -331,7 +417,7 @@ export default function ImageToBase64() {
         
         // 确定图片格式
         const mimeType = dataUrl.match(/data:([^;]+)/)?.[1] || 'image/png'
-        const format = supportedFormats[mimeType as keyof typeof supportedFormats]?.name || mimeType
+        const format = SUPPORTED_FORMATS[mimeType as keyof typeof SUPPORTED_FORMATS]?.name || mimeType
 
         setDecodedImage({
           dataUrl,
@@ -361,7 +447,7 @@ export default function ImageToBase64() {
   // 复制到剪贴板
   const copyToClipboard = async (text: string, type: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      if (!await writeClipboardText(text)) throw new Error("Clipboard unavailable")
       setCopied(prev => ({ ...prev, [type]: true }))
       setTimeout(() => {
         setCopied(prev => ({ ...prev, [type]: false }))
@@ -377,24 +463,6 @@ export default function ImageToBase64() {
         description: "无法复制到剪贴板",
         variant: "destructive",
       })
-    }
-  }
-
-  // 生成不同格式的输出
-  const generateOutput = (image: ProcessedImage): string => {
-    const base64Data = includePrefix ? image.dataUrl : image.base64
-    
-    switch (outputFormat) {
-      case 'base64':
-        return includePrefix ? image.dataUrl : image.base64
-      case 'dataUrl':
-        return image.dataUrl
-      case 'css':
-        return `background-image: url(${image.dataUrl});`
-      case 'html':
-        return `<img src="${image.dataUrl}" alt="${image.file.name}" />`
-      default:
-        return base64Data
     }
   }
 
@@ -422,54 +490,21 @@ export default function ImageToBase64() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  // 虚拟化Base64文本显示（优化大文本性能）
-  const VirtualizedTextArea = ({ value, isLarge = false }: { value: string, isLarge?: boolean }) => {
-    const displayValue = useMemo(() => {
-      if (!virtualizeText || !isLarge || value.length < 50000) {
-        return value
-      }
-      
-      if (showFullBase64) {
-        return value
-      }
-      
-      // 只显示前面和后面的部分
-      const start = value.substring(0, 1000)
-      const end = value.substring(value.length - 1000)
-      const hiddenLength = value.length - 2000
-      
-      return `${start}\n\n... [隐藏 ${hiddenLength.toLocaleString()} 个字符] ...\n\n${end}`
-    }, [value, isLarge, showFullBase64, virtualizeText])
-
-    const shouldShowToggle = virtualizeText && isLarge && value.length >= 50000
-
-    return (
-      <div className="space-y-2">
-        <Textarea
-          value={displayValue}
-          readOnly
-          className="font-mono text-xs h-[300px] resize-none"
-        />
-        {shouldShowToggle && (
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>
-              {showFullBase64 ? '显示完整内容' : `仅显示部分内容 (${displayValue.length.toLocaleString()}/${value.length.toLocaleString()} 字符)`}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowFullBase64(!showFullBase64)}
-            >
-              {showFullBase64 ? '收起' : '显示全部'}
-            </Button>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   // 选中的图片
-  const selectedImage = images.find(img => img.id === selectedImageId)
+  const selectedImage = useMemo(
+    () => images.find((image) => image.id === selectedImageId),
+    [images, selectedImageId],
+  )
+  const selectedImageDataUrl = useMemo(
+    () => selectedImage ? getImageDataUrl(selectedImage) : "",
+    [selectedImage],
+  )
+  const selectedOutput = useMemo(
+    () => selectedImage
+      ? generateImageOutput(selectedImage, outputFormat, includePrefix)
+      : "",
+    [includePrefix, outputFormat, selectedImage],
+  )
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-6xl">
@@ -622,10 +657,10 @@ export default function ImageToBase64() {
                           拖拽图片到此处或点击上传
                         </p>
                         <p className="text-sm text-gray-500 mt-2">
-                          支持 {Object.values(supportedFormats).map(f => f.name).join(', ')} 格式
+                          支持 {Object.values(SUPPORTED_FORMATS).map(f => f.name).join(", ")} 格式
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
-                          单个文件最大 50MB，无压缩原图质量
+                          单个文件最大 {formatFileSizeLimit(FILE_SIZE_LIMITS.imageBase64)}，无压缩原图质量
                         </p>
                       </div>
                       <Button variant="outline" className="mt-4">
@@ -649,16 +684,19 @@ export default function ImageToBase64() {
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                               : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                           }`}
-                          onClick={() => setSelectedImageId(image.id)}
+                          onClick={() => {
+                            setSelectedImageId(image.id)
+                            setShowOriginalPreview(false)
+                          }}
                         >
                           <img
-                            src={image.previewUrl}
-                            alt={image.file.name}
+                            src={image.previewUrl || getImageDataUrl(image)}
+                            alt={image.name}
                             className="w-12 h-12 object-cover rounded"
                             loading="lazy"
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate">{image.file.name}</div>
+                            <div className="font-medium text-sm truncate">{image.name}</div>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="secondary" className="text-xs">
                                 {image.format}
@@ -729,7 +767,7 @@ export default function ImageToBase64() {
 
                     {/* 图片信息 */}
                     <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg space-y-2">
-                      <div className="font-medium text-sm">{selectedImage.file.name}</div>
+                      <div className="font-medium text-sm">{selectedImage.name}</div>
                       <div className="grid grid-cols-3 gap-2 text-xs text-gray-500">
                         <div>格式: {selectedImage.format}</div>
                         <div>尺寸: {selectedImage.dimensions.width}×{selectedImage.dimensions.height}</div>
@@ -754,7 +792,7 @@ export default function ImageToBase64() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => copyToClipboard(generateOutput(selectedImage), selectedImage.id)}
+                            onClick={() => copyToClipboard(selectedOutput, selectedImage.id)}
                           >
                             <Clipboard className="h-4 w-4 mr-2" />
                             {copied[selectedImage.id] ? "已复制" : "复制"}
@@ -762,8 +800,11 @@ export default function ImageToBase64() {
                         </div>
                       </div>
                       <VirtualizedTextArea 
-                        value={generateOutput(selectedImage)} 
+                        value={selectedOutput}
                         isLarge={selectedImage.base64.length > 50000}
+                        virtualizeText={virtualizeText}
+                        showFullBase64={showFullBase64}
+                        onToggleFull={() => setShowFullBase64((current) => !current)}
                       />
                       {selectedImage.base64.length > 50000 && (
                         <div className="text-xs text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
@@ -779,22 +820,18 @@ export default function ImageToBase64() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            const img = document.querySelector('#preview-img') as HTMLImageElement
-                            if (img) {
-                              img.src = img.src === selectedImage.previewUrl ? selectedImage.dataUrl : selectedImage.previewUrl
-                            }
-                          }}
+                          onClick={() => setShowOriginalPreview((current) => !current)}
                         >
                           <Maximize2 className="h-4 w-4 mr-1" />
-                          原图
+                          {showOriginalPreview ? "缩略图" : "原图"}
                         </Button>
                       </div>
                       <div className="border rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex justify-center">
                         <img
-                          id="preview-img"
-                          src={selectedImage.previewUrl}
-                          alt={selectedImage.file.name}
+                          src={showOriginalPreview || !selectedImage.previewUrl
+                            ? selectedImageDataUrl
+                            : selectedImage.previewUrl}
+                          alt={selectedImage.name}
                           className="max-h-[200px] object-contain cursor-pointer"
                           loading="lazy"
                         />

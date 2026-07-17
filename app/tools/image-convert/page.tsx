@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
 import { convertImageFile, type ImageOutputFormat } from "@/lib/image-convert"
+import { mapWithConcurrency } from "@/lib/async-pool"
+import { createClientId } from "@/lib/client-id"
 import {
   createObjectUrl,
   downloadBlob,
@@ -81,7 +83,7 @@ export default function ImageConvertPage() {
     const available = Math.max(0, MAX_FILES - itemsRef.current.length)
     if (images.length > available) setNotice(t("fileLimit"))
     const next = images.slice(0, available).map((file) => ({
-      id: crypto.randomUUID(),
+      id: createClientId("convert"),
       source: file,
       sourceUrl: createObjectUrl(file),
       status: "ready" as const,
@@ -112,7 +114,7 @@ export default function ImageConvertPage() {
     setNotice("")
 
     try {
-      for (const item of itemsToConvert) {
+      await mapWithConcurrency(itemsToConvert, 3, async (item) => {
         if (!mountedRef.current) return
 
         updateItems((current) => current.map((entry) => (
@@ -154,7 +156,7 @@ export default function ImageConvertPage() {
               : entry
           )))
         }
-      }
+      })
     } finally {
       if (mountedRef.current) {
         setProcessing(false)

@@ -1,254 +1,466 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { useObjectUrl } from "@/hooks/use-object-url"
-import { downloadBlob } from "@/lib/object-url"
 import {
-  Upload,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Crop,
   Download,
-  RotateCw,
-  RotateCcw,
   FlipHorizontal,
   FlipVertical,
-  Crop,
-  Move,
+  Image as ImageIcon,
+  Loader2,
+  Redo,
+  RefreshCw,
+  RotateCcw,
+  RotateCw,
+  Settings,
+  Trash2,
+  Undo,
+  Upload,
+  X,
   ZoomIn,
   ZoomOut,
-  Undo,
-  Redo,
-  Trash2,
-  Image as ImageIcon,
-  Settings,
-  ChevronUp,
-  ChevronDown,
-  Maximize2,
-  Square,
-  RectangleHorizontal,
-  Circle,
-  Check,
-  X,
-  RefreshCw,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useObjectUrl } from "@/hooks/use-object-url"
+import { useTranslations } from "@/hooks/use-translations"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
+import {
+  DEFAULT_IMAGE_EDITOR_STATE,
+  buildImageFilter,
+  getImageRenderGeometry,
+  getImageRenderScale,
+  isFullImageCrop,
+  normalizeImageCrop,
+  normalizeImageRotation,
+  safeEditedImageBase,
+  type ImageCropRect,
+  type ImageEditorState,
+} from "@/lib/image-editor-tools"
+import { downloadBlob } from "@/lib/object-url"
 
-interface ImageState {
-  rotation: number
-  flipH: boolean
-  flipV: boolean
-  cropX: number
-  cropY: number
-  cropWidth: number
-  cropHeight: number
-  cropApplied: boolean
-  brightness: number
-  contrast: number
-  saturation: number
-  blur: number
-  grayscale: boolean
-  sepia: boolean
-  invert: boolean
-}
+const PREVIEW_MAX_DIMENSION = 1600
+const PREVIEW_MAX_PIXELS = 2_500_000
+const MAX_EXPORT_DIMENSION = 16_384
+const MAX_EXPORT_PIXELS = 64_000_000
+const HISTORY_LIMIT = 50
+const CANVAS_ERROR = "image-editor-canvas-unavailable"
+const ENCODING_ERROR = "image-editor-encoding-failed"
+const M3_CARD_CLASS =
+  "min-w-0 rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm"
+const M3_ICON_CLASS = "text-[var(--md-sys-color-primary)]"
 
-interface HistoryItem {
-  state: ImageState
-  label: string
-}
-
-const defaultState: ImageState = {
-  rotation: 0,
-  flipH: false,
-  flipV: false,
-  cropX: 0,
-  cropY: 0,
-  cropWidth: 100,
-  cropHeight: 100,
-  cropApplied: false,
-  brightness: 100,
-  contrast: 100,
-  saturation: 100,
-  blur: 0,
-  grayscale: false,
-  sepia: false,
-  invert: false,
-}
-
-// 预设裁剪比例
 const cropPresets = [
-  { label: "自由", value: "free", icon: Move },
-  { label: "1:1", value: "1:1", icon: Square },
-  { label: "4:3", value: "4:3", icon: RectangleHorizontal },
-  { label: "16:9", value: "16:9", icon: RectangleHorizontal },
-  { label: "3:2", value: "3:2", icon: RectangleHorizontal },
-  { label: "2:3", value: "2:3", icon: RectangleHorizontal },
-  { label: "9:16", value: "9:16", icon: RectangleHorizontal },
-]
+  { value: "free", labelKey: "cropFree", ratio: null },
+  { value: "1:1", labelKey: "cropSquare", ratio: 1 },
+  { value: "4:3", labelKey: "cropFourThree", ratio: 4 / 3 },
+  { value: "16:9", labelKey: "cropSixteenNine", ratio: 16 / 9 },
+  { value: "3:2", labelKey: "cropThreeTwo", ratio: 3 / 2 },
+  { value: "2:3", labelKey: "cropTwoThree", ratio: 2 / 3 },
+  { value: "9:16", labelKey: "cropNineSixteen", ratio: 9 / 16 },
+] as const
+
+const numericFilters = [
+  {
+    key: "brightness",
+    labelKey: "brightness",
+    minimum: 0,
+    maximum: 200,
+    step: 1,
+    unit: "%",
+  },
+  {
+    key: "contrast",
+    labelKey: "contrast",
+    minimum: 0,
+    maximum: 200,
+    step: 1,
+    unit: "%",
+  },
+  {
+    key: "saturation",
+    labelKey: "saturation",
+    minimum: 0,
+    maximum: 200,
+    step: 1,
+    unit: "%",
+  },
+  {
+    key: "blur",
+    labelKey: "blur",
+    minimum: 0,
+    maximum: 20,
+    step: 0.5,
+    unit: "px",
+  },
+] as const
+
+const booleanFilters = [
+  { key: "grayscale", labelKey: "grayscale" },
+  { key: "sepia", labelKey: "sepia" },
+  { key: "invert", labelKey: "invert" },
+] as const
+
+function getCanvasContext(canvas: HTMLCanvasElement) {
+  const context = canvas.getContext("2d")
+  if (!context) throw new Error(CANVAS_ERROR)
+  return context
+}
+
+function renderEditedCanvas(
+  canvas: HTMLCanvasElement,
+  image: HTMLImageElement,
+  state: ImageEditorState,
+  scale: number,
+  opaqueBackground: boolean,
+) {
+  const geometry = getImageRenderGeometry(
+    image.naturalWidth,
+    image.naturalHeight,
+    state,
+  )
+  canvas.width = Math.max(1, Math.round(geometry.outputWidth * scale))
+  canvas.height = Math.max(1, Math.round(geometry.outputHeight * scale))
+  const context = getCanvasContext(canvas)
+
+  if (opaqueBackground) {
+    context.fillStyle = "white"
+    context.fillRect(0, 0, canvas.width, canvas.height)
+  }
+
+  context.save()
+  context.translate(canvas.width / 2, canvas.height / 2)
+  context.scale(scale, scale)
+  context.rotate((geometry.rotation * Math.PI) / 180)
+  context.scale(state.flipHorizontal ? -1 : 1, state.flipVertical ? -1 : 1)
+  context.filter = buildImageFilter(state)
+  context.drawImage(
+    image,
+    geometry.crop.x,
+    geometry.crop.y,
+    geometry.crop.width,
+    geometry.crop.height,
+    -geometry.crop.width / 2,
+    -geometry.crop.height / 2,
+    geometry.crop.width,
+    geometry.crop.height,
+  )
+  context.restore()
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  mimeType: string,
+  quality?: number,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error(ENCODING_ERROR))
+      },
+      mimeType,
+      quality,
+    )
+  })
+}
 
 export default function ImageEditorPage() {
-  // 图片状态
-  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null)
+  const t = useTranslations("imageEditor")
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const imageUrl = useObjectUrl(sourceFile)
-  const [fileName, setFileName] = useState<string>("")
-  const [imageState, setImageState] = useState<ImageState>(defaultState)
-  const imageStateRef = useRef<ImageState>(defaultState)
-  
-  // 历史记录
-  const [history, setHistory] = useState<HistoryItem[]>([])
+  const [imageMeta, setImageMeta] = useState<{
+    width: number
+    height: number
+  } | null>(null)
+  const [imageState, setImageState] = useState<ImageEditorState>(
+    DEFAULT_IMAGE_EDITOR_STATE,
+  )
+  const [history, setHistory] = useState<ImageEditorState[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  
-  // UI 状态
   const [activeTab, setActiveTab] = useState("transform")
   const [showSettings, setShowSettings] = useState(false)
   const [cropMode, setCropMode] = useState(false)
   const [cropPreset, setCropPreset] = useState("free")
+  const [cropBox, setCropBox] = useState<ImageCropRect>({
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+  })
   const [outputFormat, setOutputFormat] = useState("png")
   const [outputQuality, setOutputQuality] = useState(92)
   const [isDragging, setIsDragging] = useState(false)
   const [zoom, setZoom] = useState(100)
-  
-  // 裁剪框状态
-  const [cropBox, setCropBox] = useState({ x: 0, y: 0, width: 100, height: 100 })
-  const [isCropping, setIsCropping] = useState(false)
-  const [cropStart, setCropStart] = useState({ x: 0, y: 0 })
-  
+  const [isExporting, setIsExporting] = useState(false)
+  const [error, setError] = useState("")
+
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const previewRef = useRef<HTMLDivElement>(null)
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
+  const originalImageRef = useRef<HTMLImageElement | null>(null)
+  const imageStateRef = useRef<ImageEditorState>(DEFAULT_IMAGE_EDITOR_STATE)
+  const historyRef = useRef<ImageEditorState[]>([])
+  const historyIndexRef = useRef(-1)
+  const filterFrameRef = useRef<number | null>(null)
+  const pendingFilterRef = useRef<{
+    key: keyof ImageEditorState
+    value: number | boolean
+  } | null>(null)
+  const cropPointerRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+  } | null>(null)
+  const exportIdRef = useRef(0)
 
-  useEffect(() => {
-    imageStateRef.current = imageState
-  }, [imageState])
+  const outputGeometry = useMemo(
+    () =>
+      imageMeta
+        ? getImageRenderGeometry(imageMeta.width, imageMeta.height, imageState)
+        : null,
+    [imageMeta, imageState],
+  )
 
-  // 添加历史记录
-  const addToHistory = useCallback((newState: ImageState, label: string) => {
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1)
-      newHistory.push({ state: newState, label })
-      return newHistory.slice(-50) // 最多保留50条
-    })
-    setHistoryIndex(prev => Math.min(prev + 1, 49))
-  }, [historyIndex])
+  const previewCanvasSize = useMemo(() => {
+    if (!imageMeta) return null
+    const width = cropMode
+      ? imageMeta.width
+      : outputGeometry?.outputWidth ?? imageMeta.width
+    const height = cropMode
+      ? imageMeta.height
+      : outputGeometry?.outputHeight ?? imageMeta.height
+    const scale = getImageRenderScale(
+      width,
+      height,
+      PREVIEW_MAX_DIMENSION,
+      PREVIEW_MAX_PIXELS,
+    )
+    return {
+      width: Math.max(1, Math.round(width * scale)),
+      height: Math.max(1, Math.round(height * scale)),
+      scale,
+    }
+  }, [cropMode, imageMeta, outputGeometry])
 
-  // 撤销
+  const commitState = useCallback((nextState: ImageEditorState) => {
+    imageStateRef.current = nextState
+    setImageState(nextState)
+    const nextHistory = [
+      ...historyRef.current.slice(0, historyIndexRef.current + 1),
+      nextState,
+    ].slice(-HISTORY_LIMIT)
+    historyRef.current = nextHistory
+    historyIndexRef.current = nextHistory.length - 1
+    setHistory(nextHistory)
+    setHistoryIndex(nextHistory.length - 1)
+  }, [])
+
+  const restoreHistoryState = useCallback((index: number) => {
+    const snapshot = historyRef.current[index]
+    if (!snapshot) return
+    historyIndexRef.current = index
+    imageStateRef.current = snapshot
+    setHistoryIndex(index)
+    setImageState(snapshot)
+    setCropMode(false)
+    if (originalImageRef.current) {
+      setCropBox(
+        snapshot.crop ?? {
+          x: 0,
+          y: 0,
+          width: originalImageRef.current.naturalWidth,
+          height: originalImageRef.current.naturalHeight,
+        },
+      )
+    }
+  }, [])
+
   const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      setHistoryIndex(prev => prev - 1)
-      setImageState(history[historyIndex - 1].state)
-    }
-  }, [history, historyIndex])
+    restoreHistoryState(historyIndexRef.current - 1)
+  }, [restoreHistoryState])
 
-  // 重做
   const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev + 1)
-      setImageState(history[historyIndex + 1].state)
-    }
-  }, [history, historyIndex])
+    restoreHistoryState(historyIndexRef.current + 1)
+  }, [restoreHistoryState])
+
+  useEffect(
+    () => () => {
+      exportIdRef.current += 1
+      if (filterFrameRef.current !== null) cancelAnimationFrame(filterFrameRef.current)
+    },
+    [],
+  )
 
   useEffect(() => {
-    if (!imageUrl) return
+    if (!imageUrl) {
+      originalImageRef.current = null
+      setImageMeta(null)
+      return
+    }
 
     let active = true
-    const img = new Image()
-
-    img.onload = () => {
+    const image = new Image()
+    image.onload = () => {
       if (!active) return
-      setOriginalImage(img)
-      setImageState(defaultState)
-      setCropBox({ x: 0, y: 0, width: img.width, height: img.height })
-      setHistory([{ state: defaultState, label: "原始图片" }])
+      const initialState = { ...DEFAULT_IMAGE_EDITOR_STATE }
+      originalImageRef.current = image
+      imageStateRef.current = initialState
+      historyRef.current = [initialState]
+      historyIndexRef.current = 0
+      setImageMeta({ width: image.naturalWidth, height: image.naturalHeight })
+      setImageState(initialState)
+      setHistory([initialState])
       setHistoryIndex(0)
+      setCropBox({
+        x: 0,
+        y: 0,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      })
+      setCropMode(false)
       setZoom(100)
+      setError("")
     }
-    img.onerror = () => {
+    image.onerror = () => {
       if (!active) return
-      setOriginalImage(null)
-      setSourceFile(null)
-      setFileName("")
+      originalImageRef.current = null
+      setImageMeta(null)
+      setError(t("loadFailed"))
     }
-    img.src = imageUrl
+    image.src = imageUrl
 
     return () => {
       active = false
-      img.onload = null
-      img.onerror = null
+      image.src = ""
     }
-  }, [imageUrl])
+  }, [imageUrl, t])
 
-  // 处理文件上传
-  const handleFileUpload = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) return
+  const handleFileUpload = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setError(t("invalidImage"))
+        return
+      }
+      if (!isFileWithinLimit(file, FILE_SIZE_LIMITS.imageEditor)) {
+        setError(
+          t("imageTooLarge").replace(
+            "{size}",
+            formatFileSizeLimit(FILE_SIZE_LIMITS.imageEditor),
+          ),
+        )
+        return
+      }
 
-    setOriginalImage(null)
-    setFileName(file.name)
-    setSourceFile(file)
+      exportIdRef.current += 1
+      setIsExporting(false)
+      originalImageRef.current = null
+      setImageMeta(null)
+      setSourceFile(file)
+      setError("")
+    },
+    [t],
+  )
+
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLElement>) => {
+      event.preventDefault()
+      setIsDragging(false)
+      const file = event.dataTransfer.files[0]
+      if (file) handleFileUpload(file)
+    },
+    [handleFileUpload],
+  )
+
+  const clearImage = useCallback(() => {
+    exportIdRef.current += 1
+    originalImageRef.current = null
+    imageStateRef.current = DEFAULT_IMAGE_EDITOR_STATE
+    historyRef.current = []
+    historyIndexRef.current = -1
+    setSourceFile(null)
+    setImageMeta(null)
+    setImageState(DEFAULT_IMAGE_EDITOR_STATE)
+    setHistory([])
+    setHistoryIndex(-1)
+    setCropMode(false)
+    setIsExporting(false)
+    setError("")
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }, [])
 
-  // 拖放处理
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFileUpload(file)
-  }, [handleFileUpload])
+  const rotate = useCallback(
+    (degrees: number) => {
+      commitState({
+        ...imageStateRef.current,
+        rotation: normalizeImageRotation(imageStateRef.current.rotation + degrees),
+      })
+    },
+    [commitState],
+  )
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }, [])
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  // 旋转
-  const rotate = useCallback((degrees: number) => {
-    const newState = {
-      ...imageState,
-      rotation: (imageState.rotation + degrees + 360) % 360
-    }
-    setImageState(newState)
-    addToHistory(newState, `旋转 ${degrees > 0 ? '+' : ''}${degrees}°`)
-  }, [imageState, addToHistory])
-
-  // 水平镜像
   const flipHorizontal = useCallback(() => {
-    const newState = { ...imageState, flipH: !imageState.flipH }
-    setImageState(newState)
-    addToHistory(newState, imageState.flipH ? "取消水平镜像" : "水平镜像")
-  }, [imageState, addToHistory])
+    commitState({
+      ...imageStateRef.current,
+      flipHorizontal: !imageStateRef.current.flipHorizontal,
+    })
+  }, [commitState])
 
-  // 垂直镜像
   const flipVertical = useCallback(() => {
-    const newState = { ...imageState, flipV: !imageState.flipV }
-    setImageState(newState)
-    addToHistory(newState, imageState.flipV ? "取消垂直镜像" : "垂直镜像")
-  }, [imageState, addToHistory])
+    commitState({
+      ...imageStateRef.current,
+      flipVertical: !imageStateRef.current.flipVertical,
+    })
+  }, [commitState])
 
-  // 重置所有变换
   const resetTransform = useCallback(() => {
-    const newState = {
-      ...imageState,
+    commitState({
+      ...imageStateRef.current,
       rotation: 0,
-      flipH: false,
-      flipV: false,
+      flipHorizontal: false,
+      flipVertical: false,
+      crop: null,
+    })
+    if (originalImageRef.current) {
+      setCropBox({
+        x: 0,
+        y: 0,
+        width: originalImageRef.current.naturalWidth,
+        height: originalImageRef.current.naturalHeight,
+      })
     }
-    setImageState(newState)
-    addToHistory(newState, "重置变换")
-  }, [imageState, addToHistory])
+    setCropMode(false)
+  }, [commitState])
 
-  // 重置滤镜
   const resetFilters = useCallback(() => {
-    const newState = {
-      ...imageState,
+    commitState({
+      ...imageStateRef.current,
       brightness: 100,
       contrast: 100,
       saturation: 100,
@@ -256,254 +468,341 @@ export default function ImageEditorPage() {
       grayscale: false,
       sepia: false,
       invert: false,
-    }
-    setImageState(newState)
-    addToHistory(newState, "重置滤镜")
-  }, [imageState, addToHistory])
+    })
+  }, [commitState])
 
-  // 重置全部
   const resetAll = useCallback(() => {
-    if (!originalImage) return
-    setImageState(defaultState)
-    setCropBox({ x: 0, y: 0, width: originalImage.width, height: originalImage.height })
-    addToHistory(defaultState, "重置全部")
-  }, [originalImage, addToHistory])
+    if (!originalImageRef.current) return
+    commitState({ ...DEFAULT_IMAGE_EDITOR_STATE })
+    setCropBox({
+      x: 0,
+      y: 0,
+      width: originalImageRef.current.naturalWidth,
+      height: originalImageRef.current.naturalHeight,
+    })
+    setCropMode(false)
+    setZoom(100)
+  }, [commitState])
 
-  // 更新滤镜
-  const updateFilter = useCallback((key: keyof ImageState, value: number | boolean) => {
-    setImageState((current) => {
-      const nextState = { ...current, [key]: value }
-      imageStateRef.current = nextState
-      return nextState
+  const updateFilter = useCallback(
+    (key: keyof ImageEditorState, value: number | boolean) => {
+      pendingFilterRef.current = { key, value }
+      if (filterFrameRef.current !== null) return
+      filterFrameRef.current = requestAnimationFrame(() => {
+        filterFrameRef.current = null
+        const pending = pendingFilterRef.current
+        pendingFilterRef.current = null
+        if (!pending) return
+        const nextState = { ...imageStateRef.current, [pending.key]: pending.value }
+        imageStateRef.current = nextState
+        setImageState(nextState)
+      })
+    },
+    [],
+  )
+
+  const commitFilter = useCallback(
+    (key: keyof ImageEditorState, value: number | boolean) => {
+      if (filterFrameRef.current !== null) {
+        cancelAnimationFrame(filterFrameRef.current)
+        filterFrameRef.current = null
+      }
+      pendingFilterRef.current = null
+      commitState({ ...imageStateRef.current, [key]: value })
+    },
+    [commitState],
+  )
+
+  const startCrop = useCallback(() => {
+    const image = originalImageRef.current
+    if (!image) return
+    setCropBox(
+      imageStateRef.current.crop ?? {
+        x: 0,
+        y: 0,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      },
+    )
+    setCropPreset("free")
+    setCropMode(true)
+    requestAnimationFrame(() => {
+      previewCanvasRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
     })
   }, [])
 
-  // 滤镜变化完成时添加历史
-  const commitFilter = useCallback((stateKey: keyof ImageState, label: string, value: number | boolean) => {
-    const committedState = { ...imageStateRef.current, [stateKey]: value }
-    imageStateRef.current = committedState
-    setImageState(committedState)
-    addToHistory(committedState, `调整${label}`)
-  }, [addToHistory])
-
-
-  // 应用裁剪比例
-  const applyCropPreset = useCallback((preset: string) => {
-    if (!originalImage) return
-    setCropPreset(preset)
-    
-    if (preset === "free") return
-    
-    const [w, h] = preset.split(":").map(Number)
-    const ratio = w / h
-    const imgRatio = originalImage.width / originalImage.height
-    
-    let newWidth, newHeight
-    if (ratio > imgRatio) {
-      newWidth = originalImage.width
-      newHeight = originalImage.width / ratio
-    } else {
-      newHeight = originalImage.height
-      newWidth = originalImage.height * ratio
-    }
-    
+  const applyCropPreset = useCallback((presetValue: string) => {
+    const image = originalImageRef.current
+    if (!image) return
+    setCropPreset(presetValue)
+    const preset = cropPresets.find((item) => item.value === presetValue)
+    if (!preset?.ratio) return
+    const imageRatio = image.naturalWidth / image.naturalHeight
+    const width =
+      preset.ratio > imageRatio
+        ? image.naturalWidth
+        : image.naturalHeight * preset.ratio
+    const height =
+      preset.ratio > imageRatio
+        ? image.naturalWidth / preset.ratio
+        : image.naturalHeight
     setCropBox({
-      x: (originalImage.width - newWidth) / 2,
-      y: (originalImage.height - newHeight) / 2,
-      width: newWidth,
-      height: newHeight,
+      x: (image.naturalWidth - width) / 2,
+      y: (image.naturalHeight - height) / 2,
+      width,
+      height,
     })
-  }, [originalImage])
+  }, [])
 
-  // 确认裁剪
   const applyCrop = useCallback(() => {
-    if (!originalImage) return
-    
-    const newState = {
-      ...imageState,
-      cropX: cropBox.x,
-      cropY: cropBox.y,
-      cropWidth: cropBox.width,
-      cropHeight: cropBox.height,
-      cropApplied: true,
-    }
-    setImageState(newState)
-    addToHistory(newState, "裁剪图片")
+    const image = originalImageRef.current
+    if (!image) return
+    const normalized = normalizeImageCrop(
+      cropBox,
+      image.naturalWidth,
+      image.naturalHeight,
+    )
+    commitState({
+      ...imageStateRef.current,
+      crop: isFullImageCrop(normalized, image.naturalWidth, image.naturalHeight)
+        ? null
+        : normalized,
+    })
     setCropMode(false)
-  }, [originalImage, imageState, cropBox, addToHistory])
+  }, [commitState, cropBox])
 
-  // 取消裁剪
   const cancelCrop = useCallback(() => {
-    if (!originalImage) return
-    setCropBox({ x: 0, y: 0, width: originalImage.width, height: originalImage.height })
+    const image = originalImageRef.current
+    if (!image) return
+    setCropBox(
+      imageStateRef.current.crop ?? {
+        x: 0,
+        y: 0,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      },
+    )
     setCropMode(false)
-  }, [originalImage])
+  }, [])
 
-  // 生成 CSS 滤镜字符串
-  const getFilterString = useCallback(() => {
-    const filters = []
-    if (imageState.brightness !== 100) filters.push(`brightness(${imageState.brightness}%)`)
-    if (imageState.contrast !== 100) filters.push(`contrast(${imageState.contrast}%)`)
-    if (imageState.saturation !== 100) filters.push(`saturate(${imageState.saturation}%)`)
-    if (imageState.blur > 0) filters.push(`blur(${imageState.blur}px)`)
-    if (imageState.grayscale) filters.push("grayscale(100%)")
-    if (imageState.sepia) filters.push("sepia(100%)")
-    if (imageState.invert) filters.push("invert(100%)")
-    return filters.length > 0 ? filters.join(" ") : "none"
-  }, [imageState])
+  const cropPointFromEvent = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      const canvas = previewCanvasRef.current
+      if (!canvas || !imageMeta) return null
+      const rect = canvas.getBoundingClientRect()
+      return {
+        x: Math.min(
+          imageMeta.width,
+          Math.max(0, ((event.clientX - rect.left) / rect.width) * imageMeta.width),
+        ),
+        y: Math.min(
+          imageMeta.height,
+          Math.max(0, ((event.clientY - rect.top) / rect.height) * imageMeta.height),
+        ),
+      }
+    },
+    [imageMeta],
+  )
 
-  // 生成变换字符串
-  const getTransformString = useCallback(() => {
-    const transforms = []
-    transforms.push(`scale(${zoom / 100})`)
-    if (imageState.rotation !== 0) transforms.push(`rotate(${imageState.rotation}deg)`)
-    if (imageState.flipH) transforms.push("scaleX(-1)")
-    if (imageState.flipV) transforms.push("scaleY(-1)")
-    return transforms.join(" ")
-  }, [imageState, zoom])
+  const handleCropPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      if (!cropMode) return
+      const point = cropPointFromEvent(event)
+      if (!point) return
+      event.currentTarget.setPointerCapture(event.pointerId)
+      cropPointerRef.current = {
+        pointerId: event.pointerId,
+        startX: point.x,
+        startY: point.y,
+      }
+      setCropPreset("free")
+      setCropBox({ x: point.x, y: point.y, width: 1, height: 1 })
+    },
+    [cropMode, cropPointFromEvent],
+  )
 
-  // 导出图片
-  const exportImage = useCallback(() => {
-    if (!originalImage || !canvasRef.current) return
-    
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    // 计算最终尺寸
-    const isRotated90 = imageState.rotation === 90 || imageState.rotation === 270
-    let finalWidth = isRotated90 ? originalImage.height : originalImage.width
-    let finalHeight = isRotated90 ? originalImage.width : originalImage.height
-
-    // 如果有裁剪
-    if (imageState.cropApplied) {
-      finalWidth = imageState.cropWidth
-      finalHeight = imageState.cropHeight
-    }
-
-    canvas.width = finalWidth
-    canvas.height = finalHeight
-
-    ctx.save()
-    
-    // 应用滤镜
-    ctx.filter = getFilterString()
-    
-    // 移动到中心
-    ctx.translate(finalWidth / 2, finalHeight / 2)
-    
-    // 旋转
-    ctx.rotate((imageState.rotation * Math.PI) / 180)
-    
-    // 镜像
-    ctx.scale(imageState.flipH ? -1 : 1, imageState.flipV ? -1 : 1)
-    
-    // 绘制图片
-    const drawWidth = isRotated90 ? finalHeight : finalWidth
-    const drawHeight = isRotated90 ? finalWidth : finalHeight
-    
-    if (imageState.cropApplied) {
-      ctx.drawImage(
-        originalImage,
-        imageState.cropX, imageState.cropY,
-        imageState.cropWidth, imageState.cropHeight,
-        -drawWidth / 2, -drawHeight / 2,
-        drawWidth, drawHeight
+  const handleCropPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      const start = cropPointerRef.current
+      const image = originalImageRef.current
+      if (!start || start.pointerId !== event.pointerId || !image) return
+      const point = cropPointFromEvent(event)
+      if (!point) return
+      setCropBox(
+        normalizeImageCrop(
+          {
+            x: start.startX,
+            y: start.startY,
+            width: point.x - start.startX,
+            height: point.y - start.startY,
+          },
+          image.naturalWidth,
+          image.naturalHeight,
+        ),
       )
-    } else {
-      ctx.drawImage(originalImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+    },
+    [cropPointFromEvent],
+  )
+
+  const finishCropPointer = useCallback(
+    (event: ReactPointerEvent<HTMLCanvasElement>) => {
+      if (cropPointerRef.current?.pointerId !== event.pointerId) return
+      cropPointerRef.current = null
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const image = originalImageRef.current
+    const canvas = previewCanvasRef.current
+    if (!image || !imageMeta || !previewCanvasSize || !canvas) return
+
+    canvas.width = previewCanvasSize.width
+    canvas.height = previewCanvasSize.height
+    if (!cropMode) {
+      renderEditedCanvas(
+        canvas,
+        image,
+        imageState,
+        previewCanvasSize.scale,
+        false,
+      )
+      return
     }
-    
-    ctx.restore()
 
-    // 导出
-    const mimeType = outputFormat === "jpg" ? "image/jpeg" : 
-                     outputFormat === "webp" ? "image/webp" : "image/png"
-    const quality = outputFormat === "png" ? undefined : outputQuality / 100
-    
-    canvas.toBlob((blob) => {
-      if (!blob) return
-      const baseName = fileName.replace(/\.[^/.]+$/, "")
-      downloadBlob(blob, `${baseName}_edited.${outputFormat}`)
-    }, mimeType, quality)
-  }, [originalImage, imageState, outputFormat, outputQuality, fileName, getFilterString])
+    const context = getCanvasContext(canvas)
+    const scale = previewCanvasSize.scale
+    const styles = getComputedStyle(canvas)
+    const overlay =
+      styles.getPropertyValue("--md-sys-color-inverse-surface").trim() ||
+      "CanvasText"
+    const outline =
+      styles.getPropertyValue("--md-sys-color-primary").trim() || "Highlight"
+    context.save()
+    context.scale(scale, scale)
+    context.filter = buildImageFilter(imageState)
+    context.drawImage(image, 0, 0)
+    context.filter = "none"
+    context.globalAlpha = 0.55
+    context.fillStyle = overlay
+    context.fillRect(0, 0, image.naturalWidth, image.naturalHeight)
+    context.globalAlpha = 1
+    context.save()
+    context.beginPath()
+    context.rect(cropBox.x, cropBox.y, cropBox.width, cropBox.height)
+    context.clip()
+    context.filter = buildImageFilter(imageState)
+    context.drawImage(image, 0, 0)
+    context.restore()
+    context.strokeStyle = outline
+    context.lineWidth = Math.max(2 / scale, 1)
+    context.setLineDash([8 / scale, 6 / scale])
+    context.strokeRect(cropBox.x, cropBox.y, cropBox.width, cropBox.height)
+    context.restore()
+  }, [
+    cropBox,
+    cropMode,
+    imageMeta,
+    imageState,
+    previewCanvasSize,
+  ])
 
+  const exportImage = useCallback(async () => {
+    const image = originalImageRef.current
+    if (!image || isExporting) return
+    const geometry = getImageRenderGeometry(
+      image.naturalWidth,
+      image.naturalHeight,
+      imageStateRef.current,
+    )
+    if (
+      geometry.outputWidth > MAX_EXPORT_DIMENSION ||
+      geometry.outputHeight > MAX_EXPORT_DIMENSION ||
+      geometry.outputWidth * geometry.outputHeight > MAX_EXPORT_PIXELS
+    ) {
+      setError(t("outputTooLarge"))
+      return
+    }
+
+    const exportId = ++exportIdRef.current
+    setIsExporting(true)
+    setError("")
+    try {
+      const canvas = document.createElement("canvas")
+      renderEditedCanvas(
+        canvas,
+        image,
+        imageStateRef.current,
+        1,
+        outputFormat === "jpg",
+      )
+      const mimeType =
+        outputFormat === "jpg"
+          ? "image/jpeg"
+          : outputFormat === "webp"
+            ? "image/webp"
+            : "image/png"
+      const blob = await canvasToBlob(
+        canvas,
+        mimeType,
+        outputFormat === "png" ? undefined : outputQuality / 100,
+      )
+      if (exportIdRef.current !== exportId) return
+      downloadBlob(
+        blob,
+        `${safeEditedImageBase(sourceFile?.name ?? "")}_edited.${outputFormat}`,
+      )
+    } catch (caught) {
+      if (exportIdRef.current !== exportId) return
+      const code = caught instanceof Error ? caught.message : ""
+      setError(
+        code === CANVAS_ERROR ? t("canvasUnavailable") : t("exportFailed"),
+      )
+    } finally {
+      if (exportIdRef.current === exportId) setIsExporting(false)
+    }
+  }, [isExporting, outputFormat, outputQuality, sourceFile?.name, t])
+
+  const mirrorDescription =
+    imageState.flipHorizontal && imageState.flipVertical
+      ? t("mirrorBoth")
+      : imageState.flipHorizontal
+        ? t("horizontal")
+        : imageState.flipVertical
+          ? t("vertical")
+          : t("none")
+  const effectDescription = booleanFilters
+    .filter(({ key }) => imageState[key])
+    .map(({ labelKey }) => t(labelKey))
+    .join(", ")
 
   return (
-    <div className="container mx-auto px-4 py-4 max-w-7xl">
-      {/* 页面标题 */}
-      <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center justify-center gap-2">
-          <ImageIcon className="h-8 w-8 text-purple-600" />
-          图片编辑器
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          裁剪、旋转、镜像、滤镜调整
+    <div className="container mx-auto max-w-7xl px-3 py-4 sm:px-4">
+      <header className="mb-6 text-center">
+        <div className="mb-2 flex items-center justify-center gap-2">
+          <ImageIcon className={`h-8 w-8 ${M3_ICON_CLASS}`} aria-hidden="true" />
+          <h1 className="text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+            {t("title")}
+          </h1>
+        </div>
+        <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("description")}
         </p>
-      </div>
+      </header>
 
-      {/* 隐藏的 canvas 用于导出 */}
-      <canvas ref={canvasRef} className="hidden" />
-
-      {/* 设置折叠区域 */}
-      <div className="mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowSettings(!showSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400"
-        >
-          <div className="flex items-center gap-2">
-            {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            <Settings className="h-4 w-4" />
-            <span>导出设置</span>
-          </div>
-        </Button>
-
-        {showSettings && (
-          <Card className="mt-3">
-            <CardContent className="py-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>输出格式</Label>
-                  <Select value={outputFormat} onValueChange={setOutputFormat}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="png">PNG (无损)</SelectItem>
-                      <SelectItem value="jpg">JPG (有损)</SelectItem>
-                      <SelectItem value="webp">WebP (推荐)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {outputFormat !== "png" && (
-                  <div className="space-y-2">
-                    <Label>输出质量: {outputQuality}%</Label>
-                    <Slider
-                      value={[outputQuality]}
-                      onValueChange={([v]) => setOutputQuality(v)}
-                      min={10}
-                      max={100}
-                      step={1}
-                    />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* 左侧工具栏 */}
-        <div className="lg:col-span-1 space-y-4">
-          {/* 文件上传 */}
-          <Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4 lg:gap-6">
+        <aside className="contents lg:col-span-1 lg:block lg:space-y-4">
+          <Card className={`order-1 ${M3_CARD_CLASS}`}>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Upload className="h-4 w-4 text-blue-600" />
-                上传图片
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Upload className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                {t("uploadImage")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -511,361 +810,375 @@ export default function ImageEditorPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
                 className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) handleFileUpload(file)
+                  event.currentTarget.value = ""
+                }}
               />
-              <div
+              <button
+                type="button"
+                aria-label={t("dropzoneAria")}
                 onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setIsDragging(true)
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                className={`w-full rounded-[var(--md-sys-shape-corner-large)] border-2 border-dashed p-5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
                   isDragging
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                    : "border-gray-300 dark:border-gray-700 hover:border-blue-400"
+                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]"
+                    : "border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)]"
                 }`}
               >
-                <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  点击或拖放图片
-                </p>
-              </div>
-              {fileName && (
-                <p className="mt-2 text-xs text-gray-500 truncate">{fileName}</p>
+                <Upload
+                  className="mx-auto mb-2 h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]"
+                  aria-hidden="true"
+                />
+                <span className="block text-sm">{t("dropzone")}</span>
+                <span className="mt-1 block text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("maximum")} {formatFileSizeLimit(FILE_SIZE_LIMITS.imageEditor)}
+                </span>
+              </button>
+              {sourceFile && imageMeta && (
+                <div className="mt-3 space-y-2">
+                  <p className="break-all text-sm font-medium">{sourceFile.name}</p>
+                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                    {imageMeta.width} × {imageMeta.height} {t("pixels")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={clearImage}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+                    {t("removeImage")}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          {/* 工具选项卡 */}
-          {originalImage && (
-            <Card>
+          {imageMeta && (
+            <Card className={`order-4 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
               <CardContent className="pt-4">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid grid-cols-2 mb-4">
-                    <TabsTrigger value="transform">变换</TabsTrigger>
-                    <TabsTrigger value="filters">滤镜</TabsTrigger>
+                  <TabsList className="mb-4 grid h-auto grid-cols-2">
+                    <TabsTrigger value="transform" className="min-h-10">
+                      {t("transform")}
+                    </TabsTrigger>
+                    <TabsTrigger value="filters" className="min-h-10">
+                      {t("filters")}
+                    </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="transform" className="space-y-4">
-                    {/* 旋转 */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">旋转</Label>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => rotate(-90)}
-                          className="flex-1"
-                        >
-                          <RotateCcw className="h-4 w-4 mr-1" />
-                          -90°
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => rotate(90)}
-                          className="flex-1"
-                        >
-                          <RotateCw className="h-4 w-4 mr-1" />
-                          +90°
-                        </Button>
+                  <TabsContent value="transform" className="space-y-5">
+                    <section className="space-y-2">
+                      <Label>{t("rotate")}</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[-90, 90, -45, 45].map((degrees) => (
+                          <Button
+                            key={degrees}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => rotate(degrees)}
+                          >
+                            {degrees === -90 ? (
+                              <RotateCcw className="mr-1 h-4 w-4" aria-hidden="true" />
+                            ) : degrees === 90 ? (
+                              <RotateCw className="mr-1 h-4 w-4" aria-hidden="true" />
+                            ) : null}
+                            {degrees > 0 ? "+" : ""}
+                            {degrees}°
+                          </Button>
+                        ))}
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => rotate(-45)}
-                          className="flex-1"
-                        >
-                          -45°
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => rotate(45)}
-                          className="flex-1"
-                        >
-                          +45°
-                        </Button>
-                      </div>
-                      <Badge variant="secondary" className="w-full justify-center">
-                        当前: {imageState.rotation}°
+                      <Badge
+                        variant="secondary"
+                        className="w-full justify-center bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]"
+                      >
+                        {t("currentRotation").replace(
+                          "{value}",
+                          String(imageState.rotation),
+                        )}
                       </Badge>
-                    </div>
+                    </section>
 
-                    {/* 镜像 */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">镜像翻转</Label>
-                      <div className="flex gap-2">
+                    <section className="space-y-2">
+                      <Label>{t("mirror")}</Label>
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
-                          variant={imageState.flipH ? "default" : "outline"}
+                          variant={imageState.flipHorizontal ? "default" : "outline"}
                           size="sm"
                           onClick={flipHorizontal}
-                          className="flex-1"
+                          aria-pressed={imageState.flipHorizontal}
                         >
-                          <FlipHorizontal className="h-4 w-4 mr-1" />
-                          水平
+                          <FlipHorizontal className="mr-1 h-4 w-4" aria-hidden="true" />
+                          {t("horizontal")}
                         </Button>
                         <Button
-                          variant={imageState.flipV ? "default" : "outline"}
+                          variant={imageState.flipVertical ? "default" : "outline"}
                           size="sm"
                           onClick={flipVertical}
-                          className="flex-1"
+                          aria-pressed={imageState.flipVertical}
                         >
-                          <FlipVertical className="h-4 w-4 mr-1" />
-                          垂直
+                          <FlipVertical className="mr-1 h-4 w-4" aria-hidden="true" />
+                          {t("vertical")}
                         </Button>
                       </div>
-                    </div>
+                    </section>
 
-                    {/* 裁剪 */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">裁剪</Label>
+                    <section className="space-y-2">
+                      <Label>{t("crop")}</Label>
                       {!cropMode ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCropMode(true)}
+                          onClick={startCrop}
                           className="w-full"
                         >
-                          <Crop className="h-4 w-4 mr-1" />
-                          开始裁剪
+                          <Crop className="mr-1 h-4 w-4" aria-hidden="true" />
+                          {imageState.crop ? t("editCrop") : t("startCrop")}
                         </Button>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] p-3">
                           <Select value={cropPreset} onValueChange={applyCropPreset}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择比例" />
+                            <SelectTrigger aria-label={t("cropRatio")}>
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               {cropPresets.map((preset) => (
                                 <SelectItem key={preset.value} value={preset.value}>
-                                  {preset.label}
+                                  {t(preset.labelKey)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={applyCrop}
-                              className="flex-1"
-                            >
-                              <Check className="h-4 w-4 mr-1" />
-                              确认
+                          <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                            {t("cropSize")
+                              .replace("{width}", String(Math.round(cropBox.width)))
+                              .replace("{height}", String(Math.round(cropBox.height)))}
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button size="sm" onClick={applyCrop}>
+                              <Check className="mr-1 h-4 w-4" aria-hidden="true" />
+                              {t("apply")}
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={cancelCrop}
-                              className="flex-1"
-                            >
-                              <X className="h-4 w-4 mr-1" />
-                              取消
+                            <Button variant="outline" size="sm" onClick={cancelCrop}>
+                              <X className="mr-1 h-4 w-4" aria-hidden="true" />
+                              {t("cancel")}
                             </Button>
                           </div>
                         </div>
                       )}
-                    </div>
+                    </section>
 
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={resetTransform}
-                      className="w-full text-orange-600"
+                      className="w-full text-[var(--md-sys-color-tertiary)]"
                     >
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                      重置变换
+                      <RefreshCw className="mr-1 h-4 w-4" aria-hidden="true" />
+                      {t("resetTransform")}
                     </Button>
                   </TabsContent>
 
-                  <TabsContent value="filters" className="space-y-4">
-                    {/* 亮度 */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-sm">亮度</Label>
-                        <span className="text-xs text-gray-500">{imageState.brightness}%</span>
-                      </div>
-                      <Slider
-                        value={[imageState.brightness]}
-                        onValueChange={([v]) => updateFilter("brightness", v)}
-                        onValueCommit={([v]) => commitFilter("brightness", "亮度", v)}
-                        min={0}
-                        max={200}
-                        step={1}
-                      />
-                    </div>
-
-                    {/* 对比度 */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-sm">对比度</Label>
-                        <span className="text-xs text-gray-500">{imageState.contrast}%</span>
-                      </div>
-                      <Slider
-                        value={[imageState.contrast]}
-                        onValueChange={([v]) => updateFilter("contrast", v)}
-                        onValueCommit={([v]) => commitFilter("contrast", "对比度", v)}
-                        min={0}
-                        max={200}
-                        step={1}
-                      />
-                    </div>
-
-                    {/* 饱和度 */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-sm">饱和度</Label>
-                        <span className="text-xs text-gray-500">{imageState.saturation}%</span>
-                      </div>
-                      <Slider
-                        value={[imageState.saturation]}
-                        onValueChange={([v]) => updateFilter("saturation", v)}
-                        onValueCommit={([v]) => commitFilter("saturation", "饱和度", v)}
-                        min={0}
-                        max={200}
-                        step={1}
-                      />
-                    </div>
-
-                    {/* 模糊 */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-sm">模糊</Label>
-                        <span className="text-xs text-gray-500">{imageState.blur}px</span>
-                      </div>
-                      <Slider
-                        value={[imageState.blur]}
-                        onValueChange={([v]) => updateFilter("blur", v)}
-                        onValueCommit={([v]) => commitFilter("blur", "模糊", v)}
-                        min={0}
-                        max={20}
-                        step={0.5}
-                      />
-                    </div>
-
-                    {/* 特效开关 */}
-                    <div className="space-y-3 pt-2 border-t">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm">灰度</Label>
-                        <Switch
-                          checked={imageState.grayscale}
-                          onCheckedChange={(v) => {
-                            commitFilter("grayscale", "灰度", v)
-                          }}
+                  <TabsContent value="filters" className="space-y-5">
+                    {numericFilters.map((filter) => (
+                      <div key={filter.key} className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <Label htmlFor={`image-filter-${filter.key}`}>
+                            {t(filter.labelKey)}
+                          </Label>
+                          <span className="text-xs tabular-nums text-[var(--md-sys-color-on-surface-variant)]">
+                            {imageState[filter.key]}
+                            {filter.unit}
+                          </span>
+                        </div>
+                        <Slider
+                          id={`image-filter-${filter.key}`}
+                          value={[imageState[filter.key]]}
+                          onValueChange={([value]) =>
+                            updateFilter(filter.key, value)
+                          }
+                          onValueCommit={([value]) =>
+                            commitFilter(filter.key, value)
+                          }
+                          min={filter.minimum}
+                          max={filter.maximum}
+                          step={filter.step}
                         />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm">复古</Label>
-                        <Switch
-                          checked={imageState.sepia}
-                          onCheckedChange={(v) => {
-                            commitFilter("sepia", "复古", v)
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm">反色</Label>
-                        <Switch
-                          checked={imageState.invert}
-                          onCheckedChange={(v) => {
-                            commitFilter("invert", "反色", v)
-                          }}
-                        />
-                      </div>
+                    ))}
+
+                    <div className="space-y-3 border-t border-[var(--md-sys-color-outline-variant)] pt-4">
+                      {booleanFilters.map((filter) => (
+                        <div
+                          key={filter.key}
+                          className="flex items-center justify-between gap-3"
+                        >
+                          <Label htmlFor={`image-effect-${filter.key}`}>
+                            {t(filter.labelKey)}
+                          </Label>
+                          <Switch
+                            id={`image-effect-${filter.key}`}
+                            checked={imageState[filter.key]}
+                            onCheckedChange={(value) =>
+                              commitFilter(filter.key, value)
+                            }
+                          />
+                        </div>
+                      ))}
                     </div>
 
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={resetFilters}
-                      className="w-full text-orange-600"
+                      className="w-full text-[var(--md-sys-color-tertiary)]"
                     >
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                      重置滤镜
+                      <RefreshCw className="mr-1 h-4 w-4" aria-hidden="true" />
+                      {t("resetFilters")}
                     </Button>
                   </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
           )}
-        </div>
 
+          {imageMeta && (
+            <Card className={`order-5 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
+              <CardHeader className="pb-2">
+                <button
+                  type="button"
+                  className="flex min-h-10 w-full items-center justify-between gap-3 text-left"
+                  aria-expanded={showSettings}
+                  onClick={() => setShowSettings((value) => !value)}
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <Settings className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                    {t("exportSettings")}
+                  </span>
+                  {showSettings ? (
+                    <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              </CardHeader>
+              {showSettings && (
+                <CardContent className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="image-output-format">{t("outputFormat")}</Label>
+                    <Select value={outputFormat} onValueChange={setOutputFormat}>
+                      <SelectTrigger id="image-output-format">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="png">{t("pngFormat")}</SelectItem>
+                        <SelectItem value="jpg">{t("jpgFormat")}</SelectItem>
+                        <SelectItem value="webp">{t("webpFormat")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {outputFormat !== "png" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="image-output-quality">
+                        {t("outputQuality").replace(
+                          "{value}",
+                          String(outputQuality),
+                        )}
+                      </Label>
+                      <Slider
+                        id="image-output-quality"
+                        value={[outputQuality]}
+                        onValueChange={([value]) => setOutputQuality(value)}
+                        min={10}
+                        max={100}
+                        step={1}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
+        </aside>
 
-        {/* 右侧预览区域 */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* 工具栏 */}
-          {originalImage && (
-            <Card>
-              <CardContent className="py-3">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  {/* 撤销/重做 */}
-                  <div className="flex items-center gap-2">
+        <main className="contents lg:col-span-3 lg:block lg:space-y-4">
+          {imageMeta && (
+            <Card className={`order-3 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
+              <CardContent className="p-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+                  <div className="flex items-center justify-center gap-2 sm:justify-start">
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={undo}
                       disabled={historyIndex <= 0}
+                      aria-label={t("undo")}
                     >
-                      <Undo className="h-4 w-4" />
+                      <Undo className="h-4 w-4" aria-hidden="true" />
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={redo}
                       disabled={historyIndex >= history.length - 1}
+                      aria-label={t("redo")}
                     >
-                      <Redo className="h-4 w-4" />
+                      <Redo className="h-4 w-4" aria-hidden="true" />
                     </Button>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs tabular-nums text-[var(--md-sys-color-on-surface-variant)]">
                       {historyIndex + 1}/{history.length}
                     </span>
                   </div>
 
-                  {/* 缩放 */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center gap-2">
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={() => setZoom(Math.max(10, zoom - 10))}
+                      size="icon"
+                      onClick={() => setZoom((value) => Math.max(25, value - 25))}
+                      aria-label={t("zoomOut")}
                     >
-                      <ZoomOut className="h-4 w-4" />
+                      <ZoomOut className="h-4 w-4" aria-hidden="true" />
                     </Button>
-                    <span className="text-sm w-16 text-center">{zoom}%</span>
+                    <span className="w-14 text-center text-sm tabular-nums">
+                      {zoom}%
+                    </span>
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={() => setZoom(Math.min(200, zoom + 10))}
+                      size="icon"
+                      onClick={() => setZoom((value) => Math.min(200, value + 25))}
+                      aria-label={t("zoomIn")}
                     >
-                      <ZoomIn className="h-4 w-4" />
+                      <ZoomIn className="h-4 w-4" aria-hidden="true" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setZoom(100)}
-                    >
-                      重置
+                    <Button variant="ghost" size="sm" onClick={() => setZoom(100)}>
+                      {t("fit")}
                     </Button>
                   </div>
 
-                  {/* 操作按钮 */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={resetAll}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      重置全部
+                  <div className="grid grid-cols-2 gap-2 sm:flex">
+                    <Button variant="outline" size="sm" onClick={resetAll}>
+                      <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+                      {t("resetAll")}
                     </Button>
                     <Button
-                      variant="default"
                       size="sm"
-                      onClick={exportImage}
+                      onClick={() => void exportImage()}
+                      disabled={isExporting}
                     >
-                      <Download className="h-4 w-4 mr-1" />
-                      导出图片
+                      {isExporting ? (
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Download className="mr-1 h-4 w-4" aria-hidden="true" />
+                      )}
+                      {isExporting ? t("exporting") : t("exportImage")}
                     </Button>
                   </div>
                 </div>
@@ -873,104 +1186,119 @@ export default function ImageEditorPage() {
             </Card>
           )}
 
-          {/* 图片预览 */}
-          <Card className="min-h-[500px]">
-            <CardContent className="p-4">
-              {!originalImage ? (
-                <div className="flex flex-col items-center justify-center h-[500px] text-gray-400">
-                  <ImageIcon className="h-16 w-16 mb-4" />
-                  <p>请上传图片开始编辑</p>
-                </div>
-              ) : (
-                <div
-                  ref={previewRef}
-                  className="relative overflow-auto bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjZjBmMGYwIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmMGYwZjAiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] rounded-lg"
-                  style={{ maxHeight: "600px" }}
+          <Card className={`order-2 min-h-[380px] ${M3_CARD_CLASS}`}>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ImageIcon className={`h-4 w-4 ${M3_ICON_CLASS}`} aria-hidden="true" />
+                {t("preview")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!imageMeta || !previewCanvasSize ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex min-h-[300px] w-full flex-col items-center justify-center rounded-[var(--md-sys-shape-corner-large)] bg-[var(--md-sys-color-surface-container-low)] px-4 text-[var(--md-sys-color-on-surface-variant)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
                 >
-                  <div className="flex items-center justify-center min-h-[400px] p-4">
-                    <div className="relative">
-                      <img
-                        src={imageUrl || undefined}
-                        alt="Preview"
-                        className="max-w-full transition-all duration-200"
-                        style={{
-                          transform: getTransformString(),
-                          filter: getFilterString(),
-                        }}
-                      />
-                      
-                      {/* 裁剪遮罩 */}
-                      {cropMode && (
-                        <div className="absolute inset-0 bg-black/50 pointer-events-none">
-                          <div
-                            className="absolute border-2 border-white border-dashed bg-transparent"
-                            style={{
-                              left: `${(cropBox.x / originalImage.width) * 100}%`,
-                              top: `${(cropBox.y / originalImage.height) * 100}%`,
-                              width: `${(cropBox.width / originalImage.width) * 100}%`,
-                              height: `${(cropBox.height / originalImage.height) * 100}%`,
-                              boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)",
-                            }}
-                          >
-                            {/* 裁剪框角标 */}
-                            <div className="absolute -top-1 -left-1 w-3 h-3 bg-white border border-gray-400" />
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-white border border-gray-400" />
-                            <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border border-gray-400" />
-                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border border-gray-400" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  <ImageIcon className="mb-3 h-14 w-14" aria-hidden="true" />
+                  <span className="font-medium">{t("uploadPrompt")}</span>
+                  <span className="mt-1 text-sm">{t("uploadPromptHint")}</span>
+                </button>
+              ) : (
+                <>
+                  <div
+                    className="max-h-[min(65dvh,680px)] overflow-auto overscroll-contain rounded-[var(--md-sys-shape-corner-medium)] border border-[var(--md-sys-color-outline-variant)] p-2 touch-pan-x touch-pan-y scrollbar-m3"
+                    aria-label={t("previewScrollAria")}
+                    tabIndex={0}
+                    style={{
+                      WebkitOverflowScrolling: "touch",
+                      backgroundColor: "var(--md-sys-color-surface-container-low)",
+                      backgroundImage:
+                        "linear-gradient(45deg, var(--md-sys-color-surface-container-high) 25%, transparent 25%), linear-gradient(-45deg, var(--md-sys-color-surface-container-high) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--md-sys-color-surface-container-high) 75%), linear-gradient(-45deg, transparent 75%, var(--md-sys-color-surface-container-high) 75%)",
+                      backgroundSize: "24px 24px",
+                      backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0",
+                    }}
+                  >
+                    <canvas
+                      ref={previewCanvasRef}
+                      width={previewCanvasSize.width}
+                      height={previewCanvasSize.height}
+                      aria-label={cropMode ? t("cropCanvasAria") : t("previewCanvasAria")}
+                      onPointerDown={handleCropPointerDown}
+                      onPointerMove={handleCropPointerMove}
+                      onPointerUp={finishCropPointer}
+                      onPointerCancel={finishCropPointer}
+                      className={`mx-auto block rounded-[var(--md-sys-shape-corner-small)] shadow-sm ${
+                        cropMode ? "cursor-crosshair touch-none" : ""
+                      }`}
+                      style={{
+                        width: `min(${Math.round(
+                          previewCanvasSize.width * (zoom / 100),
+                        )}px, ${zoom}%)`,
+                        height: "auto",
+                      }}
+                    />
                   </div>
+                  {cropMode && (
+                    <p className="mt-3 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-primary-container)] p-3 text-sm text-[var(--md-sys-color-on-primary-container)]">
+                      {t("cropGestureHint")}
+                    </p>
+                  )}
+                </>
+              )}
+
+              {error && (
+                <div
+                  className="mt-4 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
+                  role="alert"
+                >
+                  {error}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* 图片信息 */}
-          {originalImage && (
-            <Card>
+          {imageMeta && outputGeometry && (
+            <Card className={`order-6 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
               <CardContent className="py-3">
-                <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">原始尺寸</Badge>
-                    <span>{originalImage.width} × {originalImage.height}</span>
+                <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <div className="min-w-0">
+                    <dt className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("originalSize")}
+                    </dt>
+                    <dd className="mt-1 break-words font-medium tabular-nums">
+                      {imageMeta.width} × {imageMeta.height}
+                    </dd>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">旋转</Badge>
-                    <span>{imageState.rotation}°</span>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("outputSize")}
+                    </dt>
+                    <dd className="mt-1 break-words font-medium tabular-nums">
+                      {outputGeometry.outputWidth} × {outputGeometry.outputHeight}
+                    </dd>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">镜像</Badge>
-                    <span>
-                      {imageState.flipH && imageState.flipV
-                        ? "水平+垂直"
-                        : imageState.flipH
-                        ? "水平"
-                        : imageState.flipV
-                        ? "垂直"
-                        : "无"}
-                    </span>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("rotationAndMirror")}
+                    </dt>
+                    <dd className="mt-1 break-words font-medium">
+                      {imageState.rotation}° · {mirrorDescription}
+                    </dd>
                   </div>
-                  {(imageState.grayscale || imageState.sepia || imageState.invert) && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">特效</Badge>
-                      <span>
-                        {[
-                          imageState.grayscale && "灰度",
-                          imageState.sepia && "复古",
-                          imageState.invert && "反色",
-                        ]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("activeEffects")}
+                    </dt>
+                    <dd className="mt-1 break-words font-medium">
+                      {effectDescription || t("none")}
+                    </dd>
+                  </div>
+                </dl>
               </CardContent>
             </Card>
           )}
-        </div>
+        </main>
       </div>
     </div>
   )

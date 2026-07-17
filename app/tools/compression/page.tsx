@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
 import { bytesToBase64, transformCompression, type BinaryEncoding, type CompressionFormat, type CompressionOperation, type CompressionResult } from "@/lib/compression"
+import {
+  FILE_SIZE_LIMITS,
+  formatFileSizeLimit,
+  isFileWithinLimit,
+} from "@/lib/file-limits"
 
 const SAMPLE = "Compression works best when text contains repeated text. ".repeat(8)
 
@@ -34,10 +39,10 @@ export default function CompressionPage() {
       setResult(next)
       setOutput(next.output)
       setError("")
-    } catch (cause) {
+    } catch {
       setResult(null)
       setOutput("")
-      setError(cause instanceof Error ? cause.message : t("failed"))
+      setError(t("failed"))
     } finally {
       setRunning(false)
     }
@@ -53,10 +58,19 @@ export default function CompressionPage() {
   }
 
   const loadFile = async (file: File) => {
+    if (!isFileWithinLimit(file, FILE_SIZE_LIMITS.binaryTool)) {
+      setError(t("fileTooLarge").replace(
+        "{size}",
+        formatFileSizeLimit(FILE_SIZE_LIMITS.binaryTool),
+      ))
+      return
+    }
+
     setInput(bytesToBase64(new Uint8Array(await file.arrayBuffer())))
     setInputEncoding("base64")
     setFilename(file.name)
     setOutput("")
+    setError("")
   }
 
   const selectControl = (label: string, value: string, onChange: (value: string) => void, items: Array<[string, string]>, className?: string) => (

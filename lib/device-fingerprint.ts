@@ -6,6 +6,7 @@ export interface FingerprintSignal {
   status: FingerprintSignalStatus
   digest: string | null
   note: string
+  noteValue?: number
   raw?: string
   previewUrl?: string
 }
@@ -121,7 +122,7 @@ async function collectCanvasSignal(): Promise<FingerprintSignal> {
     canvas.width = 280
     canvas.height = 80
     const context = canvas.getContext("2d")
-    if (!context) return unavailableSignal("unsupported", "浏览器未提供 Canvas 2D 上下文")
+    if (!context) return unavailableSignal("unsupported", "canvasNoContext")
 
     const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height)
     gradient.addColorStop(0, "#2563eb")
@@ -133,7 +134,7 @@ async function collectCanvasSignal(): Promise<FingerprintSignal> {
     context.fillStyle = "#fff"
     context.font = "16px Arial"
     context.textBaseline = "alphabetic"
-    context.fillText("Device fingerprint · 设备指纹", 12, 30)
+    context.fillText("Device fingerprint · Aa09", 12, 30)
     context.globalCompositeOperation = "multiply"
     context.fillStyle = "rgba(255, 210, 0, .85)"
     context.beginPath()
@@ -145,19 +146,19 @@ async function collectCanvasSignal(): Promise<FingerprintSignal> {
 
     const previewUrl = canvas.toDataURL("image/png")
     if (!previewUrl || previewUrl === "data:,") {
-      return unavailableSignal("blocked", "Canvas 像素读取被浏览器隐私策略阻止")
+      return unavailableSignal("blocked", "canvasBlocked")
     }
 
     return {
       status: "ready",
       digest: await sha256Hex(previewUrl),
-      note: `${canvas.width}×${canvas.height} 本地渲染摘要`,
+      note: "canvasRendered",
       raw: JSON.stringify({ width: canvas.width, height: canvas.height, encodedBytes: previewUrl.length }, null, 2),
       previewUrl,
     }
   } catch (error) {
     const blocked = error instanceof DOMException && error.name === "SecurityError"
-    return unavailableSignal(blocked ? "blocked" : "error", blocked ? "Canvas 读取被隐私策略阻止" : "Canvas 指纹采集失败")
+    return unavailableSignal(blocked ? "blocked" : "error", blocked ? "canvasReadBlocked" : "canvasFailed")
   }
 }
 
@@ -166,7 +167,7 @@ async function collectWebGLSignal(): Promise<FingerprintSignal> {
     const canvas = document.createElement("canvas")
     const gl = (canvas.getContext("webgl", { preserveDrawingBuffer: true }) ||
       canvas.getContext("experimental-webgl", { preserveDrawingBuffer: true })) as WebGLRenderingContext | null
-    if (!gl) return unavailableSignal("unsupported", "浏览器未启用 WebGL")
+    if (!gl) return unavailableSignal("unsupported", "webglDisabled")
 
     const debugInfo = gl.getExtension("WEBGL_debug_renderer_info") as
       | { UNMASKED_VENDOR_WEBGL: number; UNMASKED_RENDERER_WEBGL: number }
@@ -194,11 +195,11 @@ async function collectWebGLSignal(): Promise<FingerprintSignal> {
     return {
       status: "ready",
       digest: await sha256Hex(serialized),
-      note: debugInfo ? "包含显卡渲染器与能力参数" : "渲染器名称已被浏览器隐藏",
+      note: debugInfo ? "webglFull" : "webglRendererHidden",
       raw: JSON.stringify(details, null, 2),
     }
   } catch {
-    return unavailableSignal("error", "WebGL 指纹采集失败")
+    return unavailableSignal("error", "webglFailed")
   }
 }
 
@@ -208,7 +209,7 @@ async function collectAudioSignal(): Promise<FingerprintSignal> {
       webkitOfflineAudioContext?: typeof OfflineAudioContext
     }
     const OfflineContext = window.OfflineAudioContext || audioWindow.webkitOfflineAudioContext
-    if (!OfflineContext) return unavailableSignal("unsupported", "浏览器未提供离线音频上下文")
+    if (!OfflineContext) return unavailableSignal("unsupported", "audioUnavailable")
 
     const context = new OfflineContext(1, 44100, 44100)
     const oscillator = context.createOscillator()
@@ -240,11 +241,11 @@ async function collectAudioSignal(): Promise<FingerprintSignal> {
     return {
       status: limited ? "limited" : "ready",
       digest: await sha256Hex(raw),
-      note: limited ? "音频输出接近静音，可能受到隐私策略限制" : "离线音频渲染摘要，不会播放声音",
+      note: limited ? "audioLimited" : "audioReady",
       raw: JSON.stringify({ checksum: Number(checksum.toFixed(8)), sampleCount: windowSamples.length }, null, 2),
     }
   } catch {
-    return unavailableSignal("blocked", "音频渲染被浏览器策略限制")
+    return unavailableSignal("blocked", "audioBlocked")
   }
 }
 
@@ -257,11 +258,11 @@ async function collectFontSignal(): Promise<FontFingerprintSignal> {
 
   try {
     if (!document.body) {
-      return { ...unavailableSignal("error", "页面尚未准备好字体检测"), values: [] }
+      return { ...unavailableSignal("error", "fontsPageNotReady"), values: [] }
     }
     document.body.appendChild(container)
     const probe = document.createElement("span")
-    probe.textContent = "mmmmmmmmmmlliWW@#设备"
+    probe.textContent = "mmmmmmmmmmlliWW@#Device"
     probe.style.fontSize = "72px"
     container.appendChild(probe)
 
@@ -284,12 +285,13 @@ async function collectFontSignal(): Promise<FontFingerprintSignal> {
     return {
       status: detected.length > 0 ? "ready" : "limited",
       digest: await sha256Hex(serialized),
-      note: detected.length > 0 ? `检测到 ${detected.length} 种常见字体` : "未检测到候选字体或字体检测受限",
+      note: detected.length > 0 ? "fontsDetected" : "fontsLimited",
+      noteValue: detected.length,
       raw: JSON.stringify(detected, null, 2),
       values: detected,
     }
   } catch {
-    return { ...unavailableSignal("error", "字体指纹采集失败"), values: [] }
+    return { ...unavailableSignal("error", "fontsFailed"), values: [] }
   } finally {
     container.remove()
   }
@@ -331,25 +333,25 @@ async function collectNavigatorSignal(): Promise<FingerprintSignal> {
     return {
       status: "ready",
       digest: await sha256Hex(serialized),
-      note: "浏览器、语言、硬件并发、屏幕与时区摘要",
+      note: "navigatorSummary",
       raw: JSON.stringify(details, null, 2),
     }
   } catch {
-    return unavailableSignal("error", "导航器指纹采集失败")
+    return unavailableSignal("error", "navigatorFailed")
   }
 }
 
 export async function collectDeviceFingerprint(): Promise<DeviceFingerprint> {
   const [canvas, webGL, audio, fonts, navigatorSignal] = await Promise.all([
-    withSignalTimeout(collectCanvasSignal(), 2000, unavailableSignal("blocked", "Canvas 指纹采集超时")),
-    withSignalTimeout(collectWebGLSignal(), 2000, unavailableSignal("blocked", "WebGL 指纹采集超时")),
-    withSignalTimeout(collectAudioSignal(), 2500, unavailableSignal("blocked", "离线音频渲染超时")),
+    withSignalTimeout(collectCanvasSignal(), 2000, unavailableSignal("blocked", "canvasTimeout")),
+    withSignalTimeout(collectWebGLSignal(), 2000, unavailableSignal("blocked", "webglTimeout")),
+    withSignalTimeout(collectAudioSignal(), 2500, unavailableSignal("blocked", "audioTimeout")),
     withSignalTimeout(
       collectFontSignal(),
       2000,
-      { ...unavailableSignal("blocked", "字体指纹采集超时"), values: [] },
+      { ...unavailableSignal("blocked", "fontsTimeout"), values: [] },
     ),
-    withSignalTimeout(collectNavigatorSignal(), 2000, unavailableSignal("blocked", "浏览器环境采集超时")),
+    withSignalTimeout(collectNavigatorSignal(), 2000, unavailableSignal("blocked", "navigatorTimeout")),
   ])
   const signals = { canvas, webGL, audio, fonts, navigator: navigatorSignal }
   const readySignals = Object.values(signals).filter((signal) => Boolean(signal.digest)).length
@@ -358,6 +360,7 @@ export async function collectDeviceFingerprint(): Promise<DeviceFingerprint> {
     id = await buildCompositeFingerprint({
       canvas,
       webGL,
+      audio,
       fonts,
       navigator: navigatorSignal,
     })

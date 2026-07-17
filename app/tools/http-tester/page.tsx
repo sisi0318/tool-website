@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardTitle, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card"
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import {
   Copy, Check, Plus, Trash2, Send, FileJson, Code, Database, Binary, X, ExternalLink,
-  Globe, Settings, Clock, History, Bookmark, Download, Upload, RotateCcw, Zap,
-  Eye, EyeOff, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2
+  Globe, Settings, Clock, History, Bookmark, Download, Upload, Zap,
+  AlertCircle, CheckCircle2, Loader2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -20,17 +20,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { M3Card } from "@/components/m3/card"
-import { M3Tabs, type TabItem } from "@/components/m3/tabs"
-import { useMemo } from "react"
-import { buildRequestUrl, encodeUrlEncodedBody } from "@/lib/http-request-tools"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  HttpRequestUrlError,
+  buildRequestUrl,
+  encodeUrlEncodedBody,
+  parseCurlCommand,
+} from "@/lib/http-request-tools"
+import { copyTextToClipboard } from "@/lib/clipboard"
+import { FILE_SIZE_LIMITS, isFileWithinLimit } from "@/lib/file-limits"
 
 interface RequestParam {
   id: string
@@ -38,6 +46,7 @@ interface RequestParam {
   value: string
   type: string
   enabled: boolean
+  file?: File
 }
 
 interface ResponseHeader {
@@ -57,6 +66,8 @@ interface RequestHistory {
   response?: string
   status?: number
   duration?: number
+  formDataParams?: RequestParam[]
+  binaryFile?: File | null
 }
 
 interface RequestTemplate {
@@ -68,6 +79,8 @@ interface RequestTemplate {
   params: RequestParam[]
   body: string
   bodyType: string
+  formDataParams: RequestParam[]
+  binaryFile: File | null
 }
 
 async function proxyRequest(
@@ -77,6 +90,7 @@ async function proxyRequest(
   params: RequestParam[],
   body: string | FormData | Blob | null,
   bodyType: string,
+  signal?: AbortSignal,
 ) {
   const proxyUrl = "https://web-proxy.apifox.cn/api/v1/request"
 
@@ -96,7 +110,7 @@ async function proxyRequest(
   const apiH0 = [...defaultHeaders, ...customHeadersArray].join(", ")
 
   // Prepare api-o0 and api-u headers
-  const apiO0 = `method=${method},timings=true,timeout=300000,rejectUnauthorized=false,followRedirect=true`
+  const apiO0 = `method=${method},timings=true,timeout=300000,rejectUnauthorized=true,followRedirect=true`
   const apiU = finalUrl
 
   const requestHeaders: Record<string, string> = {
@@ -123,6 +137,7 @@ async function proxyRequest(
     method: "POST",
     headers: requestHeaders,
     body: body || null,
+    signal,
   }
 
   const res = await fetch(proxyUrl, requestOptions)
@@ -177,13 +192,33 @@ function formatJsonResponse(text: string): string {
   }
 }
 
+function quoteShellArgument(value: string): string {
+  return `'${value.replaceAll("'", `'\"'\"'`)}'`
+}
+
+function getHttpErrorMessage(error: unknown, translate: (key: string) => string): string {
+  if (error instanceof HttpRequestUrlError) {
+    return translate(error.code === "INVALID_URL" ? "invalidUrlDescription" : "unsupportedProtocol")
+  }
+  if (error instanceof Error && error.message) return error.message
+  return translate("unknownError")
+}
+
 // Function to get status color
 function getStatusColor(status: number): string {
-  if (status >= 200 && status < 300) return "bg-green-500"
-  if (status >= 300 && status < 400) return "bg-blue-500"
-  if (status >= 400 && status < 500) return "bg-yellow-500"
-  if (status >= 500) return "bg-red-500"
-  return "bg-gray-500"
+  if (status >= 200 && status < 300) {
+    return "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]"
+  }
+  if (status >= 300 && status < 400) {
+    return "bg-[var(--md-sys-color-tertiary)] text-[var(--md-sys-color-on-tertiary)]"
+  }
+  if (status >= 400 && status < 500) {
+    return "bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]"
+  }
+  if (status >= 500) {
+    return "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)]"
+  }
+  return "bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)]"
 }
 
 export default function HTTPTester() {
@@ -208,7 +243,6 @@ export default function HTTPTester() {
   const [responseHeaders, setResponseHeaders] = useState<Record<string, ResponseHeader[]>>({})
   const [timings, setTimings] = useState<Record<string, string>>({})
   const [statusInfo, setStatusInfo] = useState<Record<string, string>>({})
-  const [apiO0, setApiO0] = useState("")
   const [response, setResponse] = useState("")
   const [formattedResponse, setFormattedResponse] = useState("")
   const [isJsonResponse, setIsJsonResponse] = useState(false)
@@ -227,6 +261,10 @@ export default function HTTPTester() {
   const [templates, setTemplates] = useState<RequestTemplate[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+  const [templateName, setTemplateName] = useState("")
+  const [curlDialogOpen, setCurlDialogOpen] = useState(false)
+  const [curlInput, setCurlInput] = useState("")
 
   // ID计数器
   const nextParamId = useRef(2)
@@ -236,6 +274,7 @@ export default function HTTPTester() {
 
   const binaryInputRef = useRef<HTMLInputElement>(null)
   const abortController = useRef<AbortController | null>(null)
+  const copyResetTimerRef = useRef<number | null>(null)
 
   // 环境变量处理
   const replaceEnvironmentVariables = useCallback((text: string) => {
@@ -273,7 +312,7 @@ export default function HTTPTester() {
   // 保存到历史记录
   const saveToHistory = useCallback((requestData: Omit<RequestHistory, 'id' | 'timestamp'>) => {
     const historyItem: RequestHistory = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       timestamp: Date.now(),
       ...requestData
     }
@@ -294,35 +333,48 @@ export default function HTTPTester() {
     })))
     setBody(historyItem.body)
     setBodyType(historyItem.bodyType as any)
+    if (historyItem.formDataParams) {
+      setFormDataParams(historyItem.formDataParams)
+    }
+    setBinaryFile(historyItem.binaryFile ?? null)
 
     toast({
-      title: "已加载历史请求",
+      title: t("historyLoaded"),
       description: `${historyItem.method} ${historyItem.url}`
     })
-  }, [toast])
+  }, [t, toast])
 
   // 保存为模板
   const saveAsTemplate = useCallback(() => {
-    const templateName = prompt("请输入模板名称:")
-    if (!templateName) return
+    setTemplateName("")
+    setTemplateDialogOpen(true)
+  }, [])
+
+  const confirmSaveTemplate = useCallback(() => {
+    const normalizedName = templateName.trim()
+    if (!normalizedName) return
 
     const template: RequestTemplate = {
-      id: Date.now().toString(),
-      name: templateName,
+      id: crypto.randomUUID(),
+      name: normalizedName,
       method,
       url,
       headers: customHeaders,
       params: requestParams,
       body,
-      bodyType
+      bodyType,
+      formDataParams,
+      binaryFile,
     }
 
     setTemplates(prev => [...prev, template])
+    setTemplateDialogOpen(false)
+    setTemplateName("")
     toast({
-      title: "模板已保存",
-      description: templateName
+      title: t("templateSaved"),
+      description: normalizedName
     })
-  }, [method, url, customHeaders, requestParams, body, bodyType, toast])
+  }, [templateName, method, url, customHeaders, requestParams, body, bodyType, formDataParams, binaryFile, t, toast])
 
   // 从模板加载请求
   const loadFromTemplate = useCallback((template: RequestTemplate) => {
@@ -332,35 +384,45 @@ export default function HTTPTester() {
     setCustomHeaders(template.headers)
     setBody(template.body)
     setBodyType(template.bodyType as any)
+    setFormDataParams(template.formDataParams)
+    setBinaryFile(template.binaryFile)
 
     toast({
-      title: "已加载模板",
+      title: t("templateLoaded"),
       description: template.name
     })
-  }, [toast])
+  }, [t, toast])
 
   // 生成 cURL 命令
   const generateCurl = useCallback(() => {
     const processedUrl = replaceEnvironmentVariables(url)
     const finalUrl = buildRequestUrl(processedUrl, requestParams)
 
-    let curlCommand = `curl -X ${method} "${finalUrl}"`
+    let curlCommand = `curl -X ${method} ${quoteShellArgument(finalUrl)}`
 
     // 添加自定义头部
     customHeaders.forEach(header => {
       if (header.enabled && header.name) {
         const processedValue = replaceEnvironmentVariables(header.value)
-        curlCommand += ` \\\n  -H "${header.name}: ${processedValue}"`
+        curlCommand += ` \\\n  -H ${quoteShellArgument(`${header.name}: ${processedValue}`)}`
       }
     })
 
     // 添加请求体
     if (body && bodyType === "raw") {
       const processedBody = replaceEnvironmentVariables(body)
-      curlCommand += ` \\\n  -d '${processedBody}'`
+      curlCommand += ` \\\n  -d ${quoteShellArgument(processedBody)}`
+    } else if (bodyType === "form-data") {
+      formDataParams.forEach((param) => {
+        if (!param.enabled || !param.name) return
+        const value = param.type === "File" && param.file
+          ? `${param.name}=@${param.file.name}`
+          : `${param.name}=${replaceEnvironmentVariables(param.value)}`
+        curlCommand += ` \\\n  -F ${quoteShellArgument(value)}`
+      })
     } else if (bodyType === "urlencoded") {
       const encodedBody = encodeUrlEncodedBody(formDataParams, replaceEnvironmentVariables)
-      if (encodedBody) curlCommand += ` \\\n  -d '${encodedBody}'`
+      if (encodedBody) curlCommand += ` \\\n  -d ${quoteShellArgument(encodedBody)}`
     }
 
     return curlCommand
@@ -369,72 +431,38 @@ export default function HTTPTester() {
   // 解析 cURL 命令
   const parseCurl = useCallback((curlCommand: string) => {
     try {
-      const lines = curlCommand.trim().split('\n').map(line => line.trim())
-      let parsedMethod = 'GET'
-      let parsedUrl = ''
-      const parsedHeaders: RequestParam[] = []
-      let parsedBody = ''
+      const parsed = parseCurlCommand(curlCommand)
+      buildRequestUrl(parsed.url)
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].replace(/\s*\\\s*$/, '') // 移除行末的 \
-
-        if (line.startsWith('curl ')) {
-          // 提取 URL
-          const urlMatch = line.match(/"([^"]+)"/)
-          if (urlMatch) {
-            parsedUrl = urlMatch[1]
-          }
-        }
-
-        if (line.includes('-X ')) {
-          const methodMatch = line.match(/-X\s+(\w+)/)
-          if (methodMatch) {
-            parsedMethod = methodMatch[1]
-          }
-        }
-
-        if (line.includes('-H ')) {
-          const headerMatch = line.match(/-H\s+"([^:]+):\s*([^"]+)"/)
-          if (headerMatch) {
-            parsedHeaders.push({
-              id: `header_${parsedHeaders.length}`,
-              name: headerMatch[1],
-              value: headerMatch[2],
-              type: 'String',
-              enabled: true
-            })
-          }
-        }
-
-        if (line.includes('-d ')) {
-          const bodyMatch = line.match(/-d\s+'([^']+)'/)
-          if (bodyMatch) {
-            parsedBody = bodyMatch[1]
-          }
-        }
-      }
-
-      // 更新状态
-      setMethod(parsedMethod)
-      setUrl(parsedUrl)
-      setCustomHeaders(parsedHeaders)
-      if (parsedBody) {
-        setBody(parsedBody)
+      setMethod(parsed.method)
+      setUrl(parsed.url)
+      setRequestParams([{ id: crypto.randomUUID(), name: "", value: "", type: "String", enabled: true }])
+      setCustomHeaders(parsed.headers.map((header) => ({
+        id: crypto.randomUUID(),
+        name: header.name,
+        value: header.value,
+        type: "String",
+        enabled: true,
+      })))
+      setBody(parsed.body)
+      if (parsed.body) {
         setBodyType('raw')
+      } else {
+        setBodyType("none")
       }
 
       toast({
-        title: "cURL 导入成功",
-        description: `${parsedMethod} ${parsedUrl}`
+        title: t("curlImportSuccess"),
+        description: `${parsed.method} ${parsed.url}`
       })
     } catch (error) {
       toast({
-        title: "cURL 解析失败",
-        description: "请检查 cURL 命令格式",
+        title: t("curlParseFailed"),
+        description: t("curlParseFailedDescription"),
         variant: "destructive"
       })
     }
-  }, [toast])
+  }, [t, toast])
 
   // 取消请求
   const cancelRequest = useCallback(() => {
@@ -442,11 +470,11 @@ export default function HTTPTester() {
       abortController.current.abort()
       setLoading(false)
       toast({
-        title: "请求已取消",
-        description: "HTTP请求已被用户取消"
+        title: t("requestCancelled"),
+        description: t("requestCancelledDescription")
       })
     }
-  }, [toast])
+  }, [t, toast])
 
   const addParam = () => {
     setRequestParams([
@@ -515,10 +543,25 @@ export default function HTTPTester() {
     setFormDataParams(formDataParams.map((param) => (param.id === id ? { ...param, [field]: value } : param)))
   }
 
+  const updateFormDataFile = (id: string, file: File | undefined) => {
+    if (file && !isFileWithinLimit(file, FILE_SIZE_LIMITS.httpRequestBody)) {
+      toast({ title: t("fileTooBig"), variant: "destructive" })
+      return
+    }
+    setFormDataParams((params) =>
+      params.map((param) => (param.id === id ? { ...param, file, value: file?.name ?? "" } : param)),
+    )
+  }
+
   // Binary file handler
   const handleBinaryFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
+      if (!isFileWithinLimit(files[0], FILE_SIZE_LIMITS.httpRequestBody)) {
+        toast({ title: t("fileTooBig"), variant: "destructive" })
+        e.target.value = ""
+        return
+      }
       setBinaryFile(files[0])
     }
   }
@@ -538,8 +581,8 @@ export default function HTTPTester() {
     setLoading(true)
     const startTime = Date.now()
 
-    // 创建新的 AbortController
-    abortController.current = new AbortController()
+    const controller = new AbortController()
+    abortController.current = controller
 
     try {
       // 处理环境变量
@@ -548,9 +591,9 @@ export default function HTTPTester() {
       // Convert custom headers array to headers object
       const headersObj: Record<string, string> = {}
       customHeaders.forEach((header) => {
-        if (header.enabled) {
+        if (header.enabled && header.name.trim()) {
           const processedValue = replaceEnvironmentVariables(header.value)
-          headersObj[header.name] = processedValue
+          headersObj[header.name.trim()] = processedValue
         }
       })
 
@@ -562,8 +605,12 @@ export default function HTTPTester() {
         const formData = new FormData()
         formDataParams.forEach((param) => {
           if (param.enabled && param.name) {
-            const processedValue = replaceEnvironmentVariables(param.value)
-            formData.append(param.name, processedValue)
+            if (param.type === "File" && param.file) {
+              formData.append(param.name, param.file)
+            } else {
+              const processedValue = replaceEnvironmentVariables(param.value)
+              formData.append(param.name, processedValue)
+            }
           }
         })
         requestBody = formData
@@ -573,9 +620,16 @@ export default function HTTPTester() {
         requestBody = encodeUrlEncodedBody(formDataParams, replaceEnvironmentVariables)
       }
 
-      const res = await proxyRequest(processedUrl, method, headersObj, requestParams, requestBody, bodyType)
+      const res = await proxyRequest(
+        processedUrl,
+        method,
+        headersObj,
+        requestParams,
+        requestBody,
+        bodyType,
+        controller.signal,
+      )
       setResponse(res.text)
-      setApiO0(res.apiO0)
 
       // Try to format JSON response
       try {
@@ -615,9 +669,13 @@ export default function HTTPTester() {
         })
       }
 
+      const parsedStatusCode = Number.parseInt(statusCode, 10)
+      const targetStatusCode = Number.isFinite(parsedStatusCode) ? parsedStatusCode : res.status
+      const targetStatusText = statusText !== "N/A" ? statusText : (res.statusText || "N/A")
+
       const statusObj: Record<string, string> = {
-        statusCode: String(res.status),
-        statusText: res.statusText || "N/A",
+        statusCode: String(targetStatusCode),
+        statusText: targetStatusText,
         httpVersion: httpVersion,
       }
 
@@ -637,24 +695,27 @@ export default function HTTPTester() {
         params: requestParams,
         body: typeof requestBody === 'string' ? requestBody : body,
         bodyType,
+        formDataParams,
+        binaryFile,
         response: res.text,
-        status: res.status,
+        status: targetStatusCode,
         duration
       })
 
       // Show success toast
       toast({
-        title: `${res.status} ${res.statusText}`,
-        description: `Request completed in ${timingsObj.total || duration}ms`,
+        title: `${targetStatusCode} ${targetStatusText}`,
+        description: `${t("requestCompletedIn")} ${timingsObj.total || duration}ms`,
       })
-    } catch (e: any) {
-      if (e.name === 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") {
         // 请求被取消，不显示错误
         return
       }
 
       const duration = Date.now() - startTime
-      const errorMessage = `Error: ${e.message}`
+      const localizedError = getHttpErrorMessage(error, t)
+      const errorMessage = `${t("errorPrefix")}: ${localizedError}`
 
       setResponse(errorMessage)
       setFormattedResponse(errorMessage)
@@ -668,6 +729,8 @@ export default function HTTPTester() {
         params: requestParams,
         body,
         bodyType,
+        formDataParams,
+        binaryFile,
         response: errorMessage,
         status: 0,
         duration
@@ -675,60 +738,36 @@ export default function HTTPTester() {
 
       // Show error toast
       toast({
-        title: "Request Failed",
-        description: e.message,
+        title: t("requestFailed"),
+        description: localizedError,
         variant: "destructive",
       })
     } finally {
       setLoading(false)
-      abortController.current = null
+      if (abortController.current === controller) {
+        abortController.current = null
+      }
     }
   }
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(isJsonResponse ? formattedResponse : response)
-    setCopied(true)
-    toast({
-      title: t("copiedToClipboard"),
-    })
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  // Function to update URL and parse parameters
-  const updateUrlAndParams = (newUrl: string) => {
-    // Set the URL without modifying it
-    setUrl(newUrl)
-
-    // Only parse query parameters if there's a question mark in the URL
-    if (newUrl.includes("?")) {
-      try {
-        // Extract the query string part (everything after the first ?)
-        const queryString = newUrl.split("?")[1]
-        if (!queryString) return
-
-        const parsedParams: RequestParam[] = []
-        // Use URLSearchParams to parse the query string
-        const urlParams = new URLSearchParams(queryString)
-
-        urlParams.forEach((value, name) => {
-          parsedParams.push({
-            id: nextParamId.current.toString(),
-            name: name,
-            value: value,
-            type: "String",
-            enabled: true,
-          })
-          nextParamId.current += 1
-        })
-
-        // If we have parsed parameters, update the state
-        if (parsedParams.length > 0) {
-          setRequestParams(parsedParams)
-        }
-      } catch (error) {
-        console.error("Error parsing URL parameters:", error)
+    void copyTextToClipboard(isJsonResponse ? formattedResponse : response).then((success) => {
+      if (!success) {
+        toast({ title: t("copyFailed"), variant: "destructive" })
+        return
       }
-    }
+      setCopied(true)
+      toast({
+        title: t("copiedToClipboard"),
+      })
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current)
+      }
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setCopied(false)
+        copyResetTimerRef.current = null
+      }, 2000)
+    })
   }
 
   // Flag to track if URL was manually changed
@@ -776,14 +815,26 @@ export default function HTTPTester() {
   }, [requestParams, manualUrlChange])
 
   // 延迟自动解析，避免输入时的干扰
-  const debouncedAutoParseRef = useRef<NodeJS.Timeout>()
-  const [autoParseStatus, setAutoParseStatus] = useState<string>("")
+  const debouncedAutoParseRef = useRef<number | undefined>(undefined)
+  const autoParseStatusTimerRef = useRef<number | undefined>(undefined)
+  const [autoParseStatus, setAutoParseStatus] = useState<
+    { kind: "waiting" | "syncing" | "synced" | "current" | "failed"; count?: number } | null
+  >(null)
 
   // 清理定时器
   useEffect(() => {
     return () => {
       if (debouncedAutoParseRef.current) {
-        clearTimeout(debouncedAutoParseRef.current)
+        window.clearTimeout(debouncedAutoParseRef.current)
+      }
+      if (autoParseStatusTimerRef.current) {
+        window.clearTimeout(autoParseStatusTimerRef.current)
+      }
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current)
+      }
+      if (abortController.current) {
+        abortController.current.abort()
       }
     }
   }, [])
@@ -800,207 +851,83 @@ export default function HTTPTester() {
     }
 
     // 清除状态提示
-    setAutoParseStatus("")
+    setAutoParseStatus(null)
 
     // 如果URL包含查询参数，显示等待状态
     if (newUrl.includes("?")) {
-      setAutoParseStatus("等待同步...")
+      setAutoParseStatus({ kind: "waiting" })
 
       // 延迟1秒后自动解析，避免输入时的干扰
-      debouncedAutoParseRef.current = setTimeout(() => {
-        setAutoParseStatus("正在同步参数...")
+      debouncedAutoParseRef.current = window.setTimeout(() => {
+        setAutoParseStatus({ kind: "syncing" })
         autoParseUrlParametersDebounced(newUrl)
       }, 1000)
     }
   }
 
-  // 延迟自动解析URL参数（保留编码，避免输入干扰）
-  const autoParseUrlParametersDebounced = useCallback((inputUrl: string) => {
-    // 只有当URL包含查询参数时才进行解析
-    if (!inputUrl.includes("?")) {
-      return
+  const readUrlParameters = useCallback((inputUrl: string) => {
+    const parsedUrl = new URL(inputUrl)
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      throw new Error("UNSUPPORTED_PROTOCOL")
     }
 
+    return Array.from(parsedUrl.searchParams.entries()).map(([name, value]) => ({
+      id: crypto.randomUUID(),
+      name,
+      value,
+      type: "String",
+      enabled: true,
+    } satisfies RequestParam))
+  }, [])
+
+  const clearAutoParseStatusLater = useCallback(() => {
+    if (autoParseStatusTimerRef.current) {
+      window.clearTimeout(autoParseStatusTimerRef.current)
+    }
+    autoParseStatusTimerRef.current = window.setTimeout(() => {
+      setAutoParseStatus(null)
+      autoParseStatusTimerRef.current = undefined
+    }, 2000)
+  }, [])
+
+  const autoParseUrlParametersDebounced = useCallback((inputUrl: string) => {
     try {
-      const queryString = inputUrl.split("?")[1]
-      if (!queryString) return
-
-      // 使用改进的解析逻辑，保留原始编码
-      const paramPairs = queryString.split("&")
-      const newParams: RequestParam[] = []
-      let hasChanges = false
-
-      // 获取现有参数的映射（name -> param对象）
-      const existingParamsMap = new Map<string, RequestParam>()
-      requestParams.forEach(param => {
-        if (param.name) {
-          existingParamsMap.set(param.name, param)
-        }
-      })
-
-      paramPairs.forEach(pair => {
-        const equalIndex = pair.indexOf("=")
-        let name = ""
-        let value = ""
-
-        if (equalIndex > 0) {
-          name = pair.substring(0, equalIndex)
-          value = pair.substring(equalIndex + 1)
-        } else if (equalIndex === -1) {
-          // 没有等号的参数
-          name = pair
-          value = ""
-        }
-
-        if (name) {
-          // 只对参数名进行解码，保持值的原始编码状态
-          let decodedName = ""
-          try {
-            decodedName = decodeURIComponent(name)
-          } catch {
-            decodedName = name // 如果解码失败，使用原始值
-          }
-
-          const existingParam = existingParamsMap.get(decodedName)
-          if (existingParam) {
-            // 更新现有参数的值（如果值不同）
-            if (existingParam.value !== value) {
-              existingParam.value = value
-              hasChanges = true
-            }
-          } else {
-            // 添加新参数
-            newParams.push({
-              id: nextParamId.current.toString(),
-              name: decodedName,
-              value: value, // 保持原始编码值
-              type: "String",
-              enabled: true,
-            })
-            nextParamId.current += 1
-            hasChanges = true
-          }
-        }
-      })
-
-      // 只有在有实际变化时才更新状态
-      if (newParams.length > 0 || hasChanges) {
-        setRequestParams(prevParams => [...prevParams, ...newParams])
-        setAutoParseStatus(`已同步 ${newParams.length} 个新参数`)
+      const parsedParams = readUrlParameters(inputUrl)
+      if (parsedParams.length === 0) {
+        setAutoParseStatus({ kind: "current" })
       } else {
-        setAutoParseStatus("参数已是最新")
+        setRequestParams(parsedParams)
+        setAutoParseStatus({ kind: "synced", count: parsedParams.length })
       }
-
-      // 2秒后清除状态提示
-      setTimeout(() => {
-        setAutoParseStatus("")
-      }, 2000)
-
     } catch (error) {
       console.error("Error auto-parsing URL parameters:", error)
-      setAutoParseStatus("同步失败")
-      setTimeout(() => {
-        setAutoParseStatus("")
-      }, 2000)
+      setAutoParseStatus({ kind: "failed" })
     }
-  }, [requestParams])
+    clearAutoParseStatusLater()
+  }, [clearAutoParseStatusLater, readUrlParameters])
 
-  // 旧的自动解析函数（保留兼容性）
-  const autoParseUrlParameters = (inputUrl: string) => {
-    setUrl(inputUrl)
-    autoParseUrlParametersDebounced(inputUrl)
-  }
-
-  // Parse URL parameters on demand (手动解析按钮功能)
   const parseUrlParameters = () => {
     try {
-      if (!url.includes("?")) {
+      const parsedParams = readUrlParameters(url)
+      if (parsedParams.length === 0) {
         toast({
-          title: "提示",
-          description: "URL中没有找到查询参数",
+          title: t("notice"),
+          description: t("noQueryParameters"),
         })
         return
       }
 
-      const queryString = url.split("?")[1]
-      if (!queryString) return
-
-      // 手动解析查询参数，避免URLSearchParams的自动解码
-      const paramPairs = queryString.split("&")
-      const newParams: RequestParam[] = []
-      let updatedCount = 0
-
-      // 获取现有参数的映射
-      const existingParamsMap = new Map<string, RequestParam>()
-      requestParams.forEach(param => {
-        if (param.name) {
-          existingParamsMap.set(param.name, param)
-        }
+      setManualUrlChange(true)
+      setRequestParams(parsedParams)
+      toast({
+        title: t("parametersParsed"),
+        description: `${t("syncedParameters")}: ${parsedParams.length}`,
       })
-
-      paramPairs.forEach(pair => {
-        const equalIndex = pair.indexOf("=")
-        let name = ""
-        let value = ""
-
-        if (equalIndex > 0) {
-          name = pair.substring(0, equalIndex)
-          value = pair.substring(equalIndex + 1)
-        } else if (equalIndex === -1) {
-          // 没有等号的参数
-          name = pair
-          value = ""
-        }
-
-        if (name) {
-          // 只对参数名进行解码，保持值的原始编码状态
-          const decodedName = decodeURIComponent(name)
-
-          const existingParam = existingParamsMap.get(decodedName)
-          if (existingParam) {
-            // 更新现有参数的值
-            if (existingParam.value !== value) {
-              existingParam.value = value
-              updatedCount++
-            }
-          } else {
-            // 添加新参数
-            newParams.push({
-              id: nextParamId.current.toString(),
-              name: decodedName,
-              value: value, // 保持原始编码值
-              type: "String",
-              enabled: true,
-            })
-            nextParamId.current += 1
-          }
-        }
-      })
-
-      // 更新参数列表
-      if (newParams.length > 0 || updatedCount > 0) {
-        setRequestParams([...requestParams, ...newParams])
-
-        // 清理URL，移除查询参数
-        const baseUrl = url.split("?")[0]
-        setUrl(baseUrl)
-
-        toast({
-          title: "解析成功",
-          description: `添加了 ${newParams.length} 个新参数，更新了 ${updatedCount} 个现有参数`,
-        })
-      } else {
-        toast({
-          title: "提示",
-          description: "所有参数都已存在且值相同",
-        })
-      }
-
     } catch (error) {
       console.error("Error parsing URL parameters:", error)
       toast({
-        title: "解析错误",
-        description: "URL参数解析失败，请检查URL格式",
+        title: t("parameterParseError"),
+        description: t("parameterParseErrorDescription"),
         variant: "destructive",
       })
     }
@@ -1010,17 +937,17 @@ export default function HTTPTester() {
   const getMethodColor = (method: string) => {
     switch (method) {
       case "GET":
-        return "bg-blue-500 hover:bg-blue-600"
+        return "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
       case "POST":
-        return "bg-green-500 hover:bg-green-600"
+        return "bg-[var(--md-sys-color-tertiary)] text-[var(--md-sys-color-on-tertiary)] hover:bg-[var(--md-sys-color-tertiary)]/90"
       case "PUT":
-        return "bg-yellow-500 hover:bg-yellow-600"
+        return "bg-[var(--md-sys-color-secondary)] text-[var(--md-sys-color-on-secondary)] hover:bg-[var(--md-sys-color-secondary)]/90"
       case "DELETE":
-        return "bg-red-500 hover:bg-red-600"
+        return "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] hover:bg-[var(--md-sys-color-error)]/90"
       case "PATCH":
-        return "bg-purple-500 hover:bg-purple-600"
+        return "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary-container)]/90"
       default:
-        return "bg-gray-500 hover:bg-gray-600"
+        return "bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]/90"
     }
   }
 
@@ -1040,51 +967,36 @@ export default function HTTPTester() {
     }
   }
 
-  // M3 Tab Items
-  const requestTabItems = useMemo<TabItem[]>(() => [
-    { id: "params", label: "查询参数", icon: <Database className="h-4 w-4" /> },
-    { id: "headers", label: "请求头", icon: <Code className="h-4 w-4" /> },
-    { id: "body", label: "请求体", icon: <FileJson className="h-4 w-4" /> },
-  ], [])
-
-  const responseTabItems = useMemo<TabItem[]>(() => [
-    { id: "response", label: "响应内容", icon: <FileJson className="h-4 w-4" /> },
-    { id: "headers", label: "响应头", icon: <Code className="h-4 w-4" /> },
-  ], [])
-
   return (
-    <div className="container mx-auto py-6 px-4 max-w-7xl">
-      {/* 页面标题 */}
-      <div className="text-center space-y-4 mb-8">
-        <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-          <Globe className="h-8 w-8 text-blue-500" />
-          HTTP 请求测试工具
+    <div className="container mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
+      <div className="mb-6 space-y-3 text-center sm:mb-8">
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          <Globe className="h-7 w-7 text-[var(--md-sys-color-primary)] sm:h-8 sm:w-8" />
+          {t("title")}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          强大的HTTP客户端，支持多种请求方式、环境变量、历史记录和cURL导入导出
+        <p className="mx-auto max-w-2xl text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("description")}
         </p>
-        <Alert className="max-w-2xl mx-auto">
+        <Alert className="mx-auto max-w-2xl border-[var(--md-sys-color-tertiary)]/30 bg-[var(--md-sys-color-tertiary-container)] text-left text-[var(--md-sys-color-on-tertiary-container)]">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            因浏览器CORS限制，采用代理请求方式（非本地浏览器请求），介意勿用
+            {t("proxyDisclosure")}
           </AlertDescription>
         </Alert>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* 侧边栏 */}
-        <div className="lg:col-span-1 space-y-4">
-          {/* 环境变量 */}
+        <div className="order-2 space-y-4 lg:order-1 lg:col-span-1">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Settings className="h-4 w-4" />
-                环境变量
+                {t("environmentVariables")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
               <p className="text-xs text-muted-foreground">
-                在 URL、请求头或请求体中使用 <code className="rounded bg-muted px-1">{'{{变量名}}'}</code>
+                {t("environmentVariableHelp")} <code className="rounded bg-muted px-1">{'{{name}}'}</code>
               </p>
               {environmentVariables.map((variable) => (
                 <div key={variable.id} className="space-y-2 rounded-md border p-2">
@@ -1094,47 +1006,46 @@ export default function HTTPTester() {
                       onCheckedChange={(checked) =>
                         updateEnvironmentVariable(variable.id, "enabled", checked === true)
                       }
-                      aria-label={`启用环境变量 ${variable.name || "未命名"}`}
+                      aria-label={`${t("enableEnvironmentVariable")} ${variable.name || t("unnamed")}`}
                     />
                     <Input
                       value={variable.name}
                       onChange={(event) => updateEnvironmentVariable(variable.id, "name", event.target.value)}
-                      placeholder="变量名"
-                      aria-label="环境变量名"
+                      placeholder={t("variableName")}
+                      aria-label={t("variableName")}
                       className="h-8"
                     />
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => removeEnvironmentVariable(variable.id)}
-                      aria-label={`删除环境变量 ${variable.name || "未命名"}`}
+                      aria-label={`${t("deleteEnvironmentVariable")} ${variable.name || t("unnamed")}`}
                       className="h-8 w-8 shrink-0"
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <Trash2 className="h-4 w-4 text-[var(--md-sys-color-error)]" />
                     </Button>
                   </div>
                   <Input
                     value={variable.value}
                     onChange={(event) => updateEnvironmentVariable(variable.id, "value", event.target.value)}
-                    placeholder="变量值"
-                    aria-label={`${variable.name || "环境变量"}的值`}
+                    placeholder={t("variableValue")}
+                    aria-label={`${variable.name || t("environmentVariable")} ${t("value")}`}
                     className="h-8 font-mono text-xs"
                   />
                 </div>
               ))}
               <Button variant="outline" size="sm" onClick={addEnvironmentVariable} className="w-full gap-1">
                 <Plus className="h-4 w-4" />
-                添加变量
+                {t("addVariable")}
               </Button>
             </CardContent>
           </Card>
 
-          {/* 快捷操作 */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Zap className="h-4 w-4" />
-                快捷操作
+                {t("quickActions")}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
@@ -1145,7 +1056,7 @@ export default function HTTPTester() {
                 className="w-full gap-2"
               >
                 <Bookmark className="h-4 w-4" />
-                保存为模板
+                {t("saveAsTemplate")}
               </Button>
               <Button
                 variant="outline"
@@ -1154,7 +1065,7 @@ export default function HTTPTester() {
                 className="w-full gap-2"
               >
                 <History className="h-4 w-4" />
-                历史记录 ({history.length})
+                {t("history")} ({history.length})
               </Button>
               <Button
                 variant="outline"
@@ -1163,38 +1074,38 @@ export default function HTTPTester() {
                 className="w-full gap-2"
               >
                 <Bookmark className="h-4 w-4" />
-                模板库 ({templates.length})
+                {t("templateLibrary")} ({templates.length})
               </Button>
             </CardContent>
           </Card>
 
-          {/* 历史记录 */}
           {showHistory && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <History className="h-4 w-4" />
-                  最近请求
+                  {t("recentRequests")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
                 <ScrollArea className="h-64">
                   <div className="space-y-2">
                     {history.slice(0, 10).map(item => (
-                      <div
+                      <button
+                        type="button"
                         key={item.id}
-                        className="p-2 border rounded cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="w-full cursor-pointer rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
                         onClick={() => loadFromHistory(item)}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <Badge
                             variant="outline"
-                            className={`text-xs ${getMethodColor(item.method)} text-white border-0`}
+                            className={`border-0 text-xs ${getMethodColor(item.method)}`}
                           >
                             {item.method}
                           </Badge>
                           {item.status && (
-                            <Badge className={`text-xs ${getStatusColor(item.status)} text-white`}>
+                            <Badge className={`text-xs ${getStatusColor(item.status)}`}>
                               {item.status}
                             </Badge>
                           )}
@@ -1205,7 +1116,7 @@ export default function HTTPTester() {
                         <div className="text-xs text-muted-foreground">
                           {new Date(item.timestamp).toLocaleString()}
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </ScrollArea>
@@ -1213,28 +1124,28 @@ export default function HTTPTester() {
             </Card>
           )}
 
-          {/* 模板库 */}
           {showTemplates && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Bookmark className="h-4 w-4" />
-                  请求模板
+                  {t("requestTemplates")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
                 <ScrollArea className="h-64">
                   <div className="space-y-2">
                     {templates.map(template => (
-                      <div
+                      <button
+                        type="button"
                         key={template.id}
-                        className="p-2 border rounded cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="w-full cursor-pointer rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
                         onClick={() => loadFromTemplate(template)}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <Badge
                             variant="outline"
-                            className={`text-xs ${getMethodColor(template.method)} text-white border-0`}
+                            className={`border-0 text-xs ${getMethodColor(template.method)}`}
                           >
                             {template.method}
                           </Badge>
@@ -1243,7 +1154,7 @@ export default function HTTPTester() {
                         <div className="text-xs text-muted-foreground truncate">
                           {template.url}
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </ScrollArea>
@@ -1252,14 +1163,13 @@ export default function HTTPTester() {
           )}
         </div>
 
-        {/* 主内容区域 */}
-        <div className="lg:col-span-3">
+        <div className="order-1 min-w-0 lg:order-2 lg:col-span-3">
           <Card className="overflow-visible">
             <CardContent className="p-4 md:p-6 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                   <Send className="h-5 w-5 text-primary" />
-                  Request Builder
+                  {t("requestBuilder")}
                 </h2>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Button
@@ -1268,14 +1178,16 @@ export default function HTTPTester() {
                     onClick={() => {
                       try {
                         const curl = generateCurl()
-                        void navigator.clipboard.writeText(curl).then(
-                          () => toast({ title: "cURL已复制到剪贴板" }),
-                          () => toast({ title: "复制失败", variant: "destructive" }),
-                        )
+                        void copyTextToClipboard(curl).then((success) => {
+                          toast({
+                            title: success ? t("curlCopied") : t("copyFailed"),
+                            variant: success ? "default" : "destructive",
+                          })
+                        })
                       } catch (error) {
                         toast({
-                          title: "URL 格式错误",
-                          description: (error as Error).message,
+                          title: t("invalidUrl"),
+                          description: getHttpErrorMessage(error, t),
                           variant: "destructive",
                         })
                       }
@@ -1283,19 +1195,19 @@ export default function HTTPTester() {
                     className="gap-2 flex-1 sm:flex-none"
                   >
                     <Download className="h-4 w-4" />
-                    导出cURL
+                    {t("exportCurl")}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const curlCommand = prompt("请粘贴cURL命令:")
-                      if (curlCommand) parseCurl(curlCommand)
+                      setCurlInput("")
+                      setCurlDialogOpen(true)
                     }}
                     className="gap-2 flex-1 sm:flex-none"
                   >
                     <Upload className="h-4 w-4" />
-                    导入cURL
+                    {t("importCurl")}
                   </Button>
                 </div>
               </div>
@@ -1305,9 +1217,9 @@ export default function HTTPTester() {
                   <div className="flex-shrink-0 w-full md:w-auto">
                     <Select value={method} onValueChange={setMethod}>
                       <SelectTrigger
-                        className={`w-full md:w-[120px] h-10 md:h-12 font-medium ${getMethodColor(method)} text-white border-0 shadow-sm transition-transform active:scale-95`}
+                        className={`h-10 w-full border-0 font-medium shadow-sm transition-transform active:scale-95 md:h-12 md:w-[120px] ${getMethodColor(method)}`}
                       >
-                        <SelectValue placeholder="Method" />
+                        <SelectValue placeholder={t("method")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="GET">GET</SelectItem>
@@ -1323,7 +1235,9 @@ export default function HTTPTester() {
 
                   <div className="flex-grow space-y-2 relative">
                     <div className="relative z-0 group">
+                      <Label htmlFor="http-request-url" className="sr-only">{t("requestUrl")}</Label>
                       <Input
+                        id="http-request-url"
                         className="h-10 md:h-12 pr-10 font-mono text-sm bg-muted/30 border-muted-foreground/20 focus:border-primary transition-all"
                         value={url}
                         onChange={handleUrlChange}
@@ -1333,9 +1247,10 @@ export default function HTTPTester() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-muted-foreground hover:text-blue-600 h-8 w-8"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 transform text-muted-foreground hover:bg-[var(--md-sys-color-primary-container)] hover:text-[var(--md-sys-color-on-primary-container)]"
                         onClick={parseUrlParameters}
-                        title="手动解析URL参数"
+                        title={t("parseUrlParameters")}
+                        aria-label={t("parseUrlParameters")}
                       >
                         <Database className="h-4 w-4" />
                       </Button>
@@ -1345,10 +1260,21 @@ export default function HTTPTester() {
                     {autoParseStatus && (
                       <div className="absolute top-full left-0 mt-1 z-10 pointer-events-none">
                         <div className="inline-flex items-center gap-2 text-xs bg-background/90 backdrop-blur px-2 py-1 rounded shadow-sm border animate-in fade-in slide-in-from-top-1">
-                          {autoParseStatus.includes("等待") && <Clock className="h-3 w-3 text-orange-500" />}
-                          {autoParseStatus.includes("正在") && <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />}
-                          {autoParseStatus.includes("已同步") && <CheckCircle2 className="h-3 w-3 text-green-500" />}
-                          <span className="text-muted-foreground">{autoParseStatus}</span>
+                          {autoParseStatus.kind === "waiting" && <Clock className="h-3 w-3 text-[var(--md-sys-color-tertiary)]" />}
+                          {autoParseStatus.kind === "syncing" && <Loader2 className="h-3 w-3 animate-spin text-[var(--md-sys-color-primary)]" />}
+                          {autoParseStatus.kind === "synced" && <CheckCircle2 className="h-3 w-3 text-[var(--md-sys-color-primary)]" />}
+                          {autoParseStatus.kind === "failed" && <AlertCircle className="h-3 w-3 text-[var(--md-sys-color-error)]" />}
+                          <span className="text-muted-foreground">
+                            {autoParseStatus.kind === "waiting"
+                              ? t("waitingToSync")
+                              : autoParseStatus.kind === "syncing"
+                                ? t("syncingParameters")
+                                : autoParseStatus.kind === "synced"
+                                  ? `${t("syncedParameters")}: ${autoParseStatus.count ?? 0}`
+                                  : autoParseStatus.kind === "current"
+                                    ? t("parametersCurrent")
+                                    : t("parameterSyncFailed")}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -1362,7 +1288,7 @@ export default function HTTPTester() {
                         className="gap-2 flex-grow md:flex-grow-0 h-10 md:h-12"
                       >
                         <X className="h-4 w-4" />
-                        取消
+                        {t("cancel")}
                       </Button>
                     )}
                     <Button
@@ -1373,12 +1299,12 @@ export default function HTTPTester() {
                       {loading ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="sr-only sm:not-sr-only">发送中...</span>
+                          <span className="sr-only sm:not-sr-only">{t("loading")}</span>
                         </>
                       ) : (
                         <>
                           <Send className="h-4 w-4" />
-                          <span>发送</span>
+                          <span>{t("submit")}</span>
                         </>
                       )}
                     </Button>
@@ -1390,51 +1316,50 @@ export default function HTTPTester() {
                   <Alert>
                     <Settings className="h-4 w-4" />
                     <AlertDescription>
-                      已启用{" "}
+                      {t("enabledVariablesPrefix")}{" "}
                       <strong>
                         {environmentVariables.filter((variable) => variable.enabled && variable.name.trim()).length}
                       </strong>{" "}
-                      个环境变量，发送请求和导出 cURL 时会自动替换。
+                      {t("enabledVariablesSuffix")}
                     </AlertDescription>
                   </Alert>
                 )}
               </div>
 
-              {/* 请求配置选项卡 */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-3 mb-6">
-                  <TabsTrigger value="params" className="flex items-center gap-2">
-                    <Database className="h-4 w-4" />
-                    查询参数
+                <TabsList className="mb-6 grid h-auto grid-cols-3 bg-[var(--md-sys-color-surface-container)] p-1">
+                  <TabsTrigger value="params" className="flex min-w-0 items-center gap-1 px-1 py-2.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                    <Database className="hidden h-4 w-4 sm:block" />
+                    <span className="truncate">{t("queryParams")}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="headers" className="flex items-center gap-2">
-                    <Code className="h-4 w-4" />
-                    请求头
+                  <TabsTrigger value="headers" className="flex min-w-0 items-center gap-1 px-1 py-2.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                    <Code className="hidden h-4 w-4 sm:block" />
+                    <span className="truncate">{t("headers")}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="body" className="flex items-center gap-2">
-                    <FileJson className="h-4 w-4" />
-                    请求体
+                  <TabsTrigger value="body" className="flex min-w-0 items-center gap-1 px-1 py-2.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                    <FileJson className="hidden h-4 w-4 sm:block" />
+                    <span className="truncate">{t("body")}</span>
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="params">
-                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="mb-4 rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3">
                     <div className="flex items-start gap-2">
-                      <Database className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-blue-800 dark:text-blue-200">
-                        <div className="font-medium mb-1">URL参数自动同步说明</div>
-                        <ul className="text-xs space-y-1 text-blue-700 dark:text-blue-300">
-                          <li>• 输入URL后会延迟1秒自动同步参数到下方表格</li>
-                          <li>• 自动同步保留复杂编码（如 %252），不会转义</li>
-                          <li>• 右侧按钮可立即手动解析参数</li>
-                          <li>• 在参数表格中修改参数时，特殊字符会自动编码</li>
-                          <li>• 支持环境变量语法：<code className="px-1 bg-blue-100 dark:bg-blue-800 rounded">{'{{变量名}}'}</code></li>
+                      <Database className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--md-sys-color-primary)]" />
+                      <div className="text-sm text-[var(--md-sys-color-on-surface)]">
+                        <div className="mb-1 font-medium">{t("urlSyncTitle")}</div>
+                        <ul className="space-y-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                          <li>• {t("urlSyncDelayed")}</li>
+                          <li>• {t("urlSyncEncoding")}</li>
+                          <li>• {t("urlSyncManual")}</li>
+                          <li>• {t("urlSyncTable")}</li>
+                          <li>• {t("urlSyncVariables")} <code className="rounded bg-[var(--md-sys-color-surface-container-high)] px-1">{'{{name}}'}</code></li>
                         </ul>
                       </div>
                     </div>
                   </div>
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
+                  <div className="max-w-full overflow-x-auto rounded-lg border">
+                    <Table className="min-w-[680px]">
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead className="w-[50px]"></TableHead>
@@ -1457,7 +1382,7 @@ export default function HTTPTester() {
                               <Input
                                 value={param.name}
                                 onChange={(e) => updateParam(param.id, "name", e.target.value)}
-                                placeholder="Query name"
+                                placeholder={t("parameterName")}
                                 className="h-8"
                               />
                             </TableCell>
@@ -1465,7 +1390,7 @@ export default function HTTPTester() {
                               <Input
                                 value={param.value}
                                 onChange={(e) => updateParam(param.id, "value", e.target.value)}
-                                placeholder="Query value"
+                                placeholder={t("parameterValue")}
                                 className="h-8"
                               />
                             </TableCell>
@@ -1475,15 +1400,15 @@ export default function HTTPTester() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="String">String</SelectItem>
-                                  <SelectItem value="Number">Number</SelectItem>
-                                  <SelectItem value="Boolean">Boolean</SelectItem>
+                                  <SelectItem value="String">{t("stringType")}</SelectItem>
+                                  <SelectItem value="Number">{t("numberType")}</SelectItem>
+                                  <SelectItem value="Boolean">{t("booleanType")}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => removeParam(param.id)}>
-                                <Trash2 className="h-4 w-4 text-red-500" />
+                              <Button variant="ghost" size="icon" onClick={() => removeParam(param.id)} aria-label={t("removeParameter")}>
+                                <Trash2 className="h-4 w-4 text-[var(--md-sys-color-error)]" />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1500,8 +1425,8 @@ export default function HTTPTester() {
                 </TabsContent>
 
                 <TabsContent value="headers">
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
+                  <div className="max-w-full overflow-x-auto rounded-lg border">
+                    <Table className="min-w-[600px]">
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead className="w-[50px]"></TableHead>
@@ -1523,7 +1448,7 @@ export default function HTTPTester() {
                               <Input
                                 value={header.name}
                                 onChange={(e) => updateHeader(header.id, "name", e.target.value)}
-                                placeholder="Header name"
+                                placeholder={t("headerName")}
                                 className="h-8"
                               />
                             </TableCell>
@@ -1531,13 +1456,13 @@ export default function HTTPTester() {
                               <Input
                                 value={header.value}
                                 onChange={(e) => updateHeader(header.id, "value", e.target.value)}
-                                placeholder="Header value"
+                                placeholder={t("headerValue")}
                                 className="h-8"
                               />
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => removeHeader(header.id)}>
-                                <Trash2 className="h-4 w-4 text-red-500" />
+                              <Button variant="ghost" size="icon" onClick={() => removeHeader(header.id)} aria-label={t("removeHeader")}>
+                                <Trash2 className="h-4 w-4 text-[var(--md-sys-color-error)]" />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1621,7 +1546,7 @@ export default function HTTPTester() {
                             <Textarea
                               value={body}
                               onChange={(e) => setBody(e.target.value)}
-                              placeholder="Request body (JSON, XML, etc.)"
+                              placeholder={t("rawBodyPlaceholder")}
                               rows={8}
                               className="font-mono text-sm"
                             />
@@ -1630,15 +1555,16 @@ export default function HTTPTester() {
                               size="icon"
                               className="absolute right-2 top-2"
                               onClick={clearRequestBody}
+                              aria-label={t("clearBody")}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-4 w-4 text-[var(--md-sys-color-error)]" />
                             </Button>
                           </div>
                         )}
 
                         {(bodyType === "form-data" || bodyType === "urlencoded") && (
-                          <div className="border rounded-md overflow-hidden">
-                            <Table>
+                          <div className="max-w-full overflow-x-auto rounded-lg border">
+                            <Table className="min-w-[720px]">
                               <TableHeader>
                                 <TableRow className="bg-muted/50">
                                   <TableHead className="w-[50px]"></TableHead>
@@ -1661,7 +1587,7 @@ export default function HTTPTester() {
                                       <Input
                                         value={param.name}
                                         onChange={(e) => updateFormDataParam(param.id, "name", e.target.value)}
-                                        placeholder="Key"
+                                        placeholder={t("key")}
                                         className="h-8"
                                       />
                                     </TableCell>
@@ -1670,24 +1596,24 @@ export default function HTTPTester() {
                                         <Input
                                           value={param.value}
                                           onChange={(e) => updateFormDataParam(param.id, "value", e.target.value)}
-                                          placeholder="Value"
+                                          placeholder={t("value")}
                                           className="h-8"
                                         />
                                       ) : (
-                                        <div className="flex items-center justify-between">
-                                          <input
+                                        <div className="min-w-48">
+                                          <Input
                                             type="file"
-                                            ref={binaryInputRef}
-                                            onChange={handleBinaryFileChange}
-                                            className="hidden"
+                                            onChange={(event) =>
+                                              updateFormDataFile(param.id, event.target.files?.[0])
+                                            }
+                                            className="h-9 cursor-pointer text-xs"
+                                            aria-label={t("selectFormDataFile")}
                                           />
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => binaryInputRef.current?.click()}
-                                          >
-                                            {binaryFile ? binaryFile.name : t("selectBinaryFile")}
-                                          </Button>
+                                          {param.file && (
+                                            <span className="mt-1 block max-w-48 truncate text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                                              {param.file.name}
+                                            </span>
+                                          )}
                                         </div>
                                       )}
                                     </TableCell>
@@ -1701,14 +1627,14 @@ export default function HTTPTester() {
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="String">String</SelectItem>
-                                          <SelectItem value="File">File</SelectItem>
+                                          <SelectItem value="String">{t("stringType")}</SelectItem>
+                                          <SelectItem value="File">{t("fileType")}</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </TableCell>
                                     <TableCell>
-                                      <Button variant="ghost" size="icon" onClick={() => removeFormDataParam(param.id)}>
-                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      <Button variant="ghost" size="icon" onClick={() => removeFormDataParam(param.id)} aria-label={t("removeFormField")}>
+                                        <Trash2 className="h-4 w-4 text-[var(--md-sys-color-error)]" />
                                       </Button>
                                     </TableCell>
                                   </TableRow>
@@ -1718,7 +1644,7 @@ export default function HTTPTester() {
                             <div className="p-2 border-t bg-muted/20">
                               <Button variant="outline" size="sm" onClick={addFormDataParam} className="gap-1">
                                 <Plus className="h-4 w-4" />
-                                {bodyType === "urlencoded" ? "添加表单字段" : t("addFormData")}
+                                {bodyType === "urlencoded" ? t("addFormField") : t("addFormData")}
                               </Button>
                             </div>
                           </div>
@@ -1752,15 +1678,15 @@ export default function HTTPTester() {
             <Card className="mt-6">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  响应结果
+                  <CheckCircle2 className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                  {t("responseResult")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
 
                 {statusInfo.statusCode && (
                   <div className="flex items-center gap-2 mb-4">
-                    <Badge className={`${getStatusColor(Number.parseInt(statusInfo.statusCode))} text-white`}>
+                    <Badge className={getStatusColor(Number.parseInt(statusInfo.statusCode))}>
                       {statusInfo.statusCode}
                     </Badge>
                     <span className="text-sm font-medium">{statusInfo.statusText}</span>
@@ -1773,22 +1699,22 @@ export default function HTTPTester() {
                 )}
 
                 <Tabs value={responseTab} onValueChange={setResponseTab}>
-                  <TabsList className="grid grid-cols-4 mb-4">
-                    <TabsTrigger value="response" className="flex items-center gap-2">
-                      <FileJson className="h-4 w-4" />
-                      {t("response")}
+                  <TabsList className="mb-4 grid h-auto grid-cols-4 bg-[var(--md-sys-color-surface-container)] p-1">
+                    <TabsTrigger value="response" className="flex min-w-0 items-center gap-1 px-1 py-2 text-[11px] data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                      <FileJson className="hidden h-4 w-4 md:block" />
+                      <span className="truncate">{t("response")}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="responseHeaders" className="flex items-center gap-2">
-                      <Code className="h-4 w-4" />
-                      {t("responseHeaders")}
+                    <TabsTrigger value="responseHeaders" className="flex min-w-0 items-center gap-1 px-1 py-2 text-[11px] data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                      <Code className="hidden h-4 w-4 md:block" />
+                      <span className="truncate">{t("responseHeaders")}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="requestHeaders" className="flex items-center gap-2">
-                      <Code className="h-4 w-4" />
-                      {t("requestHeaders")}
+                    <TabsTrigger value="requestHeaders" className="flex min-w-0 items-center gap-1 px-1 py-2 text-[11px] data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                      <Code className="hidden h-4 w-4 md:block" />
+                      <span className="truncate">{t("requestHeaders")}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="timings" className="flex items-center gap-2">
-                      <ExternalLink className="h-4 w-4" />
-                      {t("timings")}
+                    <TabsTrigger value="timings" className="flex min-w-0 items-center gap-1 px-1 py-2 text-[11px] data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3 sm:text-sm">
+                      <ExternalLink className="hidden h-4 w-4 md:block" />
+                      <span className="truncate">{t("timings")}</span>
                     </TabsTrigger>
                   </TabsList>
 
@@ -1806,8 +1732,9 @@ export default function HTTPTester() {
                           size="icon"
                           className="absolute right-2 top-2"
                           onClick={handleCopyToClipboard}
+                          aria-label={t("copyResponse")}
                         >
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                          {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
                         </Button>
                       </div>
 
@@ -1818,8 +1745,8 @@ export default function HTTPTester() {
                   </TabsContent>
 
                   <TabsContent value="responseHeaders">
-                    <div className="border rounded-md overflow-hidden">
-                      <Table>
+                    <div className="max-w-full overflow-x-auto rounded-lg border">
+                      <Table className="min-w-[560px]">
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead>{t("header")}</TableHead>
@@ -1843,8 +1770,8 @@ export default function HTTPTester() {
                   </TabsContent>
 
                   <TabsContent value="requestHeaders">
-                    <div className="border rounded-md overflow-hidden">
-                      <Table>
+                    <div className="max-w-full overflow-x-auto rounded-lg border">
+                      <Table className="min-w-[560px]">
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead>{t("header")}</TableHead>
@@ -1866,8 +1793,8 @@ export default function HTTPTester() {
                   </TabsContent>
 
                   <TabsContent value="timings">
-                    <div className="border rounded-md overflow-hidden">
-                      <Table>
+                    <div className="max-w-full overflow-x-auto rounded-lg border">
+                      <Table className="min-w-[500px]">
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead>{t("name")}</TableHead>
@@ -1878,13 +1805,13 @@ export default function HTTPTester() {
                           {Object.entries(timings).map(([name, value]) => (
                             <TableRow key={name}>
                               <TableCell className="font-medium">{name}</TableCell>
-                              <TableCell>{value ? <Badge variant="outline">{value}ms</Badge> : "N/A"}</TableCell>
+                              <TableCell>{value ? <Badge variant="outline">{value}ms</Badge> : t("notAvailable")}</TableCell>
                             </TableRow>
                           ))}
                           <TableRow>
                             <TableCell className="font-medium">{t("statusCode")}</TableCell>
                             <TableCell>
-                              <Badge className={`${getStatusColor(Number.parseInt(statusInfo.statusCode))} text-white`}>
+                              <Badge className={getStatusColor(Number.parseInt(statusInfo.statusCode))}>
                                 {statusInfo.statusCode}
                               </Badge>
                             </TableCell>
@@ -1907,6 +1834,56 @@ export default function HTTPTester() {
           )}
         </div>
       </div>
+
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("saveTemplateTitle")}</DialogTitle>
+            <DialogDescription>{t("saveTemplateDescription")}</DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={templateName}
+            onChange={(event) => setTemplateName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && templateName.trim()) confirmSaveTemplate()
+            }}
+            placeholder={t("templateNamePlaceholder")}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)}>{t("cancel")}</Button>
+            <Button onClick={confirmSaveTemplate} disabled={!templateName.trim()}>{t("save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={curlDialogOpen} onOpenChange={setCurlDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("importCurlTitle")}</DialogTitle>
+            <DialogDescription>{t("importCurlDescription")}</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            autoFocus
+            value={curlInput}
+            onChange={(event) => setCurlInput(event.target.value)}
+            placeholder={'curl -X POST "https://example.com/api" \\\n  -H "Content-Type: application/json"'}
+            className="min-h-48 font-mono text-sm"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCurlDialogOpen(false)}>{t("cancel")}</Button>
+            <Button
+              onClick={() => {
+                parseCurl(curlInput)
+                setCurlDialogOpen(false)
+              }}
+              disabled={!curlInput.trim()}
+            >
+              {t("import")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,11 +1,14 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
 import { createHash } from "crypto"
 import { Keccak, SHA3, SHAKE } from "sha3"
@@ -19,6 +22,7 @@ import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
+import { useToolActivity } from "@/components/tool-activity"
 
 // 添加参数接口
 interface HashAlgorithm {
@@ -28,28 +32,28 @@ interface HashAlgorithm {
   sizes?: number[]
 }
 
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256)
+  for (let n = 0; n < 256; n++) {
+    let value = n
+    for (let k = 0; k < 8; k++) {
+      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1
+    }
+    table[n] = value >>> 0
+  }
+  return table
+})()
+
+function updateCrc32(crc: number, bytes: Uint8Array): number {
+  for (let i = 0; i < bytes.length; i++) {
+    crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ bytes[i]) & 0xff]
+  }
+  return crc >>> 0
+}
+
 // 基于字节的 CRC32，保证文本与文件模式都按原始字节计算
 function crc32Bytes(bytes: Uint8Array) {
-  function makeCRCTable() {
-    let c
-    const crcTable: number[] = []
-    for (let n = 0; n < 256; n++) {
-      c = n
-      for (let k = 0; k < 8; k++) {
-        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-      }
-      crcTable[n] = c
-    }
-    return crcTable
-  }
-
-  const crcTable = makeCRCTable()
-  let crc = 0 ^ -1
-
-  for (let i = 0; i < bytes.length; i++) {
-    crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xff]
-  }
-
+  const crc = updateCrc32(0xffffffff, bytes)
   return (crc ^ -1) >>> 0
 }
 
@@ -78,6 +82,78 @@ interface FileInfo {
 interface VerifyResultType {
   isMatch: boolean
   matchedAlgorithm?: string
+}
+
+interface IncrementalHasher {
+  update: (bytes: Uint8Array) => void
+  digest: () => string
+}
+
+function createIncrementalHasher(
+  algorithmId: string,
+  algorithmSize: number | undefined,
+  fallbackSize: number,
+  outputFormat: string,
+): IncrementalHasher {
+  if (algorithmId === "crc32") {
+    let crc = 0xffffffff
+    return {
+      update: (bytes) => {
+        crc = updateCrc32(crc, bytes)
+      },
+      digest: () => {
+        const hex = ((crc ^ -1) >>> 0).toString(16).padStart(8, "0")
+        return outputFormat === "hex"
+          ? hex
+          : Buffer.from(hex, "hex").toString("base64")
+      },
+    }
+  }
+
+  let hash: any
+  if (algorithmId === "sha3") {
+    hash = new SHA3((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
+  } else if (algorithmId === "keccak") {
+    hash = new Keccak((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
+  } else if (algorithmId === "shake") {
+    hash = new SHAKE((algorithmSize || fallbackSize) as 128 | 256)
+  } else if (algorithmId === "sha2") {
+    hash = createHash(`sha${algorithmSize || fallbackSize}`)
+  } else if (algorithmId === "sha512") {
+    hash = createHash(`sha512-${algorithmSize || fallbackSize}`)
+  } else {
+    hash = createHash(algorithmId)
+  }
+
+  return {
+    update: (bytes) => {
+      hash.update(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
+    },
+    digest: () => outputFormat === "hex" ? hash.digest("hex") : hash.digest("base64"),
+  }
+}
+
+async function readFileInChunks(
+  file: File,
+  onChunk: (bytes: Uint8Array) => void,
+  onProgress: (progress: number) => void,
+  isCancelled: () => boolean,
+): Promise<void> {
+  const chunkSize = 2 * 1024 * 1024
+  if (file.size === 0) {
+    onProgress(100)
+    return
+  }
+
+  for (let offset = 0; offset < file.size; offset += chunkSize) {
+    if (isCancelled()) throw new DOMException("Hash calculation cancelled", "AbortError")
+    const chunk = new Uint8Array(
+      await file.slice(offset, Math.min(file.size, offset + chunkSize)).arrayBuffer(),
+    )
+    onChunk(chunk)
+    onProgress(Math.min(100, Math.round(((offset + chunk.byteLength) / file.size) * 100)))
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  }
 }
 
 // 格式化文件大小
@@ -154,9 +230,9 @@ const hashCategories: Array<{ name: string; algorithms: HashAlgorithm[] }> = [
 const allAlgorithms = hashCategories.flatMap((category) => category.algorithms)
 
 const algorithmDescriptions: Record<string, string> = {
-  sha3: "NIST 标准版",
-  keccak: "原始 Keccak 变体",
-  shake: "可扩展输出",
+  sha3: "sha3Description",
+  keccak: "keccakDescription",
+  shake: "shakeDescription",
 }
 
 const serverBackedAlgorithms = new Set(["sha512", "blake2s256", "blake2b512", "sm3"])
@@ -164,13 +240,16 @@ const serverBackedAlgorithms = new Set(["sha512", "blake2s256", "blake2b512", "s
 export default function HashPage() {
   const t = useTranslations("hash")
   const params = useToolRuntimeParams()
+  const isToolActive = useToolActivity()
 
   // 哈希计算器状态
   const [inputMode, setInputMode] = useState<"text" | "file">("text")
   const [input, setInput] = useState("")
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null)
   const [fileCalculating, setFileCalculating] = useState(false)
+  const [textCalculating, setTextCalculating] = useState(false)
   const [fileProgress, setFileProgress] = useState(0)
+  const [fileError, setFileError] = useState("")
   const [algorithm, setAlgorithm] = useState("md5")
   const [selectedCategory, setSelectedCategory] = useState("MD")
   const [hashResult, setHashResult] = useState("")
@@ -182,13 +261,29 @@ export default function HashPage() {
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [outputFormat, setOutputFormat] = useState("hex")
   const [size, setSize] = useState<number>(256)
+  const [calculationError, setCalculationError] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cancelCalculationRef = useRef<boolean>(false)
+  const calculationIdRef = useRef(0)
+  const calculationAbortRef = useRef<AbortController | null>(null)
   // Add the hmacKey state after the other state declarations
 
   // 复制超时
-  const copyTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout | null }>({})
+  const copyTimeoutRef = useRef<{ [key: string]: ReturnType<typeof setTimeout> | null }>({})
+
+  const stopActiveCalculation = useCallback(() => {
+    cancelCalculationRef.current = true
+    calculationIdRef.current += 1
+    calculationAbortRef.current?.abort()
+    calculationAbortRef.current = null
+    setFileCalculating(false)
+    setTextCalculating(false)
+  }, [])
+
+  useEffect(() => {
+    if (!isToolActive) stopActiveCalculation()
+  }, [isToolActive, stopActiveCalculation])
 
   // 根据传入的功能参数设置初始算法
   useEffect(() => {
@@ -233,9 +328,12 @@ export default function HashPage() {
   useEffect(() => {
     const algorithmObj = allAlgorithms.find((algo) => algo.id === algorithm)
     if (algorithmObj && algorithmObj.configurable) {
-      // 设置默认size为算法支持的第一个size
       if (algorithmObj.sizes && algorithmObj.sizes.length > 0) {
-        setSize(algorithmObj.sizes[0])
+        setSize((current) =>
+          algorithmObj.sizes?.includes(current)
+            ? current
+            : algorithmObj.sizes?.[0] ?? current,
+        )
       }
     }
   }, [algorithm])
@@ -246,6 +344,7 @@ export default function HashPage() {
   const calculateServerHash = async (
     algorithmId: string,
     options: { algorithmSize?: number; text?: string; file?: File },
+    signal?: AbortSignal,
   ): Promise<string> => {
     const formData = new FormData()
     formData.append("algorithm", algorithmId)
@@ -266,6 +365,7 @@ export default function HashPage() {
     const response = await fetch("/api/hash", {
       method: "POST",
       body: formData,
+      signal,
     })
 
     if (!response.ok) {
@@ -277,51 +377,58 @@ export default function HashPage() {
   }
 
   // 计算单个哈希值（文本）
-  const calculateSingleTextHash = async (algorithmId: string, algorithmSize?: number): Promise<string> => {
-    try {
-      if (serverBackedAlgorithms.has(algorithmId)) {
-        return await calculateServerHash(algorithmId, {
+  const calculateSingleTextHash = async (
+    text: string,
+    algorithmId: string,
+    algorithmSize?: number,
+    signal?: AbortSignal,
+  ): Promise<string> => {
+    if (serverBackedAlgorithms.has(algorithmId)) {
+      return calculateServerHash(
+        algorithmId,
+        {
           algorithmSize,
-          text: input,
-        })
-      }
-
-      let result = ""
-
-      if (algorithmId === "sha3") {
-        const sha3 = new SHA3((algorithmSize || size) as 224 | 256 | 384 | 512)
-        sha3.update(input)
-        result = outputFormat === "hex" ? sha3.digest("hex") : sha3.digest("base64")
-      } else if (algorithmId === "keccak") {
-        const keccak = new Keccak((algorithmSize || size) as 224 | 256 | 384 | 512)
-        keccak.update(input)
-        result = outputFormat === "hex" ? keccak.digest("hex") : keccak.digest("base64")
-      } else if (algorithmId === "shake") {
-        const shake = new SHAKE((algorithmSize || size) as 128 | 256)
-        shake.update(input)
-        result = outputFormat === "hex" ? shake.digest("hex") : shake.digest("base64")
-      } else if (algorithmId === "sha2") {
-        const hashObj = createHash(`sha${algorithmSize || size}`)
-        hashObj.update(input)
-        result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
-      } else if (algorithmId === "sha512") {
-        const hashObj = createHash(`sha512-${algorithmSize || size}`)
-        hashObj.update(input)
-        result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
-      } else if (algorithmId === "crc32") {
-        const crcResult = crc32Text(input).toString(16).padStart(8, "0")
-        result = outputFormat === "hex" ? crcResult : Buffer.from(crcResult, "hex").toString("base64")
-      } else {
-        const hashObj = createHash(algorithmId)
-        hashObj.update(input)
-        result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
-      }
-
-      return result
-    } catch (error) {
-      console.error(`Hash calculation error for ${algorithmId}:`, error)
-      return `${t("error")}: ${algorithmId}`
+          text,
+        },
+        signal,
+      )
     }
+
+    let result = ""
+
+    if (algorithmId === "sha3") {
+      const sha3 = new SHA3((algorithmSize || size) as 224 | 256 | 384 | 512)
+      sha3.update(text)
+      result = outputFormat === "hex" ? sha3.digest("hex") : sha3.digest("base64")
+    } else if (algorithmId === "keccak") {
+      const keccak = new Keccak((algorithmSize || size) as 224 | 256 | 384 | 512)
+      keccak.update(text)
+      result = outputFormat === "hex" ? keccak.digest("hex") : keccak.digest("base64")
+    } else if (algorithmId === "shake") {
+      const shake = new SHAKE((algorithmSize || size) as 128 | 256)
+      shake.update(text)
+      result = outputFormat === "hex" ? shake.digest("hex") : shake.digest("base64")
+    } else if (algorithmId === "sha2") {
+      const hashObj = createHash(`sha${algorithmSize || size}`)
+      hashObj.update(text)
+      result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
+    } else if (algorithmId === "sha512") {
+      const hashObj = createHash(`sha512-${algorithmSize || size}`)
+      hashObj.update(text)
+      result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
+    } else if (algorithmId === "crc32") {
+      const crcResult = crc32Text(text).toString(16).padStart(8, "0")
+      result =
+        outputFormat === "hex"
+          ? crcResult
+          : Buffer.from(crcResult, "hex").toString("base64")
+    } else {
+      const hashObj = createHash(algorithmId)
+      hashObj.update(text)
+      result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
+    }
+
+    return result
   }
 
   // 获取算法显示名称
@@ -355,147 +462,102 @@ export default function HashPage() {
   }
 
   // 计算所有哈希值（文本）
-  const calculateAllTextHashes = async () => {
-    if (!input) {
-      setAllHashResults([])
-      return
-    }
-
-    // 创建所有算法的结果数组
+  const calculateAllTextHashes = async (
+    text: string,
+    calculationId: number,
+    signal: AbortSignal,
+  ) => {
     const results: HashResult[] = []
-
-    // 计算非可配置算法
-    for (const algo of allAlgorithms.filter((item) => !item.configurable)) {
-      const value = await calculateSingleTextHash(algo.id)
-      results.push({
-        algorithm: algo.id,
-        displayName: algo.name,
-        value,
-        status: "completed",
-      })
-    }
-
-    // 计算可配置算法的所有大小
-    for (const algo of allAlgorithms.filter((item) => item.configurable)) {
-      if (!algo.sizes) {
-        continue
-      }
-
-      for (const s of algo.sizes) {
-        const value = await calculateSingleTextHash(algo.id, s)
+    for (const algo of allAlgorithms) {
+      if (algo.configurable && algo.sizes) {
+        for (const algorithmSize of algo.sizes) {
+          results.push({
+            algorithm: algo.id,
+            algorithmSize,
+            displayName: getAlgorithmDisplayName(algo.id, algorithmSize),
+            value: "",
+            status: "pending",
+          })
+        }
+      } else {
         results.push({
           algorithm: algo.id,
-          displayName: getAlgorithmDisplayName(algo.id, s),
-          value,
-          status: "completed",
-          algorithmSize: s,
+          displayName: algo.name,
+          value: "",
+          status: "pending",
         })
       }
     }
 
-    setAllHashResults(results)
+    setAllHashResults([...results])
+    for (let index = 0; index < results.length; index += 1) {
+      if (signal.aborted || calculationIdRef.current !== calculationId) {
+        throw new DOMException("Hash calculation cancelled", "AbortError")
+      }
+
+      const result = results[index]
+      result.status = "calculating"
+      setAllHashResults([...results])
+      try {
+        result.value = await calculateSingleTextHash(
+          text,
+          result.algorithm,
+          result.algorithmSize,
+          signal,
+        )
+        result.status = "completed"
+      } catch (error) {
+        if (signal.aborted) throw error
+        console.error(`Hash calculation error for ${result.algorithm}:`, error)
+        result.value = `${t("error")}: ${result.displayName}`
+        result.status = "error"
+      }
+
+      if (calculationIdRef.current === calculationId) {
+        setAllHashResults([...results])
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    }
   }
 
   // 计算文件哈希
-  const calculateFileHash = async (file: File, algorithmId: string, algorithmSize?: number): Promise<string> => {
+  const calculateFileHash = async (
+    file: File,
+    algorithmId: string,
+    algorithmSize: number | undefined,
+    calculationId: number,
+    signal: AbortSignal,
+  ): Promise<string> => {
     if (serverBackedAlgorithms.has(algorithmId)) {
-      return calculateServerHash(algorithmId, {
-        algorithmSize,
-        file,
-      })
+      return calculateServerHash(
+        algorithmId,
+        {
+          algorithmSize,
+          file,
+        },
+        signal,
+      )
     }
 
-    return new Promise((resolve, reject) => {
-      try {
-        const fileReader = new FileReader()
-        // Increase chunk size to improve performance
-        const chunkSize = 5 * 1024 * 1024 // 5MB chunks
-        let offset = 0
-        let hash: any
-
-        // Initialize hash object
-
-        if (algorithmId === "sha3") {
-          hash = new SHA3((algorithmSize || size) as 224 | 256 | 384 | 512)
-        } else if (algorithmId === "keccak") {
-          hash = new Keccak((algorithmSize || size) as 224 | 256 | 384 | 512)
-        } else if (algorithmId === "shake") {
-          hash = new SHAKE((algorithmSize || size) as 128 | 256)
-        } else if (algorithmId === "sha2") {
-          hash = createHash(`sha${algorithmSize || size}`)
-        } else if (algorithmId === "sha512") {
-          hash = createHash(`sha512-${algorithmSize || size}`)
-        } else if (algorithmId === "crc32") {
-          hash = { update: () => {}, digest: () => {} }
-        } else {
-          hash = createHash(algorithmId)
-        }
-
-        const crcChunks: Uint8Array[] = []
-
-        fileReader.onload = (e) => {
-          if (e.target?.result) {
-            const chunk = new Uint8Array(e.target.result as ArrayBuffer)
-
-            if (algorithmId === "crc32") {
-              crcChunks.push(chunk)
-            } else {
-              hash.update(Buffer.from(chunk))
-            }
-
-            // Update progress
-            offset += chunk.byteLength
-            const progress = Math.min(100, Math.round((offset / file.size) * 100))
-            setFileProgress(progress)
-
-            if (offset < file.size) {
-              // Continue reading the next chunk
-              readNextChunk()
-            } else {
-              // Finished reading
-              let result
-
-              if (algorithmId === "crc32") {
-                const merged = new Uint8Array(crcChunks.reduce((total, item) => total + item.length, 0))
-                let position = 0
-                for (const item of crcChunks) {
-                  merged.set(item, position)
-                  position += item.length
-                }
-                const crcResult = crc32Bytes(merged).toString(16).padStart(8, "0")
-                result = outputFormat === "hex" ? crcResult : Buffer.from(crcResult, "hex").toString("base64")
-              } else {
-                result = outputFormat === "hex" ? hash.digest("hex") : hash.digest("base64")
-              }
-
-              resolve(result)
-            }
-          }
-        }
-
-        fileReader.onerror = () => {
-          reject(new Error("File reading error"))
-        }
-
-        const readNextChunk = () => {
-          const slice = file.slice(offset, offset + chunkSize)
-          fileReader.readAsArrayBuffer(slice)
-        }
-
-        // Start reading
-        readNextChunk()
-      } catch (error) {
-        reject(error)
-      }
-    })
+    const hasher = createIncrementalHasher(algorithmId, algorithmSize, size, outputFormat)
+    await readFileInChunks(
+      file,
+      (chunk) => hasher.update(chunk),
+      setFileProgress,
+      () =>
+        cancelCalculationRef.current ||
+        signal.aborted ||
+        calculationIdRef.current !== calculationId,
+    )
+    return hasher.digest()
   }
 
   // 计算所有文件哈希
-  const calculateAllFileHashes = async () => {
-    if (!fileInfo) {
-      setAllHashResults([])
-      return
-    }
+  const calculateAllFileHashes = async (
+    selectedFile: FileInfo,
+    calculationId: number,
+    signal: AbortSignal,
+  ) => {
 
     setFileCalculating(true)
     setFileProgress(0)
@@ -537,62 +599,123 @@ export default function HashPage() {
       // 立即设置结果数组，这样用户可以看到将要计算的所有算法
       setAllHashResults([...results])
 
-      // 逐个计算每个算法的哈希值
-      for (let i = 0; i < results.length; i++) {
-        if (cancelCalculationRef.current) {
-          break
-        }
+      const localJobs = results
+        .map((result, index) => ({ result, index }))
+        .filter(({ result }) => !serverBackedAlgorithms.has(result.algorithm))
+      const serverJobs = results
+        .map((result, index) => ({ result, index }))
+        .filter(({ result }) => serverBackedAlgorithms.has(result.algorithm))
 
-        const result = results[i]
-
-        // 更新当前算法的状态为 calculating
-        results[i].status = "calculating"
+      if (localJobs.length > 0) {
+        const hashers = localJobs.map(({ result, index }) => {
+          results[index].status = "calculating"
+          return {
+            index,
+            hasher: createIncrementalHasher(
+              result.algorithm,
+              result.algorithmSize,
+              size,
+              outputFormat,
+            ),
+          }
+        })
         setAllHashResults([...results])
 
-        try {
-          let value = ""
+        const localProgressWeight = serverJobs.length > 0 ? 80 : 100
+        await readFileInChunks(
+          selectedFile.file,
+          (chunk) => {
+            hashers.forEach(({ hasher }) => hasher.update(chunk))
+          },
+          (progress) => setFileProgress(Math.round((progress * localProgressWeight) / 100)),
+          () =>
+            cancelCalculationRef.current ||
+            signal.aborted ||
+            calculationIdRef.current !== calculationId,
+        )
 
-          // 解析算法 ID 和大小
-          value = await calculateFileHash(fileInfo.file, result.algorithm, result.algorithmSize)
-
-          // 更新结果和状态
-          results[i].value = value
-          results[i].status = "completed"
-        } catch (error) {
-          console.error(`Error calculating hash for ${result.algorithm}:`, error)
-          results[i].value = `${t("error")}: ${result.algorithm}`
-          results[i].status = "error"
-        }
-
-        // 更新界面
+        hashers.forEach(({ index, hasher }) => {
+          results[index].value = hasher.digest()
+          results[index].status = "completed"
+        })
         setAllHashResults([...results])
       }
+
+      if (
+        !cancelCalculationRef.current &&
+        !signal.aborted &&
+        calculationIdRef.current === calculationId &&
+        serverJobs.length > 0
+      ) {
+        serverJobs.forEach(({ index }) => {
+          results[index].status = "calculating"
+        })
+        setAllHashResults([...results])
+
+        let completedServerJobs = 0
+        const serverProgressBase = localJobs.length > 0 ? 80 : 0
+        const serverProgressWeight = localJobs.length > 0 ? 20 : 100
+        await Promise.all(serverJobs.map(async ({ result, index }) => {
+          try {
+            results[index].value = await calculateServerHash(
+              result.algorithm,
+              {
+                algorithmSize: result.algorithmSize,
+                file: selectedFile.file,
+              },
+              signal,
+            )
+            results[index].status = "completed"
+          } catch (error) {
+            if (signal.aborted) return
+            console.error(`Error calculating hash for ${result.algorithm}:`, error)
+            results[index].value = `${t("error")}: ${result.algorithm}`
+            results[index].status = "error"
+          } finally {
+            completedServerJobs += 1
+            if (calculationIdRef.current === calculationId) {
+              setFileProgress(
+                serverProgressBase +
+                  Math.round(
+                    (completedServerJobs / serverJobs.length) * serverProgressWeight,
+                  ),
+              )
+              setAllHashResults([...results])
+            }
+          }
+        }))
+      }
     } catch (error) {
-      console.error("Error calculating file hashes:", error)
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        console.error("Error calculating file hashes:", error)
+      }
     } finally {
-      setFileCalculating(false)
+      if (calculationIdRef.current === calculationId) {
+        setFileCalculating(false)
+      }
     }
   }
 
   // 计算单个文件哈希
-  const calculateSingleFileHash = async () => {
-    if (!fileInfo) {
-      setHashResult("")
-      return
-    }
+  const calculateSingleFileHash = async (
+    selectedFile: FileInfo,
+    calculationId: number,
+    signal: AbortSignal,
+  ) => {
 
     setFileCalculating(true)
     setFileProgress(0)
+    cancelCalculationRef.current = false
 
     try {
-      let result
-
-      if (isCurrentAlgorithmConfigurable()) {
-        result = await calculateFileHash(fileInfo.file, algorithm, size)
-      } else {
-        result = await calculateFileHash(fileInfo.file, algorithm)
-      }
-
+      const result = await calculateFileHash(
+        selectedFile.file,
+        algorithm,
+        isCurrentAlgorithmConfigurable() ? size : undefined,
+        calculationId,
+        signal,
+      )
+      if (calculationIdRef.current !== calculationId) return
       setHashResult(result)
 
       // 如果有验证哈希，检查是否匹配
@@ -600,15 +723,25 @@ export default function HashPage() {
         verifyHashValue(result)
       }
     } catch (error) {
+      if (signal.aborted || calculationIdRef.current !== calculationId) return
       console.error("Error calculating file hash:", error)
       setHashResult(`${t("error")}: ${algorithm}`)
     } finally {
-      setFileCalculating(false)
+      if (calculationIdRef.current === calculationId) {
+        setFileCalculating(false)
+      }
     }
   }
 
   // 计算哈希
   const calculateHash = async () => {
+    stopActiveCalculation()
+    const calculationId = ++calculationIdRef.current
+    const controller = new AbortController()
+    calculationAbortRef.current = controller
+    cancelCalculationRef.current = false
+    setCalculationError("")
+
     if (inputMode === "text") {
       if (!input) {
         setHashResult("")
@@ -616,25 +749,48 @@ export default function HashPage() {
         return
       }
 
-      // 计算当前选中的算法
-      const result = await calculateSingleTextHash(algorithm, isCurrentAlgorithmConfigurable() ? size : undefined)
-      setHashResult(result)
-
-      // 如果启用了显示所有结果，计算所有算法
-      if (showAllResults) {
-        await calculateAllTextHashes()
-      }
-
-      // 如果有验证哈希，检查是否匹配
-      if (verifyHash) {
-        verifyHashValue(result)
+      const textSnapshot = input
+      setTextCalculating(true)
+      try {
+        if (showAllResults) {
+          setHashResult("")
+          await calculateAllTextHashes(
+            textSnapshot,
+            calculationId,
+            controller.signal,
+          )
+        } else {
+          setAllHashResults([])
+          const result = await calculateSingleTextHash(
+            textSnapshot,
+            algorithm,
+            isCurrentAlgorithmConfigurable() ? size : undefined,
+            controller.signal,
+          )
+          if (calculationIdRef.current !== calculationId) return
+          setHashResult(result)
+          if (verifyHash) verifyHashValue(result)
+        }
+      } catch (error) {
+        if (!controller.signal.aborted && calculationIdRef.current === calculationId) {
+          console.error("Error calculating text hash:", error)
+          setCalculationError(t("error"))
+        }
+      } finally {
+        if (calculationIdRef.current === calculationId) {
+          setTextCalculating(false)
+          calculationAbortRef.current = null
+        }
       }
     } else {
-      // 文件模式
+      if (!fileInfo) return
       if (showAllResults) {
-        calculateAllFileHashes()
+        await calculateAllFileHashes(fileInfo, calculationId, controller.signal)
       } else {
-        calculateSingleFileHash()
+        await calculateSingleFileHash(fileInfo, calculationId, controller.signal)
+      }
+      if (calculationIdRef.current === calculationId) {
+        calculationAbortRef.current = null
       }
     }
   }
@@ -674,7 +830,11 @@ export default function HashPage() {
 
   // 复制哈希结果
   const copyToClipboard = (text: string, key = "main") => {
-    navigator.clipboard.writeText(text).then(() => {
+    void writeClipboardText(text).then((success) => {
+      if (!success) {
+        setCopied((prev) => ({ ...prev, [key]: false }))
+        return
+      }
       // 清除之前的超时
       if (copyTimeoutRef.current[key]) {
         clearTimeout(copyTimeoutRef.current[key]!)
@@ -691,6 +851,7 @@ export default function HashPage() {
 
   // 清空输入
   const clearInput = () => {
+    stopActiveCalculation()
     if (inputMode === "text") {
       setInput("")
       if (inputRef.current) {
@@ -705,37 +866,33 @@ export default function HashPage() {
     setVerifyHash("")
     setVerifyResult(null)
     setFileProgress(0)
+    setFileError("")
+  }
+
+  const selectFile = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      setFileError(t("fileTooBig"))
+      return
+    }
+
+    stopActiveCalculation()
+    setFileInfo({
+      file,
+      name: file.name,
+      size: file.size,
+      sizeFormatted: formatFileSize(file.size),
+    })
+    setHashResult("")
+    setAllHashResults([])
+    setFileProgress(0)
+    setFileError("")
   }
 
   // 处理文件上传
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
-      const file = files[0]
-
-      // 检查文件大小
-      if (file.size > MAX_FILE_SIZE) {
-        alert(t("fileTooBig"))
-        return
-      }
-
-      setFileInfo({
-        file,
-        name: file.name,
-        size: file.size,
-        sizeFormatted: formatFileSize(file.size),
-      })
-
-      // 如果自动计算开启，计算哈希
-      if (autoCalculate) {
-        setTimeout(() => {
-          if (showAllResults) {
-            void calculateAllFileHashes()
-          } else {
-            void calculateSingleFileHash()
-          }
-        }, 300)
-      }
+      selectFile(files[0])
     }
 
     // 重置文件输入，以便可以再次选择同一个文件
@@ -745,56 +902,34 @@ export default function HashPage() {
   }
 
   // 处理文件拖放
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleFileDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     e.stopPropagation()
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0]
-
-      // 检查文件大小
-      if (file.size > MAX_FILE_SIZE) {
-        alert(t("fileTooBig"))
-        return
-      }
-
-      setFileInfo({
-        file,
-        name: file.name,
-        size: file.size,
-        sizeFormatted: formatFileSize(file.size),
-      })
-
-      // 如果自动计算开启，计算哈希
-      if (autoCalculate) {
-        setTimeout(() => {
-          if (showAllResults) {
-            void calculateAllFileHashes()
-          } else {
-            void calculateSingleFileHash()
-          }
-        }, 300)
-      }
+      selectFile(e.dataTransfer.files[0])
     }
   }
 
   // 防止默认拖放行为
-  const preventDefaults = (e: React.DragEvent<HTMLDivElement>) => {
+  const preventDefaults = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     e.stopPropagation()
   }
 
   // 当输入变化且自动计算开启时，计算哈希
   useEffect(() => {
-    if (autoCalculate) {
-      if (inputMode === "text" && input) {
-        const timer = setTimeout(() => {
-          void calculateHash()
-        }, 300)
-        return () => clearTimeout(timer)
-      }
+    if (!autoCalculate) return
+
+    if ((inputMode === "text" && !input) || (inputMode === "file" && !fileInfo)) {
+      return
     }
-  }, [input, algorithm, outputFormat, size, autoCalculate, showAllResults, inputMode])
+
+    const timer = setTimeout(() => {
+      void calculateHash()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [input, fileInfo, algorithm, outputFormat, size, autoCalculate, showAllResults, inputMode])
 
   // 当验证哈希变化时，验证哈希
   useEffect(() => {
@@ -814,6 +949,9 @@ export default function HashPage() {
   // 清理复制超时
   useEffect(() => {
     return () => {
+      cancelCalculationRef.current = true
+      calculationIdRef.current += 1
+      calculationAbortRef.current?.abort()
       Object.values(copyTimeoutRef.current).forEach((timeout) => {
         if (timeout) {
           clearTimeout(timeout)
@@ -824,6 +962,9 @@ export default function HashPage() {
 
   // 选择算法分类
   const handleCategoryChange = (category: string) => {
+    stopActiveCalculation()
+    setHashResult("")
+    setAllHashResults([])
     setSelectedCategory(category)
     // 选择该分类下的第一个算法
     const categoryData = hashCategories.find((cat) => cat.name === category)
@@ -833,6 +974,9 @@ export default function HashPage() {
   }
 
   const handleAlgorithmChange = (nextAlgorithm: string) => {
+    stopActiveCalculation()
+    setHashResult("")
+    setAllHashResults([])
     setAlgorithm(nextAlgorithm)
     const categoryData = hashCategories.find((category) =>
       category.algorithms.some((algo) => algo.id === nextAlgorithm),
@@ -864,323 +1008,499 @@ export default function HashPage() {
 
   // 添加取消计算的函数
   const cancelCalculation = () => {
-    cancelCalculationRef.current = true
+    stopActiveCalculation()
   }
 
+  const isCalculating = fileCalculating || textCalculating
+
   return (
-    <div className="container mx-auto px-4 py-4 max-w-3xl">
-      <h2 className="text-2xl font-bold text-center mb-6">{t("title")}</h2>
+    <div className="container mx-auto max-w-5xl px-3 py-4 sm:px-4">
+      <header className="mb-6 text-center">
+        <h1 className="text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
+          {t("title")}
+        </h1>
+        <p className="mt-2 text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
+          {t("hashDescription")}
+        </p>
+      </header>
+
       <div className="space-y-4">
-        <div className="flex items-center space-x-2 mb-4">
-          <Switch id="show-all-results" checked={showAllResults} onCheckedChange={setShowAllResults} />
-          <Label htmlFor="show-all-results" className="cursor-pointer">
-            {t("showAllResults")}
-          </Label>
-        </div>
-
-        <Tabs value={inputMode} onValueChange={(value) => setInputMode(value as "text" | "file")}>
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="text" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              {t("textMode")}
-            </TabsTrigger>
-            <TabsTrigger value="file" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              {t("fileMode")}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="text" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={clearInput}>
-                  {t("clearInput")}
-                </Button>
+        <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+          <CardContent className="grid gap-4 pt-5 sm:grid-cols-2">
+            <div className="flex items-start justify-between gap-3 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container-low)] p-3">
+              <div>
+                <Label htmlFor="show-all-results">{t("showAllResults")}</Label>
+                <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("showAllHint")}
+                </p>
               </div>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="auto-calculate" className="text-sm cursor-pointer">
-                    {t("autoCalculate")}
-                  </Label>
-                  <Checkbox
-                    id="auto-calculate"
-                    checked={autoCalculate}
-                    onCheckedChange={(checked) => setAutoCalculate(!!checked)}
-                  />
-                </div>
-              </div>
-
-            <Textarea
-              ref={inputRef}
-              placeholder={t("inputPlaceholder")}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              rows={5}
-              className="input-modern"
-            />
-          </TabsContent>
-
-          <TabsContent value="file" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={clearInput}>
-                  {t("clearInput")}
-                </Button>
-              </div>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="auto-calculate-file" className="text-sm cursor-pointer">
-                    {t("autoCalculate")}
-                  </Label>
-                  <Checkbox
-                    id="auto-calculate-file"
-                    checked={autoCalculate}
-                    onCheckedChange={(checked) => setAutoCalculate(!!checked)}
-                  />
-                </div>
-              </div>
-
-            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-
-            {!fileInfo ? (
-              <div
-                className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={preventDefaults}
-                onDragEnter={preventDefaults}
-                onDragLeave={preventDefaults}
-                onDrop={handleFileDrop}
+              <Switch
+                id="show-all-results"
+                checked={showAllResults}
+                onCheckedChange={(checked) => {
+                  stopActiveCalculation()
+                  setShowAllResults(checked)
+                  setHashResult("")
+                  setAllHashResults([])
+                  setVerifyResult(null)
+                }}
+              />
+            </div>
+            <div className="space-y-2 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container-low)] p-3">
+              <Label>{t("outputFormat")}</Label>
+              <RadioGroup
+                value={outputFormat}
+                onValueChange={(value) => {
+                  stopActiveCalculation()
+                  setOutputFormat(value)
+                  setHashResult("")
+                  setAllHashResults([])
+                }}
+                className="grid grid-cols-2 gap-2"
               >
-                <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-lg font-medium mb-2">{t("dropFileHere")}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    fileInputRef.current?.click()
-                  }}
-                >
-                  {t("uploadFile")}
-                </Button>
-              </div>
-            ) : (
-              <div className="border rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">{t("fileInfo")}</h3>
-                  <Button variant="ghost" size="sm" onClick={clearInput} className="h-8 w-8 p-0">
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">{t("removeFile")}</span>
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">{t("fileName")}:</span>
-                    <span className="font-medium">{fileInfo.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">{t("fileSize")}:</span>
-                    <span>{fileInfo.sizeFormatted}</span>
-                  </div>
-                </div>
+                {[
+                  { value: "hex", label: t("hex") },
+                  { value: "base64", label: t("base64") },
+                ].map((option) => (
+                  <Label
+                    key={option.value}
+                    htmlFor={`hash-output-${option.value}`}
+                    className="flex min-h-10 cursor-pointer items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] border border-[var(--md-sys-color-outline-variant)] px-3"
+                  >
+                    <RadioGroupItem
+                      id={`hash-output-${option.value}`}
+                      value={option.value}
+                    />
+                    {option.label}
+                  </Label>
+                ))}
+              </RadioGroup>
+            </div>
+          </CardContent>
+        </Card>
 
-                {fileCalculating && (
-                  <div className="mt-4">
-                    <div className="flex justify-between mb-1">
-                      <span>{t("calculating")}</span>
-                      <span>{fileProgress}%</span>
-                    </div>
-                    <Progress value={fileProgress} className="h-2" />
+        <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+          <CardContent className="pt-5">
+            <Tabs
+              value={inputMode}
+              onValueChange={(value) => {
+                stopActiveCalculation()
+                setInputMode(value as "text" | "file")
+                setHashResult("")
+                setAllHashResults([])
+                setCalculationError("")
+              }}
+            >
+              <TabsList className="mb-4 grid h-auto w-full grid-cols-2">
+                <TabsTrigger value="text" className="min-h-11 gap-2">
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                  {t("textMode")}
+                </TabsTrigger>
+                <TabsTrigger value="file" className="min-h-11 gap-2">
+                  <Upload className="h-4 w-4" aria-hidden="true" />
+                  {t("fileMode")}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="text" className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label htmlFor="hash-input">{t("textInput")}</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="auto-calculate" className="cursor-pointer text-sm">
+                      {t("autoCalculate")}
+                    </Label>
+                    <Checkbox
+                      id="auto-calculate"
+                      checked={autoCalculate}
+                      onCheckedChange={(checked) => setAutoCalculate(!!checked)}
+                    />
+                    <Button variant="outline" size="sm" onClick={clearInput}>
+                      {t("clearInput")}
+                    </Button>
+                  </div>
+                </div>
+                <Textarea
+                  id="hash-input"
+                  ref={inputRef}
+                  placeholder={t("inputPlaceholder")}
+                  value={input}
+                  onChange={(event) => {
+                    stopActiveCalculation()
+                    setInput(event.target.value)
+                    setHashResult("")
+                    setAllHashResults([])
+                    setCalculationError("")
+                  }}
+                  rows={6}
+                  className="min-h-36 resize-y font-mono"
+                />
+              </TabsContent>
+
+              <TabsContent value="file" className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label>{t("fileInput")}</Label>
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="auto-calculate-file"
+                      className="cursor-pointer text-sm"
+                    >
+                      {t("autoCalculate")}
+                    </Label>
+                    <Checkbox
+                      id="auto-calculate-file"
+                      checked={autoCalculate}
+                      onCheckedChange={(checked) => setAutoCalculate(!!checked)}
+                    />
+                    <Button variant="outline" size="sm" onClick={clearInput}>
+                      {t("clearInput")}
+                    </Button>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                {fileError && (
+                  <div
+                    className="rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
+                    role="alert"
+                  >
+                    {fileError}
                   </div>
                 )}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>算法分类</Label>
-            <div className="flex flex-wrap gap-2">
-              {hashCategories.map((category) => (
-                <Button
-                  key={category.name}
-                  type="button"
-                  variant={selectedCategory === category.name ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleCategoryChange(category.name)}
-                >
-                  {category.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <Tabs value={algorithm} onValueChange={handleAlgorithmChange}>
-            <TabsList className="grid h-auto grid-cols-1 gap-2 bg-transparent p-0 sm:grid-cols-2 md:grid-cols-3">
-              {(hashCategories.find((category) => category.name === selectedCategory)?.algorithms || []).map((algo) => (
-                <TabsTrigger
-                  key={algo.id}
-                  value={algo.id}
-                  className={cn(
-                    "h-auto min-h-[72px] items-start justify-start rounded-2xl border border-md-outline/50 bg-md-surface px-4 py-3 text-left transition-all",
-                    "data-[state=active]:border-md-primary data-[state=active]:bg-md-primary/10 data-[state=active]:text-md-primary data-[state=active]:shadow-sm",
-                  )}
-                >
-                  <span className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">{algo.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {algorithmDescriptions[algo.id] || (algo.configurable ? "可选不同输出位数" : "固定输出")}
+                {!fileInfo ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-[var(--md-sys-shape-corner-large)] border-2 border-dashed border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] p-7 text-center transition-colors hover:border-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={preventDefaults}
+                    onDragEnter={preventDefaults}
+                    onDragLeave={preventDefaults}
+                    onDrop={handleFileDrop}
+                  >
+                    <Upload
+                      className="mx-auto mb-3 h-10 w-10 text-[var(--md-sys-color-on-surface-variant)]"
+                      aria-hidden="true"
+                    />
+                    <span className="block font-medium">{t("dropFileHere")}</span>
+                    <span className="mt-2 inline-block rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 py-1 text-sm text-[var(--md-sys-color-on-secondary-container)]">
+                      {t("uploadFile")}
                     </span>
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
+                  </button>
+                ) : (
+                  <div className="rounded-[var(--md-sys-shape-corner-medium)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h3 className="font-medium">{t("fileInfo")}</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={clearInput}
+                        aria-label={t("removeFile")}
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+                    <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                      <div className="min-w-0">
+                        <dt className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                          {t("fileName")}
+                        </dt>
+                        <dd className="mt-1 break-all font-medium">{fileInfo.name}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                          {t("fileSize")}
+                        </dt>
+                        <dd className="mt-1 font-medium">{fileInfo.sizeFormatted}</dd>
+                      </div>
+                    </dl>
+                    {fileCalculating && (
+                      <div className="mt-4" aria-live="polite">
+                        <div className="mb-1 flex justify-between text-sm">
+                          <span>{t("calculating")}</span>
+                          <span className="tabular-nums">{fileProgress}%</span>
+                        </div>
+                        <Progress value={fileProgress} className="h-2" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
-        {!showAllResults && isCurrentAlgorithmConfigurable() && (
-          <div className="mt-4 space-y-4">
-            {getCurrentAlgorithmSizes().length > 0 && (
-              <div>
-                <Label className="block mb-2">Size</Label>
+        <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t("algorithm")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label>{t("algorithmCategory")}</Label>
+              <div className="flex flex-wrap gap-2" aria-label={t("algorithmCategory")}>
+                {hashCategories.map((category) => (
+                  <Button
+                    key={category.name}
+                    type="button"
+                    variant={
+                      selectedCategory === category.name ? "default" : "outline"
+                    }
+                    size="sm"
+                    onClick={() => handleCategoryChange(category.name)}
+                  >
+                    {category.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Tabs value={algorithm} onValueChange={handleAlgorithmChange}>
+              <TabsList className="grid h-auto grid-cols-1 gap-2 bg-transparent p-0 sm:grid-cols-2 md:grid-cols-3">
+                {(
+                  hashCategories.find(
+                    (category) => category.name === selectedCategory,
+                  )?.algorithms || []
+                ).map((algo) => (
+                  <TabsTrigger
+                    key={algo.id}
+                    value={algo.id}
+                    className={cn(
+                      "h-auto min-h-[72px] items-start justify-start rounded-[var(--md-sys-shape-corner-large)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-3 text-left transition-colors",
+                      "data-[state=active]:border-[var(--md-sys-color-primary)] data-[state=active]:bg-[var(--md-sys-color-primary-container)] data-[state=active]:text-[var(--md-sys-color-on-primary-container)]",
+                    )}
+                  >
+                    <span className="flex min-w-0 flex-col gap-1">
+                      <span className="text-sm font-semibold">{algo.name}</span>
+                      <span className="whitespace-normal text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                        {algorithmDescriptions[algo.id]
+                          ? t(algorithmDescriptions[algo.id])
+                          : algo.configurable
+                            ? t("configurableOutput")
+                            : t("fixedOutput")}
+                      </span>
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            {!showAllResults && isCurrentAlgorithmConfigurable() && (
+              <div className="space-y-2">
+                <Label>{t("digestSize")}</Label>
                 <RadioGroup
                   value={size.toString()}
-                  onValueChange={(value) => setSize(Number.parseInt(value))}
-                  className="grid grid-cols-2 gap-2"
+                  onValueChange={(value) => {
+                    stopActiveCalculation()
+                    setSize(Number.parseInt(value))
+                    setHashResult("")
+                  }}
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-4"
                 >
-                  {getCurrentAlgorithmSizes().map((s) => (
-                    <div key={s} className="flex items-center space-x-2">
-                      <RadioGroupItem value={s.toString()} id={`size-${s}`} />
-                      <Label htmlFor={`size-${s}`} className="cursor-pointer">
-                        {s}
-                      </Label>
-                    </div>
+                  {getCurrentAlgorithmSizes().map((algorithmSize) => (
+                    <Label
+                      key={algorithmSize}
+                      htmlFor={`size-${algorithmSize}`}
+                      className="flex min-h-10 cursor-pointer items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] border border-[var(--md-sys-color-outline-variant)] px-3"
+                    >
+                      <RadioGroupItem
+                        value={algorithmSize.toString()}
+                        id={`size-${algorithmSize}`}
+                      />
+                      {algorithmSize} {t("bits")}
+                    </Label>
                   ))}
                 </RadioGroup>
               </div>
             )}
-          </div>
-        )}
+          </CardContent>
+        </Card>
 
-        <div className="flex flex-col space-y-2">
-          <Label htmlFor="verify-hash">{t("verify")}</Label>
-          <div className="flex space-x-2">
-            <Input
-              id="verify-hash"
-              placeholder={t("verifyPlaceholder")}
-              value={verifyHash}
-              onChange={(e) => setVerifyHash(e.target.value)}
-              className={`flex-1 ${
-                verifyResult === null
-                  ? ""
-                  : verifyResult.isMatch
-                    ? "border-green-500 focus:border-green-500 focus:ring-green-500"
-                    : "border-red-500 focus:border-red-500 focus:ring-red-500"
-              }`}
-            />
-            {verifyResult !== null && (
-              <div
-                className={`flex items-center px-3 rounded-md ${
-                  verifyResult.isMatch
-                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                }`}
-              >
-                {verifyResult.isMatch ? `${t("verifyMatch")} (${verifyResult.matchedAlgorithm})` : t("verifyNotMatch")}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <Button onClick={calculateHash} disabled={(!input && !fileInfo) || fileCalculating} className="w-full">
-          {fileCalculating ? t("calculating") : t("calculate")}
-        </Button>
-
-        {/* 单个结果显示 */}
-        {hashResult && !showAllResults && (
-          <div className="mt-4">
-            <h3 className="text-lg font-medium mb-4">{t("result")}:</h3>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-2xl bg-md-surface-container p-4">
-              <div className="min-w-0 space-y-2 sm:flex sm:items-start sm:gap-4 sm:space-y-0">
-                <span className="block shrink-0 font-medium sm:min-w-24">{getCurrentAlgorithmDisplayName()}:</span>
-                <span className="block min-w-0 break-all font-mono text-sm leading-6">{hashResult}</span>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0"
-                      aria-label={copied["main"] ? t("copied") : t("copy")}
-                      onClick={() => copyToClipboard(hashResult)}
-                    >
-                      {copied["main"] ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{copied["main"] ? t("copied") : t("copy")}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-        )}
-
-        {/* 所有结果显示 */}
-        {showAllResults && allHashResults.length > 0 && (
-          <div className="mt-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">{t("allResults")}:</h3>
-              {fileCalculating && (
-                <Button variant="outline" size="sm" onClick={cancelCalculation}>
-                  {t("cancel")}
-                </Button>
+        <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+          <CardContent className="space-y-2 pt-5">
+            <Label htmlFor="verify-hash">{t("verify")}</Label>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <Input
+                id="verify-hash"
+                placeholder={t("verifyPlaceholder")}
+                value={verifyHash}
+                onChange={(event) => setVerifyHash(event.target.value)}
+                aria-invalid={verifyResult ? !verifyResult.isMatch : undefined}
+                className={
+                  verifyResult === null
+                    ? ""
+                    : verifyResult.isMatch
+                      ? "border-[var(--md-sys-color-primary)]"
+                      : "border-[var(--md-sys-color-error)]"
+                }
+              />
+              {verifyResult !== null && (
+                <div
+                  className={`flex min-h-10 items-center rounded-[var(--md-sys-shape-corner-small)] px-3 text-sm ${
+                    verifyResult.isMatch
+                      ? "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]"
+                      : "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]"
+                  }`}
+                  role="status"
+                >
+                  {verifyResult.isMatch
+                    ? `${t("verifyMatch")} (${verifyResult.matchedAlgorithm})`
+                    : t("verifyNotMatch")}
+                </div>
               )}
             </div>
-            <div className="space-y-2">
-              {allHashResults.map((result) => (
-                <div
-                  key={`${result.algorithm}-${result.algorithmSize ?? "default"}`}
-                  className={`flex items-center justify-between p-3 rounded-md ${
-                    result.status === "calculating"
-                      ? "bg-blue-50 dark:bg-blue-900/20"
-                      : result.status === "error"
-                        ? "bg-red-50 dark:bg-red-900/20"
-                        : "bg-gray-100 dark:bg-gray-800"
-                  }`}
-                >
-                  <div className="flex items-center space-x-4">
-                    <span className="font-medium min-w-24">{result.displayName}:</span>
-                    {result.status === "pending" && <span className="text-gray-500 italic">待计算</span>}
-                    {result.status === "calculating" && <span className="text-blue-500 italic">计算中...</span>}
-                    {(result.status === "completed" || result.status === "error") && (
-                      <span className="font-mono text-sm break-all">{result.value}</span>
+          </CardContent>
+        </Card>
+
+        {calculationError && (
+          <div
+            className="rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
+            role="alert"
+          >
+            {calculationError}
+          </div>
+        )}
+
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <Button
+            onClick={() => void calculateHash()}
+            disabled={
+              (inputMode === "text" ? !input : !fileInfo) || isCalculating
+            }
+            className="min-h-11 w-full"
+          >
+            {isCalculating ? t("calculating") : t("calculate")}
+          </Button>
+          {isCalculating && (
+            <Button
+              variant="outline"
+              onClick={cancelCalculation}
+              className="min-h-11"
+            >
+              {t("cancel")}
+            </Button>
+          )}
+        </div>
+
+        {hashResult && !showAllResults && (
+          <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t("result")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] p-4">
+                <div className="min-w-0 space-y-2">
+                  <span className="block font-medium">
+                    {getCurrentAlgorithmDisplayName()}
+                  </span>
+                  <code className="block min-w-0 break-all text-sm leading-6">
+                    {hashResult}
+                  </code>
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        aria-label={copied.main ? t("copied") : t("copy")}
+                        onClick={() => copyToClipboard(hashResult)}
+                      >
+                        {copied.main ? (
+                          <Check
+                            className="h-4 w-4 text-[var(--md-sys-color-primary)]"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Copy className="h-4 w-4" aria-hidden="true" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {copied.main ? t("copied") : t("copy")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {showAllResults && allHashResults.length > 0 && (
+          <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t("allResults")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {allHashResults.map((result) => {
+                const copyKey = `${result.algorithm}-${result.algorithmSize ?? "default"}`
+                return (
+                  <div
+                    key={copyKey}
+                    className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-[var(--md-sys-shape-corner-medium)] p-3 ${
+                      result.status === "calculating"
+                        ? "bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]"
+                        : result.status === "error"
+                          ? "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]"
+                          : "bg-[var(--md-sys-color-surface-container)]"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{result.displayName}</span>
+                        {result.status === "pending" && (
+                          <span className="text-xs italic text-[var(--md-sys-color-on-surface-variant)]">
+                            {t("pending")}
+                          </span>
+                        )}
+                        {result.status === "calculating" && (
+                          <span className="text-xs italic">
+                            {t("calculating")}
+                          </span>
+                        )}
+                      </div>
+                      {(result.status === "completed" ||
+                        result.status === "error") && (
+                        <code className="mt-2 block break-all text-sm leading-6">
+                          {result.value}
+                        </code>
+                      )}
+                    </div>
+                    {result.status === "completed" && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={copied[copyKey] ? t("copied") : t("copy")}
+                              onClick={() =>
+                                copyToClipboard(result.value, copyKey)
+                              }
+                            >
+                              {copied[copyKey] ? (
+                                <Check
+                                  className="h-4 w-4 text-[var(--md-sys-color-primary)]"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <Copy className="h-4 w-4" aria-hidden="true" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {copied[copyKey] ? t("copied") : t("copy")}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
-                  {result.status === "completed" && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => copyToClipboard(result.value, `${result.algorithm}-${result.algorithmSize ?? "default"}`)}
-                          >
-                            {copied[`${result.algorithm}-${result.algorithmSize ?? "default"}`] ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {copied[`${result.algorithm}-${result.algorithmSize ?? "default"}`] ? t("copied") : t("copy")}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+                )
+              })}
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

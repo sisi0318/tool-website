@@ -1,5 +1,7 @@
 "use client"
 
+import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+
 import { useEffect, useRef, useState } from "react"
 import {
   ArrowLeftRight,
@@ -32,11 +34,13 @@ import {
   type EncodingDirection,
   type EncodingType,
 } from "@/lib/encoding-tools"
+import { useTranslations } from "@/hooks/use-translations"
 
 const COMMON_ENCODING_TYPES: EncodingType[] = ["base64", "url", "hex", "unicode", "html"]
 
 export default function EncodingPage() {
   const params = useToolRuntimeParams()
+  const t = useTranslations("encoding")
   const [encodingType, setEncodingType] = useState<EncodingType>("base64")
   const [direction, setDirection] = useState<EncodingDirection>("encode")
   const [input, setInput] = useState("")
@@ -71,9 +75,8 @@ export default function EncodingPage() {
       setError(null)
       return result
     } catch (transformError) {
-      const message = transformError instanceof Error ? transformError.message : "转换失败，请检查输入格式"
       setOutput("")
-      setError(message)
+      setError(transformError instanceof Error ? `${selectedDefinition.name}: ${t("invalidInput")}` : t("error"))
       return ""
     }
   }
@@ -135,7 +138,7 @@ export default function EncodingPage() {
       const text = await navigator.clipboard.readText()
       handleInputChange(text)
     } catch {
-      setError("无法读取剪贴板，请检查浏览器权限后重试")
+      setError(t("clipboardReadError"))
     }
   }
 
@@ -143,14 +146,14 @@ export default function EncodingPage() {
     if (!text.length) return
 
     try {
-      await navigator.clipboard.writeText(text)
+      if (!await writeClipboardText(text)) throw new Error("Clipboard unavailable")
       if (copyTimeoutRef.current[key]) clearTimeout(copyTimeoutRef.current[key])
       setCopied((current) => ({ ...current, [key]: true }))
       copyTimeoutRef.current[key] = setTimeout(() => {
         setCopied((current) => ({ ...current, [key]: false }))
       }, 2000)
     } catch {
-      setError("复制失败，请检查浏览器剪贴板权限")
+      setError(t("clipboardWriteError"))
     }
   }
 
@@ -184,21 +187,21 @@ export default function EncodingPage() {
     <div className="container mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-6">
       <div className="mb-6 text-center">
         <h1 className="mb-2 text-2xl font-bold text-[var(--md-sys-color-on-surface)] sm:text-3xl">
-          编解码工具
+          {t("title")}
         </h1>
         <p className="mx-auto max-w-2xl text-sm text-[var(--md-sys-color-on-surface-variant)]">
-          选择格式和方向后直接输入；结果会在右侧实时生成，也可切换为手动转换。
+          {t("description")}
         </p>
       </div>
 
       <M3Card variant="outlined" className="mb-5 overflow-hidden sm:mb-6">
         <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)] md:p-5">
           <div>
-            <Label className="mb-2 block text-sm font-medium">转换方向</Label>
+            <Label className="mb-2 block text-sm font-medium">{t("direction")}</Label>
             <div
               className="grid grid-cols-2 rounded-xl bg-[var(--md-sys-color-surface-container)] p-1"
               role="group"
-              aria-label="转换方向"
+              aria-label={t("direction")}
             >
               <Button
                 type="button"
@@ -207,7 +210,7 @@ export default function EncodingPage() {
                 aria-pressed={direction === "encode"}
                 onClick={() => handleDirectionChange("encode")}
               >
-                编码
+                {t("encode")}
               </Button>
               <Button
                 type="button"
@@ -216,14 +219,14 @@ export default function EncodingPage() {
                 aria-pressed={direction === "decode"}
                 onClick={() => handleDirectionChange("decode")}
               >
-                解码
+                {t("decode")}
               </Button>
             </div>
           </div>
 
           <div>
             <Label className="mb-2 block text-sm font-medium" htmlFor="encoding-format">
-              编码格式
+              {t("format")}
             </Label>
             <Select
               value={encodingType}
@@ -247,7 +250,7 @@ export default function EncodingPage() {
 
           <div className="md:col-span-2">
             <Label className="mb-2 block text-xs text-[var(--md-sys-color-on-surface-variant)]">
-              常用格式
+              {t("commonFormats")}
             </Label>
             <div className="flex flex-wrap gap-2">
               {COMMON_ENCODING_TYPES.map((type) => {
@@ -283,37 +286,37 @@ export default function EncodingPage() {
             ) : (
               <ChevronDown className="mr-2 h-4 w-4 shrink-0" />
             )}
-            {selectedDefinition.name} 格式说明与示例
+            {selectedDefinition.name} · {t("formatInfo")}
           </Button>
 
           {showEncodingInfo && (
             <div className="grid gap-5 px-2 py-4 lg:grid-cols-2">
               <div className="space-y-2">
                 <h2 className="flex items-center gap-2 font-semibold">
-                  <Settings className="h-4 w-4 text-green-600" />
-                  格式说明
+                  <Settings className="h-4 w-4 text-[var(--md-sys-color-tertiary)]" />
+                  {t("formatDescription")}
                 </h2>
                 <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
-                  {selectedDefinition.description}
+                  {t(`definitions.${selectedDefinition.id}.description`)}
                 </p>
                 <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
-                  {selectedDefinition.usage}
+                  {t(`definitions.${selectedDefinition.id}.usage`)}
                 </p>
               </div>
               <div className="space-y-2">
                 <h2 className="flex items-center gap-2 font-semibold">
-                  <Zap className="h-4 w-4 text-blue-600" />
-                  转换示例
+                  <Zap className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                  {t("conversionExample")}
                 </h2>
                 <div className="grid gap-2 rounded-xl bg-[var(--md-sys-color-surface-container)] p-3 text-xs sm:grid-cols-2">
                   <div className="min-w-0">
-                    <span className="text-green-600">输入</span>
+                    <span className="text-[var(--md-sys-color-tertiary)]">{t("input")}</span>
                     <code className="mt-1 block break-all rounded bg-[var(--md-sys-color-surface)] p-2">
                       {selectedDefinition.exampleInput}
                     </code>
                   </div>
                   <div className="min-w-0">
-                    <span className="text-blue-600">输出</span>
+                    <span className="text-[var(--md-sys-color-primary)]">{t("output")}</span>
                     <code className="mt-1 block break-all rounded bg-[var(--md-sys-color-surface)] p-2">
                       {selectedDefinition.exampleOutput}
                     </code>
@@ -330,8 +333,8 @@ export default function EncodingPage() {
           <div className="flex h-full flex-col px-3 pb-3 pt-4 sm:px-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${direction === "encode" ? "bg-green-500" : "bg-blue-500"}`} />
-                {direction === "encode" ? "原文输入" : `${selectedDefinition.name} 输入`}
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${direction === "encode" ? "bg-[var(--md-sys-color-tertiary)]" : "bg-[var(--md-sys-color-primary)]"}`} />
+                {direction === "encode" ? t("plainTextInput") : `${selectedDefinition.name} ${t("input")}`}
               </h2>
               <div className="flex shrink-0 items-center gap-1">
                 <Badge variant="outline" className="h-5 px-1.5 font-mono text-xs">
@@ -345,7 +348,7 @@ export default function EncodingPage() {
                           <ClipboardPaste className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>粘贴内容</TooltipContent>
+                      <TooltipContent>{t("pasteContent")}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   <TooltipProvider>
@@ -358,16 +361,16 @@ export default function EncodingPage() {
                           className="h-7 w-7"
                           onClick={() => copyToClipboard(input, "input")}
                           disabled={!input.length}
-                          aria-label={copied.input ? "已复制输入内容" : "复制输入内容"}
+                          aria-label={copied.input ? t("copiedInputAria") : t("copyInputAria")}
                         >
                           {copied.input ? (
-                            <Check className="h-3.5 w-3.5 text-green-500" />
+                            <Check className="h-3.5 w-3.5 text-[var(--md-sys-color-tertiary)]" />
                           ) : (
                             <Copy className="h-3.5 w-3.5" />
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>复制输入</TooltipContent>
+                      <TooltipContent>{t("copyInput")}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
@@ -377,8 +380,8 @@ export default function EncodingPage() {
             <Textarea
               value={input}
               onChange={(event) => handleInputChange(event.target.value)}
-              aria-label={direction === "encode" ? "待编码文本" : "待解码文本"}
-              placeholder={direction === "encode" ? "输入要编码的文本..." : `粘贴要解码的 ${selectedDefinition.name} 内容...`}
+              aria-label={direction === "encode" ? t("encodeInput") : t("decodeInput")}
+              placeholder={direction === "encode" ? t("encodePlaceholder") : `${t("decodePlaceholder")}: ${selectedDefinition.name}`}
               className="min-h-[220px] flex-grow resize-y border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] font-mono text-sm sm:min-h-[260px]"
             />
 
@@ -390,7 +393,7 @@ export default function EncodingPage() {
 
             <div className="mt-3 grid grid-cols-3 gap-2 sm:hidden">
               <Button type="button" variant="secondary" size="sm" className="h-9 text-xs" onClick={pasteInput}>
-                粘贴
+                {t("paste")}
               </Button>
               <Button
                 type="button"
@@ -400,7 +403,7 @@ export default function EncodingPage() {
                 onClick={() => copyToClipboard(input, "input")}
                 disabled={!input.length}
               >
-                {copied.input ? "已复制" : "复制"}
+                {copied.input ? t("copied") : t("copy")}
               </Button>
               <Button
                 type="button"
@@ -410,7 +413,7 @@ export default function EncodingPage() {
                 onClick={clearAll}
                 disabled={!input.length && !output.length}
               >
-                清空
+                {t("clearAll")}
               </Button>
             </div>
           </div>
@@ -420,7 +423,7 @@ export default function EncodingPage() {
           {autoMode ? (
             <div className="inline-flex h-10 items-center gap-2 rounded-full bg-[var(--md-sys-color-primary-container)] px-3 text-xs font-medium text-[var(--md-sys-color-on-primary-container)]">
               <Zap className="h-4 w-4" />
-              实时
+              {t("live")}
             </div>
           ) : (
             <Button
@@ -431,7 +434,7 @@ export default function EncodingPage() {
               disabled={!input.length}
             >
               <ArrowRight className="mr-1.5 h-4 w-4 rotate-90 lg:rotate-0" />
-              {direction === "encode" ? "编码" : "解码"}
+              {direction === "encode" ? t("encode") : t("decode")}
             </Button>
           )}
           <Button
@@ -443,7 +446,7 @@ export default function EncodingPage() {
             disabled={!output.length}
           >
             <ArrowLeftRight className="mr-1.5 h-4 w-4" />
-            反向
+            {t("reverse")}
           </Button>
           <Button
             type="button"
@@ -454,7 +457,7 @@ export default function EncodingPage() {
             disabled={!input.length && !output.length}
           >
             <Trash2 className="mr-1.5 h-4 w-4" />
-            清空
+            {t("clearAll")}
           </Button>
         </div>
 
@@ -465,8 +468,8 @@ export default function EncodingPage() {
           <div className="flex h-full flex-col px-3 pb-3 pt-4 sm:px-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${direction === "encode" ? "bg-blue-500" : "bg-green-500"}`} />
-                {direction === "encode" ? `${selectedDefinition.name} 结果` : "解码结果"}
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${direction === "encode" ? "bg-[var(--md-sys-color-primary)]" : "bg-[var(--md-sys-color-tertiary)]"}`} />
+                {direction === "encode" ? `${selectedDefinition.name} ${t("result")}` : t("decodedResult")}
               </h2>
               <div className="flex shrink-0 items-center gap-1">
                 <Badge variant="outline" className="h-5 px-1.5 font-mono text-xs">
@@ -482,16 +485,16 @@ export default function EncodingPage() {
                         className="hidden h-7 w-7 sm:inline-flex"
                         onClick={() => copyToClipboard(output, "output")}
                         disabled={!output.length}
-                        aria-label={copied.output ? "已复制转换结果" : "复制转换结果"}
+                        aria-label={copied.output ? t("copiedOutputAria") : t("copyOutputAria")}
                       >
                         {copied.output ? (
-                          <Check className="h-3.5 w-3.5 text-green-500" />
+                          <Check className="h-3.5 w-3.5 text-[var(--md-sys-color-tertiary)]" />
                         ) : (
                           <Copy className="h-3.5 w-3.5" />
                         )}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>复制结果</TooltipContent>
+                    <TooltipContent>{t("copyResult")}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
@@ -500,8 +503,8 @@ export default function EncodingPage() {
             <Textarea
               value={output}
               readOnly
-              aria-label={direction === "encode" ? "编码结果" : "解码结果"}
-              placeholder={direction === "encode" ? "编码结果将在这里显示..." : "解码结果将在这里显示..."}
+              aria-label={direction === "encode" ? t("encodedResult") : t("decodedResult")}
+              placeholder={direction === "encode" ? t("encodedResultPlaceholder") : t("decodedResultPlaceholder")}
               className="min-h-[220px] flex-grow resize-y border-[var(--md-sys-color-outline-variant)] bg-transparent font-mono text-sm sm:min-h-[260px]"
             />
 
@@ -514,7 +517,7 @@ export default function EncodingPage() {
                 onClick={() => copyToClipboard(output, "output")}
                 disabled={!output.length}
               >
-                {copied.output ? "已复制" : "复制结果"}
+                {copied.output ? t("copied") : t("copyResult")}
               </Button>
               <Button
                 type="button"
@@ -524,7 +527,7 @@ export default function EncodingPage() {
                 onClick={() => setOutput("")}
                 disabled={!output.length}
               >
-                清空结果
+                {t("clearResult")}
               </Button>
             </div>
           </div>
@@ -536,7 +539,7 @@ export default function EncodingPage() {
           <div className="flex items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Settings className="h-4 w-4" />
-              设置选项
+              {t("settings")}
             </CardTitle>
             <Button
               type="button"
@@ -545,7 +548,7 @@ export default function EncodingPage() {
               onClick={() => setShowSettings((visible) => !visible)}
               aria-expanded={showSettings}
             >
-              {showSettings ? "收起" : "展开"}
+              {showSettings ? t("collapse") : t("expand")}
             </Button>
           </div>
         </CardHeader>
@@ -555,13 +558,13 @@ export default function EncodingPage() {
               <div className="flex items-center space-x-2">
                 <Switch id="auto-mode" checked={autoMode} onCheckedChange={handleAutoModeChange} />
                 <Label htmlFor="auto-mode" className="cursor-pointer text-sm">
-                  输入时实时转换
+                  {t("autoMode")}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch id="auto-switch" checked={autoSwitch} onCheckedChange={setAutoSwitch} />
                 <Label htmlFor="auto-switch" className="cursor-pointer text-sm">
-                  切换格式时重新转换
+                  {t("autoSwitch")}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -571,7 +574,7 @@ export default function EncodingPage() {
                   onCheckedChange={(checked) => handleMultilineChange(checked === true)}
                 />
                 <Label htmlFor="multiline" className="cursor-pointer text-sm">
-                  每行单独处理
+                  {t("multiline")}
                 </Label>
               </div>
             </div>
