@@ -1,4 +1,4 @@
-import { readLocalStorage, writeLocalStorage } from "../safe-storage"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "../safe-storage"
 import type { Journey, JourneyNode, JourneyStep, SharedJourneyPath } from "./types"
 
 const SAVES_KEY = "journey-saves"
@@ -181,6 +181,10 @@ export function deleteJourney(name: string): boolean {
 
 export function saveDraft(journey: Journey): boolean {
   return writeLocalStorage(DRAFT_KEY, JSON.stringify(persistJourney(journey)))
+}
+
+export function deleteDraft(): boolean {
+  return removeLocalStorage(DRAFT_KEY)
 }
 
 export function loadDraft(): Journey | null {

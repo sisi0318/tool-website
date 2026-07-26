@@ -103,15 +103,16 @@ export function removeSubtree(journey: Journey, nodeId: string): Journey {
   return { ...journey, nodes, activeId }
 }
 
-/** 替换某节点的值并使其子树失效(配置修改后沿路径重跑前的清理) */
+/** 替换某节点的值(重跑恢复用);新值到位即清除 valueMissing 标记 */
 export function replaceNodeValue(journey: Journey, nodeId: string, value: unknown): Journey {
   const node = journey.nodes[nodeId]
   if (!node) return journey
+  const { valueMissing: _cleared, ...rest } = node
   return {
     ...journey,
     nodes: {
       ...journey.nodes,
-      [nodeId]: { ...node, value, valueType: inferDataType(value) },
+      [nodeId]: { ...rest, value, valueType: inferDataType(value) },
     },
   }
 }

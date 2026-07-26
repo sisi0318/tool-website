@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MoonIcon, SunIcon, Workflow, Wrench } from "lucide-react"
+import { MoonIcon, Route, SunIcon, Workflow, Wrench } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useTranslations } from "@/hooks/use-translations"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -235,6 +235,10 @@ export default function Header() {
           <NavLink href="/canvas" active={pathname.startsWith("/canvas")}>
             <Workflow className="h-4 w-4" />
             {t("canvas")}
+          </NavLink>
+          <NavLink href="/journey" active={pathname.startsWith("/journey")}>
+            <Route className="h-4 w-4" />
+            {t("journey")}
           </NavLink>
         </nav>
 

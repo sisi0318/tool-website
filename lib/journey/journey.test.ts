@@ -20,13 +20,17 @@ import { applyStep, getMainInputPort, replaySteps, resolveOutputPort } from "./e
 import { getCompatibleTools, suggestNext } from "./suggest"
 import {
   decodeSharedPath,
+  deleteDraft,
   encodeSharedPath,
+  loadDraft,
   loadJourney,
   persistJourney,
   restoreJourney,
   sanitizeConfig,
+  saveDraft,
   saveJourney,
 } from "./serialize"
+import { replaceNodeValue } from "./tree"
 import { pathToWorkflow } from "./to-canvas"
 import type { JourneyStep } from "./types"
 import { getNodeDefinition } from "../canvas/registry"
@@ -97,6 +101,19 @@ describe("tree", () => {
   it("never removes the root", () => {
     const journey = createJourney("t", "data", "输入")
     expect(removeSubtree(journey, journey.rootId)).toBe(journey)
+  })
+
+  it("clears the valueMissing flag when a value is restored", () => {
+    const journey = createJourney("t", "data", "输入")
+    const withMissing = {
+      ...journey,
+      nodes: {
+        [journey.rootId]: { ...journey.nodes[journey.rootId], valueMissing: true as const },
+      },
+    }
+    const restored = replaceNodeValue(withMissing, journey.rootId, "recovered")
+    expect(restored.nodes[journey.rootId].value).toBe("recovered")
+    expect(restored.nodes[journey.rootId].valueMissing).toBeUndefined()
   })
 })
 
@@ -232,6 +249,14 @@ describe("serialize", () => {
     expect(saveJourney(withFile.journey)).toBe(true)
     expect(loadJourney("save-me")?.rootId).toBe(journey.rootId)
     expect(loadJourney("missing")).toBeNull()
+  })
+
+  it("saves and deletes the draft", () => {
+    const journey = createJourney("draft", "value", "输入")
+    expect(saveDraft(journey)).toBe(true)
+    expect(loadDraft()?.rootId).toBe(journey.rootId)
+    expect(deleteDraft()).toBe(true)
+    expect(loadDraft()).toBeNull()
   })
 })
 

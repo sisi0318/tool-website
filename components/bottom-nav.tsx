@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Workflow, Wrench } from "lucide-react"
+import { Home, Route, Workflow, Wrench } from "lucide-react"
 
 import { useTranslations } from "@/hooks/use-translations"
 import { cn } from "@/lib/utils"
@@ -33,6 +33,12 @@ export function BottomNav() {
       icon: Workflow,
       href: "/canvas",
       isActive: pathname.startsWith("/canvas"),
+    },
+    {
+      label: t("journey"),
+      icon: Route,
+      href: "/journey",
+      isActive: pathname.startsWith("/journey"),
     },
   ]
 

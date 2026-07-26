@@ -3,6 +3,11 @@ const nextConfig = {
   outputFileTracingRoot: process.cwd(),
   distDir: process.env.NEXT_DIST_DIR || '.next',
   poweredByHeader: false,
+  // Windows 本地并行导出与 PWA 写盘存在文件竞态(杀软扫描锁),串行化以保证构建确定性;
+  // Linux/Vercel 不受影响,保持并行。
+  ...(process.platform === 'win32'
+    ? { experimental: { cpus: 1, workerThreads: false } }
+    : {}),
   images: {
     unoptimized: true,
   },
