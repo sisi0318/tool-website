@@ -17,17 +17,26 @@ import { useTranslations } from "@/hooks/use-translations"
 import { bytesToBase64, bytesToHex } from "@/lib/binary"
 import { downloadBlob } from "@/lib/object-url"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
-import * as protobuf from "protobufjs"
+import type * as Protobuf from "protobufjs"
 
-function collectMessageTypes(namespace: protobuf.NamespaceBase): string[] {
+// protobufjs 约 300KB，首次真正解析/编码时才按需加载
+let protobufModule: typeof Protobuf | null = null
+async function loadProtobuf(): Promise<typeof Protobuf> {
+  if (!protobufModule) {
+    protobufModule = await import("protobufjs")
+  }
+  return protobufModule
+}
+
+function collectMessageTypes(pb: typeof Protobuf, namespace: Protobuf.NamespaceBase): string[] {
   const messageTypes: string[] = []
 
   namespace.nestedArray.forEach((item) => {
-    if (item instanceof protobuf.Type) {
+    if (item instanceof pb.Type) {
       messageTypes.push(item.fullName)
-      messageTypes.push(...collectMessageTypes(item))
-    } else if (item instanceof protobuf.Namespace) {
-      messageTypes.push(...collectMessageTypes(item))
+      messageTypes.push(...collectMessageTypes(pb, item))
+    } else if (item instanceof pb.Namespace) {
+      messageTypes.push(...collectMessageTypes(pb, item))
     }
   })
 
@@ -52,12 +61,41 @@ export default function ProtobufTool() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [indentSize, setIndentSize] = useState(2)
-  const [root, setRoot] = useState<protobuf.Root | null>(null)
+  const [root, setRoot] = useState<Protobuf.Root | null>(null)
   const [messageTypes, setMessageTypes] = useState<string[]>([])
   const [selectedMessageType, setSelectedMessageType] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const protoFileInputRef = useRef<HTMLInputElement>(null)
   const copyResetTimerRef = useRef<number | null>(null)
+  const protoParseRequestRef = useRef(0)
+
+  // 解析 proto 定义并刷新可选消息类型；文本与文件两条路径共用
+  const applyParsedProto = useCallback(
+    async (content: string) => {
+      const requestId = ++protoParseRequestRef.current
+      try {
+        const pb = await loadProtobuf()
+        const parsedRoot = pb.parse(content, { keepCase: true }).root
+        if (requestId !== protoParseRequestRef.current) return
+
+        setRoot(parsedRoot)
+
+        const types = collectMessageTypes(pb, parsedRoot)
+        setMessageTypes(types)
+
+        if (types.length > 0) {
+          setSelectedMessageType(types[0])
+        }
+
+        setError(null)
+      } catch (err) {
+        if (requestId !== protoParseRequestRef.current) return
+        console.error("Proto parsing error:", err)
+        setError(t("protoParseError"))
+      }
+    },
+    [t],
+  )
 
   // Detect input format (base64 or hex)
   const detectInputFormat = (input: string): "base64" | "hex" | "unknown" => {
@@ -149,30 +187,12 @@ export default function ProtobufTool() {
         if (event.target?.result) {
           const content = event.target.result as string
           setProtoContent(content)
-
-          try {
-            // Parse the proto file
-            const parsedRoot = protobuf.parse(content, { keepCase: true }).root
-
-            // Set the root directly since it's already parsed
-            setRoot(parsedRoot)
-
-            // Get all message types
-            const types = collectMessageTypes(parsedRoot)
-            setMessageTypes(types)
-
-            if (types.length > 0) {
-              setSelectedMessageType(types[0])
-            }
-          } catch (err) {
-            console.error("Proto parsing error:", err)
-            setError(t("protoParseError"))
-          }
+          await applyParsedProto(content)
         }
       }
       reader.readAsText(selectedFile)
     },
-    [t],
+    [t, applyParsedProto],
   )
 
   // Handle drag and drop
@@ -231,31 +251,13 @@ export default function ProtobufTool() {
           if (event.target?.result) {
             const content = event.target.result as string
             setProtoContent(content)
-
-            try {
-              // Parse the proto file
-              const parsedRoot = protobuf.parse(content, { keepCase: true }).root
-
-              // Set the root directly since it's already parsed
-              setRoot(parsedRoot)
-
-              // Get all message types
-              const types = collectMessageTypes(parsedRoot)
-              setMessageTypes(types)
-
-              if (types.length > 0) {
-                setSelectedMessageType(types[0])
-              }
-            } catch (err) {
-              console.error("Proto parsing error:", err)
-              setError(t("protoParseError"))
-            }
+            await applyParsedProto(content)
           }
         }
         reader.readAsText(droppedFile)
       }
     },
-    [t],
+    [t, applyParsedProto],
   )
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -315,15 +317,15 @@ export default function ProtobufTool() {
   }, [outputData, mode])
 
   // Encode JSON to Protobuf
-  const encodeJsonToProtobuf = useCallback((jsonStr: string) => {
+  const encodeJsonToProtobuf = useCallback((jsonStr: string, pb: typeof Protobuf) => {
     try {
       const jsonObj = JSON.parse(jsonStr)
 
       // Create a writer
-      const writer = new protobuf.Writer()
+      const writer = new pb.Writer()
 
       // Helper function to encode a value with a tag
-      const encodeValue = (tag: number, value: any, writer: protobuf.Writer) => {
+      const encodeValue = (tag: number, value: any, writer: Protobuf.Writer) => {
         if (value === null || value === undefined) return
 
         // Determine wire type
@@ -342,7 +344,7 @@ export default function ProtobufTool() {
           // Keep as string, wireType 2
         } else if (typeof value === "object") {
           // Recursively encode objects
-          const nestedWriter = new protobuf.Writer()
+          const nestedWriter = new pb.Writer()
           encodeObject(value, nestedWriter)
           value = nestedWriter.finish()
         }
@@ -369,7 +371,7 @@ export default function ProtobufTool() {
       }
 
       // Recursively encode an object
-      const encodeObject = (obj: any, writer: protobuf.Writer) => {
+      const encodeObject = (obj: any, writer: Protobuf.Writer) => {
         for (const key in obj) {
           if (Object.prototype.hasOwnProperty.call(obj, key)) {
             const tag = Number.parseInt(key)
@@ -452,6 +454,8 @@ export default function ProtobufTool() {
     setError(null)
 
     try {
+      const pb = await loadProtobuf()
+
       if (mode === "decode") {
         // Convert input to buffer
         const buffer = inputToBuffer(inputData)
@@ -464,7 +468,7 @@ export default function ProtobufTool() {
           decoded = Message.toObject(msg, { longs: Number, enums: String, defaults: true })
         } else {
           // Parse without schema
-          decoded = decodeProtobuf(buffer)
+          decoded = decodeProtobuf(pb, buffer)
         }
 
         // Format the output
@@ -478,7 +482,7 @@ export default function ProtobufTool() {
           encoded = encodeJsonToProtobufWithSchema(jsonInput, selectedMessageType)
         } else {
           // Encode without schema
-          encoded = encodeJsonToProtobuf(jsonInput)
+          encoded = encodeJsonToProtobuf(jsonInput, pb)
         }
         setOutputData(encoded)
       }
@@ -502,10 +506,10 @@ export default function ProtobufTool() {
   ])
 
   // Decode Protobuf without schema
-  const decodeProtobuf = (buffer: Uint8Array): any => {
+  const decodeProtobuf = (pb: typeof Protobuf, buffer: Uint8Array): any => {
     // This function implements a simple Protobuf decoder that doesn't require schema
     // It tries to identify fields and their types based on wire format
-    const reader = protobuf.Reader.create(buffer)
+    const reader = pb.Reader.create(buffer)
     const result: Record<string, any> = {}
 
     while (reader.pos < reader.len) {
@@ -531,14 +535,14 @@ export default function ProtobufTool() {
                 value = str
               } else {
                 try {
-                  value = decodeProtobuf(bytes)
+                  value = decodeProtobuf(pb, bytes)
                 } catch {
                   value = bytesToBase64(bytes)
                 }
               }
             } catch {
               try {
-                value = decodeProtobuf(bytes)
+                value = decodeProtobuf(pb, bytes)
               } catch {
                 value = bytesToBase64(bytes)
               }
@@ -712,36 +716,14 @@ export default function ProtobufTool() {
                           setProtoContent(e.target.value)
                           setProtoFile(null)
 
-                          try {
-                            // Parse the proto content
-                            if (e.target.value.trim()) {
-                              const parsedRoot = protobuf.parse(e.target.value, { keepCase: true }).root
-
-                              // Set the root directly since it's already parsed
-                              setRoot(parsedRoot)
-
-                              // Get all message types
-                              const types: string[] = []
-                              parsedRoot.nestedArray.forEach((obj) => {
-                                if (obj instanceof protobuf.Type) {
-                                  types.push(obj.fullName)
-                                }
-                              })
-                              setMessageTypes(types)
-
-                              if (types.length > 0) {
-                                setSelectedMessageType(types[0])
-                              }
-
-                              setError(null)
-                            } else {
-                              setRoot(null)
-                              setMessageTypes([])
-                              setSelectedMessageType("")
-                            }
-                          } catch (err) {
-                            console.error("Proto parsing error:", err)
-                            setError(t("protoParseError"))
+                          if (e.target.value.trim()) {
+                            void applyParsedProto(e.target.value)
+                          } else {
+                            // 使仍在进行中的解析请求失效，避免清空后旧结果回填
+                            protoParseRequestRef.current += 1
+                            setRoot(null)
+                            setMessageTypes([])
+                            setSelectedMessageType("")
                           }
                         }}
                       />

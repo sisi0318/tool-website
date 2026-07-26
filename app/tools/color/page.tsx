@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { debounce } from "lodash"
+import debounce from "debounce"
 import { ColorPicker } from "@/components/ui/color-picker"
 
 // Extended color names mapping
@@ -276,7 +276,7 @@ export default function ColorPickerPage() {
     debouncedAddToRecent(color)
 
     return () => {
-      debouncedUpdateFormats.cancel()
+      debouncedUpdateFormats.clear()
     }
   }, [color, debouncedUpdateFormats, debouncedAddToRecent])
 

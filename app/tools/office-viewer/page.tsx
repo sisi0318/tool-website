@@ -29,8 +29,6 @@ import {
   Loader2,
   Eye,
 } from "lucide-react"
-import * as XLSX from "xlsx"
-import mammoth from "mammoth"
 
 interface FileInfo {
   name: string
@@ -94,7 +92,10 @@ export default function OfficeViewerPage() {
   // 处理 Word 文件
   const processWord = useCallback(async (file: File) => {
     try {
-      const arrayBuffer = await file.arrayBuffer()
+      const [{ default: mammoth }, arrayBuffer] = await Promise.all([
+        import("mammoth"),
+        file.arrayBuffer(),
+      ])
       const result = await mammoth.convertToHtml({ arrayBuffer })
       if (result.messages.length > 0) {
         console.warn("Mammoth warnings:", result.messages)
@@ -108,7 +109,7 @@ export default function OfficeViewerPage() {
   // 处理 Excel 文件
   const processExcel = useCallback(async (file: File) => {
     try {
-      const arrayBuffer = await file.arrayBuffer()
+      const [XLSX, arrayBuffer] = await Promise.all([import("xlsx"), file.arrayBuffer()])
       const workbook = XLSX.read(arrayBuffer, { type: "array" })
       
       const sheets: ExcelSheet[] = workbook.SheetNames.map((name) => {

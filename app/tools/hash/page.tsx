@@ -10,8 +10,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
-import { createHash } from "crypto"
+import CryptoJS from "crypto-js"
+import { Buffer } from "buffer"
 import { Keccak, SHA3, SHAKE } from "sha3"
+import { bytesToCryptoWordArray } from "@/lib/crypto-js-bytes"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -61,6 +63,35 @@ function crc32Text(str: string) {
   return crc32Bytes(new TextEncoder().encode(str))
 }
 
+function hexToBase64(hex: string): string {
+  const bytes = hex.match(/.{2}/g)?.map((byte) => Number.parseInt(byte, 16)) ?? []
+  return btoa(String.fromCharCode(...bytes))
+}
+
+// 浏览器端可用的增量哈希实现（其余算法走 sha3 库或服务端 /api/hash）
+const CRYPTO_JS_HASHERS: Record<string, () => any> = {
+  md5: () => CryptoJS.algo.MD5.create(),
+  sha1: () => CryptoJS.algo.SHA1.create(),
+  sha224: () => CryptoJS.algo.SHA224.create(),
+  sha256: () => CryptoJS.algo.SHA256.create(),
+  sha384: () => CryptoJS.algo.SHA384.create(),
+  sha512: () => CryptoJS.algo.SHA512.create(),
+  ripemd160: () => CryptoJS.algo.RIPEMD160.create(),
+}
+
+function createCryptoJsHasher(algorithmName: string) {
+  const factory = CRYPTO_JS_HASHERS[algorithmName]
+  if (!factory) {
+    throw new Error(`Unsupported client-side hash algorithm: ${algorithmName}`)
+  }
+  return factory()
+}
+
+function cryptoJsDigest(hasher: any, outputFormat: string): string {
+  const wordArray = hasher.finalize()
+  return wordArray.toString(outputFormat === "base64" ? CryptoJS.enc.Base64 : CryptoJS.enc.Hex)
+}
+
 // 哈希结果类型
 interface HashResult {
   algorithm: string
@@ -103,33 +134,38 @@ function createIncrementalHasher(
       },
       digest: () => {
         const hex = ((crc ^ -1) >>> 0).toString(16).padStart(8, "0")
-        return outputFormat === "hex"
-          ? hex
-          : Buffer.from(hex, "hex").toString("base64")
+        return outputFormat === "hex" ? hex : hexToBase64(hex)
       },
     }
   }
 
-  let hash: any
-  if (algorithmId === "sha3") {
-    hash = new SHA3((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
-  } else if (algorithmId === "keccak") {
-    hash = new Keccak((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
-  } else if (algorithmId === "shake") {
-    hash = new SHAKE((algorithmSize || fallbackSize) as 128 | 256)
-  } else if (algorithmId === "sha2") {
-    hash = createHash(`sha${algorithmSize || fallbackSize}`)
-  } else if (algorithmId === "sha512") {
-    hash = createHash(`sha512-${algorithmSize || fallbackSize}`)
-  } else {
-    hash = createHash(algorithmId)
+  if (algorithmId === "sha3" || algorithmId === "keccak" || algorithmId === "shake") {
+    let hash: SHA3 | Keccak | SHAKE
+    if (algorithmId === "sha3") {
+      hash = new SHA3((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
+    } else if (algorithmId === "keccak") {
+      hash = new Keccak((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
+    } else {
+      hash = new SHAKE((algorithmSize || fallbackSize) as 128 | 256)
+    }
+
+    return {
+      update: (bytes) => {
+        hash.update(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
+      },
+      digest: () => (outputFormat === "hex" ? hash.digest("hex") : hash.digest("base64")),
+    }
   }
+
+  const hasher = createCryptoJsHasher(
+    algorithmId === "sha2" ? `sha${algorithmSize || fallbackSize}` : algorithmId,
+  )
 
   return {
     update: (bytes) => {
-      hash.update(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
+      hasher.update(bytesToCryptoWordArray(bytes))
     },
-    digest: () => outputFormat === "hex" ? hash.digest("hex") : hash.digest("base64"),
+    digest: () => cryptoJsDigest(hasher, outputFormat),
   }
 }
 
@@ -408,24 +444,16 @@ export default function HashPage() {
       const shake = new SHAKE((algorithmSize || size) as 128 | 256)
       shake.update(text)
       result = outputFormat === "hex" ? shake.digest("hex") : shake.digest("base64")
-    } else if (algorithmId === "sha2") {
-      const hashObj = createHash(`sha${algorithmSize || size}`)
-      hashObj.update(text)
-      result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
-    } else if (algorithmId === "sha512") {
-      const hashObj = createHash(`sha512-${algorithmSize || size}`)
-      hashObj.update(text)
-      result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
     } else if (algorithmId === "crc32") {
       const crcResult = crc32Text(text).toString(16).padStart(8, "0")
-      result =
-        outputFormat === "hex"
-          ? crcResult
-          : Buffer.from(crcResult, "hex").toString("base64")
+      result = outputFormat === "hex" ? crcResult : hexToBase64(crcResult)
     } else {
-      const hashObj = createHash(algorithmId)
-      hashObj.update(text)
-      result = outputFormat === "hex" ? hashObj.digest("hex") : hashObj.digest("base64")
+      // md5 / sha1 / sha2-* / ripemd160 走 crypto-js（与 Node createHash 的 UTF-8 语义一致）
+      const hasher = createCryptoJsHasher(
+        algorithmId === "sha2" ? `sha${algorithmSize || size}` : algorithmId,
+      )
+      hasher.update(CryptoJS.enc.Utf8.parse(text))
+      result = cryptoJsDigest(hasher, outputFormat)
     }
 
     return result
