@@ -8,6 +8,14 @@ const COMPATIBLE_TYPES: Record<ConfigField["dataType"], readonly ConfigField["da
   boolean: ["boolean", "string"],
 }
 
+/** 单点类型兼容判断,供画布连线校验与数据旅程建议引擎共用 */
+export function isTypeCompatible(
+  from: ConfigField["dataType"],
+  to: ConfigField["dataType"],
+): boolean {
+  return COMPATIBLE_TYPES[from]?.includes(to) ?? false
+}
+
 export type ConnectionValidationCode =
   | "incompatible-types"
   | "self-connection"
