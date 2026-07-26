@@ -1,1 +1,50 @@
-# tool-website
+# 工具站 tool-website
+
+无需安装、打开即用的在线工具集合：47 个开发 / 文本 / 图片 / 编码 / 网络工具，外加一个可以把工具连成工作流的低代码画布。绝大多数处理在浏览器本地完成，不上传数据。
+
+## 功能
+
+- **47 个独立工具**：哈希、加解密、HMAC、TOTP、编码转换、JSON/XML/CSV/SQL、正则、图片压缩 / 转换 / 编辑、二维码生成与识别、HTTP 测试、WHOIS、Cron、Docker 命令转换等（见 `/tools`）
+- **低代码画布**（`/canvas`）：66 种节点，把输入、转换与输出连成可保存 / 导入导出的工作流，支持自动执行、单步执行、节点旁路
+- **PWA**：可安装、离线回退页、静态资源缓存
+- **Material 3 设计系统** + 中英双语 i18n + 移动端适配
+
+## 技术栈
+
+Next.js 15 (App Router) · React 18 · TypeScript (strict) · Tailwind CSS + M3 design tokens · Zustand · @xyflow/react · Vitest + Playwright · ESLint 9
+
+## 开发
+
+```bash
+npm install
+npm run dev        # 开发服务器
+npm run test       # 单元测试（vitest）
+npm run e2e        # 端到端测试（playwright）
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+npm run build      # 生产构建（含 lint 与类型检查）
+```
+
+## 目录结构
+
+```
+app/            路由（tools/* 各工具页、canvas 画布、api/*）
+components/     业务组件（canvas/、m3/、tools/、ui/）
+lib/            纯逻辑与工具函数（*.test.ts 同目录存放）
+lib/adapters/   画布节点适配器（每个工具一个）
+lib/canvas/     画布引擎：store / engine / validation / workflow
+hooks/          共享 React hooks
+docs/           产品与工程文档（Zettelkasten 风格）
+scripts/        辅助脚本（如 PWA 图标生成）
+```
+
+## 文档
+
+- 产品说明：`docs/product/`
+- 工程实现（设计系统 / 架构 / 工具系统 / i18n / PWA / 测试 / 性能）：`docs/engineering/`
+
+## 部署
+
+标准 Next.js 应用，推荐 Vercel。可选环境变量：
+
+- `NEXT_PUBLIC_SITE_URL`：站点绝对地址（未设置时依次回退 `VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL` / localhost），用于 metadata、sitemap 与 OG 链接。

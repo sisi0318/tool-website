@@ -162,18 +162,3 @@ export function validateConnection(
 
   return { valid: true, level: "ok" }
 }
-
-/**
- * Lightweight compatibility helper retained for existing callers.
- * For a user-facing reason, use validateConnectionStructure instead.
- */
-export function canAcceptInput(
-  existingEdges: readonly Edge[],
-  _sourcePortId: string,
-  targetNodeId: string,
-  targetPortId: string
-): boolean {
-  return !existingEdges.some(
-    (edge) => edge.target === targetNodeId && edge.targetPort === targetPortId
-  )
-}

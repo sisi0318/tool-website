@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest"
 import {
-  canAcceptInput,
   validateConnection,
   validateConnectionStructure,
   wouldCreateCycle,
@@ -180,16 +179,5 @@ describe("wouldCreateCycle", () => {
 
   it("自环始终会成环", () => {
     expect(wouldCreateCycle([], "a", "a")).toBe(true)
-  })
-})
-
-describe("canAcceptInput", () => {
-  it("已有连线时返回 false", () => {
-    const existing = [edge("e1", "a", "b")]
-    expect(canAcceptInput(existing, "out", "b", "in")).toBe(false)
-  })
-
-  it("无连线时返回 true", () => {
-    expect(canAcceptInput([], "out", "b", "in")).toBe(true)
   })
 })

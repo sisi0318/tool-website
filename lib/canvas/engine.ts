@@ -39,32 +39,6 @@ export function topologicalSort(
   return { sorted, hasCycle: sorted.length < nodes.length }
 }
 
-export function propagateOutputs(
-  nodes: NodeInstance[],
-  edges: Edge[],
-  nodeOutputs: Record<string, Record<string, unknown>>
-): Record<string, Record<string, unknown>> {
-  const result = { ...nodeOutputs }
-  const { sorted } = topologicalSort(nodes, edges)
-
-  for (const node of sorted) {
-    const incomingEdges = edges.filter((e) => e.target === node.id)
-    const inputs: Record<string, unknown> = {}
-
-    for (const edge of incomingEdges) {
-      if (result[edge.source] && edge.sourcePort in result[edge.source]) {
-        inputs[edge.targetPort] = result[edge.source][edge.sourcePort]
-      }
-    }
-
-    if (Object.keys(inputs).length > 0) {
-      result[node.id] = { ...result[node.id], ...inputs }
-    }
-  }
-
-  return result
-}
-
 /**
  * Produces graph-safe outputs for a disabled node. Config-backed output ports
  * retain their configured value, while derived outputs receive the first

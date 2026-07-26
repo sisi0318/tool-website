@@ -8,18 +8,3 @@ export const TYPE_COLORS: Record<DataType, string> = {
   boolean: "#ec4899",
 }
 
-export const TYPE_BG_COLORS: Record<DataType, string> = {
-  string: "#eff6ff",
-  number: "#f0fdf4",
-  json: "#faf5ff",
-  bytes: "#fff7ed",
-  boolean: "#fdf2f8",
-}
-
-export const TYPE_LABELS: Record<DataType, string> = {
-  string: "String",
-  number: "Number",
-  json: "JSON",
-  bytes: "Bytes",
-  boolean: "Boolean",
-}
