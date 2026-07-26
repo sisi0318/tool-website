@@ -11,7 +11,7 @@ import { NodeBypassButton } from "./NodeBypassButton"
 
 interface BaseNodeProps {
   data: NodeInstance & {
-    definition: NonNullable<ReturnType<typeof getNodeDefinition>>
+    definition: ReturnType<typeof getNodeDefinition>
     selected?: boolean
   }
 }
@@ -26,13 +26,21 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
   const edges = useCanvasStore((s) => s.edges)
 
-  const Icon = definition.icon
-
   const incomingEdges = useMemo(() => edges.filter((e) => e.target === node.id), [edges, node.id])
   const connectedPorts = useMemo(
     () => new Map(incomingEdges.map((e) => [e.targetPort, e])),
     [incomingEdges]
   )
+
+  if (!definition) {
+    return (
+      <div className="min-w-[200px] rounded-[var(--md-sys-shape-corner-medium)] border-2 border-md-error bg-md-surface-container-low px-3 py-2 shadow-md">
+        <p className="text-sm font-medium text-md-error">Unknown node: {node.type}</p>
+      </div>
+    )
+  }
+
+  const Icon = definition.icon
 
   const getInputValue = (portId: string): unknown => {
     const edge = connectedPorts.get(portId)

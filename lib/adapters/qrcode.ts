@@ -45,7 +45,15 @@ async function generateQRCode(data: string, size: number, errorCorrection: strin
 
   return new Promise((resolve, reject) => {
     const img = new Image()
+    // onload/onerror 均不触发时兜底拒绝，避免节点永远停留在 running
+    const timeout = setTimeout(() => {
+      img.onload = null
+      img.onerror = null
+      reject(new Error("QR code rendering timed out"))
+    }, 10_000)
+
     img.onload = () => {
+      clearTimeout(timeout)
       ctx.drawImage(img, 0, 0)
       const dataUri = canvas.toDataURL("image/png")
 
@@ -60,7 +68,10 @@ async function generateQRCode(data: string, size: number, errorCorrection: strin
 
       resolve({ dataUri, file })
     }
-    img.onerror = () => reject(new Error("Failed to load QR code image"))
+    img.onerror = () => {
+      clearTimeout(timeout)
+      reject(new Error("Failed to load QR code image"))
+    }
     img.src = `data:image/svg+xml;base64,${btoa(svgData)}`
   })
 }

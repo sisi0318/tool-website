@@ -708,26 +708,62 @@ describe("Adapter Execute Functions", () => {
       expect(result.file).toBeDefined()
     })
 
-    it("meme-splitter: uses config.file fallback", async () => {
+    it("meme-splitter: slices the image into a zip", async () => {
+      const close = vi.fn()
+      vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 60, height: 40, close }))
+      vi.stubGlobal("OffscreenCanvas", class MockOffscreenCanvas {
+        width: number
+        height: number
+        constructor(width: number, height: number) { this.width = width; this.height = height }
+        getContext() { return { clearRect: vi.fn(), drawImage: vi.fn() } }
+        async convertToBlob(options: BlobPropertyBag) { return new Blob(["slice"], options) }
+      })
+
       const def = getNodeDefinition("meme-splitter")!
       const mockFile = new File(["fake-data"], "test.jpg", { type: "image/jpeg" })
-      const result = await def.execute({}, { file: mockFile, rows: 4, cols: 6 })
-      expect(result.parts).toBeDefined()
+      const result = await def.execute({}, { file: mockFile, rows: 2, cols: 2 })
+      expect(result.parts).toMatchObject({ rows: 2, cols: 2, count: 4, width: 60, height: 40 })
+      expect((result.zip as File).name).toContain(".zip")
+      expect(close).toHaveBeenCalledOnce()
+      vi.unstubAllGlobals()
     })
 
-    it("image-coordinates: uses config.file fallback", async () => {
+    it("image-coordinates: maps percent position to pixels", async () => {
+      const close = vi.fn()
+      vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 200, height: 100, close }))
+
       const def = getNodeDefinition("image-coordinates")!
       const mockFile = new File(["fake-data"], "test.jpg", { type: "image/jpeg" })
-      const result = await def.execute({}, { file: mockFile })
-      expect(result.coordinates).toBeDefined()
+      const result = await def.execute({}, { file: mockFile, xPercent: 50, yPercent: 50 })
+      expect(result.coordinates).toMatchObject({ width: 200, height: 100, x: 100, y: 50 })
+      expect(close).toHaveBeenCalledOnce()
+      vi.unstubAllGlobals()
     })
 
-    it("office-viewer: uses config.file fallback", async () => {
+    it("office-viewer: extracts table text from csv", async () => {
       const def = getNodeDefinition("office-viewer")!
-      const mockFile = new File(["fake-data"], "test.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const mockFile = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })
+      // File.arrayBuffer() is not available in vitest/jsdom
+      mockFile.arrayBuffer = async () => new TextEncoder().encode("a,b\n1,2").buffer as ArrayBuffer
       const result = await def.execute({}, { file: mockFile })
-      expect(result.info).toBeDefined()
-      expect(result.info).toHaveProperty("name", "test.xlsx")
+      expect(result.info).toHaveProperty("name", "test.csv")
+      expect(String(result.text)).toContain("a,b")
+    })
+
+    it("totp: generates the RFC 6238 SHA-1 test vector", async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(59_000)
+      try {
+        const def = getNodeDefinition("totp")!
+        const result = await def.execute(
+          {},
+          { secret: "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", digits: "8", period: 30 },
+        )
+        expect(result.code).toBe("94287082")
+        expect(result.remaining).toBe(1)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it("qrcode-decode: uses config.file fallback", async () => {

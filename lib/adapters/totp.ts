@@ -1,6 +1,7 @@
 import { Fingerprint } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { generateTotp, getTotpTimeRemaining } from "../totp-tools"
 
 export const totpAdapter: ToolAdapter = {
   type: "totp",
@@ -16,6 +17,26 @@ export const totpAdapter: ToolAdapter = {
       hasInput: true,
       hasOutput: false,
     },
+    {
+      id: "digits",
+      name: "Digits",
+      dataType: "string",
+      defaultValue: "6",
+      options: [
+        { label: "6", value: "6" },
+        { label: "8", value: "8" },
+      ],
+      hasInput: false,
+      hasOutput: false,
+    },
+    {
+      id: "period",
+      name: "Period (s)",
+      dataType: "number",
+      defaultValue: 30,
+      hasInput: false,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "code", name: "Code", dataType: "string" },
@@ -28,13 +49,16 @@ export const totpAdapter: ToolAdapter = {
       throw new Error("Secret is required")
     }
 
-    const time = Math.floor(Date.now() / 1000)
-    const remaining = 30 - (time % 30)
+    const digits = Number(config.digits ?? 6) === 8 ? 8 : 6
+    const periodValue = Number(config.period ?? 30)
+    const period = Number.isFinite(periodValue) && periodValue > 0 ? Math.floor(periodValue) : 30
+    const timestampSeconds = Math.floor(Date.now() / 1000)
+
+    const code = await generateTotp(secret.replace(/\s/g, ""), period, digits, timestampSeconds)
 
     return {
-      code: "000000",
-      remaining,
-      note: "TOTP generation requires crypto HMAC. Placeholder returned.",
+      code,
+      remaining: getTotpTimeRemaining(timestampSeconds, period),
     }
   },
 }

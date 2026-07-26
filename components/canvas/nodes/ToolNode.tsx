@@ -31,6 +31,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
   const executeNode = useCanvasStore((s) => s.executeNode)
   const edges = useCanvasStore((s) => s.edges)
+  const autoRun = useCanvasStore((s) => s.autoRun)
   const autoExecutedRef = useRef(false)
   const previewSource = (
     data.type === "image-preview" && nodeOutputs?.file instanceof Blob
@@ -46,11 +47,11 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   )
 
   useEffect(() => {
-    if (definition && definition.config.length === 0 && !autoExecutedRef.current && !nodeOutputs && !nodeRunning) {
+    if (autoRun && definition && definition.config.length === 0 && !autoExecutedRef.current && !nodeOutputs && !nodeRunning) {
       autoExecutedRef.current = true
       executeNode(data.id, undefined, true, false)
     }
-  }, [definition, data.id, nodeOutputs, nodeRunning, executeNode])
+  }, [autoRun, definition, data.id, nodeOutputs, nodeRunning, executeNode])
 
   const getInputValue = useCallback((portId: string): unknown => {
     const edge = connectedPorts.get(portId)
@@ -59,7 +60,16 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
     return sourceOutputs?.[edge.sourcePort]
   }, [connectedPorts])
 
-  if (!definition) return null
+  if (!definition) {
+    return (
+      <div className="min-w-[280px] rounded-[var(--md-sys-shape-corner-medium)] border-2 border-md-error bg-md-surface-container-low px-3 py-2 shadow-md">
+        <p className="text-sm font-medium text-md-error">Unknown node: {data.type}</p>
+        <p className="text-[10px] text-md-on-surface-variant">
+          This node type is not registered, so it cannot run. Delete it or update the workflow.
+        </p>
+      </div>
+    )
+  }
 
   const Icon = definition.icon
 
@@ -87,6 +97,9 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       {/* Parameters */}
       <div className="py-1">
         {definition.config.map((field) => {
+          // 隐藏字段（如 ECB 模式下的 IV）连同端口一起跳过，避免可连接的“孤儿行”
+          if (field.visible && !field.visible(data.config)) return null
+
           const connected = field.hasInput ? connectedPorts.has(field.id) : false
           const upstreamValue = connected ? getInputValue(field.id) : undefined
 

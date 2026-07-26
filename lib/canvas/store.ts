@@ -25,6 +25,26 @@ const AUTO_EXEC_DEBOUNCE_MS = 350
 const CONFIG_HISTORY_WINDOW_MS = 750
 const MAX_HISTORY = 50
 const MAX_EXECUTION_LOG_ENTRIES = 100
+const NODE_EXECUTION_TIMEOUT_MS = 60_000
+
+// 给 adapter 的 execute 加硬超时，避免挂起的 Promise 永久占用 running 状态
+function withExecutionTimeout<T>(promise: Promise<T>, ms = NODE_EXECUTION_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Execution timed out after ${Math.round(ms / 1000)}s`))
+    }, ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
 
 let configHistoryGroup: { nodeId: string; updatedAt: number } | null = null
 
@@ -788,7 +808,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                   return [field.id, value]
                 })
             ),
-            ...await definition.execute(inputs, node.config),
+            ...await withExecutionTimeout(definition.execute(inputs, node.config)),
           }
 
       if (
@@ -862,6 +882,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   executeAll: async (includeManual = true) => {
+    // 后来的全量执行取代仍在进行中的执行，避免同一 revision 下双重跑图
+    invalidateExecutionPlan()
     const planRevision = executionRevision
     const state = get()
     stepExecutionRevision = -1
@@ -889,6 +911,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   executeToNode: async (nodeId, includeManual = true) => {
+    invalidateExecutionPlan()
     const planRevision = executionRevision
     const state = get()
     if (!state.nodes.some((node) => node.id === nodeId)) return
