@@ -1,4 +1,5 @@
 import type { NodeInstance, Edge } from "./types"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "../safe-storage"
 
 const WORKFLOW_LIST_KEY = "canvas-workflow-list"
 
@@ -117,12 +118,14 @@ export function saveWorkflow(name: string, data: WorkflowData): boolean {
   const exists = list.includes(name)
 
   // 保存 workflow 数据
-  localStorage.setItem(getWorkflowKey(name), JSON.stringify(data))
+  if (!writeLocalStorage(getWorkflowKey(name), JSON.stringify(data))) {
+    console.warn("Unable to persist workflow", name)
+  }
 
   // 更新列表（如果是新名字）
   if (!exists) {
     list.push(name)
-    localStorage.setItem(WORKFLOW_LIST_KEY, JSON.stringify(list))
+    writeLocalStorage(WORKFLOW_LIST_KEY, JSON.stringify(list))
   }
 
   return exists
@@ -132,8 +135,7 @@ export function saveWorkflow(name: string, data: WorkflowData): boolean {
  * 从 localStorage 加载 workflow
  */
 export function loadWorkflow(name: string): WorkflowData | null {
-  if (typeof window === "undefined") return null
-  const data = localStorage.getItem(getWorkflowKey(name))
+  const data = readLocalStorage(getWorkflowKey(name))
   if (!data) return null
   try {
     return normalizeWorkflowData(JSON.parse(data))
@@ -148,8 +150,8 @@ export function loadWorkflow(name: string): WorkflowData | null {
 export function deleteWorkflow(name: string): void {
   const list = getWorkflowList()
   const newList = list.filter((n) => n !== name)
-  localStorage.setItem(WORKFLOW_LIST_KEY, JSON.stringify(newList))
-  localStorage.removeItem(getWorkflowKey(name))
+  writeLocalStorage(WORKFLOW_LIST_KEY, JSON.stringify(newList))
+  removeLocalStorage(getWorkflowKey(name))
 }
 
 /**

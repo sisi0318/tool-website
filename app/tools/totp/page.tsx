@@ -14,6 +14,7 @@ import { M3CircularProgress } from "@/components/m3/progress"
 import { useToolActivity } from "@/components/tool-activity"
 import { createClientId } from "@/lib/client-id"
 import { copyTextToClipboard } from "@/lib/clipboard"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 import { generateTotp, getTotpTimeRemaining, parseOtpauthUri } from "@/lib/totp-tools"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -96,13 +97,13 @@ export default function TOTPPage() {
 
   // 从 localStorage 加载账户
   useEffect(() => {
-    const saved = localStorage.getItem('totp_accounts')
+    const saved = readLocalStorage('totp_accounts')
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed)) setAccounts(parsed)
       } catch {
-        localStorage.removeItem("totp_accounts")
+        removeLocalStorage("totp_accounts")
       }
     }
     setIsStorageLoaded(true)
@@ -112,9 +113,9 @@ export default function TOTPPage() {
   useEffect(() => {
     if (!isStorageLoaded) return
     if (accounts.length > 0) {
-      localStorage.setItem("totp_accounts", JSON.stringify(accounts))
+      writeLocalStorage("totp_accounts", JSON.stringify(accounts))
     } else {
-      localStorage.removeItem("totp_accounts")
+      removeLocalStorage("totp_accounts")
     }
   }, [accounts, isStorageLoaded])
 

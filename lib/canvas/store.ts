@@ -10,6 +10,7 @@ import { getNodeDefinition } from "./registry"
 import { createBypassOutputs, topologicalSort } from "./engine"
 import { validateConnectionStructure } from "./validation"
 import { normalizeWorkflowData } from "./workflow"
+import { readLocalStorage } from "../safe-storage"
 
 const nodeExecVersion = new Map<string, number>()
 const activeNodeRunTokens = new Map<string, number>()
@@ -995,7 +996,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   loadFromLocalStorage: () => {
-    const saved = localStorage.getItem("canvas-state")
+    const saved = readLocalStorage("canvas-state")
     if (saved) {
       try {
         const parsed = JSON.parse(saved)

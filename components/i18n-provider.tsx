@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
 import { translations } from "@/lib/translations"
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 // Create a context for translations
 interface TranslationsContextType {
@@ -41,7 +42,7 @@ export function I18nProvider({
   const [currentLocale, setCurrentLocale] = useState<"zh" | "en">(locale === "en" ? "en" : "zh")
 
   useEffect(() => {
-    const savedLocale = window.localStorage.getItem("locale")
+    const savedLocale = readLocalStorage("locale")
     if (savedLocale === "zh" || savedLocale === "en") {
       setCurrentLocale(savedLocale)
     }
@@ -61,9 +62,7 @@ export function I18nProvider({
       if (newLocale !== currentLocale && (newLocale === "zh" || newLocale === "en")) {
         setCurrentLocale(newLocale)
         // Save to localStorage for persistence
-        if (typeof window !== "undefined") {
-          localStorage.setItem("locale", newLocale)
-        }
+        writeLocalStorage("locale", newLocale)
       }
     },
     [currentLocale],

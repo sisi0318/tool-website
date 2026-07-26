@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
+
 const FAVORITES_STORAGE_KEY = "tool_favorite_ids"
 const RECENTS_STORAGE_KEY = "tool_recent_ids"
 const MAX_RECENT_TOOLS = 8
 
 function readStoredIds(key: string, validIds: Set<string>): string[] {
-  if (typeof window === "undefined") return []
-
   try {
-    const value = JSON.parse(window.localStorage.getItem(key) ?? "[]")
+    const value = JSON.parse(readLocalStorage(key) ?? "[]")
     if (!Array.isArray(value)) return []
     return [...new Set(value.filter((id): id is string => typeof id === "string" && validIds.has(id)))]
   } catch {
@@ -41,7 +41,7 @@ export function useToolPreferences(toolIds: string[]) {
       const next = current.includes(toolId)
         ? current.filter((id) => id !== toolId)
         : [...current, toolId]
-      window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next))
+      writeLocalStorage(FAVORITES_STORAGE_KEY, JSON.stringify(next))
       return next
     })
   }, [validIds])
@@ -51,7 +51,7 @@ export function useToolPreferences(toolIds: string[]) {
 
     setRecentIds((current) => {
       const next = [toolId, ...current.filter((id) => id !== toolId)].slice(0, MAX_RECENT_TOOLS)
-      window.localStorage.setItem(RECENTS_STORAGE_KEY, JSON.stringify(next))
+      writeLocalStorage(RECENTS_STORAGE_KEY, JSON.stringify(next))
       return next
     })
   }, [validIds])

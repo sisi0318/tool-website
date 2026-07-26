@@ -14,7 +14,6 @@ async function getRdapBaseUrl(domain: string): Promise<string | null> {
   const cached = rdapBaseUrlCache.get(domain)
 
   if (cached && now - cached.timestamp < CACHE_EXPIRY) {
-    console.log(`Using cached RDAP base URL for ${domain}`)
     return cached.url
   }
 

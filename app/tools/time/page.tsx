@@ -1,6 +1,7 @@
 "use client"
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useTranslations } from "@/hooks/use-translations"
@@ -121,55 +122,51 @@ export default function TimePage() {
 
   // Load saved settings from localStorage
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Load world clocks
-      const savedWorldClocks = localStorage.getItem(WORLD_CLOCKS_STORAGE_KEY)
-      if (savedWorldClocks) {
-        try {
-          const parsed = JSON.parse(savedWorldClocks)
-          if (Array.isArray(parsed)) {
-            setWorldClocks(parsed)
-          }
-        } catch (e) {
-          console.error("Error parsing saved world clocks:", e)
+    // Load world clocks
+    const savedWorldClocks = readLocalStorage(WORLD_CLOCKS_STORAGE_KEY)
+    if (savedWorldClocks) {
+      try {
+        const parsed = JSON.parse(savedWorldClocks)
+        if (Array.isArray(parsed)) {
+          setWorldClocks(parsed)
         }
+      } catch (e) {
+        console.error("Error parsing saved world clocks:", e)
       }
+    }
 
-      // Load time format
-      const savedTimeFormat = localStorage.getItem(TIME_FORMAT_STORAGE_KEY)
-      if (savedTimeFormat) {
-        setTimeFormat(savedTimeFormat)
-      }
+    // Load time format
+    const savedTimeFormat = readLocalStorage(TIME_FORMAT_STORAGE_KEY)
+    if (savedTimeFormat) {
+      setTimeFormat(savedTimeFormat)
+    }
 
-      // Load date format
-      const savedDateFormat = localStorage.getItem(DATE_FORMAT_STORAGE_KEY)
-      if (savedDateFormat) {
-        setDateFormat(savedDateFormat)
-      }
+    // Load date format
+    const savedDateFormat = readLocalStorage(DATE_FORMAT_STORAGE_KEY)
+    if (savedDateFormat) {
+      setDateFormat(savedDateFormat)
+    }
 
-      // Load seconds display preference
-      const savedShowSeconds = localStorage.getItem(SHOW_SECONDS_STORAGE_KEY)
-      if (savedShowSeconds !== null) {
-        setShowSeconds(savedShowSeconds === "true")
-      }
+    // Load seconds display preference
+    const savedShowSeconds = readLocalStorage(SHOW_SECONDS_STORAGE_KEY)
+    if (savedShowSeconds !== null) {
+      setShowSeconds(savedShowSeconds === "true")
+    }
 
-      // Load active tab
-      const savedActiveTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY)
-      if (savedActiveTab) {
-        setActiveTab(savedActiveTab)
-      }
+    // Load active tab
+    const savedActiveTab = readLocalStorage(ACTIVE_TAB_STORAGE_KEY)
+    if (savedActiveTab) {
+      setActiveTab(savedActiveTab)
     }
   }, [])
 
   // Save settings to localStorage when they change
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(WORLD_CLOCKS_STORAGE_KEY, JSON.stringify(worldClocks))
-      localStorage.setItem(TIME_FORMAT_STORAGE_KEY, timeFormat)
-      localStorage.setItem(DATE_FORMAT_STORAGE_KEY, dateFormat)
-      localStorage.setItem(SHOW_SECONDS_STORAGE_KEY, String(showSeconds))
-      localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab)
-    }
+    writeLocalStorage(WORLD_CLOCKS_STORAGE_KEY, JSON.stringify(worldClocks))
+    writeLocalStorage(TIME_FORMAT_STORAGE_KEY, timeFormat)
+    writeLocalStorage(DATE_FORMAT_STORAGE_KEY, dateFormat)
+    writeLocalStorage(SHOW_SECONDS_STORAGE_KEY, String(showSeconds))
+    writeLocalStorage(ACTIVE_TAB_STORAGE_KEY, activeTab)
   }, [worldClocks, timeFormat, dateFormat, showSeconds, activeTab])
 
   // Stopwatch effect

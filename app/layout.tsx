@@ -5,6 +5,7 @@ import "./globals.css"
 import { M3ThemeProvider } from "@/lib/m3/theme"
 import { I18nProvider } from "@/components/i18n-provider"
 import { AppShell } from "@/components/app-shell"
+import { Toaster } from "@/components/ui/toaster"
 
 /**
  * Configure Roboto font family as per M3 specifications
@@ -81,6 +82,7 @@ export default function RootLayout({
           <I18nProvider locale="zh">
             <a href="#main-content" className="skip-link">跳到主要内容</a>
             <AppShell>{children}</AppShell>
+            <Toaster />
           </I18nProvider>
         </M3ThemeProvider>
       </body>
