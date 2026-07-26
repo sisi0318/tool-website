@@ -567,9 +567,9 @@ export default function TimePage() {
     <div className="container mx-auto px-4 py-4 max-w-6xl">
       {/* 页面标题 */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <Clock className="h-8 w-8 text-blue-600" />
-          时间工具
+        <h1 className="text-3xl font-bold text-[var(--md-sys-color-on-surface)] mb-4 flex items-center justify-center gap-2">
+          <Clock className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
+          {t("title")}
         </h1>
       </div>
 
@@ -579,7 +579,7 @@ export default function TimePage() {
           variant="ghost"
           size="sm"
           onClick={() => setShowTimeInfo(!showTimeInfo)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          className="w-full text-sm text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
         >
           <div className="flex items-center gap-2">
             {showTimeInfo ? (
@@ -588,10 +588,10 @@ export default function TimePage() {
               <ChevronDown className="h-4 w-4" />
             )}
             <Settings className="h-4 w-4" />
-            <span>时间设置</span>
+            <span>{t("timeSettings")}</span>
             {!showTimeInfo && (
               <Badge variant="secondary" className="text-xs ml-auto">
-                点击查看
+                {t("clickToView")}
               </Badge>
             )}
           </div>
@@ -601,22 +601,22 @@ export default function TimePage() {
           <Card className="mt-3 card-modern">
             <CardContent className="py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--md-sys-color-surface-container)] p-3 rounded-lg">
                   <Label htmlFor="auto-refresh" className="cursor-pointer text-sm">
-                    手动刷新
+                    {t("manualRefresh")}
                   </Label>
                   <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
-                  <Label htmlFor="auto-refresh" className="cursor-pointer text-sm text-blue-600">
-                    自动刷新
+                  <Label htmlFor="auto-refresh" className="cursor-pointer text-sm text-[var(--md-sys-color-primary)]">
+                    {t("autoRefresh")}
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--md-sys-color-surface-container)] p-3 rounded-lg">
                   <Label htmlFor="show-seconds" className="cursor-pointer text-sm">
-                    隐藏秒数
+                    {t("hideSeconds")}
                   </Label>
                   <Switch id="show-seconds" checked={showSeconds} onCheckedChange={setShowSeconds} />
-                  <Label htmlFor="show-seconds" className="cursor-pointer text-sm text-green-600">
-                    显示秒数
+                  <Label htmlFor="show-seconds" className="cursor-pointer text-sm text-[var(--md-sys-color-success)]">
+                    {t("showSeconds")}
                   </Label>
                 </div>
               </div>
@@ -669,12 +669,12 @@ export default function TimePage() {
           <Card className="card-modern text-center">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-center gap-2">
-                <Clock className="h-5 w-5 text-blue-600" />
-                当前时间
+                <Clock className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
+                {t("currentTime")}
                 {autoRefresh && (
                   <Badge variant="secondary" className="text-xs">
                     <Zap className="h-3 w-3 mr-1" />
-                    实时
+                    {t("live")}
                   </Badge>
                 )}
               </CardTitle>
@@ -682,11 +682,11 @@ export default function TimePage() {
             <CardContent>
               <div className="flex flex-col items-center justify-center space-y-8">
                 {/* 主时间显示 */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-8 w-full max-w-2xl">
-                  <div className="text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight text-gray-800 dark:text-gray-200 mb-4">
+                <div className="bg-gradient-to-r from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-secondary-container)] rounded-2xl p-8 w-full max-w-2xl">
+                  <div className="text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight text-[var(--md-sys-color-on-surface)] mb-4">
                     {formatTime(currentTime)}
                   </div>
-                  <div className="text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-gray-400">
+                  <div className="text-lg md:text-xl lg:text-2xl text-[var(--md-sys-color-on-surface-variant)]">
                     {formatDate(currentTime)}
                   </div>
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -695,20 +695,20 @@ export default function TimePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setCurrentTime(new Date())}
-                        className="text-xs text-gray-500 hover:text-gray-700"
+                        className="text-xs text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
                       >
                         <RefreshCw className="mr-1 h-3 w-3" />
-                        刷新时间
+                        {t("refreshTime")}
                       </Button>
                     )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={copyCurrentTime}
-                      className="text-xs text-gray-500 hover:text-gray-700"
+                      className="text-xs text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
                     >
                       {copied["current"] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                      复制当前时间
+                      {t("copyCurrentTime")}
                     </Button>
                   </div>
                 </div>
@@ -716,29 +716,29 @@ export default function TimePage() {
                 {/* 格式设置 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-md">
                   <div className="space-y-2">
-                    <Label htmlFor="timeFormat" className="text-sm font-medium">时间格式</Label>
+                    <Label htmlFor="timeFormat" className="text-sm font-medium">{t("timeFormat")}</Label>
                     <Select value={timeFormat} onValueChange={setTimeFormat}>
                       <SelectTrigger id="timeFormat" className="h-10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="12hour">12小时制</SelectItem>
-                        <SelectItem value="24hour">24小时制</SelectItem>
+                        <SelectItem value="12hour">{t("hour12")}</SelectItem>
+                        <SelectItem value="24hour">{t("hour24")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="dateFormat" className="text-sm font-medium">日期格式</Label>
+                    <Label htmlFor="dateFormat" className="text-sm font-medium">{t("dateFormat")}</Label>
                     <Select value={dateFormat} onValueChange={setDateFormat}>
                       <SelectTrigger id="dateFormat" className="h-10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="full">完整格式</SelectItem>
-                        <SelectItem value="long">长格式</SelectItem>
-                        <SelectItem value="medium">中等格式</SelectItem>
-                        <SelectItem value="short">短格式</SelectItem>
+                        <SelectItem value="full">{t("fullFormat")}</SelectItem>
+                        <SelectItem value="long">{t("longFormat")}</SelectItem>
+                        <SelectItem value="medium">{t("mediumFormat")}</SelectItem>
+                        <SelectItem value="short">{t("shortFormat")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -746,10 +746,10 @@ export default function TimePage() {
 
                 {/* 时间戳信息 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-                  <Card className="bg-gray-50 dark:bg-gray-800 border-0">
+                  <Card className="bg-[var(--md-sys-color-surface-container-low)] border-0">
                     <CardContent className="p-4">
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Unix 时间戳 (秒)</div>
-                      <div className="text-lg font-mono text-gray-800 dark:text-gray-200 flex items-center justify-between">
+                      <div className="text-sm text-[var(--md-sys-color-on-surface-variant)] mb-1">{t("unixTimestampSeconds")}</div>
+                      <div className="text-lg font-mono text-[var(--md-sys-color-on-surface)] flex items-center justify-between">
                         <span>{Math.floor(currentTime.getTime() / 1000)}</span>
                         <Button
                           variant="ghost"
@@ -762,10 +762,10 @@ export default function TimePage() {
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="bg-gray-50 dark:bg-gray-800 border-0">
+                  <Card className="bg-[var(--md-sys-color-surface-container-low)] border-0">
                     <CardContent className="p-4">
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">时间戳 (毫秒)</div>
-                      <div className="text-lg font-mono text-gray-800 dark:text-gray-200 flex items-center justify-between">
+                      <div className="text-sm text-[var(--md-sys-color-on-surface-variant)] mb-1">{t("timestampMilliseconds")}</div>
+                      <div className="text-lg font-mono text-[var(--md-sys-color-on-surface)] flex items-center justify-between">
                         <span>{currentTime.getTime()}</span>
                         <Button
                           variant="ghost"
@@ -822,11 +822,11 @@ export default function TimePage() {
                     return (
                       <div
                         key={tzId}
-                        className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                        className="flex justify-between items-center p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg"
                       >
                         <div>
                           <div className="text-lg font-medium">{tzDetails.name}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
                             GMT{tzDetails.offset >= 0 ? "+" : ""}
                             {tzDetails.offset}
                           </div>
@@ -840,7 +840,7 @@ export default function TimePage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => removeWorldClock(tzId)}
-                            className="text-gray-500 hover:text-red-500"
+                            className="text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)]"
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -863,12 +863,12 @@ export default function TimePage() {
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Timer className="h-5 w-5 text-green-600" />
-                秒表
+                <Timer className="h-5 w-5 text-[var(--md-sys-color-success)]" />
+                {t("stopwatch")}
                 {stopwatchRunning && (
                   <Badge variant="secondary" className="text-xs">
                     <Play className="h-3 w-3 mr-1" />
-                    运行中
+                    {t("running")}
                   </Badge>
                 )}
               </CardTitle>
@@ -876,14 +876,14 @@ export default function TimePage() {
             <CardContent>
               <div className="flex flex-col items-center justify-center space-y-8">
                 {/* 秒表显示 */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-8 w-full max-w-2xl text-center">
+                <div className="bg-gradient-to-r from-[var(--md-sys-color-success-container)] to-[var(--md-sys-color-tertiary-container)] rounded-2xl p-8 w-full max-w-2xl text-center">
                   <div className={`text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-4 ${
-                    stopwatchRunning ? 'text-green-600 dark:text-green-400' : 'text-gray-800 dark:text-gray-200'
+                    stopwatchRunning ? 'text-[var(--md-sys-color-success)]' : 'text-[var(--md-sys-color-on-surface)]'
                   }`}>
                     {formatStopwatchTime(stopwatchTime)}
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {stopwatchRunning ? '正在计时...' : stopwatchTime > 0 ? '已暂停' : '点击开始计时'}
+                  <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                    {stopwatchRunning ? t("timing") : stopwatchTime > 0 ? t("paused") : t("clickToStart")}
                   </div>
                 </div>
 
@@ -892,12 +892,12 @@ export default function TimePage() {
                   {!stopwatchRunning ? (
                     <Button onClick={startStopwatch} className="min-w-[120px] h-12" size="lg">
                       <Play className="h-4 w-4 mr-2" />
-                      开始
+                      {t("start")}
                     </Button>
                   ) : (
                     <Button onClick={pauseStopwatch} variant="secondary" className="min-w-[120px] h-12" size="lg">
                       <Pause className="h-4 w-4 mr-2" />
-                      暂停
+                      {t("pause")}
                     </Button>
                   )}
 
@@ -909,7 +909,7 @@ export default function TimePage() {
                     size="lg"
                   >
                     <Timer className="h-4 w-4 mr-2" />
-                    记圈
+                    {t("lap")}
                   </Button>
 
                   <Button
@@ -920,17 +920,17 @@ export default function TimePage() {
                     size="lg"
                   >
                     <Square className="h-4 w-4 mr-2" />
-                    重置
+                    {t("reset")}
                   </Button>
                 </div>
 
                 {stopwatchLaps.length > 0 && (
                   <div className="w-full max-w-md mt-6">
                     <h3 className="text-lg font-medium mb-3">{t("laps")}</h3>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
+                    <div className="bg-[var(--md-sys-color-surface-container-low)] rounded-lg overflow-hidden">
                       <div className="max-h-60 overflow-y-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-100 dark:bg-gray-700">
+                          <thead className="bg-[var(--md-sys-color-surface-container)]">
                             <tr>
                               <th className="px-4 py-2 text-left">{t("lap")}</th>
                               <th className="px-4 py-2 text-right">{t("lapTime")}</th>
@@ -944,7 +944,7 @@ export default function TimePage() {
                                 const splitTime = lapTime - prevLapTime
 
                                 return (
-                                  <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
+                                  <tr key={index} className="border-b border-[var(--md-sys-color-outline-variant)]">
                                     <td className="px-4 py-2">#{stopwatchLaps.length - index}</td>
                                     <td className="px-4 py-2 text-right font-mono">{formatStopwatchTime(splitTime)}</td>
                                     <td className="px-4 py-2 text-right font-mono">{formatStopwatchTime(lapTime)}</td>
@@ -968,17 +968,17 @@ export default function TimePage() {
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <AlarmClock className="h-5 w-5 text-orange-600" />
-                倒计时器
+                <AlarmClock className="h-5 w-5 text-[var(--md-sys-color-warning)]" />
+                {t("countdownTimer")}
                 {timerRunning && (
                   <Badge variant="secondary" className="text-xs">
                     <Play className="h-3 w-3 mr-1" />
-                    运行中
+                    {t("running")}
                   </Badge>
                 )}
                 {timerCompleted && (
                   <Badge variant="destructive" className="text-xs animate-pulse">
-                    时间到！
+                    {t("timeUp")}
                   </Badge>
                 )}
               </CardTitle>
@@ -986,18 +986,18 @@ export default function TimePage() {
             <CardContent>
               <div className="flex flex-col items-center justify-center space-y-8">
                 {/* 计时器显示 */}
-                <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-2xl p-8 w-full max-w-2xl text-center">
+                <div className="bg-gradient-to-r from-[var(--md-sys-color-warning-container)] to-[var(--md-sys-color-error-container)] rounded-2xl p-8 w-full max-w-2xl text-center">
                   <div className={`text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-4 ${
-                    timerCompleted ? "text-red-500 animate-pulse" : 
-                    timerRunning ? 'text-orange-600 dark:text-orange-400' : 
-                    'text-gray-800 dark:text-gray-200'
+                    timerCompleted ? "text-[var(--md-sys-color-error)] animate-pulse" : 
+                    timerRunning ? 'text-[var(--md-sys-color-warning)]' : 
+                    'text-[var(--md-sys-color-on-surface)]'
                   }`}>
                     {formatTimerTime(timerTime)}
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {timerCompleted ? '时间到！' :
-                     timerRunning ? '倒计时中...' : 
-                     timerTime > 0 ? '已暂停' : '设置时间开始倒计时'}
+                  <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                    {timerCompleted ? t("timeUp") :
+                     timerRunning ? t("countingDown") : 
+                     timerTime > 0 ? t("paused") : t("setTimeToStart")}
                   </div>
                 </div>
 
@@ -1011,12 +1011,12 @@ export default function TimePage() {
                       disabled={timerTime === 0 && timerDuration === 0}
                     >
                       <Play className="h-4 w-4 mr-2" />
-                      开始
+                      {t("start")}
                     </Button>
                   ) : (
                     <Button onClick={pauseTimer} variant="secondary" className="min-w-[120px] h-12" size="lg">
                       <Pause className="h-4 w-4 mr-2" />
-                      暂停
+                      {t("pause")}
                     </Button>
                   )}
 
@@ -1028,7 +1028,7 @@ export default function TimePage() {
                     size="lg"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    重置
+                    {t("reset")}
                   </Button>
                 </div>
 
@@ -1182,14 +1182,14 @@ export default function TimePage() {
                   </div>
 
                   {timestampResult && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-gray-500">{t("localTime")}</div>
+                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("localTime")}</div>
                           <div className="text-lg font-mono">{timestampResult.local}</div>
                         </div>
                         <div>
-                          <div className="text-sm text-gray-500">UTC</div>
+                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">UTC</div>
                           <div className="text-lg font-mono">{timestampResult.utc}</div>
                         </div>
                       </div>
@@ -1206,7 +1206,7 @@ export default function TimePage() {
                       <Input
                         id="date-input"
                         type="text"
-                        placeholder="2025-04-06 12:50:26 或 2025/4/6 12:41:00"
+                        placeholder={t("datePlaceholder")}
                         value={dateInput}
                         onChange={(e) => setDateInput(e.target.value)}
                       />
@@ -1219,14 +1219,14 @@ export default function TimePage() {
                   </div>
 
                   {dateResult && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-gray-500">{t("secondsTimestamp")}</div>
+                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("secondsTimestamp")}</div>
                           <div className="text-lg font-mono">{dateResult.seconds}</div>
                         </div>
                         <div>
-                          <div className="text-sm text-gray-500">{t("millisecondsTimestamp")}</div>
+                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("millisecondsTimestamp")}</div>
                           <div className="text-lg font-mono">{dateResult.milliseconds}</div>
                         </div>
                       </div>
@@ -1243,11 +1243,11 @@ export default function TimePage() {
                       <Input
                         id="utc-input"
                         type="text"
-                        placeholder="2025-04-06T12:50:26Z 或 Sun, 06 Apr 2025 12:50:26 GMT"
+                        placeholder={t("utcPlaceholder")}
                         value={utcInput}
                         onChange={(e) => setUtcInput(e.target.value)}
                       />
-                      <div className="text-xs text-gray-500">{t("utcTimeNote")}</div>
+                      <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("utcTimeNote")}</div>
                     </div>
                     <div className="flex items-end">
                       <Button onClick={convertUtcToLocal} className="w-full">
@@ -1257,14 +1257,14 @@ export default function TimePage() {
                   </div>
 
                   {utcResult && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-gray-500">{t("localTime")}</div>
+                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("localTime")}</div>
                           <div className="text-lg font-mono">{utcResult.local}</div>
                         </div>
                         <div>
-                          <div className="text-sm text-gray-500">{t("secondsTimestamp")}</div>
+                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("secondsTimestamp")}</div>
                           <div className="text-lg font-mono">{utcResult.timestamp}</div>
                         </div>
                       </div>

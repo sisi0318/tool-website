@@ -133,15 +133,15 @@ function add(a, b) {
     
     switch (line.type) {
       case "added":
-        lineClass = "bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 pl-3"
+        lineClass = "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border-l-4 border-[var(--md-sys-color-primary)] pl-3"
         prefix = "+ "
         break
       case "removed":
-        lineClass = "bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 pl-3"
+        lineClass = "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] border-l-4 border-[var(--md-sys-color-error)] pl-3"
         prefix = "- "
         break
       default:
-        lineClass = "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+        lineClass = "hover:bg-[var(--md-sys-color-surface-container)]"
         prefix = "  "
         break
     }
@@ -152,13 +152,13 @@ function add(a, b) {
         className={`flex text-sm font-mono ${lineClass}`}
       >
         {showLineNumbers && (
-          <div className="w-12 text-right pr-3 text-gray-400 select-none">
+          <div className="w-12 text-right pr-3 text-[var(--md-sys-color-on-surface-variant)] select-none">
             {lineNumber}
           </div>
         )}
         <div className="flex-1">
           <span className="select-none">{prefix}</span>
-          {line.content || <span className="text-gray-400 italic">{' '}</span>}
+          {line.content || <span className="text-[var(--md-sys-color-on-surface-variant)] italic">{' '}</span>}
         </div>
       </div>
     )
@@ -223,7 +223,7 @@ function add(a, b) {
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="sm" onClick={copyDiff}>
                       {copied ? (
-                        <Check className="h-4 w-4 mr-1 text-green-500" />
+                        <Check className="h-4 w-4 mr-1 text-[var(--md-sys-color-primary)]" />
                       ) : (
                         <Copy className="h-4 w-4 mr-1" />
                       )}
@@ -272,7 +272,7 @@ function add(a, b) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label>{t("differences")}</Label>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-[var(--md-sys-color-on-surface-variant)]">
               {isCalculating && <Loader2 className="h-4 w-4 animate-spin" />}
               <span>
                 {diffResult.added + diffResult.removed} {t("changes")}
@@ -281,14 +281,14 @@ function add(a, b) {
           </div>
 
           {algorithm === "myers" && diffResult.algorithmUsed === "quick" && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <div className="flex items-start gap-2 rounded-lg border border-[var(--md-sys-color-warning)]/40 bg-[var(--md-sys-color-warning-container)] p-3 text-sm text-[var(--md-sys-color-on-warning-container)]">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{t("preciseFallback")}</span>
             </div>
           )}
 
           {resultLimited && (
-            <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+            <div className="rounded-lg bg-[var(--md-sys-color-secondary-container)] p-3 text-sm text-[var(--md-sys-color-on-secondary-container)]">
               {t("resultLimited").replace(
                 "{count}",
                 MAX_RENDERED_DIFF_LINES.toLocaleString(),
@@ -296,13 +296,13 @@ function add(a, b) {
             </div>
           )}
           
-          <div className="border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+          <div className="border rounded-lg overflow-hidden bg-[var(--md-sys-color-surface)]">
             {diff.length > 0 ? (
               <div className="max-h-96 overflow-y-auto">
                 {renderedDiff.map((line, index) => renderDiffLine(line, index))}
               </div>
             ) : (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-[var(--md-sys-color-on-surface-variant)]">
                 {t("noDifferences")}
               </div>
             )}
@@ -311,15 +311,15 @@ function add(a, b) {
           {/* 差异图例 */}
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500"></div>
+              <div className="w-4 h-4 bg-[var(--md-sys-color-primary)]"></div>
               <span>{t("added")}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500"></div>
+              <div className="w-4 h-4 bg-[var(--md-sys-color-error)]"></div>
               <span>{t("removed")}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600"></div>
+              <div className="w-4 h-4 bg-[var(--md-sys-color-outline-variant)]"></div>
               <span>{t("unchanged")}</span>
             </div>
           </div>

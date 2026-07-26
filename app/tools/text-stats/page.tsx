@@ -100,7 +100,7 @@ This is an example paragraph in English. It contains multiple sentences! How man
             <Label htmlFor="text">{t("inputLabel")}</Label>
             <div className="flex items-center gap-2">
               {isAnalyzing && (
-                <span className="flex items-center gap-1 text-xs text-gray-500">
+                <span className="flex items-center gap-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   {t("analyzing")}
                 </span>
@@ -157,7 +157,7 @@ This is an example paragraph in English. It contains multiple sentences! How man
               <TooltipTrigger asChild>
                 <Button variant="outline" onClick={copyStats}>
                   {copied ? (
-                    <Check className="h-4 w-4 mr-2 text-green-500" />
+                    <Check className="h-4 w-4 mr-2 text-[var(--md-sys-color-primary)]" />
                   ) : (
                     <Copy className="h-4 w-4 mr-2" />
                   )}
@@ -174,7 +174,7 @@ This is an example paragraph in English. It contains multiple sentences! How man
           <div className="space-y-3">
             <Label>{t("wordFrequency")}</Label>
             {wordFrequencyResult.truncated && (
-              <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+              <div className="rounded-lg bg-[var(--md-sys-color-secondary-container)] p-3 text-xs text-[var(--md-sys-color-on-secondary-container)]">
                 {t("frequencyLimited").replace(
                   "{count}",
                   wordFrequencyResult.analyzedCharacters.toLocaleString(),
@@ -185,10 +185,10 @@ This is an example paragraph in English. It contains multiple sentences! How man
               {wordFrequency.map(({ word, count }, index) => (
                 <div
                   key={index}
-                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm flex items-center gap-2"
+                  className="px-3 py-1.5 bg-[var(--md-sys-color-surface-container)] rounded-full text-sm flex items-center gap-2"
                 >
                   <span className="font-medium">{word}</span>
-                  <span className="text-gray-500 dark:text-gray-400 text-xs">
+                  <span className="text-[var(--md-sys-color-on-surface-variant)] text-xs">
                     ×{count}
                   </span>
                 </div>
@@ -213,7 +213,7 @@ function StatCard({
 }) {
   return (
     <div className={`
-      p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg
+      p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg
       ${small ? 'p-3' : 'p-4'}
     `}>
       <div className={`
@@ -223,7 +223,7 @@ function StatCard({
         {value}
       </div>
       <div className={`
-        text-gray-600 dark:text-gray-400
+        text-[var(--md-sys-color-on-surface-variant)]
         ${small ? 'text-xs' : 'text-sm'}
       `}>
         {label}

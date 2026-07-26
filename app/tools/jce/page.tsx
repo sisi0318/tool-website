@@ -638,8 +638,8 @@ export default function JceTool() {
   return (
     <div className="container mx-auto px-4 py-4 max-w-7xl">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <Database className="h-8 w-8 text-teal-600" />
+        <h1 className="text-3xl font-bold text-[var(--md-sys-color-on-surface)] mb-4 flex items-center justify-center gap-2">
+          <Database className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
           {t("title")}
         </h1>
       </div>
@@ -650,7 +650,7 @@ export default function JceTool() {
           variant="ghost"
           size="sm"
           onClick={() => setShowSettings(!showSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          className="w-full text-sm text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
         >
           <div className="flex items-center gap-2">
             {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -668,21 +668,21 @@ export default function JceTool() {
           <Card className="mt-3 card-modern">
             <CardContent className="py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--md-sys-color-surface-container)] p-3 rounded-lg">
                   <Label htmlFor="jce-auto-format" className="cursor-pointer text-sm">
                     {t("manualFormat")}
                   </Label>
                   <Switch id="jce-auto-format" checked={autoFormat} onCheckedChange={setAutoFormat} />
-                  <Label htmlFor="jce-auto-format" className="cursor-pointer text-sm text-blue-600">
+                  <Label htmlFor="jce-auto-format" className="cursor-pointer text-sm text-[var(--md-sys-color-primary)]">
                     {t("autoFormat")}
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--md-sys-color-surface-container)] p-3 rounded-lg">
                   <Label htmlFor="jce-show-type" className="cursor-pointer text-sm">
                     {t("hideTypeInfo")}
                   </Label>
                   <Switch id="jce-show-type" checked={showTypeInfo} onCheckedChange={setShowTypeInfo} />
-                  <Label htmlFor="jce-show-type" className="cursor-pointer text-sm text-green-600">
+                  <Label htmlFor="jce-show-type" className="cursor-pointer text-sm text-[var(--md-sys-color-tertiary)]">
                     {t("showTypeInfo")}
                   </Label>
                 </div>
@@ -699,17 +699,17 @@ export default function JceTool() {
         onValueChange={(v) => setMode(v as "decode" | "encode")}
       >
         <div className="mb-6">
-          <TabsList className="grid w-full grid-cols-2 h-14 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <TabsList className="grid w-full grid-cols-2 h-14 p-2 bg-[var(--md-sys-color-surface-container)] rounded-xl shadow-lg border border-[var(--md-sys-color-outline-variant)]">
             <TabsTrigger
               value="decode"
-              className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-teal-100 dark:data-[state=active]:bg-teal-900 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 transition-all duration-200"
+              className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-[var(--md-sys-color-primary-container)] data-[state=active]:text-[var(--md-sys-color-on-primary-container)] transition-all duration-200"
             >
               <Code className="h-5 w-5" />
               <span className="text-sm font-medium">{t("decode")}</span>
             </TabsTrigger>
             <TabsTrigger
               value="encode"
-              className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-300 transition-all duration-200"
+              className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg data-[state=active]:bg-[var(--md-sys-color-primary-container)] data-[state=active]:text-[var(--md-sys-color-on-primary-container)] transition-all duration-200"
             >
               <Database className="h-5 w-5" />
               <span className="text-sm font-medium">{t("encode")}</span>
@@ -724,7 +724,7 @@ export default function JceTool() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Upload className="h-5 w-5 text-teal-600" />
+                  <Upload className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
                   {t("jceInput")}
                   {autoFormat && (
                     <Badge variant="secondary" className="text-xs">
@@ -762,7 +762,7 @@ export default function JceTool() {
 
                   <TabsContent value="file" className="space-y-4">
                     <div
-                      className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                      className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-[var(--md-sys-color-surface-container-high)] transition-colors"
                       onDrop={handleDrop}
                       onDragOver={handleDragOver}
                       onClick={() => fileInputRef.current?.click()}
@@ -805,7 +805,7 @@ export default function JceTool() {
                   </TabsContent>
                 </Tabs>
 
-                {error && <div className="mt-2 text-sm text-red-500">{error}</div>}
+                {error && <div className="mt-2 text-sm text-[var(--md-sys-color-error)]">{error}</div>}
 
                 <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-between">
                   <div className="contents sm:flex sm:gap-2">
@@ -838,7 +838,7 @@ export default function JceTool() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-green-600" />
+                  <FileText className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
                   {showTypeInfo ? t("detailedOutput") : t("jsonOutput")}
                   <div className="flex space-x-2 ml-auto">
                     <Button
@@ -850,7 +850,7 @@ export default function JceTool() {
                       disabled={!outputData}
                     >
                       {copied.main ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
+                        <Check className="h-4 w-4 mr-2 text-[var(--md-sys-color-primary)]" />
                       ) : (
                         <Copy className="h-4 w-4 mr-2" />
                       )}
@@ -870,7 +870,7 @@ export default function JceTool() {
               </CardHeader>
               <CardContent>
                 <Textarea
-                  className="font-mono h-[400px] bg-gray-50 dark:bg-gray-900"
+                  className="font-mono h-[400px] bg-[var(--md-sys-color-surface-container-low)]"
                   value={showTypeInfo ? detailedOutput : outputData}
                   readOnly
                   placeholder={t("outputPlaceholder")}
@@ -885,7 +885,7 @@ export default function JceTool() {
                   </div>
                 )}
 
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-4">
+                <div className="mt-4 p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg space-y-4">
                   <Label className="text-sm font-medium">{t("outputOptions")}</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
@@ -914,7 +914,7 @@ export default function JceTool() {
                     </div>
                   </div>
                   {outputData && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t">
+                    <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] pt-2 border-t">
                       {t("outputLength")}: {outputData.length} {t("characters")}
                     </div>
                   )}
@@ -931,7 +931,7 @@ export default function JceTool() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Code className="h-5 w-5 text-blue-600" />
+                  <Code className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
                   {t("jsonInputTitle")}
                 </CardTitle>
               </CardHeader>
@@ -944,15 +944,15 @@ export default function JceTool() {
                     <Textarea
                       id="jce-json-input"
                       placeholder={t("jsonInputPlaceholder")}
-                      className="font-mono h-[400px] bg-gray-50 dark:bg-gray-900"
+                      className="font-mono h-[400px] bg-[var(--md-sys-color-surface-container-low)]"
                       value={jsonInput}
                       onChange={(e) => setJsonInput(e.target.value)}
                     />
                   </div>
 
                   {error && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+                    <div className="p-3 bg-[var(--md-sys-color-error-container)] border border-[var(--md-sys-color-error)]/30 rounded-lg">
+                      <div className="text-sm text-[var(--md-sys-color-on-error-container)]">{error}</div>
                     </div>
                   )}
 
@@ -982,7 +982,7 @@ export default function JceTool() {
                   </div>
 
                   {jsonInput && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t">
+                    <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] pt-2 border-t">
                       {t("inputLength")}: {jsonInput.length} {t("characters")}
                     </div>
                   )}
@@ -994,7 +994,7 @@ export default function JceTool() {
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Database className="h-5 w-5 text-teal-600" />
+                  <Database className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
                   {t("jceOutput")}
                   <div className="flex space-x-2 ml-auto">
                     <Button
@@ -1004,7 +1004,7 @@ export default function JceTool() {
                       disabled={!outputData}
                     >
                       {copied.main ? (
-                        <Check className="h-4 w-4 mr-2 text-green-500" />
+                        <Check className="h-4 w-4 mr-2 text-[var(--md-sys-color-primary)]" />
                       ) : (
                         <Copy className="h-4 w-4 mr-2" />
                       )}
@@ -1024,17 +1024,17 @@ export default function JceTool() {
               </CardHeader>
               <CardContent>
                 <Textarea
-                  className="font-mono h-[400px] bg-gray-50 dark:bg-gray-900"
+                  className="font-mono h-[400px] bg-[var(--md-sys-color-surface-container-low)]"
                   value={outputData}
                   readOnly
                   placeholder={t("encodeOutputPlaceholder")}
                 />
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="mt-4 p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg">
+                  <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
                     {t("encodeHelp")}
                   </div>
                   {outputData && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t">
+                    <div className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-2 pt-2 border-t">
                       {t("outputLength")}: {outputData.length} {t("characters")} (Hex)
                     </div>
                   )}
@@ -1049,7 +1049,7 @@ export default function JceTool() {
       <Card className="mt-6 card-modern">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Eye className="h-5 w-5 text-gray-600" />
+            <Eye className="h-5 w-5 text-[var(--md-sys-color-on-surface-variant)]" />
             {t("typeReference")}
           </CardTitle>
         </CardHeader>
@@ -1060,12 +1060,12 @@ export default function JceTool() {
               .map(([type, name]) => (
                 <div
                   key={type}
-                  className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  className="flex items-center gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded-lg"
                 >
                   <Badge variant="secondary" className="text-xs font-mono">
                     {type}
                   </Badge>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">{name}</span>
+                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{name}</span>
                 </div>
               ))}
           </div>

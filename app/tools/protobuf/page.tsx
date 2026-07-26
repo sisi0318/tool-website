@@ -938,7 +938,7 @@ export default function ProtobufTool() {
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
                       {copied.main ? (
-                        <Check className="mr-2 h-4 w-4 text-green-500" />
+                        <Check className="mr-2 h-4 w-4 text-[var(--md-sys-color-primary)]" />
                       ) : (
                         <Copy className="mr-2 h-4 w-4" />
                       )}
@@ -1067,7 +1067,7 @@ export default function ProtobufTool() {
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
                       {copied.main ? (
-                        <Check className="mr-2 h-4 w-4 text-green-500" />
+                        <Check className="mr-2 h-4 w-4 text-[var(--md-sys-color-primary)]" />
                       ) : (
                         <Copy className="mr-2 h-4 w-4" />
                       )}

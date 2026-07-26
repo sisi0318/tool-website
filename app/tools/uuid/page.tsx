@@ -243,7 +243,7 @@ export default function UUIDPage() {
             
             {generatedUUIDs.length === 1 ? (
               // 单个 UUID 显示
-              <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+              <div className="flex items-center justify-between bg-[var(--md-sys-color-surface-container)] p-4 rounded-lg">
                 <code className="font-mono text-lg break-all flex-1">
                   {generatedUUIDs[0]}
                 </code>
@@ -257,7 +257,7 @@ export default function UUIDPage() {
                         className="ml-2 flex-shrink-0"
                       >
                         {copied["0"] ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
                         ) : (
                           <Copy className="h-4 w-4" />
                         )}
@@ -275,7 +275,7 @@ export default function UUIDPage() {
                 {generatedUUIDs.map((uuid, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-3 rounded-md group"
+                    className="flex items-center justify-between bg-[var(--md-sys-color-surface-container)] p-3 rounded-md group"
                   >
                     <code className="font-mono text-sm break-all flex-1">
                       {uuid}
@@ -290,7 +290,7 @@ export default function UUIDPage() {
                             className="ml-2 flex-shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                           >
                             {copied[index.toString()] ? (
-                              <Check className="h-4 w-4 text-green-500" />
+                              <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
                             ) : (
                               <Copy className="h-4 w-4" />
                             )}

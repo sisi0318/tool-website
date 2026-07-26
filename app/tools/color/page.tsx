@@ -184,7 +184,7 @@ interface ColorFormat {
 export default function ColorPickerPage() {
   const t = useTranslations("color")
 
-  // 基础状态
+  // Base state
   const [showColorSettings, setShowColorSettings] = useState(false)
   const [autoSync, setAutoSync] = useState(true)
   const [showPreview, setShowPreview] = useState(true)
@@ -614,21 +614,21 @@ export default function ColorPickerPage() {
 
   return (
     <div className="container mx-auto px-4 py-4 max-w-6xl">
-      {/* 页面标题 */}
+      {/* Page title */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center justify-center gap-2">
-          <Palette className="h-8 w-8 text-pink-600" />
-          颜色选择器
+        <h1 className="text-3xl font-bold text-[var(--md-sys-color-on-surface)] mb-4 flex items-center justify-center gap-2">
+          <Palette className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
+          {t("title")}
         </h1>
       </div>
 
-      {/* 颜色设置折叠区域 */}
+      {/* Collapsible color settings */}
       <div className="mb-6">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setShowColorSettings(!showColorSettings)}
-          className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+          className="w-full text-sm text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
         >
           <div className="flex items-center gap-2">
             {showColorSettings ? (
@@ -637,10 +637,10 @@ export default function ColorPickerPage() {
               <ChevronDown className="h-4 w-4" />
             )}
             <Settings className="h-4 w-4" />
-            <span>颜色设置</span>
+            <span>{t("colorSettings")}</span>
             {!showColorSettings && (
               <Badge variant="secondary" className="text-xs ml-auto">
-                点击查看
+                {t("clickToView")}
               </Badge>
             )}
           </div>
@@ -650,31 +650,31 @@ export default function ColorPickerPage() {
           <Card className="mt-3 card-modern">
             <CardContent className="py-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--md-sys-color-surface-container-low)] p-3 rounded-lg">
                   <Label htmlFor="auto-sync" className="cursor-pointer text-sm">
-                    手动同步
+                    {t("manualSync")}
                   </Label>
                   <Switch id="auto-sync" checked={autoSync} onCheckedChange={setAutoSync} />
-                  <Label htmlFor="auto-sync" className="cursor-pointer text-sm text-blue-600">
-                    自动同步
+                  <Label htmlFor="auto-sync" className="cursor-pointer text-sm text-[var(--md-sys-color-primary)]">
+                    {t("autoSync")}
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--md-sys-color-surface-container-low)] p-3 rounded-lg">
                   <Label htmlFor="show-preview" className="cursor-pointer text-sm">
-                    隐藏预览
+                    {t("hidePreview")}
                   </Label>
                   <Switch id="show-preview" checked={showPreview} onCheckedChange={setShowPreview} />
-                  <Label htmlFor="show-preview" className="cursor-pointer text-sm text-green-600">
-                    显示预览
+                  <Label htmlFor="show-preview" className="cursor-pointer text-sm text-[var(--md-sys-color-primary)]">
+                    {t("showPreview")}
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--md-sys-color-surface-container-low)] p-3 rounded-lg">
                   <Label htmlFor="name-detection" className="cursor-pointer text-sm">
-                    关闭名称
+                    {t("disableName")}
                   </Label>
                   <Switch id="name-detection" checked={enableNameDetection} onCheckedChange={setEnableNameDetection} />
-                  <Label htmlFor="name-detection" className="cursor-pointer text-sm text-purple-600">
-                    启用名称
+                  <Label htmlFor="name-detection" className="cursor-pointer text-sm text-[var(--md-sys-color-primary)]">
+                    {t("enableName")}
                   </Label>
                 </div>
               </div>
@@ -684,39 +684,39 @@ export default function ColorPickerPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左侧：颜色预览和选择器 */}
+        {/* Left: color preview and picker */}
         <div className="lg:col-span-2 space-y-6">
-          {/* 颜色预览 */}
+          {/* Color preview */}
           {showPreview && (
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-pink-600" />
-                  颜色预览
+                  <Eye className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                  {t("colorPreview")}
                   {autoSync && (
                     <Badge variant="secondary" className="text-xs">
                       <Zap className="h-3 w-3 mr-1" />
-                      自动同步
+                      {t("autoSync")}
                     </Badge>
                   )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* 大颜色预览 */}
+                  {/* Large color preview */}
                   <div className="relative">
                     <div
-                      className="w-full h-32 rounded-2xl shadow-lg border-4 border-white dark:border-gray-800 transition-all duration-300"
+                      className="w-full h-32 rounded-2xl shadow-lg border-4 border-[var(--md-sys-color-surface)] transition-all duration-300"
                       style={{ backgroundColor: color }}
                     />
-                    <div className="absolute top-2 right-2 bg-white/90 dark:bg-gray-800/90 rounded-lg px-2 py-1 text-xs font-mono">
+                    <div className="absolute top-2 right-2 bg-[var(--md-sys-color-surface)]/90 rounded-lg px-2 py-1 text-xs font-mono">
                       {color.toUpperCase()}
                     </div>
                   </div>
 
-                  {/* 颜色选择器 */}
+                  {/* Color picker */}
                   <div className="flex flex-col gap-4">
-                    <Label className="text-sm font-medium">颜色选择:</Label>
+                    <Label className="text-sm font-medium">{t("selectColor")}</Label>
                     <div className="relative flex-1">
                       <ColorPicker
                         color={color}
@@ -731,12 +731,12 @@ export default function ColorPickerPage() {
             </Card>
           )}
 
-          {/* 调色板 */}
+          {/* Palette */}
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Palette className="h-4 w-4 text-purple-600" />
-                常用颜色
+                <Palette className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                {t("commonColors")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -747,8 +747,8 @@ export default function ColorPickerPage() {
                       <TooltipTrigger asChild>
                         <button
                           className={`w-10 h-10 rounded-xl border-3 transition-all hover:scale-110 hover:shadow-lg ${paletteColor === color
-                            ? "border-gray-800 dark:border-white ring-2 ring-blue-500"
-                            : "border-gray-200 dark:border-gray-700"
+                            ? "border-[var(--md-sys-color-on-surface)] ring-2 ring-[var(--md-sys-color-primary)]"
+                            : "border-[var(--md-sys-color-outline-variant)]"
                             }`}
                           style={{ backgroundColor: paletteColor }}
                           onClick={() => handleSwatchClick(paletteColor)}
@@ -764,13 +764,13 @@ export default function ColorPickerPage() {
             </CardContent>
           </Card>
 
-          {/* 最近使用的颜色 */}
+          {/* Recently used colors */}
           {recentColors.length > 0 && (
             <Card className="card-modern">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 text-orange-600" />
-                  最近使用
+                  <RefreshCw className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                  {t("recentColors")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -781,8 +781,8 @@ export default function ColorPickerPage() {
                         <TooltipTrigger asChild>
                           <button
                             className={`w-10 h-10 rounded-xl border-3 transition-all hover:scale-110 hover:shadow-lg ${recentColor === color
-                              ? "border-gray-800 dark:border-white ring-2 ring-blue-500"
-                              : "border-gray-200 dark:border-gray-700"
+                              ? "border-[var(--md-sys-color-on-surface)] ring-2 ring-[var(--md-sys-color-primary)]"
+                              : "border-[var(--md-sys-color-outline-variant)]"
                               }`}
                             style={{ backgroundColor: recentColor }}
                             onClick={() => handleSwatchClick(recentColor)}
@@ -801,17 +801,17 @@ export default function ColorPickerPage() {
 
         </div>
 
-        {/* 右侧：颜色格式 */}
+        {/* Right: color formats */}
         <div className="space-y-6">
           <Card className="card-modern">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Copy className="h-4 w-4 text-blue-600" />
-                颜色格式
+                <Copy className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
+                {t("colorFormats")}
                 {enableNameDetection && (
                   <Badge variant="secondary" className="text-xs">
                     <Eye className="h-3 w-3 mr-1" />
-                    名称检测
+                    {t("nameDetection")}
                   </Badge>
                 )}
               </CardTitle>
@@ -820,7 +820,7 @@ export default function ColorPickerPage() {
               <div className="space-y-4">
                 {formats.map((format, index) => (
                   <div key={format.label} className="space-y-2">
-                    <Label className="text-sm font-medium uppercase text-gray-600 dark:text-gray-400">
+                    <Label className="text-sm font-medium uppercase text-[var(--md-sys-color-on-surface-variant)]">
                       {format.label}
                     </Label>
                     <div className="relative">
@@ -828,7 +828,7 @@ export default function ColorPickerPage() {
                         value={format.value}
                         onChange={(e) => handleFormatChange(e.target.value, index)}
                         className="pr-16 font-mono text-sm"
-                        placeholder={`输入 ${format.label.toUpperCase()} 格式...`}
+                        placeholder={t("formatPlaceholder").replace("{format}", format.label.toUpperCase())}
                       />
                       <div className="absolute right-0 top-0 h-full flex items-center space-x-1 pr-2">
                         {format.value && (
@@ -846,20 +846,20 @@ export default function ColorPickerPage() {
                                 onClick={() => handleCopy(index)}
                                 disabled={!format.value}
                               >
-                                {format.copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                                {format.copied ? <Check className="h-3 w-3 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-3 w-3" />}
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {format.copied ? "已复制" : "复制"}
+                              {format.copied ? t("copied") : t("copy")}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
                     </div>
                     {format.copied && (
-                      <div className="text-xs text-green-600 flex items-center gap-1">
+                      <div className="text-xs text-[var(--md-sys-color-primary)] flex items-center gap-1">
                         <Check className="h-3 w-3" />
-                        已复制到剪贴板
+                        {t("copiedToClipboard")}
                       </div>
                     )}
                   </div>

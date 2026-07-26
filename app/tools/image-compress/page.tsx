@@ -22,6 +22,7 @@ import {
   Minimize2, Maximize2
 } from "lucide-react"
 import { M3Slider } from "@/components/m3/slider"
+import { useTranslations } from "@/hooks/use-translations"
 
 interface CompressedImage {
   id: string
@@ -40,8 +41,16 @@ interface CompressedImage {
   newHeight: number | null
 }
 
+// 内部错误代码到翻译键的映射
+const COMPRESS_ERROR_KEYS: Record<string, string> = {
+  CANVAS_UNAVAILABLE: "errorCanvasUnavailable",
+  COMPRESS_FAILED: "errorCompressFailed",
+  LOAD_FAILED: "errorLoadFailed",
+}
+
 export default function ImageCompressPage() {
   const { toast } = useToast()
+  const t = useTranslations("imageCompress")
 
   // 状态管理
   const [images, setImages] = useState<CompressedImage[]>([])
@@ -101,6 +110,12 @@ export default function ImageCompressPage() {
     }
   }
 
+  // 将内部错误代码转换为可读文案
+  const describeError = (code: string): string => {
+    const key = COMPRESS_ERROR_KEYS[code]
+    return key ? t(key) : code
+  }
+
   // 压缩单个图片
   const compressImage = useCallback(async (
     file: File,
@@ -132,7 +147,7 @@ export default function ImageCompressPage() {
 
           const ctx = canvas.getContext('2d')
           if (!ctx) {
-            reject(new Error('无法创建canvas上下文'))
+            reject(new Error('CANVAS_UNAVAILABLE'))
             return
           }
 
@@ -167,17 +182,17 @@ export default function ImageCompressPage() {
               if (blob) {
                 resolve({ blob, width, height, actualFormat })
               } else {
-                reject(new Error('压缩失败'))
+                reject(new Error('COMPRESS_FAILED'))
               }
             },
             mimeType,
             outputQuality
           )
         } catch (error) {
-          reject(error instanceof Error ? error : new Error('压缩失败'))
+          reject(error instanceof Error ? error : new Error('COMPRESS_FAILED'))
         }
       }
-      img.onerror = () => reject(new Error('图片加载失败'))
+      img.onerror = () => reject(new Error('LOAD_FAILED'))
       img.src = sourceUrl
     }))
   }, [])
@@ -213,7 +228,7 @@ export default function ImageCompressPage() {
     }
 
     if (!imageLoaded) {
-      processedImage.error = '图片加载失败'
+      processedImage.error = 'LOAD_FAILED'
       processedImage.isProcessing = false
       return processedImage
     }
@@ -237,7 +252,7 @@ export default function ImageCompressPage() {
       
       return processedImage
     } catch (error) {
-      processedImage.error = error instanceof Error ? error.message : '压缩失败'
+      processedImage.error = error instanceof Error ? error.message : 'COMPRESS_FAILED'
       processedImage.isProcessing = false
       return processedImage
     }
@@ -255,8 +270,8 @@ export default function ImageCompressPage() {
       
       if (validFiles.length === 0) {
         toast({
-          title: "文件格式不支持",
-          description: "请选择 JPEG、PNG 或 WebP 格式的图片",
+          title: t("unsupportedFormatTitle"),
+          description: t("unsupportedFormatDescription"),
           variant: "destructive"
         })
         return
@@ -276,8 +291,8 @@ export default function ImageCompressPage() {
 
       const successCount = processedImages.filter(img => !img.error).length
       toast({
-        title: "处理完成",
-        description: `成功压缩 ${successCount} 张图片`,
+        title: t("processedTitle"),
+        description: t("processedDescription").replace("{count}", String(successCount)),
       })
     } finally {
       if (mountedRef.current) {
@@ -364,14 +379,14 @@ export default function ImageCompressPage() {
       }))
 
       toast({
-        title: "重新压缩完成",
-        description: `新大小: ${formatFileSize(blob.size)}`,
+        title: t("recompressedTitle"),
+        description: t("recompressedDescription").replace("{size}", formatFileSize(blob.size)),
       })
     } catch (error) {
       setImages(prev => prev.map(img => 
         img.id === imageId ? {
           ...img,
-          error: error instanceof Error ? error.message : '压缩失败',
+          error: error instanceof Error ? error.message : 'COMPRESS_FAILED',
           isProcessing: false,
         } : img
       ))
@@ -394,8 +409,8 @@ export default function ImageCompressPage() {
     compressedImages.forEach(img => downloadImage(img))
     
     toast({
-      title: "下载完成",
-      description: `已下载 ${compressedImages.length} 张图片`,
+      title: t("downloadedTitle"),
+      description: t("downloadedDescription").replace("{count}", String(compressedImages.length)),
     })
   }
 
@@ -477,7 +492,7 @@ export default function ImageCompressPage() {
           setImages(prev => prev.map(img => 
             img.id === image.id ? {
               ...img,
-              error: error instanceof Error ? error.message : '压缩失败',
+              error: error instanceof Error ? error.message : 'COMPRESS_FAILED',
               isProcessing: false,
             } : img
           ))
@@ -505,10 +520,10 @@ export default function ImageCompressPage() {
       {/* 页面标题 */}
       <div className="text-center space-y-4 mb-8">
         <h1 className="text-3xl font-bold text-[var(--md-sys-color-on-surface)]">
-          图片压缩工具
+          {t("title")}
         </h1>
         <p className="text-[var(--md-sys-color-on-surface-variant)] max-w-2xl mx-auto">
-          在线压缩图片，支持批量处理，可调节质量和尺寸
+          {t("description")}
         </p>
       </div>
 
@@ -520,7 +535,7 @@ export default function ImageCompressPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-[var(--md-sys-color-on-surface)]">
                 <Upload className="h-5 w-5" />
-                上传图片
+                {t("uploadTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -547,17 +562,17 @@ export default function ImageCompressPage() {
                 {isProcessing ? (
                   <div className="space-y-3">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--md-sys-color-primary)] mx-auto"></div>
-                    <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">压缩中...</div>
+                    <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("compressing")}</div>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <ImageIcon className="mx-auto h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]" />
                     <div>
                       <p className="font-medium text-[var(--md-sys-color-on-surface)]">
-                        拖拽图片或点击上传
+                        {t("dropHint")}
                       </p>
                       <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1">
-                        支持 JPEG、PNG、WebP 格式
+                        {t("supportedFormats")}
                       </p>
                     </div>
                   </div>
@@ -566,7 +581,7 @@ export default function ImageCompressPage() {
 
               {images.length > 0 && (
                 <div className="mt-4 flex justify-between items-center">
-                  <span className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{images.length} 张图片</span>
+                  <span className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("imageCount").replace("{count}", String(images.length))}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -574,7 +589,7 @@ export default function ImageCompressPage() {
                     className="text-[var(--md-sys-color-error)] hover:text-[var(--md-sys-color-error)]"
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
-                    清空
+                    {t("clear")}
                   </Button>
                 </div>
               )}
@@ -586,14 +601,14 @@ export default function ImageCompressPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-[var(--md-sys-color-on-surface)]">
                 <Settings className="h-5 w-5" />
-                压缩设置
+                {t("settingsTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* 质量滑块 */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <Label className="text-[var(--md-sys-color-on-surface)]">压缩质量</Label>
+                  <Label className="text-[var(--md-sys-color-on-surface)]">{t("quality")}</Label>
                   <span className="text-sm font-medium text-[var(--md-sys-color-primary)]">{quality}%</span>
                 </div>
                 <M3Slider
@@ -604,37 +619,37 @@ export default function ImageCompressPage() {
                   step={5}
                 />
                 <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                  质量越低，文件越小，但图片可能会失真
+                  {t("qualityHint")}
                 </p>
               </div>
 
               {/* 输出格式 */}
               <div className="space-y-2">
-                <Label className="text-[var(--md-sys-color-on-surface)]">输出格式</Label>
+                <Label className="text-[var(--md-sys-color-on-surface)]">{t("outputFormat")}</Label>
                 <Select value={outputFormat} onValueChange={setOutputFormat}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="original">自动优化</SelectItem>
-                    <SelectItem value="jpeg">JPEG (有损，最小体积)</SelectItem>
-                    <SelectItem value="webp">WebP (推荐，高压缩比)</SelectItem>
-                    <SelectItem value="png">PNG (无损，体积较大)</SelectItem>
+                    <SelectItem value="original">{t("formatAuto")}</SelectItem>
+                    <SelectItem value="jpeg">{t("formatJpeg")}</SelectItem>
+                    <SelectItem value="webp">{t("formatWebp")}</SelectItem>
+                    <SelectItem value="png">{t("formatPng")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                  自动优化会将 PNG 转为 WebP 以获得更好的压缩效果
+                  {t("formatHint")}
                 </p>
               </div>
 
               {/* 尺寸限制 */}
               <div className="space-y-2">
-                <Label className="text-[var(--md-sys-color-on-surface)]">最大尺寸 (可选)</Label>
+                <Label className="text-[var(--md-sys-color-on-surface)]">{t("maxDimensions")}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Input
                       type="number"
-                      placeholder="最大宽度"
+                      placeholder={t("maxWidth")}
                       value={maxWidth}
                       onChange={(e) => setMaxWidth(e.target.value)}
                     />
@@ -642,14 +657,14 @@ export default function ImageCompressPage() {
                   <div>
                     <Input
                       type="number"
-                      placeholder="最大高度"
+                      placeholder={t("maxHeight")}
                       value={maxHeight}
                       onChange={(e) => setMaxHeight(e.target.value)}
                     />
                   </div>
                 </div>
                 <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                  留空则保持原尺寸
+                  {t("dimensionsHint")}
                 </p>
               </div>
 
@@ -662,7 +677,7 @@ export default function ImageCompressPage() {
                     disabled={!images.some(img => img.compressedUrl)}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    下载全部
+                    {t("downloadAll")}
                   </Button>
                 </div>
               )}
@@ -675,21 +690,21 @@ export default function ImageCompressPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-[var(--md-sys-color-on-surface)]">
                   <Zap className="h-5 w-5" />
-                  压缩统计
+                  {t("statsTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--md-sys-color-on-surface-variant)]">原始总大小</span>
+                  <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("totalOriginalSize")}</span>
                   <span className="font-medium text-[var(--md-sys-color-on-surface)]">{formatFileSize(totalOriginalSize)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--md-sys-color-on-surface-variant)]">压缩后总大小</span>
+                  <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("totalCompressedSize")}</span>
                   <span className="font-medium text-[var(--md-sys-color-on-surface)]">{formatFileSize(totalCompressedSize)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[var(--md-sys-color-on-surface-variant)]">
-                    {totalCompressedSize <= totalOriginalSize ? '节省空间' : '增加大小'}
+                    {totalCompressedSize <= totalOriginalSize ? t("savedSpace") : t("increasedSize")}
                   </span>
                   <span className={`font-medium ${totalCompressedSize <= totalOriginalSize ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-error)]'}`}>
                     {totalOriginalSize > 0 ? getCompressionRatio(totalOriginalSize, totalCompressedSize) : '0%'}
@@ -707,10 +722,10 @@ export default function ImageCompressPage() {
               <CardContent className="py-16 text-center">
                 <FileImage className="mx-auto h-16 w-16 text-[var(--md-sys-color-on-surface-variant)] mb-4" />
                 <h3 className="text-lg font-medium text-[var(--md-sys-color-on-surface)] mb-2">
-                  还没有图片
+                  {t("emptyTitle")}
                 </h3>
                 <p className="text-[var(--md-sys-color-on-surface-variant)]">
-                  上传图片开始压缩
+                  {t("emptyDescription")}
                 </p>
               </CardContent>
             </Card>
@@ -781,7 +796,7 @@ export default function ImageCompressPage() {
                         </div>
 
                         {image.error && (
-                          <p className="text-xs text-[var(--md-sys-color-error)]">{image.error}</p>
+                          <p className="text-xs text-[var(--md-sys-color-error)]">{describeError(image.error)}</p>
                         )}
 
                         {/* 操作按钮 */}
@@ -797,7 +812,7 @@ export default function ImageCompressPage() {
                             disabled={image.isProcessing}
                           >
                             <Zap className="h-3 w-3 mr-1" />
-                            重新压缩
+                            {t("recompress")}
                           </Button>
                           <Button
                             size="sm"
@@ -809,7 +824,7 @@ export default function ImageCompressPage() {
                             disabled={!image.compressedUrl || image.isProcessing}
                           >
                             <Download className="h-3 w-3 mr-1" />
-                            下载
+                            {t("download")}
                           </Button>
                         </div>
                       </div>
@@ -824,31 +839,31 @@ export default function ImageCompressPage() {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-[var(--md-sys-color-on-surface)]">
                       <CheckCircle2 className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
-                      压缩详情
+                      {t("detailsTitle")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* 对比预览 */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-[var(--md-sys-color-on-surface)]">对比预览</h4>
+                        <h4 className="font-medium text-[var(--md-sys-color-on-surface)]">{t("comparisonTitle")}</h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <p className="text-xs text-center text-[var(--md-sys-color-on-surface-variant)]">原图</p>
+                            <p className="text-xs text-center text-[var(--md-sys-color-on-surface-variant)]">{t("original")}</p>
                             <div className="relative aspect-square rounded-[var(--md-sys-shape-corner-medium)] overflow-hidden bg-[var(--md-sys-color-surface-variant)] group">
                               <img
                                 src={selectedImage.originalUrl}
-                                alt="原图"
+                                alt={t("original")}
                                 className="w-full h-full object-contain"
                               />
                               <Button
                                 variant="secondary"
                                 size="sm"
-                                aria-label="预览原图"
+                                aria-label={t("previewOriginalAria")}
                                 className="absolute right-2 top-2 h-8 w-8 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                                 onClick={() => {
                                   setPreviewImage(selectedImage.originalUrl)
-                                  setPreviewTitle(`原图 - ${selectedImage.file.name}`)
+                                  setPreviewTitle(`${t("original")} - ${selectedImage.file.name}`)
                                 }}
                               >
                                 <Maximize2 className="h-4 w-4" />
@@ -859,23 +874,23 @@ export default function ImageCompressPage() {
                             </p>
                           </div>
                           <div className="space-y-2">
-                            <p className="text-xs text-center text-[var(--md-sys-color-on-surface-variant)]">压缩后</p>
+                            <p className="text-xs text-center text-[var(--md-sys-color-on-surface-variant)]">{t("compressed")}</p>
                             <div className="relative aspect-square rounded-[var(--md-sys-shape-corner-medium)] overflow-hidden bg-[var(--md-sys-color-surface-variant)] group">
                               {selectedImage.compressedUrl ? (
                                 <>
                                   <img
                                     src={selectedImage.compressedUrl}
-                                    alt="压缩后"
+                                    alt={t("compressed")}
                                     className="w-full h-full object-contain"
                                   />
                                   <Button
                                     variant="secondary"
                                     size="sm"
-                                    aria-label="预览压缩后的图片"
+                                    aria-label={t("previewCompressedAria")}
                                     className="absolute right-2 top-2 h-8 w-8 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                                     onClick={() => {
                                       setPreviewImage(selectedImage.compressedUrl)
-                                      setPreviewTitle(`压缩后 - ${selectedImage.file.name}`)
+                                      setPreviewTitle(`${t("compressed")} - ${selectedImage.file.name}`)
                                     }}
                                   >
                                     <Maximize2 className="h-4 w-4" />
@@ -883,7 +898,7 @@ export default function ImageCompressPage() {
                                 </>
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">处理中...</span>
+                                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("processing")}</span>
                                 </div>
                               )}
                             </div>
@@ -896,35 +911,35 @@ export default function ImageCompressPage() {
 
                       {/* 详细信息 */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-[var(--md-sys-color-on-surface)]">详细信息</h4>
+                        <h4 className="font-medium text-[var(--md-sys-color-on-surface)]">{t("infoTitle")}</h4>
                         <div className="space-y-3 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-[var(--md-sys-color-on-surface-variant)]">文件名</span>
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("fileName")}</span>
                             <span className="text-[var(--md-sys-color-on-surface)] truncate max-w-[200px]">{selectedImage.file.name}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-[var(--md-sys-color-on-surface-variant)]">原始尺寸</span>
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("originalDimensions")}</span>
                             <span className="text-[var(--md-sys-color-on-surface)]">{selectedImage.width} × {selectedImage.height}</span>
                           </div>
                           {selectedImage.newWidth && selectedImage.newHeight && (
                             <div className="flex justify-between">
-                              <span className="text-[var(--md-sys-color-on-surface-variant)]">压缩后尺寸</span>
+                              <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("compressedDimensions")}</span>
                               <span className="text-[var(--md-sys-color-on-surface)]">{selectedImage.newWidth} × {selectedImage.newHeight}</span>
                             </div>
                           )}
                           <div className="flex justify-between">
-                            <span className="text-[var(--md-sys-color-on-surface-variant)]">原始大小</span>
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("originalSize")}</span>
                             <span className="text-[var(--md-sys-color-on-surface)]">{formatFileSize(selectedImage.originalSize)}</span>
                           </div>
                           {selectedImage.compressedSize && (
                             <>
                               <div className="flex justify-between">
-                                <span className="text-[var(--md-sys-color-on-surface-variant)]">压缩后大小</span>
+                                <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("compressedSize")}</span>
                                 <span className="text-[var(--md-sys-color-primary)]">{formatFileSize(selectedImage.compressedSize)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-[var(--md-sys-color-on-surface-variant)]">
-                                  {selectedImage.compressedSize <= selectedImage.originalSize ? '节省空间' : '增加大小'}
+                                  {selectedImage.compressedSize <= selectedImage.originalSize ? t("savedSpace") : t("increasedSize")}
                                 </span>
                                 <span className={`font-medium ${selectedImage.compressedSize <= selectedImage.originalSize ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-error)]'}`}>
                                   {getCompressionRatio(selectedImage.originalSize, selectedImage.compressedSize)}
@@ -933,11 +948,11 @@ export default function ImageCompressPage() {
                             </>
                           )}
                           <div className="flex justify-between">
-                            <span className="text-[var(--md-sys-color-on-surface-variant)]">压缩质量</span>
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("quality")}</span>
                             <span className="text-[var(--md-sys-color-on-surface)]">{selectedImage.quality}%</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-[var(--md-sys-color-on-surface-variant)]">输出格式</span>
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("outputFormat")}</span>
                             <span className="text-[var(--md-sys-color-on-surface)] uppercase">
                               {selectedImage.format}
                             </span>

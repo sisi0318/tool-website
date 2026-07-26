@@ -243,7 +243,7 @@ export default function JWTPage() {
 
         {/* 错误提示 */}
         {decoded && !decoded.isValid && (
-          <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
+          <div className="flex items-center gap-2 p-4 bg-[var(--md-sys-color-error-container)] border border-[var(--md-sys-color-error)]/30 rounded-lg text-[var(--md-sys-color-on-error-container)]">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <span>{decoded.error}</span>
           </div>
@@ -255,16 +255,16 @@ export default function JWTPage() {
             {/* 状态指示器 */}
             <div className="flex flex-wrap gap-4">
               {/* 有效性 */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <span className="text-sm text-green-700 dark:text-green-300">{t("validFormat")}</span>
+              <div className="flex items-center gap-2 px-3 py-2 bg-[var(--md-sys-color-primary-container)] border border-[var(--md-sys-color-primary)]/30 rounded-lg">
+                <CheckCircle className="h-4 w-4 text-[var(--md-sys-color-on-primary-container)]" />
+                <span className="text-sm text-[var(--md-sys-color-on-primary-container)]">{t("validFormat")}</span>
               </div>
 
               {/* 算法 */}
               {decoded.header?.alg && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <Key className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm text-blue-700 dark:text-blue-300">
+                <div className="flex items-center gap-2 px-3 py-2 bg-[var(--md-sys-color-secondary-container)] border border-[var(--md-sys-color-secondary)]/30 rounded-lg">
+                  <Key className="h-4 w-4 text-[var(--md-sys-color-on-secondary-container)]" />
+                  <span className="text-sm text-[var(--md-sys-color-on-secondary-container)]">
                     {t("algorithm")}: {decoded.header.alg}
                   </span>
                 </div>
@@ -275,22 +275,22 @@ export default function JWTPage() {
                 <div
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
                     expiryStatus.status === "expired"
-                      ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-                      : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                      ? "bg-[var(--md-sys-color-error-container)] border-[var(--md-sys-color-error)]/30"
+                      : "bg-[var(--md-sys-color-primary-container)] border-[var(--md-sys-color-primary)]/30"
                   }`}
                 >
                   <Clock
                     className={`h-4 w-4 ${
                       expiryStatus.status === "expired"
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-green-600 dark:text-green-400"
+                        ? "text-[var(--md-sys-color-on-error-container)]"
+                        : "text-[var(--md-sys-color-on-primary-container)]"
                     }`}
                   />
                   <span
                     className={`text-sm ${
                       expiryStatus.status === "expired"
-                        ? "text-red-700 dark:text-red-300"
-                        : "text-green-700 dark:text-green-300"
+                        ? "text-[var(--md-sys-color-on-error-container)]"
+                        : "text-[var(--md-sys-color-on-primary-container)]"
                     }`}
                   >
                     {expiryStatus.message}
@@ -328,20 +328,20 @@ export default function JWTPage() {
                     <Label>{t("claims")}</Label>
                     <div className="grid gap-2">
                       {decoded.payload.iss && (
-                        <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                          <span className="text-gray-600 dark:text-gray-400">iss (Issuer)</span>
+                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">iss (Issuer)</span>
                           <span className="font-mono">{decoded.payload.iss}</span>
                         </div>
                       )}
                       {decoded.payload.sub && (
-                        <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                          <span className="text-gray-600 dark:text-gray-400">sub (Subject)</span>
+                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">sub (Subject)</span>
                           <span className="font-mono">{decoded.payload.sub}</span>
                         </div>
                       )}
                       {decoded.payload.aud && (
-                        <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                          <span className="text-gray-600 dark:text-gray-400">aud (Audience)</span>
+                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">aud (Audience)</span>
                           <span className="font-mono">
                             {Array.isArray(decoded.payload.aud)
                               ? decoded.payload.aud.join(", ")
@@ -350,26 +350,26 @@ export default function JWTPage() {
                         </div>
                       )}
                       {decoded.payload.exp && (
-                        <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                          <span className="text-gray-600 dark:text-gray-400">exp (Expiration)</span>
+                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">exp (Expiration)</span>
                           <span className="font-mono">{formatTimestamp(decoded.payload.exp)}</span>
                         </div>
                       )}
                       {decoded.payload.iat && (
-                        <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                          <span className="text-gray-600 dark:text-gray-400">iat (Issued At)</span>
+                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">iat (Issued At)</span>
                           <span className="font-mono">{formatTimestamp(decoded.payload.iat)}</span>
                         </div>
                       )}
                       {decoded.payload.nbf && (
-                        <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                          <span className="text-gray-600 dark:text-gray-400">nbf (Not Before)</span>
+                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">nbf (Not Before)</span>
                           <span className="font-mono">{formatTimestamp(decoded.payload.nbf)}</span>
                         </div>
                       )}
                       {decoded.payload.jti && (
-                        <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
-                          <span className="text-gray-600 dark:text-gray-400">jti (JWT ID)</span>
+                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="text-[var(--md-sys-color-on-surface-variant)]">jti (JWT ID)</span>
                           <span className="font-mono">{decoded.payload.jti}</span>
                         </div>
                       )}
@@ -380,7 +380,7 @@ export default function JWTPage() {
 
               <TabsContent value="signature" className="space-y-2">
                 <div className="relative">
-                  <pre className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto text-sm font-mono break-all">
+                  <pre className="p-4 bg-[var(--md-sys-color-surface-container)] rounded-lg overflow-x-auto text-sm font-mono break-all">
                     {decoded.signature}
                   </pre>
                   <TooltipProvider>
@@ -393,7 +393,7 @@ export default function JWTPage() {
                           onClick={() => copyToClipboard(decoded.signature, "signature")}
                         >
                           {copied["signature"] ? (
-                            <Check className="h-4 w-4 text-green-500" />
+                            <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
                           ) : (
                             <Copy className="h-4 w-4" />
                           )}
@@ -403,7 +403,7 @@ export default function JWTPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
                   {t("signatureNote")}
                 </p>
               </TabsContent>

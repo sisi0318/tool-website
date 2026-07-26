@@ -18,13 +18,14 @@ import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useObjectUrlRegistry } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslations } from "@/hooks/use-translations"
 import { formatExifDate } from "@/lib/exif-date"
 import { downloadBlob } from "@/lib/object-url"
-import { 
-  Upload, ImageIcon, MapPin, Camera, Calendar, Info, X, Download, 
-  ExternalLink, Search, Filter, Grid3X3, List, Eye, Copy, 
-  FileImage, Settings, Zap, Globe, Compass, Palette, 
-  Maximize2, RotateCw, AlertCircle, CheckCircle2, 
+import {
+  Upload, ImageIcon, MapPin, Camera, Calendar, Info, X, Download,
+  ExternalLink, Search, Filter, Grid3X3, List, Eye, Copy,
+  FileImage, Settings, Zap, Globe, Compass, Palette,
+  Maximize2, RotateCw, AlertCircle, CheckCircle2,
   ChevronDown, ChevronUp, Trash2, Star
 } from "lucide-react"
 
@@ -60,6 +61,7 @@ interface ExifCategory {
 
 export default function ExifViewerPage() {
   const { toast } = useToast()
+  const t = useTranslations("exifViewer")
 
   // 状态管理
   const [images, setImages] = useState<ProcessedImage[]>([])
@@ -107,7 +109,7 @@ export default function ExifViewerPage() {
     try {
       // 动态导入 exifr
       const exifr = (await import("exifr")).default
-      
+
       // 解析EXIF数据，包含所有可能的元数据
       const exif = await exifr.parse(file, {
         tiff: true,
@@ -120,15 +122,15 @@ export default function ExifViewerPage() {
 
       processedImage.exifData = exif || {}
       processedImage.isProcessing = false
-      
+
       return processedImage
     } catch (error) {
       console.error('EXIF解析错误:', error)
-      processedImage.error = `解析失败: ${error instanceof Error ? error.message : '未知错误'}`
+      processedImage.error = t("parseFailed").replace("{error}", error instanceof Error ? error.message : t("unknownError"))
       processedImage.isProcessing = false
       return processedImage
     }
-  }, [objectUrls])
+  }, [objectUrls, t])
 
   // 处理文件选择
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,14 +138,14 @@ export default function ExifViewerPage() {
     if (files.length === 0) return
 
     setIsProcessing(true)
-    
+
     try {
       const validFiles = files.filter(file => supportedFormats.includes(file.type))
-      
+
       if (validFiles.length === 0) {
         toast({
-          title: "文件格式不支持",
-          description: "请选择有效的图片文件",
+          title: t("unsupportedFormatTitle"),
+          description: t("unsupportedFormatDescription"),
           variant: "destructive"
         })
         return
@@ -151,8 +153,8 @@ export default function ExifViewerPage() {
 
       if (validFiles.length !== files.length) {
         toast({
-          title: "部分文件被跳过",
-          description: `${files.length - validFiles.length} 个文件格式不支持`,
+          title: t("filesSkippedTitle"),
+          description: t("filesSkippedDescription").replace("{count}", String(files.length - validFiles.length)),
         })
       }
 
@@ -166,15 +168,15 @@ export default function ExifViewerPage() {
       }
 
       setImages(prev => [...prev, ...processedImages])
-      
+
       // 自动选择第一张图片
       if (processedImages.length > 0) {
         setSelectedImageId(processedImages[0].id)
       }
 
       toast({
-        title: "处理完成",
-        description: `成功处理 ${processedImages.length} 张图片`,
+        title: t("processedTitle"),
+        description: t("processedDescription").replace("{count}", String(processedImages.length)),
       })
     } finally {
       if (mountedRef.current) {
@@ -201,14 +203,14 @@ export default function ExifViewerPage() {
     e.preventDefault()
     setIsDragging(false)
 
-    const files = Array.from(e.dataTransfer.files).filter(file => 
+    const files = Array.from(e.dataTransfer.files).filter(file =>
       supportedFormats.includes(file.type)
     )
 
     if (files.length === 0) return
 
     setIsProcessing(true)
-    
+
     try {
       const processedImages = await Promise.all(
         files.map(file => processFile(file))
@@ -219,7 +221,7 @@ export default function ExifViewerPage() {
       }
 
       setImages(prev => [...prev, ...processedImages])
-      
+
       if (processedImages.length > 0) {
         setSelectedImageId(processedImages[0].id)
       }
@@ -255,7 +257,7 @@ export default function ExifViewerPage() {
 
   // 切换收藏状态
   const toggleStar = (id: string) => {
-    setImages(prev => prev.map(img => 
+    setImages(prev => prev.map(img =>
       img.id === id ? { ...img, isStarred: !img.isStarred } : img
     ))
   }
@@ -265,13 +267,13 @@ export default function ExifViewerPage() {
     try {
       if (!await writeClipboardText(text)) throw new Error("Clipboard unavailable")
       toast({
-        title: "已复制",
-        description: `${label} 已复制到剪贴板`,
+        title: t("copied"),
+        description: t("copiedToClipboard").replace("{label}", label),
       })
     } catch (error) {
       toast({
-        title: "复制失败",
-        description: "无法复制到剪贴板",
+        title: t("copyFailed"),
+        description: t("copyFailedDescription"),
         variant: "destructive"
       })
     }
@@ -286,93 +288,93 @@ export default function ExifViewerPage() {
         name: "camera",
         icon: <Camera className="h-4 w-4" />,
         fields: [],
-        color: "bg-blue-500"
+        color: "bg-[var(--md-sys-color-primary)]"
       },
       {
         name: "image",
         icon: <ImageIcon className="h-4 w-4" />,
         fields: [],
-        color: "bg-green-500"
+        color: "bg-[var(--md-sys-color-success)]"
       },
       {
         name: "location",
         icon: <MapPin className="h-4 w-4" />,
         fields: [],
-        color: "bg-red-500"
+        color: "bg-[var(--md-sys-color-error)]"
       },
       {
         name: "datetime",
         icon: <Calendar className="h-4 w-4" />,
         fields: [],
-        color: "bg-purple-500"
+        color: "bg-[var(--md-sys-color-tertiary)]"
       },
       {
         name: "technical",
         icon: <Settings className="h-4 w-4" />,
         fields: [],
-        color: "bg-orange-500"
+        color: "bg-[var(--md-sys-color-warning)]"
       },
       {
         name: "other",
         icon: <Info className="h-4 w-4" />,
         fields: [],
-        color: "bg-gray-500"
+        color: "bg-[var(--md-sys-color-outline)]"
       }
     ]
 
     // 定义字段映射和重要性
     const fieldMappings: Record<string, { category: string, label: string, important: boolean, formatter?: (value: any) => string }> = {
       // 相机信息
-      Make: { category: "camera", label: "制造商", important: true },
-      Model: { category: "camera", label: "型号", important: true },
-      LensMake: { category: "camera", label: "镜头制造商", important: false },
-      LensModel: { category: "camera", label: "镜头型号", important: false },
-      FNumber: { category: "camera", label: "光圈", important: true, formatter: (v) => `f/${v}` },
-      ExposureTime: { category: "camera", label: "快门速度", important: true, formatter: (v) => v < 1 ? `1/${Math.round(1/v)}s` : `${v}s` },
-      ISO: { category: "camera", label: "ISO", important: true },
-      FocalLength: { category: "camera", label: "焦距", important: true, formatter: (v) => `${v}mm` },
-      FocalLengthIn35mmFormat: { category: "camera", label: "35mm等效焦距", important: false, formatter: (v) => `${v}mm` },
-      Flash: { category: "camera", label: "闪光灯", important: false },
-      WhiteBalance: { category: "camera", label: "白平衡", important: false },
-      ExposureMode: { category: "camera", label: "曝光模式", important: false },
-      MeteringMode: { category: "camera", label: "测光模式", important: false },
+      Make: { category: "camera", label: t("make"), important: true },
+      Model: { category: "camera", label: t("model"), important: true },
+      LensMake: { category: "camera", label: t("lensMake"), important: false },
+      LensModel: { category: "camera", label: t("lensModel"), important: false },
+      FNumber: { category: "camera", label: t("aperture"), important: true, formatter: (v) => `f/${v}` },
+      ExposureTime: { category: "camera", label: t("shutterSpeed"), important: true, formatter: (v) => v < 1 ? `1/${Math.round(1/v)}s` : `${v}s` },
+      ISO: { category: "camera", label: t("iso"), important: true },
+      FocalLength: { category: "camera", label: t("focalLength"), important: true, formatter: (v) => `${v}mm` },
+      FocalLengthIn35mmFormat: { category: "camera", label: t("focalLength35mm"), important: false, formatter: (v) => `${v}mm` },
+      Flash: { category: "camera", label: t("flash"), important: false },
+      WhiteBalance: { category: "camera", label: t("whiteBalance"), important: false },
+      ExposureMode: { category: "camera", label: t("exposureMode"), important: false },
+      MeteringMode: { category: "camera", label: t("meteringMode"), important: false },
 
       // 图片信息
-      ImageWidth: { category: "image", label: "图片宽度", important: true, formatter: (v) => `${v}px` },
-      ImageHeight: { category: "image", label: "图片高度", important: true, formatter: (v) => `${v}px` },
-      XResolution: { category: "image", label: "水平分辨率", important: false, formatter: (v) => `${v} dpi` },
-      YResolution: { category: "image", label: "垂直分辨率", important: false, formatter: (v) => `${v} dpi` },
-      Orientation: { category: "image", label: "方向", important: false },
-      ColorSpace: { category: "image", label: "色彩空间", important: false },
-      BitsPerSample: { category: "image", label: "色彩深度", important: false },
-      Compression: { category: "image", label: "压缩方式", important: false },
-      PhotometricInterpretation: { category: "image", label: "像素构成", important: false },
+      ImageWidth: { category: "image", label: t("imageWidth"), important: true, formatter: (v) => `${v}px` },
+      ImageHeight: { category: "image", label: t("imageHeight"), important: true, formatter: (v) => `${v}px` },
+      XResolution: { category: "image", label: t("xResolution"), important: false, formatter: (v) => `${v} dpi` },
+      YResolution: { category: "image", label: t("yResolution"), important: false, formatter: (v) => `${v} dpi` },
+      Orientation: { category: "image", label: t("orientation"), important: false },
+      ColorSpace: { category: "image", label: t("colorSpace"), important: false },
+      BitsPerSample: { category: "image", label: t("bitDepth"), important: false },
+      Compression: { category: "image", label: t("compression"), important: false },
+      PhotometricInterpretation: { category: "image", label: t("photometricInterpretation"), important: false },
 
       // 位置信息
-      latitude: { category: "location", label: "纬度", important: true, formatter: (v) => `${v.toFixed(6)}°` },
-      longitude: { category: "location", label: "经度", important: true, formatter: (v) => `${v.toFixed(6)}°` },
-      GPSAltitude: { category: "location", label: "海拔", important: false, formatter: (v) => `${v}m` },
-      GPSImgDirection: { category: "location", label: "拍摄方向", important: false, formatter: (v) => `${v}°` },
-      GPSSpeed: { category: "location", label: "速度", important: false },
+      latitude: { category: "location", label: t("latitude"), important: true, formatter: (v) => `${v.toFixed(6)}°` },
+      longitude: { category: "location", label: t("longitude"), important: true, formatter: (v) => `${v.toFixed(6)}°` },
+      GPSAltitude: { category: "location", label: t("altitude"), important: false, formatter: (v) => `${v}m` },
+      GPSImgDirection: { category: "location", label: t("gpsDirection"), important: false, formatter: (v) => `${v}°` },
+      GPSSpeed: { category: "location", label: t("gpsSpeed"), important: false },
 
       // 日期时间
-      DateTimeOriginal: { category: "datetime", label: "拍摄时间", important: true, formatter: formatExifDate },
-      DateTime: { category: "datetime", label: "修改时间", important: false, formatter: formatExifDate },
-      CreateDate: { category: "datetime", label: "创建时间", important: false, formatter: formatExifDate },
-      OffsetTime: { category: "datetime", label: "时区偏移", important: false },
-      OffsetTimeOriginal: { category: "datetime", label: "原始时区偏移", important: false },
+      DateTimeOriginal: { category: "datetime", label: t("captureTime"), important: true, formatter: formatExifDate },
+      DateTime: { category: "datetime", label: t("modifiedTime"), important: false, formatter: formatExifDate },
+      CreateDate: { category: "datetime", label: t("createTime"), important: false, formatter: formatExifDate },
+      OffsetTime: { category: "datetime", label: t("timezoneOffset"), important: false },
+      OffsetTimeOriginal: { category: "datetime", label: t("timezoneOffsetOriginal"), important: false },
 
       // 技术信息
-      Software: { category: "technical", label: "软件", important: false },
-      Artist: { category: "technical", label: "作者", important: false },
-      Copyright: { category: "technical", label: "版权", important: false },
-      ImageDescription: { category: "technical", label: "图片描述", important: false },
-      UserComment: { category: "technical", label: "用户注释", important: false },
-      SceneCaptureType: { category: "technical", label: "场景类型", important: false },
-      GainControl: { category: "technical", label: "增益控制", important: false },
-      Contrast: { category: "technical", label: "对比度", important: false },
-      Saturation: { category: "technical", label: "饱和度", important: false },
-      Sharpness: { category: "technical", label: "锐度", important: false },
+      Software: { category: "technical", label: t("software"), important: false },
+      Artist: { category: "technical", label: t("artist"), important: false },
+      Copyright: { category: "technical", label: t("copyright"), important: false },
+      ImageDescription: { category: "technical", label: t("imageDescription"), important: false },
+      UserComment: { category: "technical", label: t("userComment"), important: false },
+      SceneCaptureType: { category: "technical", label: t("sceneType"), important: false },
+      GainControl: { category: "technical", label: t("gainControl"), important: false },
+      Contrast: { category: "technical", label: t("contrast"), important: false },
+      Saturation: { category: "technical", label: t("saturation"), important: false },
+      Sharpness: { category: "technical", label: t("sharpness"), important: false },
     }
 
     // 处理所有EXIF字段
@@ -422,7 +424,7 @@ export default function ExifViewerPage() {
 
     // 过滤掉空分类
     return categories.filter(category => category.fields.length > 0)
-  }, [])
+  }, [t])
 
   // 过滤EXIF字段
   const filteredFields = useMemo(() => {
@@ -440,7 +442,7 @@ export default function ExifViewerPage() {
 
     // 应用搜索过滤
     if (searchQuery) {
-      allFields = allFields.filter(field => 
+      allFields = allFields.filter(field =>
         field.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
         field.formattedValue.toLowerCase().includes(searchQuery.toLowerCase()) ||
         field.key.toLowerCase().includes(searchQuery.toLowerCase())
@@ -489,8 +491,8 @@ export default function ExifViewerPage() {
     downloadBlob(new Blob([content], { type: "text/plain" }), filename)
 
     toast({
-      title: "导出完成",
-      description: `已导出为 ${filename}`,
+      title: t("exportedTitle"),
+      description: t("exportedDescription").replace("{filename}", filename),
     })
   }
 
@@ -508,11 +510,11 @@ export default function ExifViewerPage() {
     <div className="container mx-auto py-6 px-4 max-w-7xl">
       {/* 页面标题 */}
       <div className="text-center space-y-4 mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          图片 EXIF 数据查看器
+        <h1 className="text-3xl font-bold text-[var(--md-sys-color-on-surface)]">
+          {t("title")}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-          专业的图片元数据分析工具，支持批量处理和详细的EXIF信息展示
+        <p className="text-[var(--md-sys-color-on-surface-variant)] max-w-2xl mx-auto">
+          {t("description")}
         </p>
       </div>
 
@@ -524,15 +526,15 @@ export default function ExifViewerPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                图片上传
+                {t("upload")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
-                  isDragging 
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
-                    : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600"
+                  isDragging
+                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/45"
+                    : "border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-outline)]"
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -547,21 +549,21 @@ export default function ExifViewerPage() {
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                
+
                 {isProcessing ? (
                   <div className="space-y-3">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                    <div className="text-sm">解析EXIF数据...</div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--md-sys-color-primary)] mx-auto"></div>
+                    <div className="text-sm">{t("parsingExif")}</div>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
+                    <ImageIcon className="mx-auto h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]" />
                     <div>
-                      <p className="font-medium text-gray-700 dark:text-gray-300">
-                        拖拽图片或点击上传
+                      <p className="font-medium text-[var(--md-sys-color-on-surface)]">
+                        {t("dropOrClickToUpload")}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        支持 JPEG、PNG、TIFF、WebP 等格式
+                      <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1">
+                        {t("supportedFormats")}
                       </p>
                     </div>
                   </div>
@@ -570,15 +572,15 @@ export default function ExifViewerPage() {
 
               {images.length > 0 && (
                 <div className="mt-4 flex justify-between">
-                  <span className="text-sm text-gray-500">{images.length} 张图片</span>
+                  <span className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("imageCount").replace("{count}", String(images.length))}</span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearAllImages}
-                    className="text-red-600 hover:text-red-700"
+                    className="text-[var(--md-sys-color-error)] hover:text-[var(--md-sys-color-error)]"
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
-                    清空
+                    {t("clearAll")}
                   </Button>
                 </div>
               )}
@@ -591,7 +593,7 @@ export default function ExifViewerPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <Grid3X3 className="h-5 w-5" />
-                  图片列表
+                  {t("imageList")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -599,10 +601,10 @@ export default function ExifViewerPage() {
                   {images.map((image) => (
                     <div
                       key={image.id}
-                      className={`flex items-center gap-3 p-3 cursor-pointer transition-colors border-b dark:border-gray-700 last:border-b-0 ${
+                      className={`flex items-center gap-3 p-3 cursor-pointer transition-colors border-b border-[var(--md-sys-color-outline-variant)] last:border-b-0 ${
                         selectedImageId === image.id
-                          ? "bg-blue-50 dark:bg-blue-900/20"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                          ? "bg-[var(--md-sys-color-primary-container)]/45"
+                          : "hover:bg-[var(--md-sys-color-surface-container-low)]"
                       }`}
                       onClick={() => setSelectedImageId(image.id)}
                     >
@@ -614,22 +616,22 @@ export default function ExifViewerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm truncate">{image.file.name}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
                             {(image.file.size / 1024).toFixed(1)} KB
                           </span>
                           {image.isProcessing && (
                             <Badge variant="secondary" className="text-xs">
-                              处理中
+                              {t("processingBadge")}
                             </Badge>
                           )}
                           {image.error && (
                             <Badge variant="destructive" className="text-xs">
-                              错误
+                              {t("errorBadge")}
                             </Badge>
                           )}
                           {image.exifData && (
                             <Badge variant="default" className="text-xs">
-                              {Object.keys(image.exifData).length} 字段
+                              {t("fieldCountBadge").replace("{count}", String(Object.keys(image.exifData).length))}
                             </Badge>
                           )}
                         </div>
@@ -643,7 +645,7 @@ export default function ExifViewerPage() {
                             toggleStar(image.id)
                           }}
                         >
-                          <Star className={`h-4 w-4 ${image.isStarred ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                          <Star className={`h-4 w-4 ${image.isStarred ? 'fill-[var(--md-sys-color-warning)] text-[var(--md-sys-color-warning)]' : ''}`} />
                         </Button>
                         <Button
                           variant="ghost"
@@ -674,7 +676,7 @@ export default function ExifViewerPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* 图片预览 */}
                     <div>
-                      <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                      <div className="relative rounded-lg overflow-hidden bg-[var(--md-sys-color-surface-container)]">
                         <img
                           src={selectedImage.imageUrl}
                           alt={selectedImage.file.name}
@@ -698,24 +700,24 @@ export default function ExifViewerPage() {
                         <h3 className="font-medium text-lg mb-2">{selectedImage.file.name}</h3>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-gray-500">文件大小:</span>
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("fileSize")}:</span>
                             <span>{(selectedImage.file.size / 1024).toFixed(1)} KB</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">文件类型:</span>
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("fileType")}:</span>
                             <span>{selectedImage.file.type}</span>
                           </div>
                           {selectedImage.exifData && (
                             <>
                               {selectedImage.exifData.ImageWidth && selectedImage.exifData.ImageHeight && (
                                 <div className="flex justify-between">
-                                  <span className="text-gray-500">图片尺寸:</span>
+                                  <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("dimensions")}:</span>
                                   <span>{selectedImage.exifData.ImageWidth} × {selectedImage.exifData.ImageHeight}</span>
                                 </div>
                               )}
                               <div className="flex justify-between">
-                                <span className="text-gray-500">EXIF字段:</span>
-                                <span>{Object.keys(selectedImage.exifData).length} 个</span>
+                                <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("exifFields")}:</span>
+                                <span>{t("fieldUnit").replace("{count}", String(Object.keys(selectedImage.exifData).length))}</span>
                               </div>
                             </>
                           )}
@@ -726,39 +728,39 @@ export default function ExifViewerPage() {
                       {selectedImage.exifData && (
                         <div className="grid grid-cols-2 gap-2">
                           {selectedImage.exifData.Make && (
-                            <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                              <Camera className="h-4 w-4 mx-auto mb-1 text-blue-500" />
-                              <div className="text-xs text-gray-500">相机</div>
+                            <div className="text-center p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                              <Camera className="h-4 w-4 mx-auto mb-1 text-[var(--md-sys-color-primary)]" />
+                              <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("camera")}</div>
                               <div className="text-sm font-medium">{selectedImage.exifData.Make}</div>
                             </div>
                           )}
                           {selectedImage.exifData.DateTimeOriginal && (
-                            <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                              <Calendar className="h-4 w-4 mx-auto mb-1 text-green-500" />
-                              <div className="text-xs text-gray-500">拍摄时间</div>
+                            <div className="text-center p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                              <Calendar className="h-4 w-4 mx-auto mb-1 text-[var(--md-sys-color-success)]" />
+                              <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("captureTime")}</div>
                               <div className="text-sm font-medium">
                                 {formatExifDate(selectedImage.exifData.DateTimeOriginal, true)}
                               </div>
                             </div>
                           )}
                           {selectedImage.exifData.latitude && selectedImage.exifData.longitude && (
-                            <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                              <MapPin className="h-4 w-4 mx-auto mb-1 text-red-500" />
-                              <div className="text-xs text-gray-500">位置</div>
+                            <div className="text-center p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                              <MapPin className="h-4 w-4 mx-auto mb-1 text-[var(--md-sys-color-error)]" />
+                              <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("location")}</div>
                               <Button
                                 variant="link"
                                 size="sm"
                                 className="text-sm font-medium h-auto p-0"
                                 onClick={() => openInMaps(selectedImage.exifData!.latitude, selectedImage.exifData!.longitude)}
                               >
-                                查看地图
+                                {t("viewOnMap")}
                               </Button>
                             </div>
                           )}
                           {selectedImage.exifData.FNumber && (
-                            <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                              <Palette className="h-4 w-4 mx-auto mb-1 text-purple-500" />
-                              <div className="text-xs text-gray-500">光圈</div>
+                            <div className="text-center p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                              <Palette className="h-4 w-4 mx-auto mb-1 text-[var(--md-sys-color-tertiary)]" />
+                              <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("aperture")}</div>
                               <div className="text-sm font-medium">f/{selectedImage.exifData.FNumber}</div>
                             </div>
                           )}
@@ -773,14 +775,14 @@ export default function ExifViewerPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="json">JSON 格式</SelectItem>
-                              <SelectItem value="csv">CSV 格式</SelectItem>
-                              <SelectItem value="txt">文本格式</SelectItem>
+                              <SelectItem value="json">{t("jsonFormat")}</SelectItem>
+                              <SelectItem value="csv">{t("csvFormat")}</SelectItem>
+                              <SelectItem value="txt">{t("txtFormat")}</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button onClick={exportData} disabled={!selectedImage.exifData}>
                             <Download className="h-4 w-4 mr-2" />
-                            导出
+                            {t("export")}
                           </Button>
                         </div>
                       </div>
@@ -795,28 +797,28 @@ export default function ExifViewerPage() {
                   <div className="flex flex-wrap gap-4 items-center">
                     <div className="flex-1 min-w-48">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--md-sys-color-on-surface-variant)]" />
                         <Input
-                          placeholder="搜索EXIF字段..."
+                          placeholder={t("searchPlaceholder")}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="pl-10"
                         />
                       </div>
                     </div>
-                    
+
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                       <SelectTrigger className="w-48">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">所有分类</SelectItem>
-                        <SelectItem value="camera">相机信息</SelectItem>
-                        <SelectItem value="image">图片信息</SelectItem>
-                        <SelectItem value="location">位置信息</SelectItem>
-                        <SelectItem value="datetime">日期时间</SelectItem>
-                        <SelectItem value="technical">技术信息</SelectItem>
-                        <SelectItem value="other">其他信息</SelectItem>
+                        <SelectItem value="all">{t("allCategories")}</SelectItem>
+                        <SelectItem value="camera">{t("cameraInfo")}</SelectItem>
+                        <SelectItem value="image">{t("imageInfo")}</SelectItem>
+                        <SelectItem value="location">{t("locationInfo")}</SelectItem>
+                        <SelectItem value="datetime">{t("dateTimeInfo")}</SelectItem>
+                        <SelectItem value="technical">{t("technicalInfo")}</SelectItem>
+                        <SelectItem value="other">{t("otherInfo")}</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -826,11 +828,11 @@ export default function ExifViewerPage() {
                         checked={showImportantOnly}
                         onCheckedChange={setShowImportantOnly}
                       />
-                      <Label htmlFor="important-only" className="text-sm">仅显示重要信息</Label>
+                      <Label htmlFor="important-only" className="text-sm">{t("importantOnly")}</Label>
                     </div>
 
-                    <div className="text-sm text-gray-500">
-                      {filteredFields.length} 个字段
+                    <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("fieldCount").replace("{count}", String(filteredFields.length))}
                     </div>
                   </div>
                 </CardContent>
@@ -846,7 +848,7 @@ export default function ExifViewerPage() {
                 <div className="space-y-4">
                   {categories.map((category, index) => (
                     <Card key={category.name}>
-                      <CardHeader 
+                      <CardHeader
                         className="cursor-pointer"
                         onClick={() => {
                           const newExpanded = new Set(expandedCategories)
@@ -863,42 +865,42 @@ export default function ExifViewerPage() {
                             <div className={`w-3 h-3 rounded-full ${category.color}`}></div>
                             {category.icon}
                             <CardTitle className="text-lg">
-                              {category.name === "camera" && "相机信息"}
-                              {category.name === "image" && "图片信息"}
-                              {category.name === "location" && "位置信息"}
-                              {category.name === "datetime" && "日期时间"}
-                              {category.name === "technical" && "技术信息"}
-                              {category.name === "other" && "其他信息"}
+                              {category.name === "camera" && t("cameraInfo")}
+                              {category.name === "image" && t("imageInfo")}
+                              {category.name === "location" && t("locationInfo")}
+                              {category.name === "datetime" && t("dateTimeInfo")}
+                              {category.name === "technical" && t("technicalInfo")}
+                              {category.name === "other" && t("otherInfo")}
                             </CardTitle>
                             <Badge variant="secondary">{category.fields.length}</Badge>
                           </div>
-                          {expandedCategories.has(category.name) || autoExpandCategories ? 
-                            <ChevronUp className="h-4 w-4" /> : 
+                          {expandedCategories.has(category.name) || autoExpandCategories ?
+                            <ChevronUp className="h-4 w-4" /> :
                             <ChevronDown className="h-4 w-4" />
                           }
                         </div>
                       </CardHeader>
-                      
+
                       {(expandedCategories.has(category.name) || autoExpandCategories) && (
                         <CardContent>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {category.fields.filter(field => {
                               if (selectedCategory !== "all" && field.category !== selectedCategory) return false
-                              if (searchQuery && !field.label.toLowerCase().includes(searchQuery.toLowerCase()) && 
+                              if (searchQuery && !field.label.toLowerCase().includes(searchQuery.toLowerCase()) &&
                                   !field.formattedValue.toLowerCase().includes(searchQuery.toLowerCase()) &&
                                   !field.key.toLowerCase().includes(searchQuery.toLowerCase())) return false
                               if (showImportantOnly && !field.important) return false
                               return true
                             }).map((field, fieldIndex) => (
-                              <div key={fieldIndex} className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                              <div key={fieldIndex} className="p-3 border rounded-lg hover:bg-[var(--md-sys-color-surface-container-low)] transition-colors">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                      <div className="font-medium text-sm text-gray-600 dark:text-gray-400">
+                                      <div className="font-medium text-sm text-[var(--md-sys-color-on-surface-variant)]">
                                         {field.label}
                                       </div>
                                       {field.important && (
-                                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                        <Star className="h-3 w-3 fill-[var(--md-sys-color-warning)] text-[var(--md-sys-color-warning)]" />
                                       )}
                                     </div>
                                     <div className="text-sm break-words">
@@ -907,7 +909,7 @@ export default function ExifViewerPage() {
                                           variant="link"
                                           size="sm"
                                           className="h-auto p-0 text-left"
-                                          onClick={() => selectedImage.exifData?.latitude && selectedImage.exifData?.longitude && 
+                                          onClick={() => selectedImage.exifData?.latitude && selectedImage.exifData?.longitude &&
                                             openInMaps(selectedImage.exifData.latitude, selectedImage.exifData.longitude)}
                                         >
                                           {field.formattedValue}
@@ -929,7 +931,7 @@ export default function ExifViewerPage() {
                                           <Copy className="h-3 w-3" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>复制值</TooltipContent>
+                                      <TooltipContent>{t("copyValue")}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 </div>
@@ -944,12 +946,12 @@ export default function ExifViewerPage() {
               ) : (
                 <Card>
                   <CardContent className="py-12 text-center">
-                    <Info className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
-                      该图片没有EXIF数据
+                    <Info className="h-12 w-12 mx-auto mb-4 text-[var(--md-sys-color-on-surface-variant)]" />
+                    <p className="text-lg font-medium text-[var(--md-sys-color-on-surface-variant)] mb-2">
+                      {t("noExifTitle")}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      可能是因为图片经过了处理或者原本就不包含元数据信息
+                    <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                      {t("noExifDescription")}
                     </p>
                   </CardContent>
                 </Card>
@@ -958,12 +960,12 @@ export default function ExifViewerPage() {
           ) : (
             <Card>
               <CardContent className="py-16 text-center">
-                <ImageIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                <p className="text-xl font-medium text-gray-600 dark:text-gray-400 mb-2">
-                  选择图片查看EXIF数据
+                <ImageIcon className="h-16 w-16 mx-auto mb-4 text-[var(--md-sys-color-on-surface-variant)]" />
+                <p className="text-xl font-medium text-[var(--md-sys-color-on-surface-variant)] mb-2">
+                  {t("selectImagePrompt")}
                 </p>
-                <p className="text-gray-500">
-                  上传图片文件开始分析元数据信息
+                <p className="text-[var(--md-sys-color-on-surface-variant)]">
+                  {t("uploadPrompt")}
                 </p>
               </CardContent>
             </Card>
