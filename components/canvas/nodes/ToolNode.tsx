@@ -52,16 +52,16 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
     }
   }, [definition, data.id, nodeOutputs, nodeRunning, executeNode])
 
-  if (!definition) return null
-
-  const Icon = definition.icon
-
   const getInputValue = useCallback((portId: string): unknown => {
     const edge = connectedPorts.get(portId)
     if (!edge) return undefined
     const sourceOutputs = useCanvasStore.getState().nodeOutputs[edge.source]
     return sourceOutputs?.[edge.sourcePort]
   }, [connectedPorts])
+
+  if (!definition) return null
+
+  const Icon = definition.icon
 
   return (
     <div

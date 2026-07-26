@@ -720,7 +720,7 @@ export default function RegexTester() {
                                   </Badge>
                                 </div>
                                 <div className="text-sm font-mono truncate mt-1">
-                                  "{match.match}"
+                                  &quot;{match.match}&quot;
                                 </div>
                                 {match.groups.length > 0 && (
                                   <div className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">
@@ -746,7 +746,7 @@ export default function RegexTester() {
                       <div>
                         <Label className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("fullMatch")}</Label>
                         <div className="rounded bg-[var(--md-sys-color-surface-container-low)] p-2 font-mono text-sm">
-                          "{matches[selectedMatch].match}"
+                          &quot;{matches[selectedMatch].match}&quot;
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
@@ -770,7 +770,7 @@ export default function RegexTester() {
                                   ${index + 1}
                                 </Badge>
                                 <span className="font-mono text-sm">
-                                  "{group || t("emptyValue")}"
+                                  &quot;{group || t("emptyValue")}&quot;
                                 </span>
                               </div>
                             ))}
@@ -787,7 +787,7 @@ export default function RegexTester() {
                                 <Badge variant="secondary" className="text-xs">
                                   {name}
                                 </Badge>
-                                <span className="font-mono text-sm">"{value}"</span>
+                                <span className="font-mono text-sm">&quot;{value}&quot;</span>
                               </div>
                             ))}
                           </div>

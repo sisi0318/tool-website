@@ -313,7 +313,8 @@ const M3TextField = React.forwardRef<HTMLInputElement, M3TextFieldProps>(
   ) => {
     const [isFocused, setIsFocused] = React.useState(false);
     const [internalValue, setInternalValue] = React.useState(value);
-    const inputId = id || React.useId();
+    const generatedId = React.useId();
+    const inputId = id || generatedId;
     const supportingTextId = React.useId();
     
     // Sync internal value with prop

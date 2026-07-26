@@ -6,7 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "e2e": "playwright test",
-    "lint": "next lint",
+    "lint": "eslint .",
     "start": "next start",
     "test": "vitest --run",
     "test:watch": "vitest",
@@ -69,6 +69,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -77,6 +78,8 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.22",
     "fast-check": "^4.4.0",
     "jsdom": "^27.3.0",
     "postcss": "^8.5",

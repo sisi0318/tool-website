@@ -24,10 +24,10 @@ export default defineConfig({
   ],
   webServer: {
     command: useDevServer
-      ? "pnpm dev"
+      ? "npm run dev"
       : skipProductionBuild
-        ? "pnpm start"
-        : "pnpm build && pnpm start",
+        ? "npm run start"
+        : "npm run build && npm run start",
     env: useDevServer
       ? { NEXT_DIST_DIR: ".next-e2e", DISABLE_PWA: "true" }
       : { DISABLE_PWA: "true" },

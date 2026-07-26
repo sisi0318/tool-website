@@ -54,8 +54,8 @@ export function encodeBinaryOutput(bytes: Uint8Array, encoding: BinaryEncoding):
 }
 
 async function runBrotli(bytes: Uint8Array, operation: CompressionOperation, level: number) {
-  const module = await import("brotli-wasm")
-  const brotli = await module.default
+  const brotliModule = await import("brotli-wasm")
+  const brotli = await brotliModule.default
   return operation === "compress"
     ? brotli.compress(bytes, { quality: Math.min(11, Math.max(1, level)) })
     : brotli.decompress(bytes)

@@ -122,11 +122,13 @@ const CertificateTool = dynamic(() => import("./certificate/page"), { ssr: false
 const HexBinaryTool = dynamic(() => import("./hex-binary/page"), { ssr: false })
 
 function createToolRenderer(Component: React.ComponentType) {
-  return (params?: ToolRuntimeParams) => (
+  const ToolRenderer = (params?: ToolRuntimeParams) => (
     <ToolRuntimeParamsProvider params={params}>
       <Component />
     </ToolRuntimeParamsProvider>
   )
+  ToolRenderer.displayName = "ToolRenderer"
+  return ToolRenderer
 }
 
 // 工具分类定义 - 图标配色沿用首页精选工具的柔和多色方案

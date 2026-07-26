@@ -19,7 +19,7 @@ export function JsonTreeViewer({ data, depth = 0 }: JsonTreeViewerProps) {
   if (data === undefined) return <span className="text-gray-400">undefined</span>
   if (typeof data === "boolean") return <span className="text-purple-400">{String(data)}</span>
   if (typeof data === "number") return <span className="text-blue-400">{data}</span>
-  if (typeof data === "string") return <span className="text-green-400">"{data}"</span>
+  if (typeof data === "string") return <span className="text-green-400">&quot;{data}&quot;</span>
 
   if (Array.isArray(data)) {
     return (
@@ -54,7 +54,7 @@ export function JsonTreeViewer({ data, depth = 0 }: JsonTreeViewerProps) {
           <div className="ml-4 border-l border-gray-200 pl-2">
             {entries.map(([key, value]) => (
               <div key={key} className="flex gap-1">
-                <span className="text-yellow-500">"{key}"</span>:
+                <span className="text-yellow-500">&quot;{key}&quot;</span>:
                 <JsonTreeViewer data={value} depth={depth + 1} />
               </div>
             ))}
