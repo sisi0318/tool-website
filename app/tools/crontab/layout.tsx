@@ -1,7 +1,7 @@
 import type React from "react"
 import { toolPageMetadata } from "@/lib/tool-metadata"
 
-export const metadata = toolPageMetadata("time")
+export const metadata = toolPageMetadata("crontab")
 
 export default function ToolLayout({ children }: { children: React.ReactNode }) {
   return children

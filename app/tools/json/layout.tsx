@@ -1,8 +1,8 @@
 import type React from "react"
-export default function JsonLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return <div className="container mx-auto py-6">{children}</div>
+import { toolPageMetadata } from "@/lib/tool-metadata"
+
+export const metadata = toolPageMetadata("json")
+
+export default function ToolLayout({ children }: { children: React.ReactNode }) {
+  return children
 }

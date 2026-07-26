@@ -1,9 +1,8 @@
 import type React from "react"
+import { toolPageMetadata } from "@/lib/tool-metadata"
 
-export default function ColorLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return <div>{children}</div>
+export const metadata = toolPageMetadata("color")
+
+export default function ToolLayout({ children }: { children: React.ReactNode }) {
+  return children
 }

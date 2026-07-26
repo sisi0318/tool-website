@@ -6,6 +6,7 @@ import { M3ThemeProvider } from "@/lib/m3/theme"
 import { I18nProvider } from "@/components/i18n-provider"
 import { AppShell } from "@/components/app-shell"
 import { Toaster } from "@/components/ui/toaster"
+import { getSiteUrl } from "@/lib/site-url"
 
 /**
  * Configure Roboto font family as per M3 specifications
@@ -32,7 +33,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "工具站",
     template: "%s | 工具站",

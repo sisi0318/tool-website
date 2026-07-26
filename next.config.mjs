@@ -2,8 +2,22 @@
 const nextConfig = {
   outputFileTracingRoot: process.cwd(),
   distDir: process.env.NEXT_DIST_DIR || '.next',
+  poweredByHeader: false,
   images: {
     unoptimized: true,
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+    ]
   },
 }
 
@@ -14,6 +28,9 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === 'development' || process.env.DISABLE_PWA === 'true',
   register: true,
   skipWaiting: true,
+  fallbacks: {
+    document: '/~offline',
+  },
 });
 
 export default withPWA(nextConfig)
