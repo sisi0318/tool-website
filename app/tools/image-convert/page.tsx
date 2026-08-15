@@ -208,11 +208,16 @@ export default function ImageConvertPage() {
                 <Select value={format} onValueChange={(value) => setFormat(value as ImageOutputFormat)}>
                   <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="webp">WebP</SelectItem><SelectItem value="jpeg">JPEG</SelectItem><SelectItem value="png">PNG</SelectItem><SelectItem value="avif">AVIF</SelectItem>
+                    <SelectItem value="webp">WebP</SelectItem><SelectItem value="jpeg">JPEG</SelectItem><SelectItem value="png">PNG</SelectItem><SelectItem value="avif">AVIF</SelectItem><SelectItem value="gif">{t("gifSingleFrame")}</SelectItem>
                   </SelectContent>
                 </Select>
+                {format === "gif" && (
+                  <p className="mt-2 rounded-xl bg-[var(--md-sys-color-surface-container)] px-3 py-2 text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">
+                    {t("gifHint")}
+                  </p>
+                )}
               </div>
-              {format !== "png" && (
+              {format !== "png" && format !== "gif" && (
                 <div>
                   <div className="mb-3 flex items-center justify-between"><Label>{t("quality")}</Label><Badge variant="secondary">{quality}%</Badge></div>
                   <Slider value={[quality]} min={10} max={100} step={1} onValueChange={([value]) => setQuality(value)} aria-label={t("quality")} />

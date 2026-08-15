@@ -1,4 +1,6 @@
-export type ImageOutputFormat = "jpeg" | "png" | "webp" | "avif"
+import { encodeSingleFrameGif } from "./gif-encoder"
+
+export type ImageOutputFormat = "jpeg" | "png" | "webp" | "avif" | "gif"
 
 export interface ImageConvertOptions {
   format: ImageOutputFormat
@@ -21,6 +23,12 @@ const MIME_TYPES: Record<ImageOutputFormat, string> = {
   png: "image/png",
   webp: "image/webp",
   avif: "image/avif",
+  gif: "image/gif",
+}
+
+function imageDataToGifBlob(imageData: ImageData): Blob {
+  const bytes = encodeSingleFrameGif(imageData)
+  return new Blob([bytes.buffer as ArrayBuffer], { type: "image/gif" })
 }
 
 function calculateDimensions(width: number, height: number, maxWidth?: number, maxHeight?: number) {
@@ -49,6 +57,9 @@ async function canvasToBlob(
       context.fillRect(0, 0, width, height)
     }
     context.drawImage(source, 0, 0, width, height)
+    if (mimeType === "image/gif") {
+      return imageDataToGifBlob(context.getImageData(0, 0, width, height))
+    }
     return canvas.convertToBlob({ type: mimeType, quality })
   }
 
@@ -62,6 +73,9 @@ async function canvasToBlob(
     context.fillRect(0, 0, width, height)
   }
   context.drawImage(source, 0, 0, width, height)
+  if (mimeType === "image/gif") {
+    return imageDataToGifBlob(context.getImageData(0, 0, width, height))
+  }
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, quality))
   if (!blob) throw new Error("CONVERSION_FAILED")
   return blob

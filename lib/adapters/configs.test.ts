@@ -91,6 +91,17 @@ describe("Adapter Config Validation", () => {
     expect(shift.visible?.({ algorithm: "caesar" })).toBe(true)
     expect(shift.visible?.({ algorithm: "rot13" })).toBe(false)
   })
+
+  it("image-convert: offers single-frame GIF and hides irrelevant quality controls", () => {
+    const def = getNodeDefinition("image-convert")!
+    const format = def.config.find((field) => field.id === "format")!
+    const quality = def.config.find((field) => field.id === "quality")!
+
+    expect(format.options).toContainEqual({ label: "GIF (single frame)", value: "gif" })
+    expect(quality.visible?.({ format: "webp" })).toBe(true)
+    expect(quality.visible?.({ format: "png" })).toBe(false)
+    expect(quality.visible?.({ format: "gif" })).toBe(false)
+  })
 })
 
 describe("Port Design Validation", () => {
