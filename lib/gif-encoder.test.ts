@@ -192,6 +192,35 @@ describe("single-frame GIF encoder", () => {
     expect(Math.max(...decoded.pixels)).toBeLessThan(256)
   })
 
+  it("preserves dominant dark tones instead of shifting them toward purple", () => {
+    const width = 1_200
+    const data = new Uint8ClampedArray(width * 4)
+    for (let pixel = 0; pixel < width; pixel += 1) {
+      const offset = pixel * 4
+      if (pixel < 900) {
+        data[offset] = 62
+        data[offset + 1] = 54
+        data[offset + 2] = 51
+      } else {
+        const accent = pixel - 900
+        data[offset] = (accent * 47) & 0xff
+        data[offset + 1] = (accent * 83) & 0xff
+        data[offset + 2] = (accent * 131) & 0xff
+      }
+      data[offset + 3] = 255
+    }
+
+    const decoded = decodeSingleFrameGif(encodeSingleFrameGif({ width, height: 1, data }))
+    const paletteOffset = decoded.pixels[0] * 3
+    const dominantColor = Array.from(decoded.palette.subarray(paletteOffset, paletteOffset + 3))
+    const expectedDominantColor = [62, 54, 51]
+
+    expectedDominantColor.forEach((expected, channel) => {
+      expect(Math.abs(dominantColor[channel] - expected)).toBeLessThanOrEqual(4)
+    })
+    expect(Math.abs(dominantColor[2] - dominantColor[0])).toBeLessThan(16)
+  })
+
   it("keeps LZW code-width growth and dictionary resets decodable", () => {
     const width = 12_000
     const data = new Uint8ClampedArray(width * 4)

@@ -10,9 +10,30 @@ interface IndexedFrame {
   transparentIndex?: number
 }
 
+interface HistogramColor {
+  key: number
+  count: number
+  red: number
+  green: number
+  blue: number
+}
+
+interface ColorBox {
+  colors: HistogramColor[]
+  count: number
+  redTotal: number
+  greenTotal: number
+  blueTotal: number
+  score: number
+  splitChannel: "red" | "green" | "blue"
+}
+
 const MAX_GIF_DIMENSION = 0xffff
 const COLOR_TABLE_SIZE = 256
 const TRANSPARENCY_THRESHOLD = 128
+const HISTOGRAM_CHANNEL_BITS = 5
+const HISTOGRAM_CHANNEL_SHIFT = 8 - HISTOGRAM_CHANNEL_BITS
+const HISTOGRAM_SIZE = 1 << (HISTOGRAM_CHANNEL_BITS * 3)
 
 class ByteBuffer {
   private bytes: Uint8Array
@@ -69,42 +90,172 @@ function writePaletteColor(palette: Uint8Array, index: number, key: number): voi
   palette[offset + 2] = key & 0xff
 }
 
-function quantizeChannel(value: number, levels: number): number {
-  return Math.min(levels - 1, Math.round((value * (levels - 1)) / 255))
+function histogramKey(red: number, green: number, blue: number): number {
+  return (
+    ((red >>> HISTOGRAM_CHANNEL_SHIFT) << (HISTOGRAM_CHANNEL_BITS * 2)) |
+    ((green >>> HISTOGRAM_CHANNEL_SHIFT) << HISTOGRAM_CHANNEL_BITS) |
+    (blue >>> HISTOGRAM_CHANNEL_SHIFT)
+  )
 }
 
-function channelValue(level: number, levels: number): number {
-  return Math.round((level * 255) / (levels - 1))
-}
+function buildHistogram(frame: RgbaFrame, pixelCount: number): HistogramColor[] {
+  const counts = new Float64Array(HISTOGRAM_SIZE)
+  const redTotals = new Float64Array(HISTOGRAM_SIZE)
+  const greenTotals = new Float64Array(HISTOGRAM_SIZE)
+  const blueTotals = new Float64Array(HISTOGRAM_SIZE)
 
-function buildFixedPalette(palette: Uint8Array, hasTransparency: boolean): void {
-  if (hasTransparency) {
-    // Reserve index 0 for transparency and use a 6 x 7 x 6 RGB cube (252 colors).
-    for (let red = 0; red < 6; red += 1) {
-      for (let green = 0; green < 7; green += 1) {
-        for (let blue = 0; blue < 6; blue += 1) {
-          const index = 1 + (red * 7 + green) * 6 + blue
-          const offset = index * 3
-          palette[offset] = channelValue(red, 6)
-          palette[offset + 1] = channelValue(green, 7)
-          palette[offset + 2] = channelValue(blue, 6)
-        }
-      }
-    }
-    return
+  for (let pixel = 0; pixel < pixelCount; pixel += 1) {
+    const offset = pixel * 4
+    if (frame.data[offset + 3] < TRANSPARENCY_THRESHOLD) continue
+
+    const red = frame.data[offset]
+    const green = frame.data[offset + 1]
+    const blue = frame.data[offset + 2]
+    const key = histogramKey(red, green, blue)
+    counts[key] += 1
+    redTotals[key] += red
+    greenTotals[key] += green
+    blueTotals[key] += blue
   }
 
-  // A 3-3-2 RGB palette fills all 256 available GIF color entries.
-  for (let red = 0; red < 8; red += 1) {
-    for (let green = 0; green < 8; green += 1) {
-      for (let blue = 0; blue < 4; blue += 1) {
-        const index = (red * 8 + green) * 4 + blue
-        const offset = index * 3
-        palette[offset] = channelValue(red, 8)
-        palette[offset + 1] = channelValue(green, 8)
-        palette[offset + 2] = channelValue(blue, 4)
+  const colors: HistogramColor[] = []
+  for (let key = 0; key < HISTOGRAM_SIZE; key += 1) {
+    const count = counts[key]
+    if (count === 0) continue
+    colors.push({
+      key,
+      count,
+      red: redTotals[key] / count,
+      green: greenTotals[key] / count,
+      blue: blueTotals[key] / count,
+    })
+  }
+  return colors
+}
+
+function createColorBox(colors: HistogramColor[]): ColorBox {
+  let count = 0
+  let redTotal = 0
+  let greenTotal = 0
+  let blueTotal = 0
+
+  for (const color of colors) {
+    count += color.count
+    redTotal += color.red * color.count
+    greenTotal += color.green * color.count
+    blueTotal += color.blue * color.count
+  }
+
+  const redAverage = redTotal / count
+  const greenAverage = greenTotal / count
+  const blueAverage = blueTotal / count
+  let redError = 0
+  let greenError = 0
+  let blueError = 0
+
+  for (const color of colors) {
+    redError += color.count * (color.red - redAverage) ** 2
+    greenError += color.count * (color.green - greenAverage) ** 2
+    blueError += color.count * (color.blue - blueAverage) ** 2
+  }
+
+  const splitChannel = redError >= greenError && redError >= blueError
+    ? "red"
+    : greenError >= blueError
+      ? "green"
+      : "blue"
+
+  return {
+    colors,
+    count,
+    redTotal,
+    greenTotal,
+    blueTotal,
+    score: redError + greenError + blueError,
+    splitChannel,
+  }
+}
+
+function splitColorBox(box: ColorBox): [ColorBox, ColorBox] {
+  const channel = box.splitChannel
+  const colors = [...box.colors].sort((left, right) => (
+    left[channel] - right[channel] || left.key - right.key
+  ))
+  const midpoint = box.count / 2
+  let accumulated = 0
+  let splitIndex = colors.length - 1
+
+  for (let index = 0; index < colors.length - 1; index += 1) {
+    accumulated += colors[index].count
+    if (accumulated >= midpoint) {
+      splitIndex = index + 1
+      break
+    }
+  }
+
+  return [
+    createColorBox(colors.slice(0, splitIndex)),
+    createColorBox(colors.slice(splitIndex)),
+  ]
+}
+
+function quantizeHistogram(colors: HistogramColor[], colorLimit: number): ColorBox[] {
+  if (colors.length === 0) return []
+
+  const boxes = [createColorBox(colors)]
+  while (boxes.length < colorLimit) {
+    let candidateIndex = -1
+    let candidateScore = -1
+
+    for (let index = 0; index < boxes.length; index += 1) {
+      const box = boxes[index]
+      if (box.colors.length < 2) continue
+      if (box.score > candidateScore) {
+        candidateIndex = index
+        candidateScore = box.score
       }
     }
+
+    if (candidateIndex < 0) break
+    const [left, right] = splitColorBox(boxes[candidateIndex])
+    boxes.splice(candidateIndex, 1, left, right)
+  }
+  return boxes
+}
+
+function buildAdaptivePalette(
+  frame: RgbaFrame,
+  pixelCount: number,
+  palette: Uint8Array,
+  pixels: Uint8Array,
+  hasTransparency: boolean,
+): void {
+  const colorLimit = hasTransparency ? COLOR_TABLE_SIZE - 1 : COLOR_TABLE_SIZE
+  const boxes = quantizeHistogram(buildHistogram(frame, pixelCount), colorLimit)
+  const paletteOffset = hasTransparency ? 1 : 0
+  const histogramIndexes = new Uint8Array(HISTOGRAM_SIZE)
+
+  for (let boxIndex = 0; boxIndex < boxes.length; boxIndex += 1) {
+    const box = boxes[boxIndex]
+    const paletteIndex = paletteOffset + boxIndex
+    const offset = paletteIndex * 3
+    palette[offset] = Math.round(box.redTotal / box.count)
+    palette[offset + 1] = Math.round(box.greenTotal / box.count)
+    palette[offset + 2] = Math.round(box.blueTotal / box.count)
+    for (const color of box.colors) histogramIndexes[color.key] = paletteIndex
+  }
+
+  for (let pixel = 0; pixel < pixelCount; pixel += 1) {
+    const offset = pixel * 4
+    if (hasTransparency && frame.data[offset + 3] < TRANSPARENCY_THRESHOLD) {
+      pixels[pixel] = 0
+      continue
+    }
+    pixels[pixel] = histogramIndexes[histogramKey(
+      frame.data[offset],
+      frame.data[offset + 1],
+      frame.data[offset + 2],
+    )]
   }
 }
 
@@ -150,27 +301,7 @@ function buildIndexedFrame(frame: RgbaFrame): IndexedFrame {
       pixels[pixel] = colorIndexes.get(key) ?? 0
     }
   } else {
-    buildFixedPalette(palette, hasTransparency)
-
-    for (let pixel = 0; pixel < pixelCount; pixel += 1) {
-      const offset = pixel * 4
-      if (hasTransparency && frame.data[offset + 3] < TRANSPARENCY_THRESHOLD) {
-        pixels[pixel] = 0
-        continue
-      }
-
-      if (hasTransparency) {
-        const red = quantizeChannel(frame.data[offset], 6)
-        const green = quantizeChannel(frame.data[offset + 1], 7)
-        const blue = quantizeChannel(frame.data[offset + 2], 6)
-        pixels[pixel] = 1 + (red * 7 + green) * 6 + blue
-      } else {
-        const red = quantizeChannel(frame.data[offset], 8)
-        const green = quantizeChannel(frame.data[offset + 1], 8)
-        const blue = quantizeChannel(frame.data[offset + 2], 4)
-        pixels[pixel] = (red * 8 + green) * 4 + blue
-      }
-    }
+    buildAdaptivePalette(frame, pixelCount, palette, pixels, hasTransparency)
   }
 
   return {
