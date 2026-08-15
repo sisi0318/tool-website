@@ -52,6 +52,19 @@ export interface ReplayResult {
   ok: boolean
 }
 
+export interface ReplayDescendantFailure {
+  nodeId: string
+  tool: string
+  error: string
+}
+
+/** Recomputed descendants keyed by their existing node ids. */
+export interface ReplayDescendantsResult {
+  nodeUpdates: Record<string, JourneyNode>
+  failures: ReplayDescendantFailure[]
+  ok: boolean
+}
+
 /** 建议:一键可应用的下一步 */
 export interface JourneySuggestion {
   tool: string

@@ -103,7 +103,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: V
     }
     if (node.valueType === "json") {
       return (
-        <div className="max-h-64 overflow-auto rounded-2xl bg-[var(--md-sys-color-surface-container-high)] p-3">
+        <div className="rounded-2xl bg-[var(--md-sys-color-surface-container-high)] p-3">
           <JsonTreeView jsonText={formatCanvasValue(node.value, true)} />
         </div>
       )

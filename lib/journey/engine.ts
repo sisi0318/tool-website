@@ -1,7 +1,15 @@
 import type { ConfigField, DerivedOutput, NodeDefinition } from "../canvas/types"
 import { getNodeDefinition } from "../canvas/registry"
-import { inferDataType } from "./tree"
-import type { ApplyStepResult, JourneyStep, ReplayResult, ReplayStepOutcome } from "./types"
+import { getChildren, inferDataType } from "./tree"
+import type {
+  ApplyStepResult,
+  Journey,
+  JourneyNode,
+  JourneyStep,
+  ReplayDescendantsResult,
+  ReplayResult,
+  ReplayStepOutcome,
+} from "./types"
 
 const STEP_TIMEOUT_MS = 30_000
 
@@ -93,4 +101,65 @@ export async function replaySteps(rootValue: unknown, steps: JourneyStep[]): Pro
   }
 
   return { outcomes, finalValue: current, finalValueType: inferDataType(current), ok: true }
+}
+
+/**
+ * Recompute every descendant branch from an already-updated parent value.
+ * A failed node and its descendants are preserved as topology, but their stale
+ * values are cleared and marked missing until that branch can be run again.
+ */
+export async function replayDescendants(
+  journey: Journey,
+  parentId: string,
+  parentValue: unknown,
+): Promise<ReplayDescendantsResult> {
+  const nodeUpdates: Record<string, JourneyNode> = {}
+  const failures: ReplayDescendantsResult["failures"] = []
+
+  const markSubtreeMissing = (nodeId: string) => {
+    const pending = [nodeId]
+    const visited = new Set<string>()
+
+    while (pending.length > 0) {
+      const currentId = pending.pop()!
+      if (visited.has(currentId)) continue
+      visited.add(currentId)
+
+      const node = journey.nodes[currentId]
+      if (!node) continue
+      nodeUpdates[currentId] = { ...node, value: null, valueMissing: true }
+      for (const child of getChildren(journey, currentId)) pending.push(child.id)
+    }
+  }
+
+  const visitChildren = async (currentParentId: string, currentParentValue: unknown): Promise<void> => {
+    for (const child of getChildren(journey, currentParentId)) {
+      if (!child.via) {
+        failures.push({ nodeId: child.id, tool: child.label, error: "Step metadata is missing" })
+        markSubtreeMissing(child.id)
+        continue
+      }
+
+      try {
+        const result = await applyStep(currentParentValue, child.via)
+        const { valueMissing: _cleared, ...rest } = child
+        nodeUpdates[child.id] = {
+          ...rest,
+          value: result.value,
+          valueType: result.valueType,
+        }
+        await visitChildren(child.id, result.value)
+      } catch (error) {
+        failures.push({
+          nodeId: child.id,
+          tool: child.via.tool,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        markSubtreeMissing(child.id)
+      }
+    }
+  }
+
+  await visitChildren(parentId, parentValue)
+  return { nodeUpdates, failures, ok: failures.length === 0 }
 }

@@ -7,7 +7,7 @@ import { FilePlus2, FolderOpen, Repeat2, Save, Share2, Workflow } from "lucide-r
 import { registerAllAdapters } from "@/lib/adapters"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import type { NodeDefinition } from "@/lib/canvas/types"
-import { applyStep, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
+import { applyStep, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
 import { decodeSharedPath, deleteDraft, loadDraft, loadJourney, saveDraft, saveJourney } from "@/lib/journey/serialize"
 import { exportPathToCanvas } from "@/lib/journey/to-canvas"
 import {
@@ -228,18 +228,47 @@ export default function JourneyPage() {
     setRunning(true)
     try {
       const result = await applyStep(parent.value, step)
-      // Pragmatic re-run: only the edited (active) tail node is recomputed from its
-      // parent's value. Descendants beyond the active node keep their previous
-      // values (stale) until re-run or deleted — accepted trade-off.
+      const replayBase = replaceNodeValue(journey, nodeId, result.value)
+      const updatedActive = {
+        ...replayBase.nodes[nodeId],
+        via: step,
+      }
+      const descendants = await replayDescendants(
+        {
+          ...replayBase,
+          nodes: { ...replayBase.nodes, [nodeId]: updatedActive },
+        },
+        nodeId,
+        result.value,
+      )
+
       setJourney((prev) => {
         if (!prev || !prev.nodes[nodeId]) return prev
         const next = replaceNodeValue(prev, nodeId, result.value)
+        const nodes = {
+          ...next.nodes,
+          [nodeId]: { ...next.nodes[nodeId], via: step },
+        }
+        for (const [descendantId, update] of Object.entries(descendants.nodeUpdates)) {
+          // Do not resurrect a branch that the user deleted while recomputation was running.
+          if (nodes[descendantId]) nodes[descendantId] = update
+        }
         return {
           ...next,
-          nodes: { ...next.nodes, [nodeId]: { ...next.nodes[nodeId], via: step, valueMissing: false } },
+          nodes,
         }
       })
       setStepSheetOpen(false)
+      if (!descendants.ok) {
+        const firstFailure = descendants.failures[0]
+        toast({
+          title: t("dependentReplayFailedTitle"),
+          description: t("dependentReplayFailedDescription")
+            .replace("{count}", String(descendants.failures.length))
+            .replace("{error}", `${toolLabel(firstFailure.tool)}: ${firstFailure.error}`),
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       toast({
         title: t("stepFailed"),

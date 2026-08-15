@@ -16,7 +16,7 @@ import {
   inferDataType,
   removeSubtree,
 } from "./tree"
-import { applyStep, getMainInputPort, replaySteps, resolveOutputPort } from "./engine"
+import { applyStep, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "./engine"
 import { getCompatibleTools, suggestNext } from "./suggest"
 import {
   decodeSharedPath,
@@ -157,6 +157,41 @@ describe("engine", () => {
     ])
     expect(replay.ok).toBe(true)
     expect(String(replay.finalValue)).toContain('"a"')
+  })
+
+  it("recomputes descendant branches and clears stale values after a branch failure", async () => {
+    const journey = createJourney("t", "root", "输入")
+    const edited = appendNode(journey, journey.rootId, BASE64_DECODE, "hello", "Encoding")
+    const successful = appendNode(
+      edited.journey,
+      edited.nodeId,
+      { tool: "hash", config: { algorithm: "md5" }, outputPort: "hash" },
+      "stale-hash",
+      "Hash",
+    )
+    const failing = appendNode(
+      successful.journey,
+      edited.nodeId,
+      { tool: "json-format", config: {}, outputPort: "formatted" },
+      "stale-json",
+      "JSON",
+    )
+    const staleGrandchild = appendNode(
+      failing.journey,
+      failing.nodeId,
+      { tool: "hash", config: { algorithm: "md5" }, outputPort: "hash" },
+      "stale-descendant",
+      "Hash",
+    )
+
+    const replay = await replayDescendants(staleGrandchild.journey, edited.nodeId, "world")
+
+    expect(replay.ok).toBe(false)
+    expect(replay.nodeUpdates[successful.nodeId].value).toBe("7d793037a0760186574b0282f2f435e7")
+    expect(replay.nodeUpdates[failing.nodeId]).toMatchObject({ value: null, valueMissing: true })
+    expect(replay.nodeUpdates[staleGrandchild.nodeId]).toMatchObject({ value: null, valueMissing: true })
+    expect(replay.failures).toHaveLength(1)
+    expect(replay.failures[0]).toMatchObject({ nodeId: failing.nodeId, tool: "json-format" })
   })
 })
 
