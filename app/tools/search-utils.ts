@@ -9,7 +9,7 @@ type SearchTranslations = Record<string, { name?: string } | undefined>
 type FeatureDefinition = readonly [name: string, description?: string]
 type FeatureGroup = readonly [toolId: string, features: readonly FeatureDefinition[]]
 
-const SEARCH_FEATURE_GROUPS = {
+export const SEARCH_FEATURE_GROUPS = {
   hash: ["hash", [
     ["MD5", "MD5 摘要与校验"],
     ["SHA-1", "SHA1 哈希"],
@@ -239,6 +239,17 @@ const SEARCH_FEATURE_GROUPS = {
   memeSplitter: ["meme-splitter", [
     ["表情包切图", "Split image grids"],
     ["九宫格", "Detect and slice grid images"],
+  ]],
+  currency: ["currency", [
+    ["汇率换算", "Convert between currencies"],
+    ["实时汇率", "Live exchange rates"],
+    ["多币种", "Convert to several currencies at once"],
+  ]],
+  time: ["time", [
+    ["时间戳转换", "Unix timestamp and date"],
+    ["世界时钟", "World clock and time zones"],
+    ["秒表", "Stopwatch"],
+    ["倒计时", "Countdown timer"],
   ]],
 } as const satisfies Record<string, FeatureGroup>
 

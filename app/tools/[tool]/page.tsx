@@ -1,36 +1,45 @@
-"use client"
+import { notFound, redirect } from "next/navigation"
 
-import { use, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { TOOL_IDS } from "@/lib/tool-metadata"
 
-// This is a catch-all route handler for tool-specific routes
-export default function ToolPage({ params }: { params: Promise<{ tool: string }> }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { tool } = use(params)
+const KNOWN_TOOL_IDS = new Set(TOOL_IDS)
 
-  useEffect(() => {
-    // 检查工具ID是否包含逗号，表示多个工具
-    const toolIds = tool.split(",")
+/**
+ * 每个工具都有自己的 app/tools/<id>/page.tsx,静态路由优先级更高,
+ * 所以能走到这个 catch-all 的只有两种情况:
+ *   1. 逗号分隔的多工具链接(`/tools/hash,json`)—— 转到工作台;
+ *   2. 不存在的工具 id —— 必须 404。
+ *
+ * 之前这里无条件转发到 `/tools?tool=<未知 id>`,工作台会静默过滤掉它,
+ * 用户看到的是一个空工作台而不是 404,搜索引擎拿到的则是 200 的软 404。
+ */
+export default async function ToolAliasPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ tool: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const { tool } = await params
+  const toolIds = decodeURIComponent(tool)
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean)
 
-    // Create a new URLSearchParams object
-    const newParams = new URLSearchParams()
+  if (toolIds.length === 0 || !toolIds.every((id) => KNOWN_TOOL_IDS.has(id))) {
+    notFound()
+  }
 
-    // Add the tool parameter with all tool IDs
-    newParams.append("tool", tool)
+  const query = new URLSearchParams()
+  query.set("tool", toolIds.join(","))
 
-    // Copy any existing query parameters
-    searchParams.forEach((value, key) => {
-      newParams.append(key, value)
-    })
+  // 透传其余查询参数,但不要重复写入 tool
+  for (const [key, value] of Object.entries(await searchParams)) {
+    if (key === "tool" || value === undefined) continue
+    for (const entry of Array.isArray(value) ? value : [value]) {
+      query.append(key, entry)
+    }
+  }
 
-    // Redirect to the main tools page with the tool ID in the URL
-    router.replace(`/tools?${newParams.toString()}`)
-  }, [tool, router, searchParams])
-
-  return (
-    <div className="container mx-auto px-4 py-8 text-center">
-      <p>Redirecting to tool...</p>
-    </div>
-  )
+  redirect(`/tools?${query.toString()}`)
 }

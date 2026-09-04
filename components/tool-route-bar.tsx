@@ -8,7 +8,7 @@ import { ArrowLeft, Check, Clipboard, ExternalLink, Search } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
 
-const toolTranslationKeys: Record<string, string> = {
+export const toolTranslationKeys: Record<string, string> = {
   "base-converter": "baseConverter.name",
   bmi: "bmi.name",
   "case-converter": "caseConverter.name",
@@ -58,15 +58,8 @@ const toolTranslationKeys: Record<string, string> = {
   "hex-binary": "hexBinaryTools.name",
 }
 
-const workspaceTools = new Set([
-  "base-converter", "bmi", "case-converter", "classic-cipher", "color", "crontab",
-  "crypto", "currency", "device", "diff", "docker-converter", "encoding", "exif-viewer",
-  "hash", "hmac", "http-tester", "image-compress", "image-convert", "image-coordinates", "image-editor",
-  "image-to-base64", "jce", "json", "jwt", "meme-splitter", "office-viewer",
-  "protobuf", "qrcode", "qrcode-decode", "regex", "temperature-converter", "text-stats",
-  "time", "totp", "uuid", "whois", "password-generator", "data-detector", "compression",
-  "xml", "csv", "markdown", "sql", "json-schema", "subnet", "certificate", "hex-binary",
-])
+// 工作台能承载的工具集合与上面的翻译键表完全一致,由它派生,避免两份清单各自漂移。
+const workspaceTools = new Set(Object.keys(toolTranslationKeys))
 
 export function ToolRouteBar() {
   const pathname = usePathname()

@@ -315,7 +315,7 @@ class JceEncoder {
   private writeLong(v: bigint) {
     const minLong = -(BigInt(1) << BigInt(63))
     const maxLong = (BigInt(1) << BigInt(63)) - BigInt(1)
-    if (v < minLong || v > maxLong) throw new Error("JCE Long 超出有符号 64 位整数范围")
+    if (v < minLong || v > maxLong) throw new Error(JCE_ERROR.longOutOfRange)
     if (v < BigInt(0)) v += BigInt(1) << BigInt(64)
     for (let i = 7; i >= 0; i--) this.buf.push(Number((v >> BigInt(i * 8)) & BigInt(0xff)))
   }
@@ -357,7 +357,7 @@ class JceEncoder {
       this.writeHead(tag, JCE_TYPE.INT)
       this.writeInt(value)
     } else if (Number.isInteger(value)) {
-      if (!Number.isSafeInteger(value)) throw new Error("不安全的整数，请使用完整整数文本输入")
+      if (!Number.isSafeInteger(value)) throw new Error(JCE_ERROR.unsafeInteger)
       this.writeHead(tag, JCE_TYPE.LONG)
       this.writeLong(BigInt(value))
     } else {
@@ -445,7 +445,25 @@ function inputToBuffer(input: string): Uint8Array {
   if (format === "base64") {
     return decodeJceBase64(clean)
   }
-  throw new Error("无法识别的输入格式，请输入 Hex 或 Base64 编码的数据")
+  throw new Error(JCE_ERROR.unknownFormat)
+}
+
+/**
+ * 编解码逻辑是纯函数,拿不到 t()。以前它直接抛中文文案,英文界面下会原样展示。
+ * 这里改抛稳定错误码,由展示层翻译。
+ */
+const JCE_ERROR = {
+  longOutOfRange: "jce:longOutOfRange",
+  unsafeInteger: "jce:unsafeInteger",
+  unknownFormat: "jce:unknownFormat",
+  rootMustBeObject: "jce:rootMustBeObject",
+} as const
+
+const JCE_ERROR_KEYS: Record<string, string> = {
+  [JCE_ERROR.longOutOfRange]: "errorLongOutOfRange",
+  [JCE_ERROR.unsafeInteger]: "errorUnsafeInteger",
+  [JCE_ERROR.unknownFormat]: "errorUnknownFormat",
+  [JCE_ERROR.rootMustBeObject]: "errorRootMustBeObject",
 }
 
 function formatDetailedOutput(fields: JceField[], indent = 0): string {
@@ -585,7 +603,7 @@ export default function JceTool() {
       } else {
         const obj = parseJceJson(jsonInput)
         if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
-          throw new Error("JCE 根节点必须是以 Tag 为键的 JSON 对象")
+          throw new Error(JCE_ERROR.rootMustBeObject)
         }
         const encoder = new JceEncoder()
         const encoded = encoder.encode(obj as Record<string, any>)
@@ -597,7 +615,8 @@ export default function JceTool() {
         setDetailedOutput("")
       }
     } catch (err: any) {
-      setError(err.message || t("parseError"))
+      const key = JCE_ERROR_KEYS[err?.message]
+      setError(key ? t(key) : err.message || t("parseError"))
     } finally {
       setIsProcessing(false)
     }

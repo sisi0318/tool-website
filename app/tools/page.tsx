@@ -4,7 +4,7 @@ import { copyTextToClipboard } from "@/lib/clipboard"
 
 import type React from "react"
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { memo, useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
@@ -238,8 +238,76 @@ interface ToolTabType {
 }
 
 // 本地存储键名
+/** 不属于任何工具的查询参数:投放/追踪类,不能被当作工具参数透传。 */
+const RESERVED_QUERY_KEYS = new Set([
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+  "gclid", "fbclid", "ref", "from", "spm", "active",
+])
+
 const TABS_STORAGE_KEY = "tool_tabs_state"
 const ACTIVE_TAB_STORAGE_KEY = "tool_active_tab"
+
+/**
+ * 提升到模块作用域。以前它用 useCallback 定义在组件内且依赖 favoriteIds,
+ * 每次切换收藏都会产生一个新的组件类型,导致所有卡片卸载重挂 ——
+ * 键盘用户按下 Enter 后焦点会直接掉回 body。
+ */
+const ToolCard = memo(function ToolCard({
+  id,
+  name,
+  icon,
+  accent,
+  isFavorite,
+  openLabel,
+  favoriteLabel,
+  onClick,
+  onToggleFavorite,
+}: {
+  id: string
+  name: string
+  icon: React.ReactNode
+  accent: string
+  isFavorite: boolean
+  openLabel: string
+  favoriteLabel: string
+  onClick: (id: string) => void
+  onToggleFavorite: (id: string) => void
+}) {
+  return (
+    <Card className="group relative h-full min-h-[104px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--md-sys-color-primary)]/40 hover:shadow-xl sm:min-h-[128px]">
+      <button
+        type="button"
+        onClick={() => onClick(id)}
+        className="h-full w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--md-sys-color-primary)]"
+        aria-label={name}
+      >
+        <CardContent className="flex h-full items-center gap-3 p-4 pr-14 sm:gap-4 sm:p-5 sm:pr-16">
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-105 sm:h-12 sm:w-12 ${accent}`}>
+            {icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="line-clamp-2 font-semibold leading-6 text-[var(--md-sys-color-on-surface)] transition-colors group-hover:text-[var(--md-sys-color-primary)]">
+              {name}
+            </h3>
+            <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] sm:mt-2">
+              {openLabel}
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+            </span>
+          </div>
+        </CardContent>
+      </button>
+      <button
+        type="button"
+        onClick={() => onToggleFavorite(id)}
+        aria-label={favoriteLabel}
+        aria-pressed={isFavorite}
+        className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-primary)]/[0.08] hover:text-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+      >
+        <Star className={`h-5 w-5 ${isFavorite ? "fill-current text-[var(--md-sys-color-primary)]" : ""}`} />
+      </button>
+    </Card>
+  )
+})
 
 export default function ToolsPage() {
   const t = useTranslations("tools")
@@ -659,12 +727,18 @@ export default function ToolsPage() {
 
   // 创建可分享的URL
   const createShareableUrl = useCallback(
-    (toolIds: string[], toolParams?: Record<string, Record<string, string>>): string => {
+    (
+      toolIds: string[],
+      toolParams?: Record<string, Record<string, string>>,
+      activeToolId?: string,
+    ): string => {
       if (typeof window === "undefined") return ""
 
       const baseUrl = `${window.location.origin}/tools`
       const queryParams = new URLSearchParams()
       queryParams.append("tool", toolIds.join(","))
+      // 记录当前活动的标签,否则收件人打开多标签分享链接总是停在第一个。
+      if (activeToolId && toolIds.length > 1) queryParams.append("active", activeToolId)
 
       if (toolParams) {
         Object.entries(toolParams).forEach(([toolId, params]) => {
@@ -723,10 +797,15 @@ export default function ToolsPage() {
   }, [])
 
   // 更新URL以反映当前打开的标签页
+  //
+  // 用 history.replaceState 而不是 router.replace:后者是一次 Next 软导航,
+  // 每切一次标签都会去拉新的 RSC payload,而这里只是想让地址栏跟上状态。
   const updateUrl = useCallback(
     (currentTabs: ToolTabType[], currentActiveTab: string | null) => {
+      if (typeof window === "undefined") return
+
       if (!currentTabs.length || !currentActiveTab) {
-        router.replace("/tools", { scroll: false })
+        window.history.replaceState(null, "", "/tools")
         return
       }
 
@@ -738,10 +817,11 @@ export default function ToolsPage() {
         }
       })
 
-      const url = createShareableUrl(toolIds, toolParams)
-      router.replace(url, { scroll: false })
+      const activeToolId = currentTabs.find((tab) => tab.id === currentActiveTab)?.toolId
+      const url = createShareableUrl(toolIds, toolParams, activeToolId)
+      window.history.replaceState(null, "", url)
     },
-    [router, createShareableUrl],
+    [createShareableUrl],
   )
 
   // 添加新标签页
@@ -848,12 +928,8 @@ export default function ToolsPage() {
       saveTabsToLocalStorage(newTabs, newActiveTab)
       updateUrl(newTabs, newActiveTab)
 
-      if (newTabs.length === 0) {
-        window.history.replaceState({}, "", "/tools")
-        router.replace("/tools", { scroll: false })
-      }
     },
-    [tabs, activeTab, saveTabsToLocalStorage, updateUrl, router],
+    [tabs, activeTab, saveTabsToLocalStorage, updateUrl],
   )
 
   // 处理搜索
@@ -879,13 +955,18 @@ export default function ToolsPage() {
 
   // 转换tabs为M3Tabs需要的格式
   const m3TabItems: TabItem[] = useMemo(() => {
-    return tabs.map((tab) => ({
-      id: tab.id,
-      label: tab.title,
-      icon: tab.icon,
-      closable: tab.closable,
-    }))
-  }, [tabs])
+    // 标题从当前 toolDefinitions 取,而不是标签创建时固化的 tab.title:
+    // 后者是首帧(locale 尚未从 localStorage 恢复)的中文,切换语言后不会更新。
+    return tabs.map((tab) => {
+      const definition = toolDefinitions.find((tool) => tool.id === tab.toolId)
+      return {
+        id: tab.id,
+        label: definition?.title ?? tab.title,
+        icon: definition?.icon ?? tab.icon,
+        closable: tab.closable,
+      }
+    })
+  }, [tabs, toolDefinitions])
 
   // 处理M3Tabs的标签页切换
   const handleM3TabChange = useCallback((id: string) => {
@@ -917,48 +998,6 @@ export default function ToolsPage() {
     onSwipeRight: goToPrevTab,
   })
 
-  // 工具卡片组件 - M3 Expressive Style
-  const ToolCard = useCallback(
-    ({ id, name, icon, accent, onClick }: { id: string; name: string; icon: React.ReactNode; accent: string; onClick: () => void }) => {
-      const isFavorite = favoriteIds.includes(id)
-
-      return (
-        <Card className="group relative h-full min-h-[104px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--md-sys-color-primary)]/40 hover:shadow-xl sm:min-h-[128px]">
-          <button
-            type="button"
-            onClick={onClick}
-            className="h-full w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--md-sys-color-primary)]"
-            aria-label={name}
-          >
-            <CardContent className="flex h-full items-center gap-3 p-4 pr-14 sm:gap-4 sm:p-5 sm:pr-16">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-105 sm:h-12 sm:w-12 ${accent}`}>
-                {icon}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="line-clamp-2 font-semibold leading-6 text-[var(--md-sys-color-on-surface)] transition-colors group-hover:text-[var(--md-sys-color-primary)]">
-                  {name}
-                </h3>
-                <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] sm:mt-2">
-                  {t("openTool")}
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                </span>
-              </div>
-            </CardContent>
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleFavorite(id)}
-            aria-label={isFavorite ? t("removeFavorite") : t("addFavorite")}
-            aria-pressed={isFavorite}
-            className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-primary)]/[0.08] hover:text-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
-          >
-            <Star className={`h-5 w-5 ${isFavorite ? "fill-current text-[var(--md-sys-color-primary)]" : ""}`} />
-          </button>
-        </Card>
-      )
-    },
-    [favoriteIds, t, toggleFavorite],
-  )
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -995,7 +1034,9 @@ export default function ToolsPage() {
               if (key.startsWith(`${toolId}_`)) {
                 const paramName = key.substring(toolId.length + 1)
                 params[paramName] = value
-              } else if (key !== "tool" && toolIds.length === 1) {
+              } else if (key !== "tool" && toolIds.length === 1 && !RESERVED_QUERY_KEYS.has(key)) {
+                // 单工具深链允许裸参数,但要挡住投放/追踪参数,
+                // 否则 utm_source 之类会被当成工具参数并回写进分享链接。
                 params[key] = value
               }
             })
@@ -1020,10 +1061,42 @@ export default function ToolsPage() {
         })
 
         if (restoredTabs.length > 0) {
-          setTabs(restoredTabs)
-          setActiveTab(restoredTabs[0].id)
+          // 打开分享链接不应该毁掉用户自己的工作台:把已保存的标签并进来,
+          // 只是把分享的工具置为当前活动页。
+          const linkedToolIds = new Set(restoredTabs.map((tab) => tab.toolId))
+          const savedState = restoreTabsFromLocalStorage()
+          const carriedTabs: ToolTabType[] = []
+
+          savedState?.tabs.forEach((savedTab) => {
+            if (linkedToolIds.has(savedTab.toolId)) return
+            linkedToolIds.add(savedTab.toolId)
+            const tool = toolDefinitions.find((t) => t.id === savedTab.toolId)
+            if (!tool) return
+            carriedTabs.push({
+              id: savedTab.id || `${savedTab.toolId}-${nextTabCounter++}`,
+              title: tool.title,
+              icon: tool.icon,
+              component: tool.getComponent(savedTab.params),
+              closable: true,
+              params: savedTab.params,
+              shareableUrl: createShareableUrl(
+                [savedTab.toolId],
+                savedTab.params ? { [savedTab.toolId]: savedTab.params } : undefined,
+              ),
+              toolId: savedTab.toolId,
+            })
+          })
+
+          const mergedTabs = [...carriedTabs, ...restoredTabs]
+          // 分享链接里可以指定要激活哪个工具,否则落到第一个。
+          const requestedActive = searchParams.get("active")
+          const activeTabId =
+            restoredTabs.find((tab) => tab.toolId === requestedActive)?.id ?? restoredTabs[0].id
+
+          setTabs(mergedTabs)
+          setActiveTab(activeTabId)
           setTabCounter(nextTabCounter)
-          saveTabsToLocalStorage(restoredTabs, restoredTabs[0].id)
+          saveTabsToLocalStorage(mergedTabs, activeTabId)
         }
       }
     } else {
@@ -1573,7 +1646,18 @@ export default function ToolsPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {category.tools.map((tool) => (
-                      <ToolCard key={tool.id} id={tool.id} name={tool.title} icon={tool.icon} accent={category.accent} onClick={() => addTab(tool.id)} />
+                      <ToolCard
+                        key={tool.id}
+                        id={tool.id}
+                        name={tool.title}
+                        icon={tool.icon}
+                        accent={category.accent}
+                        isFavorite={favoriteIds.includes(tool.id)}
+                        openLabel={t("openTool")}
+                        favoriteLabel={favoriteIds.includes(tool.id) ? t("removeFavorite") : t("addFavorite")}
+                        onClick={addTab}
+                        onToggleFavorite={toggleFavorite}
+                      />
                     ))}
                   </div>
                 </section>
@@ -1591,7 +1675,11 @@ export default function ToolsPage() {
                       name={tool.title}
                       icon={tool.icon}
                       accent={selected?.accent ?? TOOL_CATEGORIES[0].accent}
-                      onClick={() => addTab(tool.id)}
+                      isFavorite={favoriteIds.includes(tool.id)}
+                      openLabel={t("openTool")}
+                      favoriteLabel={favoriteIds.includes(tool.id) ? t("removeFavorite") : t("addFavorite")}
+                      onClick={addTab}
+                      onToggleFavorite={toggleFavorite}
                     />
                   ))}
                 </div>

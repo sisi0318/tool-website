@@ -4,6 +4,7 @@ import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card"
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 import { Button } from "@/components/ui/button"
 import { JsonTreeView } from "@/components/json-tree-view"
 import { Input } from "@/components/ui/input"
@@ -69,6 +70,8 @@ interface RequestHistory {
   formDataParams?: RequestParam[]
   binaryFile?: File | null
 }
+
+const TEMPLATES_STORAGE_KEY = "http_tester_templates"
 
 interface RequestTemplate {
   id: string
@@ -259,6 +262,7 @@ export default function HTTPTester() {
     { id: "env_1", name: "", value: "", type: "String", enabled: true },
   ])
   const [templates, setTemplates] = useState<RequestTemplate[]>([])
+  const templatesLoadedRef = useRef(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
@@ -343,6 +347,37 @@ export default function HTTPTester() {
       description: `${historyItem.method} ${historyItem.url}`
     })
   }, [t, toast])
+
+  // 模板此前只存在内存里,刷新即丢,而"另存为模板"的措辞让人以为会保留。
+  // binaryFile 无法序列化,不进本地存储。
+  useEffect(() => {
+    const raw = readLocalStorage(TEMPLATES_STORAGE_KEY)
+    templatesLoadedRef.current = true
+    if (!raw) return
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+      setTemplates(
+        parsed
+          .filter((item): item is RequestTemplate => Boolean(item) && typeof item === "object")
+          .map((item) => ({ ...item, binaryFile: null })),
+      )
+    } catch {
+      // 存储损坏时保持空列表即可
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!templatesLoadedRef.current) return
+    writeLocalStorage(
+      TEMPLATES_STORAGE_KEY,
+      JSON.stringify(templates.map(({ binaryFile: _binaryFile, ...rest }) => rest)),
+    )
+  }, [templates])
+
+  const deleteTemplate = useCallback((id: string) => {
+    setTemplates((prev) => prev.filter((template) => template.id !== id))
+  }, [])
 
   // 保存为模板
   const saveAsTemplate = useCallback(() => {
@@ -1136,25 +1171,35 @@ export default function HTTPTester() {
                 <ScrollArea className="h-64">
                   <div className="space-y-2">
                     {templates.map(template => (
-                      <button
-                        type="button"
-                        key={template.id}
-                        className="w-full cursor-pointer rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
-                        onClick={() => loadFromTemplate(template)}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge
-                            variant="outline"
-                            className={`border-0 text-xs ${getMethodColor(template.method)}`}
-                          >
-                            {template.method}
-                          </Badge>
-                        </div>
-                        <div className="text-sm font-medium">{template.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {template.url}
-                        </div>
-                      </button>
+                      <div key={template.id} className="flex items-stretch gap-1">
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 cursor-pointer rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+                          onClick={() => loadFromTemplate(template)}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge
+                              variant="outline"
+                              className={`border-0 text-xs ${getMethodColor(template.method)}`}
+                            >
+                              {template.method}
+                            </Badge>
+                          </div>
+                          <div className="text-sm font-medium">{template.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {template.url}
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteTemplate(template.id)}
+                          aria-label={t("deleteTemplate")}
+                          title={t("deleteTemplate")}
+                          className="flex w-9 shrink-0 items-center justify-center rounded-lg text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-error-container)]/60 hover:text-[var(--md-sys-color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-error)]"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </ScrollArea>
