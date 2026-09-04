@@ -1,6 +1,7 @@
 import { ScanLine } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { asFile } from "../canvas/persist"
 import { withObjectUrl } from "../object-url"
 
 async function decodeQRFromImage(file: File): Promise<string> {
@@ -165,7 +166,7 @@ export const qrcodeDecodeAdapter: ToolAdapter = {
     { id: "data", name: "Data", dataType: "string" },
   ],
   async execute(inputs, config) {
-    const file = (inputs.file ?? config.file) as File | null
+    const file = asFile(inputs.file ?? config.file)
     if (!file) {
       throw new Error("No file provided")
     }

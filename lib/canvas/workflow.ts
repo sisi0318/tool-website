@@ -1,7 +1,10 @@
 import type { NodeInstance, Edge } from "./types"
 import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "../safe-storage"
+import { stripUnpersistableNodes } from "./persist"
 
 const WORKFLOW_LIST_KEY = "canvas-workflow-list"
+
+export type SaveWorkflowResult = "created" | "overwritten" | "failed"
 
 export interface WorkflowData {
   nodes: NodeInstance[]
@@ -23,9 +26,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function normalizeWorkflowData(value: unknown): WorkflowData | null {
   if (!isRecord(value) || !Array.isArray(value.nodes) || !Array.isArray(value.edges)) return null
 
+  // 重复 id 会让 React key 冲突、nodes.find 永远命中第一个、removeEdge 一次删两条。
+  const seenNodeIds = new Set<string>()
   const nodes: NodeInstance[] = value.nodes.flatMap((node) => {
     if (!isRecord(node) || typeof node.id !== "string" || typeof node.type !== "string") return []
     if (!isRecord(node.position) || typeof node.position.x !== "number" || typeof node.position.y !== "number") return []
+    if (seenNodeIds.has(node.id)) return []
+    seenNodeIds.add(node.id)
     return [{
       id: node.id,
       type: node.type,
@@ -35,6 +42,8 @@ export function normalizeWorkflowData(value: unknown): WorkflowData | null {
     }]
   })
   const nodeIds = new Set(nodes.map((node) => node.id))
+  const seenEdgeIds = new Set<string>()
+  const occupiedTargets = new Set<string>()
   const edges: Edge[] = value.edges.flatMap((edge) => {
     if (
       !isRecord(edge)
@@ -46,6 +55,12 @@ export function normalizeWorkflowData(value: unknown): WorkflowData | null {
       || typeof edge.sourcePort !== "string"
       || typeof edge.targetPort !== "string"
     ) return []
+    if (seenEdgeIds.has(edge.id)) return []
+    // 一个输入端口只能接一条边,交互式连线本来就是这个约束。
+    const targetKey = `${edge.target}:${edge.targetPort}`
+    if (occupiedTargets.has(targetKey)) return []
+    seenEdgeIds.add(edge.id)
+    occupiedTargets.add(targetKey)
     return [{
       id: edge.id,
       source: edge.source,
@@ -64,7 +79,7 @@ export function serializeWorkflow(name: string, data: WorkflowData): string {
     version: 1,
     name: name.trim() || "workflow",
     exportedAt: new Date().toISOString(),
-    workflow: data,
+    workflow: { nodes: stripUnpersistableNodes(data.nodes), edges: data.edges },
   }
   return JSON.stringify(portable, null, 2)
 }
@@ -113,22 +128,29 @@ function getWorkflowKey(name: string): string {
  * 保存 workflow 到 localStorage
  * @returns true 如果是覆盖已有 workflow
  */
-export function saveWorkflow(name: string, data: WorkflowData): boolean {
+/**
+ * @returns "overwritten" 覆盖了同名工作流 / "created" 新建 / "failed" 写入失败
+ */
+export function saveWorkflow(name: string, data: WorkflowData): SaveWorkflowResult {
   const list = getWorkflowList()
   const exists = list.includes(name)
+  const payload: WorkflowData = { nodes: stripUnpersistableNodes(data.nodes), edges: data.edges }
 
-  // 保存 workflow 数据
-  if (!writeLocalStorage(getWorkflowKey(name), JSON.stringify(data))) {
+  // 数据写不进去就不能登记名字,否则列表里会留下一个加载不出内容的幽灵条目。
+  if (!writeLocalStorage(getWorkflowKey(name), JSON.stringify(payload))) {
     console.warn("Unable to persist workflow", name)
+    return "failed"
   }
 
-  // 更新列表（如果是新名字）
   if (!exists) {
     list.push(name)
-    writeLocalStorage(WORKFLOW_LIST_KEY, JSON.stringify(list))
+    if (!writeLocalStorage(WORKFLOW_LIST_KEY, JSON.stringify(list))) {
+      removeLocalStorage(getWorkflowKey(name))
+      return "failed"
+    }
   }
 
-  return exists
+  return exists ? "overwritten" : "created"
 }
 
 /**

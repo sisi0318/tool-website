@@ -1,6 +1,7 @@
 import { FileType } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { asFile } from "../canvas/persist"
 
 export const fileToStringAdapter: ToolAdapter = {
   type: "file-to-string",
@@ -20,7 +21,7 @@ export const fileToStringAdapter: ToolAdapter = {
     { id: "content", name: "Content", dataType: "string" },
   ],
   async execute(inputs, config) {
-    const file = (inputs.file ?? config.file) as File | null
+    const file = asFile(inputs.file ?? config.file)
     if (!file) throw new Error("No file provided")
 
     const content = await file.text()

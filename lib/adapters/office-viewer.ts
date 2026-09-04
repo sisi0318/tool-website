@@ -1,6 +1,7 @@
 import { FileSpreadsheet } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { asFile } from "../canvas/persist"
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 
@@ -29,7 +30,7 @@ export const officeViewerAdapter: ToolAdapter = {
     { id: "info", name: "Info", dataType: "json" },
   ],
   async execute(inputs, config) {
-    const file = (inputs.file ?? config.file) as File | null
+    const file = asFile(inputs.file ?? config.file)
     if (!file || !(file instanceof Blob)) {
       throw new Error("No file provided")
     }

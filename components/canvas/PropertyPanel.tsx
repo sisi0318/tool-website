@@ -162,6 +162,9 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
               {t("config")}
             </h4>
             {definition.config.map((field) => {
+              // ConfigInput 对 visible=false 返回 null,这里不判就会留下一个只有标题的空行
+              // (例如 Crypto 选 ECB 模式时的 "IV")。ToolNode 里已有同样的判断。
+              if (field.visible && !field.visible(selectedNode.config)) return null
               const incomingEdge = field.hasInput
                 ? incomingEdges.find((edge) => edge.targetPort === field.id)
                 : undefined

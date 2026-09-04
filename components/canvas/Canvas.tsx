@@ -14,6 +14,7 @@ import {
   useReactFlow,
   type Connection,
   type Edge as FlowEdge,
+  type Node as FlowNode,
   type FinalConnectionState,
   type NodeTypes,
 } from "@xyflow/react"
@@ -200,15 +201,31 @@ export function Canvas() {
     [storeEdges, storeNodes, nodeRunning]
   )
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flowNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(flowEdges)
 
   useEffect(() => {
-    setNodes(flowNodes)
+    // 保留 React Flow 量出来的尺寸,否则每次 store 变更都会让所有节点重新测量。
+    setNodes((previous) => {
+      const measuredById = new Map(previous.map((node) => [node.id, node.measured]))
+      return flowNodes.map((node) => {
+        const measured = measuredById.get(node.id)
+        return measured ? { ...node, measured } : node
+      })
+    })
   }, [flowNodes, setNodes])
 
   useEffect(() => {
-    setEdges(flowEdges)
+    // 边的选中状态只存在于 React Flow 本地状态里。整体替换会把它抹掉,
+    // 于是选中一条边后任何 store 变更(节点开始/结束运行、拖动)都会让 Delete 失效。
+    setEdges((previous) => {
+      const selectedIds = new Set(
+        previous.filter((edge) => edge.selected).map((edge) => edge.id),
+      )
+      return flowEdges.map((edge) =>
+        selectedIds.has(edge.id) ? { ...edge, selected: true } : edge,
+      )
+    })
   }, [flowEdges, setEdges])
 
   useEffect(() => {

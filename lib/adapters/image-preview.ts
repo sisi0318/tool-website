@@ -1,6 +1,7 @@
 import { Image } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { asFile } from "../canvas/persist"
 
 export const imagePreviewAdapter: ToolAdapter = {
   type: "image-preview",
@@ -18,7 +19,7 @@ export const imagePreviewAdapter: ToolAdapter = {
   ],
   outputs: [],
   async execute(inputs, config) {
-    const file = (inputs.file ?? config.file) as File | null
+    const file = asFile(inputs.file ?? config.file)
     if (!file) throw new Error("No file provided")
 
     if (!file.type.startsWith("image/")) {

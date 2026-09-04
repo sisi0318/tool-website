@@ -47,15 +47,38 @@ describe("workflow", () => {
     it("saves workflow and updates list", () => {
       const data = { nodes: [], edges: [] }
       const result = saveWorkflow("test", data)
-      expect(result).toBe(false) // Not an overwrite
+      expect(result).toBe("created")
       expect(getWorkflowList()).toEqual(["test"])
       expect(JSON.parse(localStorageMock.getItem("WORKFLOW_test")!)).toEqual(data)
     })
 
-    it("returns true when overwriting existing", () => {
+    it("reports an overwrite of an existing name", () => {
       saveWorkflow("test", { nodes: [], edges: [] })
       const result = saveWorkflow("test", { nodes: [{ id: "1", type: "string", position: { x: 0, y: 0 }, config: {} }], edges: [] })
-      expect(result).toBe(true)
+      expect(result).toBe("overwritten")
+    })
+
+    it("不在写入失败时登记名字(避免加载不出内容的幽灵条目)", () => {
+      const setItem = localStorageMock.setItem
+      localStorageMock.setItem = () => {
+        throw new Error("QuotaExceededError")
+      }
+      try {
+        expect(saveWorkflow("doomed", { nodes: [], edges: [] })).toBe("failed")
+      } finally {
+        localStorageMock.setItem = setItem
+      }
+      expect(getWorkflowList()).toEqual([])
+    })
+
+    it("剥掉 File 配置,避免重载后得到 `{}` 这种坏值", () => {
+      const file = new File(["x"], "x.bin")
+      saveWorkflow("with-file", {
+        nodes: [{ id: "1", type: "file", position: { x: 0, y: 0 }, config: { file, keep: "yes" } }],
+        edges: [],
+      })
+      const stored = JSON.parse(localStorageMock.getItem("WORKFLOW_with-file")!)
+      expect(stored.nodes[0].config).toEqual({ keep: "yes" })
     })
 
     it("does not duplicate names in list", () => {

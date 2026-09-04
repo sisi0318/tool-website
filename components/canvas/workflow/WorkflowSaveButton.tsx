@@ -4,17 +4,22 @@ import { useState } from "react"
 import { Save } from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
+import { useToast } from "@/hooks/use-toast"
 import { SaveDialog } from "./SaveDialog"
 import { saveWorkflow, getWorkflowList } from "@/lib/canvas/workflow"
 
 export function WorkflowSaveButton() {
   const t = useTranslations("canvas")
+  const { toast } = useToast()
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
   const [showDialog, setShowDialog] = useState(false)
 
   const handleSave = (name: string) => {
-    saveWorkflow(name, { nodes, edges })
+    if (saveWorkflow(name, { nodes, edges }) === "failed") {
+      toast({ title: t("workflowSaveFailed"), variant: "destructive" })
+      return
+    }
     setShowDialog(false)
   }
 

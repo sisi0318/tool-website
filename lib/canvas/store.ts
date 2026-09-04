@@ -10,6 +10,7 @@ import { getNodeDefinition } from "./registry"
 import { createBypassOutputs, topologicalSort } from "./engine"
 import { validateConnectionStructure } from "./validation"
 import { normalizeWorkflowData } from "./workflow"
+import { stripUnpersistableNodes } from "./persist"
 import { readLocalStorage } from "../safe-storage"
 
 const nodeExecVersion = new Map<string, number>()
@@ -23,6 +24,8 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 const SAVE_DEBOUNCE_MS = 300
 const AUTO_EXEC_DEBOUNCE_MS = 350
 const CONFIG_HISTORY_WINDOW_MS = 750
+/** Nodes on a cycle cannot take part in execution; a stable code lets the UI localize it. */
+export const CYCLE_ERROR = "canvas:cycle"
 const MAX_HISTORY = 50
 const MAX_EXECUTION_LOG_ENTRIES = 100
 const NODE_EXECUTION_TIMEOUT_MS = 60_000
@@ -57,6 +60,21 @@ function clearNodeExecutionTimer(nodeId: string) {
 function clearAllNodeExecutionTimers() {
   for (const timer of nodeExecTimers.values()) clearTimeout(timer)
   nodeExecTimers.clear()
+}
+
+/**
+ * 定时器挂在模块作用域,不随组件卸载。离开画布页后,之前 350ms 防抖排队的
+ * 自动执行仍会照跑(含 whois 这类真实网络请求),并把结果写回 store。
+ * 画布组件卸载时必须显式调用。
+ */
+export function stopPendingCanvasWork(): void {
+  clearAllNodeExecutionTimers()
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+  // 让在飞的执行结果被丢弃,不再写回已卸载页面的 store。
+  invalidateExecutionPlan()
 }
 
 function resetConfigHistoryGroup() {
@@ -742,7 +760,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       const { sorted, hasCycle } = topologicalSort(reachableNodes, reachableEdges)
 
       if (hasCycle) {
-        console.warn("Canvas contains cycles — skipped cyclic nodes")
+        // Nodes on a cycle never enter the topological order. They used to sit idle
+        // with no visible sign; imported workflows are not cycle-checked, so mark them.
+        const sortedIds = new Set(sorted.map((node) => node.id))
+        const cyclicIds = reachableNodes.filter((node) => !sortedIds.has(node.id)).map((node) => node.id)
+        console.warn("Canvas contains cycles, skipped cyclic nodes", cyclicIds)
+        set((s) => ({
+          nodeErrors: {
+            ...s.nodeErrors,
+            ...Object.fromEntries(cyclicIds.map((id) => [id, CYCLE_ERROR])),
+          },
+        }))
       }
 
       for (const reachableNode of sorted) {
@@ -891,7 +919,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({ stepProgress: emptyStepProgress() })
     const { sorted, hasCycle } = topologicalSort(state.nodes, state.edges)
     if (hasCycle) {
-      console.warn("Canvas contains cycles — skipped cyclic nodes")
+      // Nodes on a cycle never enter the topological order. They used to sit idle
+      // with no visible sign; imported workflows are not cycle-checked, so mark them.
+      const sortedIds = new Set(sorted.map((node) => node.id))
+      const cyclicIds = state.nodes.filter((node) => !sortedIds.has(node.id)).map((node) => node.id)
+      console.warn("Canvas contains cycles, skipped cyclic nodes", cyclicIds)
+      set((s) => ({
+        nodeErrors: {
+          ...s.nodeErrors,
+          ...Object.fromEntries(cyclicIds.map((id) => [id, CYCLE_ERROR])),
+        },
+      }))
     }
     const skippedNodes = new Set<string>()
     for (const node of sorted) {
@@ -931,7 +969,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     )
     const { sorted, hasCycle } = topologicalSort(requiredNodes, requiredEdges)
     if (hasCycle) {
-      console.warn("Canvas contains cycles — skipped cyclic nodes")
+      // Nodes on a cycle never enter the topological order. They used to sit idle
+      // with no visible sign; imported workflows are not cycle-checked, so mark them.
+      const sortedIds = new Set(sorted.map((node) => node.id))
+      const cyclicIds = requiredNodes.filter((node) => !sortedIds.has(node.id)).map((node) => node.id)
+      console.warn("Canvas contains cycles, skipped cyclic nodes", cyclicIds)
+      set((s) => ({
+        nodeErrors: {
+          ...s.nodeErrors,
+          ...Object.fromEntries(cyclicIds.map((id) => [id, CYCLE_ERROR])),
+        },
+      }))
     }
 
     const skippedNodes = new Set<string>()
@@ -940,7 +988,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       const dependsOnSkippedNode = requiredEdges.some(
         (edge) => edge.target === node.id && skippedNodes.has(edge.source)
       )
+      // 点击某个节点的"运行"只对该节点表示同意。上游的手动节点(如 HTTP 请求)
+      // 会真的发出带副作用的请求,不能因为它恰好在上游就替用户按下确认。
+      const isExplicitTarget = node.id === nodeId
+      if (!isExplicitTarget && isManualNode(node)) {
+        skippedNodes.add(node.id)
+        continue
+      }
       if (!includeManual && (isManualNode(node) || dependsOnSkippedNode)) {
+        skippedNodes.add(node.id)
+        continue
+      }
+      if (dependsOnSkippedNode && !isExplicitTarget) {
         skippedNodes.add(node.id)
         continue
       }
@@ -955,7 +1014,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const state = get()
     const { sorted, hasCycle } = topologicalSort(state.nodes, state.edges)
     if (hasCycle) {
-      console.warn("Canvas contains cycles — skipped cyclic nodes")
+      // Nodes on a cycle never enter the topological order. They used to sit idle
+      // with no visible sign; imported workflows are not cycle-checked, so mark them.
+      const sortedIds = new Set(sorted.map((node) => node.id))
+      const cyclicIds = state.nodes.filter((node) => !sortedIds.has(node.id)).map((node) => node.id)
+      console.warn("Canvas contains cycles, skipped cyclic nodes", cyclicIds)
+      set((s) => ({
+        nodeErrors: {
+          ...s.nodeErrors,
+          ...Object.fromEntries(cyclicIds.map((id) => [id, CYCLE_ERROR])),
+        },
+      }))
     }
 
     const skippedNodes = new Set<string>()
@@ -1011,7 +1080,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     try {
       localStorage.setItem(
         "canvas-state",
-        JSON.stringify({ nodes: state.nodes, edges: state.edges })
+        // File/Blob 序列化后会变成 `{}`,重载时是个"看起来有值"的坏对象。
+        JSON.stringify({ nodes: stripUnpersistableNodes(state.nodes), edges: state.edges })
       )
     } catch (error) {
       console.warn("Unable to persist canvas state", error)

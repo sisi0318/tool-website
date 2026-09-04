@@ -874,3 +874,35 @@ describe("canvas guided execution", () => {
     expect(calls.third).not.toHaveBeenCalled()
   })
 })
+
+describe("executeToNode 与手动节点", () => {
+  it("只为被点击的节点放行手动执行,不替上游的手动节点按确认", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+
+    let manualRuns = 0
+    registerDefinition(
+      harness,
+      "manual-source",
+      async () => {
+        manualRuns += 1
+        return { out: "from-manual" }
+      },
+      "manual",
+    )
+    registerDefinition(harness, "sink", async (inputs) => ({ out: String(inputs.in ?? "") }))
+
+    useCanvasStore.getState().replaceWorkflow({
+      nodes: [node("m", "manual-source"), node("s", "sink")],
+      edges: [edge("e1", "m", "s")],
+    })
+
+    // 点下游节点的运行键:上游手动节点会发出带副作用的请求,不能被顺带执行。
+    await useCanvasStore.getState().executeToNode("s", true)
+    expect(manualRuns).toBe(0)
+
+    // 直接点手动节点本身才算用户同意。
+    await useCanvasStore.getState().executeToNode("m", true)
+    expect(manualRuns).toBe(1)
+  })
+})

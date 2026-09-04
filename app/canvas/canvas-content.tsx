@@ -6,13 +6,14 @@ import { Plus } from "lucide-react"
 import { Canvas } from "@/components/canvas/Canvas"
 import { NodePalette } from "@/components/canvas/NodePalette"
 import { PropertyPanel } from "@/components/canvas/PropertyPanel"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { stopPendingCanvasWork, useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
 import { registerAllAdapters } from "@/lib/adapters"
 
 registerAllAdapters()
 
-if (typeof window !== "undefined") {
+// e2e 用的调试钩子。生产包里不应该暴露内部 store,只在显式开启时挂载。
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_E2E === "true") {
   (window as any).__ZUSTAND_STORE__ = useCanvasStore
 }
 
@@ -29,6 +30,9 @@ export default function CanvasContent() {
 
   useEffect(() => {
     loadFromLocalStorage()
+    // 防抖的自动执行与自动保存挂在模块作用域,卸载时必须清掉,
+    // 否则离开画布后仍会触发执行(含网络请求)并写回 store。
+    return () => stopPendingCanvasWork()
   }, [loadFromLocalStorage])
 
   return (

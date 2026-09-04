@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { FilePlus } from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { SaveDialog } from "./SaveDialog"
 import { saveWorkflow, getWorkflowList } from "@/lib/canvas/workflow"
@@ -67,6 +68,7 @@ function NewCanvasConfirm({
 
 export function WorkflowNewButton() {
   const t = useTranslations("canvas")
+  const { toast } = useToast()
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
   const clearCanvas = useCanvasStore((s) => s.clearCanvas)
@@ -82,7 +84,11 @@ export function WorkflowNewButton() {
   }
 
   const handleSave = (name: string) => {
-    saveWorkflow(name, { nodes, edges })
+    // 保存失败时绝不能继续 clearCanvas,否则用户的画布就真的没了。
+    if (saveWorkflow(name, { nodes, edges }) === "failed") {
+      toast({ title: t("workflowSaveFailed"), variant: "destructive" })
+      return
+    }
     setShowSaveDialog(false)
     clearCanvas()
     setShowConfirm(false)

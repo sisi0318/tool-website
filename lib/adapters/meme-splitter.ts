@@ -1,6 +1,7 @@
 import { Scissors } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { asFile } from "../canvas/persist"
 import { createMemeGrid, safeMemeFileBase } from "../meme-grid-tools"
 
 const MAX_PIXELS = 64_000_000 // 约 8000×8000，防止画布内存爆掉
@@ -42,7 +43,7 @@ export const memeSplitterAdapter: ToolAdapter = {
     { id: "parts", name: "Parts", dataType: "json" },
   ],
   async execute(inputs, config) {
-    const file = (inputs.file ?? config.file) as File | null
+    const file = asFile(inputs.file ?? config.file)
     if (!file || !(file instanceof Blob)) {
       throw new Error("No file provided")
     }
