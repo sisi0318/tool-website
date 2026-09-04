@@ -5,7 +5,8 @@ import { TOOL_COMPONENTS } from "@/app/tools/tool-components"
 import { toolTranslationKeys } from "@/components/tool-route-bar"
 import { TOOL_SEO, toolPageMetadata } from "@/lib/tool-metadata"
 import { TOOL_CATALOG, TOOL_IDS, getToolEntry, isKnownToolId } from "@/lib/tools/catalog"
-import { translations } from "@/lib/translations"
+import { en } from "@/lib/translations/en"
+import { zh } from "@/lib/translations/zh"
 
 /**
  * lib/tools/catalog.ts 是工具清单的单一事实来源，SEO、搜索索引、路由栏都由它派生。
@@ -39,8 +40,8 @@ describe("工具目录", () => {
 
   it("每个工具的翻译键在中英文里都存在", () => {
     for (const entry of TOOL_CATALOG) {
-      for (const locale of ["zh", "en"] as const) {
-        const bucket = (translations[locale].tools as unknown as Record<string, Record<string, string>>)[
+      for (const [locale, dictionary] of [["zh", zh], ["en", en]] as const) {
+        const bucket = (dictionary.tools as unknown as Record<string, Record<string, string>>)[
           entry.translationKey
         ]
         expect(bucket, `${locale} 缺少 tools.${entry.translationKey}`).toBeDefined()

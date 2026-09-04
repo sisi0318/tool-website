@@ -1,76 +1,86 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
-import { translations } from "@/lib/translations"
-import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
 
-// Create a context for translations
+import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
+import {
+  DEFAULT_LOCALE,
+  getLoadedDictionary,
+  loadDictionary,
+  resolveTranslation,
+  zh,
+  type Dictionary,
+  type Locale,
+} from "@/lib/translations"
+
 interface TranslationsContextType {
-  locale: string
+  locale: Locale
   setLocale: (locale: string) => void
   t: (key: string) => string
 }
 
-function resolveTranslation(locale: "zh" | "en", key: string) {
-  const keys = key.split(".")
-  let value: unknown = translations[locale]
-
-  for (const segment of keys) {
-    if (value && typeof value === "object" && segment in value) {
-      value = (value as Record<string, unknown>)[segment]
-    } else {
-      return key
-    }
-  }
-
-  return typeof value === "string" ? value : key
-}
-
 const I18nContext = createContext<TranslationsContextType>({
-  locale: "zh",
+  locale: DEFAULT_LOCALE,
   setLocale: () => undefined,
-  t: (key) => resolveTranslation("zh", key),
+  t: (key) => resolveTranslation(zh, key),
 })
+
+function isLocale(value: string | null): value is Locale {
+  return value === "zh" || value === "en"
+}
 
 export function I18nProvider({
   children,
-  locale = "zh",
+  locale = DEFAULT_LOCALE,
 }: {
   children: ReactNode
   locale: string
 }) {
-  const [currentLocale, setCurrentLocale] = useState<"zh" | "en">(locale === "en" ? "en" : "zh")
+  const [currentLocale, setCurrentLocale] = useState<Locale>(isLocale(locale) ? locale : DEFAULT_LOCALE)
+  // 中文随首屏就位；英文动态加载，未就绪前先用中文渲染，避免整页空白
+  const [dictionary, setDictionary] = useState<Dictionary>(zh)
 
   useEffect(() => {
-    const savedLocale = readLocalStorage("locale")
-    if (savedLocale === "zh" || savedLocale === "en") {
-      setCurrentLocale(savedLocale)
-    }
+    const saved = readLocalStorage("locale")
+    if (isLocale(saved)) setCurrentLocale(saved)
   }, [])
 
   useEffect(() => {
-    document.documentElement.lang = currentLocale
+    document.documentElement.lang = currentLocale === "zh" ? "zh-CN" : "en"
   }, [currentLocale])
 
-  const t = useCallback(
-    (key: string) => resolveTranslation(currentLocale, key),
-    [currentLocale],
-  )
+  useEffect(() => {
+    const cached = getLoadedDictionary(currentLocale)
+    if (cached) {
+      setDictionary(cached)
+      return
+    }
+
+    let active = true
+    void loadDictionary(currentLocale).then((next) => {
+      if (active) setDictionary(next)
+    })
+    return () => {
+      active = false
+    }
+  }, [currentLocale])
+
+  const t = useCallback((key: string) => resolveTranslation(dictionary, key), [dictionary])
 
   const setLocale = useCallback(
-    (newLocale: string) => {
-      if (newLocale !== currentLocale && (newLocale === "zh" || newLocale === "en")) {
-        setCurrentLocale(newLocale)
-        // Save to localStorage for persistence
-        writeLocalStorage("locale", newLocale)
-      }
+    (next: string) => {
+      if (!isLocale(next) || next === currentLocale) return
+      setCurrentLocale(next)
+      writeLocalStorage("locale", next)
     },
     [currentLocale],
   )
 
-  return <I18nContext.Provider value={{ locale: currentLocale, setLocale, t }}>{children}</I18nContext.Provider>
+  return (
+    <I18nContext.Provider value={{ locale: currentLocale, setLocale, t }}>
+      {children}
+    </I18nContext.Provider>
+  )
 }
 
-export const useI18n = () => {
-  return useContext(I18nContext)
-}
+export const useI18n = () => useContext(I18nContext)
