@@ -20,6 +20,11 @@ export interface ConfigField {
   visible?: (config: Record<string, unknown>) => boolean
   hasInput?: boolean   // Whether this parameter has an input port on the left
   hasOutput?: boolean  // Whether this parameter has an output port on the right
+  /**
+   * 长期凭据(TOTP 种子、Authorization 头等),跨信任边界(分享链接)时剥离。
+   * 加解密的 key/iv、HMAC key 不属此类:它们是复现这一步所必需的配方参数,照常分享。
+   */
+  sensitive?: boolean
 }
 
 export interface DerivedOutput {
@@ -38,6 +43,11 @@ export interface NodeDefinition {
   label: string
   description?: string
   executionMode?: "automatic" | "manual"
+  /**
+   * 执行时会发出网络请求。此类节点不允许出现在导入的分享路径里,
+   * 避免打开链接即向外部发起请求(或把粘贴的数据带出去)。
+   */
+  network?: boolean
   icon: React.ComponentType<{ className?: string }>
   config: ConfigField[]
   outputs: DerivedOutput[]   // Computed outputs (like Hash result)

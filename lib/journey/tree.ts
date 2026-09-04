@@ -53,16 +53,46 @@ export function appendNode(
   }
 }
 
-/** 根 → 指定节点 的节点链(含两端);未知节点返回空数组 */
+/** 根 → 指定节点 的节点链(含两端);未知节点或链上成环返回空数组 */
 export function getPath(journey: Journey, nodeId: string): JourneyNode[] {
   const path: JourneyNode[] = []
+  // 损坏的存储可能让 parentId 成环,没有 visited 会在这里死循环并冻结整个页面。
+  const visited = new Set<string>()
   let current = journey.nodes[nodeId]
   while (current) {
+    if (visited.has(current.id)) return []
+    visited.add(current.id)
     path.unshift(current)
     if (current.parentId === null) break
     current = journey.nodes[current.parentId]
   }
   return path.length > 0 && path[0].id === journey.rootId ? path : []
+}
+
+/**
+ * 结构自检:根存在且无父、activeId 有效、每个节点的父都存在,且从任一节点
+ * 沿 parentId 都能在有限步内回到根(即无环、无游离子树)。
+ * 用于把从 localStorage / 分享链接读回来的数据挡在渲染之前。
+ */
+export function isStructurallyValid(journey: Journey): boolean {
+  const root = journey.nodes[journey.rootId]
+  if (!root || root.parentId !== null) return false
+  if (!journey.nodes[journey.activeId]) return false
+
+  for (const node of Object.values(journey.nodes)) {
+    if (node.id === journey.rootId) continue
+    const visited = new Set<string>([node.id])
+    let current: JourneyNode | undefined = node
+    while (current && current.parentId !== null) {
+      const parent: JourneyNode | undefined = journey.nodes[current.parentId]
+      if (!parent || visited.has(parent.id)) return false
+      visited.add(parent.id)
+      current = parent
+    }
+    if (!current || current.id !== journey.rootId) return false
+  }
+
+  return true
 }
 
 /** 路径上的变换序列(根节点无 via,故长度 = 路径节点数 - 1) */

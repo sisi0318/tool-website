@@ -1,10 +1,14 @@
+import { getNodeDefinition } from "../canvas/registry"
 import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "../safe-storage"
+import { isStructurallyValid } from "./tree"
 import type { Journey, JourneyNode, JourneyStep, SharedJourneyPath } from "./types"
 
 const SAVES_KEY = "journey-saves"
 const DRAFT_KEY = "journey-draft"
 const MAX_PERSISTED_VALUE_CHARS = 64 * 1024
 const MAX_SHARED_ROOT_TEXT = 2 * 1024
+/** 分享链接的编码上限,超出后多数浏览器/聊天工具会截断 */
+export const MAX_SHARED_PAYLOAD_CHARS = 8 * 1024
 
 // ---------- 通用:unicode 安全的 base64url ----------
 
@@ -45,20 +49,41 @@ export function sanitizeConfig(config: Record<string, unknown>): Record<string, 
 
 // ---------- URL 分享(仅路径,不含数据本体) ----------
 
+/** 剥离标记为 sensitive 的长期凭据;未注册的工具原样保留(导入时会被拦下) */
+export function redactSensitiveConfig(
+  tool: string,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  const definition = getNodeDefinition(tool)
+  if (!definition) return config
+  const sensitiveIds = new Set(
+    definition.config.filter((field) => field.sensitive).map((field) => field.id),
+  )
+  if (sensitiveIds.size === 0) return config
+  return Object.fromEntries(
+    Object.entries(config).filter(([key]) => !sensitiveIds.has(key)),
+  )
+}
+
+/** 超出 URL 承载上限时返回 null,由调用方提示用户 */
 export function encodeSharedPath(
   name: string,
   steps: JourneyStep[],
   rootText?: string,
-): string {
+): string | null {
   const payload: SharedJourneyPath = {
     v: 1,
     name,
-    steps: steps.map((step) => ({ ...step, config: sanitizeConfig(step.config) })),
+    steps: steps.map((step) => ({
+      ...step,
+      config: redactSensitiveConfig(step.tool, sanitizeConfig(step.config)),
+    })),
   }
   if (typeof rootText === "string" && rootText.length > 0 && rootText.length <= MAX_SHARED_ROOT_TEXT) {
     payload.rootText = rootText
   }
-  return `j=${toBase64Url(JSON.stringify(payload))}`
+  const encoded = `j=${toBase64Url(JSON.stringify(payload))}`
+  return encoded.length > MAX_SHARED_PAYLOAD_CHARS ? null : encoded
 }
 
 function isValidStep(value: unknown): value is JourneyStep {
@@ -96,6 +121,41 @@ export function decodeSharedPath(hash: string): SharedJourneyPath | null {
   } catch {
     return null
   }
+}
+
+// ---------- 导入分享路径前的安全审查 ----------
+
+export type SharedStepIssue = "unknown-tool" | "network-tool" | "manual-tool"
+
+export interface SharedStepReview {
+  step: JourneyStep
+  /** 工具的展示名,未注册时回退到 type */
+  label: string
+  issue?: SharedStepIssue
+}
+
+export interface SharedPathReview {
+  steps: SharedStepReview[]
+  /** 存在任一不可执行的步骤时为 true,此时整条路径都不应自动运行 */
+  blocked: boolean
+}
+
+/**
+ * 分享链接来自站外,等同不可信输入:未注册的工具无法执行,
+ * 会发网络请求(network)或需人工确认(manual)的工具则可能被用来把
+ * 用户粘贴的数据带出去,一律拒绝执行。
+ */
+export function reviewSharedPath(shared: SharedJourneyPath): SharedPathReview {
+  const steps = shared.steps.map((step) => {
+    const definition = getNodeDefinition(step.tool)
+    if (!definition) return { step, label: step.tool, issue: "unknown-tool" as const }
+    if (definition.network) return { step, label: definition.label, issue: "network-tool" as const }
+    if (definition.executionMode === "manual") {
+      return { step, label: definition.label, issue: "manual-tool" as const }
+    }
+    return { step, label: definition.label }
+  })
+  return { steps, blocked: steps.some((entry) => entry.issue !== undefined) }
 }
 
 // ---------- localStorage 持久化(值按可序列化性降级) ----------
@@ -169,7 +229,10 @@ export function saveJourney(journey: Journey): boolean {
 
 export function loadJourney(name: string): Journey | null {
   const persisted = readSaves()[name]
-  return persisted ? restoreJourney(persisted) : null
+  if (!persisted) return null
+  const journey = restoreJourney(persisted)
+  // 存储可能被外部改坏:结构不自洽的旅程会让 getPath / 分支树陷入异常状态。
+  return persisted.version === 1 && isStructurallyValid(journey) ? journey : null
 }
 
 export function deleteJourney(name: string): boolean {
@@ -195,7 +258,8 @@ export function loadDraft(): Journey | null {
     if (parsed === null || typeof parsed !== "object") return null
     const candidate = parsed as PersistedJourney
     if (candidate.version !== 1 || !candidate.nodes?.[candidate.rootId]) return null
-    return restoreJourney(candidate)
+    const journey = restoreJourney(candidate)
+    return isStructurallyValid(journey) ? journey : null
   } catch {
     return null
   }

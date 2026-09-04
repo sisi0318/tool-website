@@ -1,7 +1,7 @@
 import type { Edge, NodeInstance } from "../canvas/types"
 import { getNodeDefinition } from "../canvas/registry"
 import { writeLocalStorage } from "../safe-storage"
-import { getMainInputPort } from "./engine"
+import { getMainInputPort, resolveOutputPort } from "./engine"
 import { sanitizeConfig } from "./serialize"
 import type { JourneyNode } from "./types"
 
@@ -63,7 +63,9 @@ export function pathToWorkflow(path: JourneyNode[]): CanvasWorkflow & { skipped:
   const source = sourceNodeFor(path[0])
   nodes.push(source)
 
-  let previousId = source.id
+  // null 表示上游已断:上一步的工具不可用,不能把它的上游直接接到下一步,
+  // 否则被跳过的那次变换会被静默省略,数据语义整个变了。
+  let previousId: string | null = source.id
   let previousPort = sourceOutputPort(source.type)
   let row = 1
 
@@ -73,6 +75,7 @@ export function pathToWorkflow(path: JourneyNode[]): CanvasWorkflow & { skipped:
     const mainPort = definition ? getMainInputPort(definition) : null
     if (!definition || !mainPort) {
       skipped.push(node.via.tool)
+      previousId = null
       continue
     }
 
@@ -83,16 +86,19 @@ export function pathToWorkflow(path: JourneyNode[]): CanvasWorkflow & { skipped:
       config: sanitizeConfig(node.via.config),
     }
     nodes.push(instance)
-    edges.push({
-      id: `journey-e${row}`,
-      source: previousId,
-      sourcePort: previousPort,
-      target: instance.id,
-      targetPort: mainPort.id,
-    })
+    if (previousId !== null) {
+      edges.push({
+        id: `journey-e${row}`,
+        source: previousId,
+        sourcePort: previousPort,
+        target: instance.id,
+        targetPort: mainPort.id,
+      })
+    }
 
     previousId = instance.id
-    previousPort = node.via.outputPort
+    // 分享链接里的 outputPort 可能为空,回退到该节点的首个输出端口。
+    previousPort = resolveOutputPort(definition, node.via.outputPort)
     row += 1
   }
 

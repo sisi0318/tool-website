@@ -6,6 +6,10 @@ import { registerEncodingAdapter } from "../adapters/encoding"
 import { registerHashAdapter } from "../adapters/hash"
 import { registerJsonFormatAdapter } from "../adapters/json-format"
 import { registerJwtAdapter } from "../adapters/jwt"
+import { registerTotpAdapter } from "../adapters/totp"
+import { registerCryptoAdapter } from "../adapters/crypto"
+import { registerWhoisAdapter } from "../adapters/whois"
+import { registerHttpTesterAdapter } from "../adapters/http-tester"
 import {
   appendNode,
   createJourney,
@@ -22,6 +26,7 @@ import {
   decodeSharedPath,
   deleteDraft,
   encodeSharedPath,
+  reviewSharedPath,
   loadDraft,
   loadJourney,
   persistJourney,
@@ -248,7 +253,75 @@ describe("serialize", () => {
 
   it("omits oversized root text from shares", () => {
     const encoded = encodeSharedPath("t", [BASE64_DECODE], "x".repeat(5000))
-    expect(decodeSharedPath(encoded)?.rootText).toBeUndefined()
+    expect(decodeSharedPath(encoded!)?.rootText).toBeUndefined()
+  })
+
+  /** 分享安全相关用例需要真实的敏感/网络工具定义。 */
+  const registerShareGuardAdapters = () => {
+    registerTotpAdapter()
+    registerCryptoAdapter()
+    registerWhoisAdapter()
+    registerHttpTesterAdapter()
+  }
+
+  it("refuses to encode a path that exceeds the URL budget", () => {
+    const fat: JourneyStep = {
+      tool: "encoding",
+      config: { encoding: "base64", mode: "decode", note: "z".repeat(9000) },
+      outputPort: "output",
+    }
+    expect(encodeSharedPath("big", [fat])).toBeNull()
+  })
+
+  it("strips long-lived credentials from shared configs but keeps recipe parameters", () => {
+    registerShareGuardAdapters()
+    const totpStep: JourneyStep = {
+      tool: "totp",
+      config: { secret: "JBSWY3DPEHPK3PXP", digits: 6 },
+      outputPort: "code",
+    }
+    const decoded = decodeSharedPath(encodeSharedPath("t", [totpStep])!)
+    expect(decoded?.steps[0].config).toEqual({ digits: 6 })
+
+    const cryptoStep: JourneyStep = {
+      tool: "crypto",
+      config: { key: "secret-key", iv: "0123456789abcdef", algorithm: "AES" },
+      outputPort: "result",
+    }
+    const decodedCrypto = decodeSharedPath(encodeSharedPath("c", [cryptoStep])!)
+    expect(decodedCrypto?.steps[0].config).toEqual({
+      key: "secret-key",
+      iv: "0123456789abcdef",
+      algorithm: "AES",
+    })
+  })
+
+  it("blocks shared paths that would run network or manual tools", () => {
+    registerShareGuardAdapters()
+    expect(reviewSharedPath({ v: 1, name: "ok", steps: [BASE64_DECODE] }).blocked).toBe(false)
+
+    const viaNetwork = reviewSharedPath({
+      v: 1,
+      name: "bad",
+      steps: [BASE64_DECODE, { tool: "whois", config: {}, outputPort: "raw" }],
+    })
+    expect(viaNetwork.blocked).toBe(true)
+    expect(viaNetwork.steps[1].issue).toBe("network-tool")
+
+    const viaManual = reviewSharedPath({
+      v: 1,
+      name: "bad",
+      steps: [{ tool: "http-tester", config: {}, outputPort: "response" }],
+    })
+    expect(viaManual.blocked).toBe(true)
+
+    const unknown = reviewSharedPath({
+      v: 1,
+      name: "bad",
+      steps: [{ tool: "not-a-tool", config: {}, outputPort: "x" }],
+    })
+    expect(unknown.blocked).toBe(true)
+    expect(unknown.steps[0].issue).toBe("unknown-tool")
   })
 
   it("rejects malformed hashes", () => {

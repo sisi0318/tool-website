@@ -53,6 +53,10 @@ export function ShareDialog({ open, onOpenChange, journey }: DialogBaseProps & {
         steps,
         includeInput && canIncludeInput ? (rootValue as string) : undefined,
       )
+      if (!encoded) {
+        toast({ title: t("shareTooLarge"), variant: "destructive" })
+        return
+      }
       const url = `${window.location.origin}/journey#${encoded}`
       if (!(await copyTextToClipboard(url))) throw new Error("clipboard unavailable")
       toast({ title: t("shareCopied") })
@@ -85,7 +89,7 @@ export function ShareDialog({ open, onOpenChange, journey }: DialogBaseProps & {
             disabled={!canIncludeInput}
           />
         </div>
-        <Button onClick={handleShare} className={PRIMARY_BUTTON}>
+        <Button onClick={handleShare} disabled={steps.length === 0} className={PRIMARY_BUTTON}>
           {t("shareJourney")}
         </Button>
       </DialogContent>
@@ -182,7 +186,7 @@ export function ReplayDialog({
           rows={5}
           className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
         />
-        <Button onClick={() => onRun(text)} disabled={!text.trim() || running} className={PRIMARY_BUTTON}>
+        <Button onClick={() => onRun(text)} disabled={!text.trim() || running || stepCount === 0} className={PRIMARY_BUTTON}>
           {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
           {t("replayRun")}
         </Button>

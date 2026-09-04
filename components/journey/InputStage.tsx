@@ -1,7 +1,8 @@
 "use client"
 
-import { useRef, useState, type ChangeEvent, type DragEvent } from "react"
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react"
 import { Braces, FileKey2, FileText, Import, LoaderCircle, Sparkles, Upload } from "lucide-react"
+import type { SharedStepReview } from "@/lib/journey/serialize"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
@@ -22,18 +23,25 @@ const EXAMPLES = [
 ] as const
 
 interface InputStageProps {
-  /** Steps waiting from an imported share link, or null when there is none. */
-  pendingStepCount: number | null
+  /** Reviewed steps from an imported share link, or null when there is none. */
+  pendingSteps: SharedStepReview[] | null
+  /** Root text carried by the share link; prefills the textarea but never runs on its own. */
+  pendingText?: string
   /** True while an imported path is being replayed against the provided data. */
   starting: boolean
   onStart: (value: unknown) => void
 }
 
-export function InputStage({ pendingStepCount, starting, onStart }: InputStageProps) {
+export function InputStage({ pendingSteps, pendingText, starting, onStart }: InputStageProps) {
   const t = useTranslations("journey")
   const [text, setText] = useState("")
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // A shared link may carry its input text; prefill it so the user can inspect it before running.
+  useEffect(() => {
+    if (pendingText) setText(pendingText)
+  }, [pendingText])
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -72,10 +80,23 @@ export function InputStage({ pendingStepCount, starting, onStart }: InputStagePr
           {t("description")}
         </p>
 
-        {pendingStepCount !== null && (
-          <div className="mt-4 flex items-start gap-2 rounded-2xl bg-[var(--md-sys-color-tertiary-container)] p-3 text-sm leading-relaxed text-[var(--md-sys-color-on-tertiary-container)]">
-            <Import className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span>{t("importedFromLink").replace("{count}", String(pendingStepCount))}</span>
+        {pendingSteps !== null && (
+          <div className="mt-4 rounded-2xl bg-[var(--md-sys-color-tertiary-container)] p-3 text-sm leading-relaxed text-[var(--md-sys-color-on-tertiary-container)]">
+            <div className="flex items-start gap-2">
+              <Import className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{t("importedFromLink").replace("{count}", String(pendingSteps.length))}</span>
+            </div>
+            <p className="mt-3 text-xs font-medium uppercase tracking-wide opacity-70">
+              {t("importedStepsTitle")}
+            </p>
+            <ol className="mt-1.5 space-y-1">
+              {pendingSteps.map((entry, index) => (
+                <li key={index} className="flex gap-2 font-mono text-xs">
+                  <span className="opacity-60">{index + 1}.</span>
+                  <span>{entry.label}</span>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 

@@ -7,6 +7,7 @@ export const httpTesterAdapter: ToolAdapter = {
   category: "dev",
   label: "HTTP Tester",
   executionMode: "manual",
+  network: true,
   icon: Globe,
   config: [
     {
@@ -40,6 +41,7 @@ export const httpTesterAdapter: ToolAdapter = {
       multiline: true,
       hasInput: true,
       hasOutput: true,
+      sensitive: true,
     },
     {
       id: "body",

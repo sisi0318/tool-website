@@ -82,6 +82,7 @@ async function fetchRates(base: string): Promise<Record<string, number>> {
 
 export const currencyAdapter: ToolAdapter = {
   type: "currency",
+  network: true,
   category: "utility",
   label: "Currency",
   icon: DollarSign,

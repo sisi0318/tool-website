@@ -16,6 +16,7 @@ export const totpAdapter: ToolAdapter = {
       defaultValue: "",
       hasInput: true,
       hasOutput: false,
+      sensitive: true,
     },
     {
       id: "digits",

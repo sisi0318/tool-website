@@ -8,7 +8,17 @@ import { registerAllAdapters } from "@/lib/adapters"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import type { NodeDefinition } from "@/lib/canvas/types"
 import { applyStep, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
-import { decodeSharedPath, deleteDraft, loadDraft, loadJourney, saveDraft, saveJourney } from "@/lib/journey/serialize"
+import {
+  decodeSharedPath,
+  deleteDraft,
+  loadDraft,
+  loadJourney,
+  reviewSharedPath,
+  saveDraft,
+  saveJourney,
+  type SharedStepIssue,
+  type SharedStepReview,
+} from "@/lib/journey/serialize"
 import { exportPathToCanvas } from "@/lib/journey/to-canvas"
 import {
   appendNode,
@@ -48,6 +58,12 @@ registerAllAdapters()
 const ICON_BUTTON =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-[var(--md-sys-color-on-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
 
+const ISSUE_KEYS: Record<SharedStepIssue, string> = {
+  "unknown-tool": "issueUnknownTool",
+  "network-tool": "issueNetworkTool",
+  "manual-tool": "issueManualTool",
+}
+
 function toolLabel(tool: string): string {
   return getNodeDefinition(tool)?.label ?? tool
 }
@@ -79,12 +95,15 @@ export default function JourneyPage() {
 
   const [journey, setJourney] = useState<Journey | null>(null)
   const [pendingSharedPath, setPendingSharedPath] = useState<SharedJourneyPath | null>(null)
+  const [pendingReview, setPendingReview] = useState<SharedStepReview[] | null>(null)
   const [running, setRunning] = useState(false)
   const [dialog, setDialog] = useState<DialogKind | null>(null)
   const [stepSheetOpen, setStepSheetOpen] = useState(false)
   const [branchesOpen, setBranchesOpen] = useState(false)
   const [toolPickerOpen, setToolPickerOpen] = useState(false)
   const bootedRef = useRef(false)
+  // 自动保存失败只提示一次,避免每次编辑都弹。
+  const autosaveWarnedRef = useRef(false)
 
   const active = journey ? journey.nodes[journey.activeId] ?? journey.nodes[journey.rootId] : null
 
@@ -118,12 +137,26 @@ export default function JourneyPage() {
     if (bootedRef.current) return
     bootedRef.current = true
     const hash = window.location.hash
-    if (hash.includes("j=")) {
-      const shared = decodeSharedPath(hash)
+    const shared = hash.includes("j=") ? decodeSharedPath(hash) : null
+    if (shared) {
+      // Only drop the hash once it decoded, so a failed import stays retryable/bookmarkable.
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
-      if (shared) {
-        if (shared.rootText) void runSharedPath(shared.rootText, shared)
-        else setPendingSharedPath(shared)
+      const review = reviewSharedPath(shared)
+      if (review.blocked) {
+        // A link is untrusted input: refuse paths that could run side-effecting tools.
+        const offenders = review.steps
+          .filter((entry) => entry.issue)
+          .map((entry) => `${entry.label}（${t(ISSUE_KEYS[entry.issue!])}）`)
+          .join("、")
+        toast({
+          title: t("importBlockedTitle"),
+          description: t("importBlockedDescription").replace("{tools}", offenders),
+          variant: "destructive",
+        })
+      } else {
+        // Never auto-run: the user reviews the steps and starts explicitly.
+        setPendingSharedPath(shared)
+        setPendingReview(review.steps)
         return
       }
     }
@@ -135,16 +168,21 @@ export default function JourneyPage() {
   useEffect(() => {
     if (!journey) return
     const timer = window.setTimeout(() => {
-      saveDraft(journey)
+      // 配额满 / 隐私模式下写入会失败,静默丢弃会让用户以为探索已被保存。
+      if (!saveDraft(journey) && !autosaveWarnedRef.current) {
+        autosaveWarnedRef.current = true
+        toast({ title: t("autosaveFailed"), variant: "destructive" })
+      }
     }, 500)
     return () => window.clearTimeout(timer)
-  }, [journey])
+  }, [journey, t, toast])
 
   const handleStart = (value: unknown) => {
     if (running) return
     if (pendingSharedPath) {
       const shared = pendingSharedPath
       setPendingSharedPath(null)
+      setPendingReview(null)
       void runSharedPath(value, shared)
       return
     }
@@ -340,7 +378,8 @@ export default function JourneyPage() {
   if (!journey || !active) {
     return (
       <InputStage
-        pendingStepCount={pendingSharedPath ? pendingSharedPath.steps.length : null}
+        pendingSteps={pendingReview}
+        pendingText={pendingSharedPath?.rootText}
         starting={running}
         onStart={handleStart}
       />

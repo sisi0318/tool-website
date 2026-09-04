@@ -6,6 +6,7 @@ export const whoisAdapter: ToolAdapter = {
   type: "whois",
   category: "dev",
   label: "Whois",
+  network: true,
   icon: Search,
   config: [
     {
