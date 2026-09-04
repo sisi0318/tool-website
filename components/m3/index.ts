@@ -1,11 +1,10 @@
 /**
  * Material You 3 Expressive Components
- * 
- * Main entry point for M3 UI components.
+ *
+ * 只导出仍在使用的组件。此前这里还导出 button / dialog / input / switch /
+ * search / layout / navigation / context-menu / lazy-content / pull-to-refresh,
+ * 但全站零引用（表单与对话框统一走 components/ui/ 的 shadcn 实现），已删除。
  */
-
-// Button component
-export * from './button';
 
 // Card component
 export * from './card';
@@ -13,41 +12,14 @@ export * from './card';
 // Chip component
 export * from './chip';
 
-// Dialog component
-export * from './dialog';
-
-// Input components
-export * from './input';
-
-// Navigation components
-export * from './navigation';
-
 // Progress components
 export * from './progress';
 
 // Slider component
 export * from './slider';
 
-// Switch component
-export * from './switch';
-
 // Tabs components
 export * from './tabs';
 
-// Layout components
-export * from './layout';
-
 // Bottom Sheet component
 export * from './bottom-sheet';
-
-// Search component
-export * from './search';
-
-// Pull-to-Refresh component
-export * from './pull-to-refresh';
-
-// Context Menu component
-export * from './context-menu';
-
-// Lazy Content component
-export * from './lazy-content';
