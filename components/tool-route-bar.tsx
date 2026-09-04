@@ -7,59 +7,17 @@ import { ArrowLeft, Check, Clipboard, ExternalLink, Search } from "lucide-react"
 
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
+import { TOOL_CATALOG, TOOL_IDS } from "@/lib/tools/catalog"
 
-export const toolTranslationKeys: Record<string, string> = {
-  "base-converter": "baseConverter.name",
-  bmi: "bmi.name",
-  "case-converter": "caseConverter.name",
-  "classic-cipher": "classicCipher.name",
-  color: "color.name",
-  compression: "compression.name",
-  crontab: "crontab.name",
-  crypto: "crypto.name",
-  currency: "currency.name",
-  device: "device.name",
-  "data-detector": "dataDetector.name",
-  diff: "diff.name",
-  "docker-converter": "dockerConverter.name",
-  encoding: "encoding.name",
-  "exif-viewer": "exifViewer.name",
-  hash: "hash.name",
-  hmac: "hmac.name",
-  "http-tester": "httpTester.name",
-  "image-compress": "imageCompress.name",
-  "image-convert": "imageConvert.name",
-  "image-coordinates": "imageCoordinates.name",
-  "image-editor": "imageEditor.name",
-  "image-to-base64": "imageToBase64.name",
-  jce: "jce.name",
-  json: "json.name",
-  jwt: "jwt.name",
-  "meme-splitter": "memeSplitter.name",
-  "office-viewer": "officeViewer.name",
-  "password-generator": "passwordGenerator.name",
-  protobuf: "protobuf.name",
-  qrcode: "qrcode.name",
-  "qrcode-decode": "qrcodeDecoder.name",
-  regex: "regex.name",
-  "temperature-converter": "temperatureConverter.name",
-  "text-stats": "textStats.name",
-  time: "time.name",
-  totp: "totp.name",
-  uuid: "uuid.name",
-  whois: "whois.name",
-  xml: "xmlTools.name",
-  csv: "csvTools.name",
-  markdown: "markdownTools.name",
-  sql: "sqlTools.name",
-  "json-schema": "jsonSchemaTools.name",
-  subnet: "subnetTools.name",
-  certificate: "certificateTools.name",
-  "hex-binary": "hexBinaryTools.name",
-}
+/**
+ * 工具 id → 翻译键，从 lib/tools/catalog.ts 派生。
+ * 这里曾是一份手写表，还额外跟着一份内容完全相同的 workspaceTools 集合。
+ */
+export const toolTranslationKeys: Record<string, string> = Object.fromEntries(
+  TOOL_CATALOG.map((entry) => [entry.id, `${entry.translationKey}.name`]),
+)
 
-// 工作台能承载的工具集合与上面的翻译键表完全一致,由它派生,避免两份清单各自漂移。
-const workspaceTools = new Set(Object.keys(toolTranslationKeys))
+const workspaceTools = new Set(TOOL_IDS)
 
 export function ToolRouteBar() {
   const pathname = usePathname()

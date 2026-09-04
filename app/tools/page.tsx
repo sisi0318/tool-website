@@ -71,55 +71,8 @@ import { ToolRuntimeParamsProvider, type ToolRuntimeParams } from "@/components/
 import { ToolActivityProvider } from "@/components/tool-activity"
 import { useToolPreferences } from "@/hooks/use-tool-preferences"
 import { haveEqualToolParams, uniqueToolIds } from "@/lib/tool-workspace"
-
-// 动态导入工具组件
-const HashCalculator = dynamic(() => import("./hash/page"), { ssr: false })
-const CryptoTool = dynamic(() => import("./crypto/page"), { ssr: false })
-const EncodingTool = dynamic(() => import("./encoding/page"), { ssr: false })
-const ClassicCipherTool = dynamic(() => import("./classic-cipher/page"), { ssr: false })
-const HmacTool = dynamic(() => import("./hmac/page"), { ssr: false })
-const CurrencyTool = dynamic(() => import("./currency/page"), { ssr: false })
-const TimeTool = dynamic(() => import("./time/page"), { ssr: false })
-const QRCodeGenerator = dynamic(() => import("./qrcode/page"), { ssr: false })
-const JsonTool = dynamic(() => import("./json/page"), { ssr: false })
-const ColorPickerTool = dynamic(() => import("./color/page"), { ssr: false })
-const DeviceInfoTool = dynamic(() => import("./device/page"), { ssr: false })
-const ProtobufTool = dynamic(() => import("./protobuf/page"), { ssr: false })
-const BaseConverterTool = dynamic(() => import("./base-converter/page"), { ssr: false })
-const TemperatureConverterPage = dynamic(() => import("./temperature-converter/page"), { ssr: false })
-const DockerConverterPage = dynamic(() => import("./docker-converter/page"), { ssr: false })
-const CrontabTool = dynamic(() => import("./crontab/page"), { ssr: false })
-const ImageToBase64Tool = dynamic(() => import("./image-to-base64/page"), { ssr: false })
-const ExifViewerTool = dynamic(() => import("./exif-viewer/page"), { ssr: false })
-const BMICalculator = dynamic(() => import("./bmi/page"), { ssr: false })
-const RegexTool = dynamic(() => import("./regex/page"), { ssr: false })
-const QRCodeDecoder = dynamic(() => import("./qrcode-decode/page"), { ssr: false })
-const HTTPTester = dynamic(() => import("./http-tester/page"), { ssr: false })
-const WhoisPage = dynamic(() => import("./whois/page"), { ssr: false })
-const UUIDGenerator = dynamic(() => import("./uuid/page"), { ssr: false })
-const JWTParser = dynamic(() => import("./jwt/page"), { ssr: false })
-const TextStats = dynamic(() => import("./text-stats/page"), { ssr: false })
-const ImageCompressTool = dynamic(() => import("./image-compress/page"), { ssr: false })
-const ImageEditorTool = dynamic(() => import("./image-editor/page"), { ssr: false })
-const OfficeViewerTool = dynamic(() => import("./office-viewer/page"), { ssr: false })
-const MemeSplitterTool = dynamic(() => import("./meme-splitter/page"), { ssr: false })
-const ImageCoordinatesTool = dynamic(() => import("./image-coordinates/page"), { ssr: false })
-const CaseConverterTool = dynamic(() => import("./case-converter/page"), { ssr: false })
-const TOTPTool = dynamic(() => import("./totp/page"), { ssr: false })
-const JceTool = dynamic(() => import("./jce/page"), { ssr: false })
-const DiffTool = dynamic(() => import("./diff/page"), { ssr: false })
-const PasswordGeneratorTool = dynamic(() => import("./password-generator/page"), { ssr: false })
-const ImageConvertTool = dynamic(() => import("./image-convert/page"), { ssr: false })
-const DataDetectorTool = dynamic(() => import("./data-detector/page"), { ssr: false })
-const CompressionTool = dynamic(() => import("./compression/page"), { ssr: false })
-const XmlTool = dynamic(() => import("./xml/page"), { ssr: false })
-const CsvTool = dynamic(() => import("./csv/page"), { ssr: false })
-const MarkdownTool = dynamic(() => import("./markdown/page"), { ssr: false })
-const SqlTool = dynamic(() => import("./sql/page"), { ssr: false })
-const JsonSchemaTool = dynamic(() => import("./json-schema/page"), { ssr: false })
-const SubnetTool = dynamic(() => import("./subnet/page"), { ssr: false })
-const CertificateTool = dynamic(() => import("./certificate/page"), { ssr: false })
-const HexBinaryTool = dynamic(() => import("./hex-binary/page"), { ssr: false })
+import { TOOL_CATALOG, getToolEntry, type ToolCategoryId } from "@/lib/tools/catalog"
+import { TOOL_COMPONENTS } from "./tool-components"
 
 function createToolRenderer(Component: React.ComponentType) {
   const ToolRenderer = (params?: ToolRuntimeParams) => (
@@ -132,7 +85,6 @@ function createToolRenderer(Component: React.ComponentType) {
 }
 
 // 工具分类定义 - 图标配色沿用首页精选工具的柔和多色方案
-type ToolCategoryId = "developer" | "security" | "image" | "text" | "network" | "life"
 
 const TOOL_CATEGORIES: { id: ToolCategoryId; accent: string; dot: string }[] = [
   {
@@ -169,61 +121,6 @@ const TOOL_CATEGORIES: { id: ToolCategoryId; accent: string; dot: string }[] = [
 
 const DEFAULT_CATEGORY: ToolCategoryId = "developer"
 
-const TOOL_CATEGORY_MAP: Record<string, ToolCategoryId> = {
-  // 开发工具
-  json: "developer",
-  "json-schema": "developer",
-  xml: "developer",
-  csv: "developer",
-  sql: "developer",
-  regex: "developer",
-  crontab: "developer",
-  "docker-converter": "developer",
-  protobuf: "developer",
-  jce: "developer",
-  "hex-binary": "developer",
-  "base-converter": "developer",
-  encoding: "developer",
-  compression: "developer",
-  "data-detector": "developer",
-  // 安全加密
-  hash: "security",
-  hmac: "security",
-  crypto: "security",
-  "classic-cipher": "security",
-  jwt: "security",
-  totp: "security",
-  "password-generator": "security",
-  uuid: "security",
-  certificate: "security",
-  // 图片处理
-  "image-compress": "image",
-  "image-convert": "image",
-  "image-editor": "image",
-  "image-to-base64": "image",
-  "exif-viewer": "image",
-  "meme-splitter": "image",
-  "image-coordinates": "image",
-  qrcode: "image",
-  "qrcode-decode": "image",
-  // 文本文档
-  "text-stats": "text",
-  "case-converter": "text",
-  diff: "text",
-  markdown: "text",
-  "office-viewer": "text",
-  // 网络
-  "http-tester": "network",
-  whois: "network",
-  subnet: "network",
-  // 生活实用
-  currency: "life",
-  time: "life",
-  bmi: "life",
-  "temperature-converter": "life",
-  color: "life",
-  device: "life",
-}
 
 // 标签页类型
 interface ToolTabType {
@@ -335,291 +232,19 @@ export default function ToolsPage() {
 
 
   // 工具定义 - 使用useMemo避免重复创建
+  // 工具清单来自 lib/tools/catalog.ts,图标与页面组件来自 tool-components.tsx。
+  // 这里曾是一份 280 行的手写数组,与目录、搜索索引、路由栏各自漂移。
   const toolDefinitions = useMemo(
-    () => [
-      {
-        id: "hash",
-        title: t("hash.name"),
-        icon: <Hash className="h-4 w-4" />,
-        getComponent: createToolRenderer(HashCalculator),
-      },
-      {
-        id: "crypto",
-        title: t("crypto.name"),
-        icon: <Lock className="h-4 w-4" />,
-        getComponent: createToolRenderer(CryptoTool),
-      },
-      {
-        id: "encoding",
-        title: t("encoding.name"),
-        icon: <Code className="h-4 w-4" />,
-        getComponent: createToolRenderer(EncodingTool),
-      },
-      {
-        id: "classic-cipher",
-        title: t("classicCipher.name"),
-        icon: <History className="h-4 w-4" />,
-        getComponent: createToolRenderer(ClassicCipherTool),
-      },
-      {
-        id: "hmac",
-        title: t("hmac.name"),
-        icon: <Key className="h-4 w-4" />,
-        getComponent: createToolRenderer(HmacTool),
-      },
-      {
-        id: "currency",
-        title: t("currency.name"),
-        icon: <TrendingUp className="h-4 w-4" />,
-        getComponent: createToolRenderer(CurrencyTool),
-      },
-      {
-        id: "time",
-        title: t("time.name"),
-        icon: <Clock className="h-4 w-4" />,
-        getComponent: createToolRenderer(TimeTool),
-      },
-      {
-        id: "qrcode",
-        title: t("qrcode.name"),
-        icon: <QrCode className="h-4 w-4" />,
-        getComponent: createToolRenderer(QRCodeGenerator),
-      },
-      {
-        id: "json",
-        title: t("json.name"),
-        icon: <FileJson className="h-4 w-4" />,
-        getComponent: createToolRenderer(JsonTool),
-      },
-      {
-        id: "color",
-        title: t("color.name"),
-        icon: <CircleDot className="h-4 w-4" />,
-        getComponent: createToolRenderer(ColorPickerTool),
-      },
-      {
-        id: "device",
-        title: t("device.name"),
-        icon: <Smartphone className="h-4 w-4" />,
-        getComponent: createToolRenderer(DeviceInfoTool),
-      },
-      {
-        id: "protobuf",
-        title: t("protobuf.name"),
-        icon: <Layers className="h-4 w-4" />,
-        getComponent: createToolRenderer(ProtobufTool),
-      },
-      {
-        id: "base-converter",
-        title: t("baseConverter.name"),
-        icon: <Calculator className="h-4 w-4" />,
-        getComponent: createToolRenderer(BaseConverterTool),
-      },
-      {
-        id: "temperature-converter",
-        title: t("temperatureConverter.name"),
-        icon: <Thermometer className="h-4 w-4" />,
-        getComponent: createToolRenderer(TemperatureConverterPage),
-      },
-      {
-        id: "docker-converter",
-        title: t("dockerConverter.name"),
-        icon: <Container className="h-4 w-4" />,
-        getComponent: createToolRenderer(DockerConverterPage),
-      },
-      {
-        id: "crontab",
-        title: t("crontab.name"),
-        icon: <CalendarClock className="h-4 w-4" />,
-        getComponent: createToolRenderer(CrontabTool),
-      },
-      {
-        id: "image-to-base64",
-        title: t("imageToBase64.name"),
-        icon: <Image className="h-4 w-4" />,
-        getComponent: createToolRenderer(ImageToBase64Tool),
-      },
-      {
-        id: "exif-viewer",
-        title: t("exifViewer.name"),
-        icon: <Camera className="h-4 w-4" />,
-        getComponent: createToolRenderer(ExifViewerTool),
-      },
-      {
-        id: "bmi",
-        title: t("bmi.name"),
-        icon: <ClipboardList className="h-4 w-4" />,
-        getComponent: createToolRenderer(BMICalculator),
-      },
-      {
-        id: "regex",
-        title: t("regex.name"),
-        icon: <Regex className="h-4 w-4" />,
-        getComponent: createToolRenderer(RegexTool),
-      },
-      {
-        id: "qrcode-decode",
-        title: t("qrcodeDecoder.name"),
-        icon: <ScanQrCode className="h-4 w-4" />,
-        getComponent: createToolRenderer(QRCodeDecoder),
-      },
-      {
-        id: "http-tester",
-        title: t("httpTester.name"),
-        icon: <PanelTop className="h-4 w-4" />,
-        getComponent: createToolRenderer(HTTPTester),
-      },
-      {
-        id: "whois",
-        title: t("whois.name"),
-        icon: <Globe2 className="h-4 w-4" />,
-        getComponent: createToolRenderer(WhoisPage),
-      },
-      {
-        id: "uuid",
-        title: t("uuid.name"),
-        icon: <Dices className="h-4 w-4" />,
-        getComponent: createToolRenderer(UUIDGenerator),
-      },
-      {
-        id: "jwt",
-        title: t("jwt.name"),
-        icon: <LockKeyhole className="h-4 w-4" />,
-        getComponent: createToolRenderer(JWTParser),
-      },
-      {
-        id: "text-stats",
-        title: t("textStats.name"),
-        icon: <PenLine className="h-4 w-4" />,
-        getComponent: createToolRenderer(TextStats),
-      },
-      {
-        id: "image-compress",
-        title: t("imageCompress.name"),
-        icon: <FileImage className="h-4 w-4" />,
-        getComponent: createToolRenderer(ImageCompressTool),
-      },
-      {
-        id: "image-editor",
-        title: t("imageEditor.name"),
-        icon: <WandSparkles className="h-4 w-4" />,
-        getComponent: createToolRenderer(ImageEditorTool),
-      },
-      {
-        id: "office-viewer",
-        title: t("officeViewer.name"),
-        icon: <FileText className="h-4 w-4" />,
-        getComponent: createToolRenderer(OfficeViewerTool),
-      },
-      {
-        id: "meme-splitter",
-        title: t("memeSplitter.name"),
-        icon: <Grid3X3 className="h-4 w-4" />,
-        getComponent: createToolRenderer(MemeSplitterTool),
-      },
-      {
-        id: "image-coordinates",
-        title: t("imageCoordinates.name"),
-        icon: <Crosshair className="h-4 w-4" />,
-        getComponent: createToolRenderer(ImageCoordinatesTool),
-      },
-      {
-        id: "case-converter",
-        title: t("caseConverter.name"),
-        icon: <CaseSensitive className="h-4 w-4" />,
-        getComponent: createToolRenderer(CaseConverterTool),
-      },
-      {
-        id: "totp",
-        title: t("totp.name"),
-        icon: <LockKeyhole className="h-4 w-4" />,
-        getComponent: createToolRenderer(TOTPTool),
-      },
-      {
-        id: "jce",
-        title: t("jce.name"),
-        icon: <FileCode2 className="h-4 w-4" />,
-        getComponent: createToolRenderer(JceTool),
-      },
-      {
-        id: "image-convert",
-        title: t("imageConvert.name"),
-        icon: <ImageDown className="h-4 w-4" />,
-        getComponent: createToolRenderer(ImageConvertTool),
-      },
-      {
-        id: "password-generator",
-        title: t("passwordGenerator.name"),
-        icon: <KeyRound className="h-4 w-4" />,
-        getComponent: createToolRenderer(PasswordGeneratorTool),
-      },
-      {
-        id: "data-detector",
-        title: t("dataDetector.name"),
-        icon: <ScanSearch className="h-4 w-4" />,
-        getComponent: createToolRenderer(DataDetectorTool),
-      },
-      {
-        id: "compression",
-        title: t("compression.name"),
-        icon: <Archive className="h-4 w-4" />,
-        getComponent: createToolRenderer(CompressionTool),
-      },
-      {
-        id: "xml",
-        title: t("xmlTools.name"),
-        icon: <FileCode2 className="h-4 w-4" />,
-        getComponent: createToolRenderer(XmlTool),
-      },
-      {
-        id: "csv",
-        title: t("csvTools.name"),
-        icon: <Table2 className="h-4 w-4" />,
-        getComponent: createToolRenderer(CsvTool),
-      },
-      {
-        id: "markdown",
-        title: t("markdownTools.name"),
-        icon: <FileText className="h-4 w-4" />,
-        getComponent: createToolRenderer(MarkdownTool),
-      },
-      {
-        id: "sql",
-        title: t("sqlTools.name"),
-        icon: <Database className="h-4 w-4" />,
-        getComponent: createToolRenderer(SqlTool),
-      },
-      {
-        id: "json-schema",
-        title: t("jsonSchemaTools.name"),
-        icon: <Braces className="h-4 w-4" />,
-        getComponent: createToolRenderer(JsonSchemaTool),
-      },
-      {
-        id: "subnet",
-        title: t("subnetTools.name"),
-        icon: <Network className="h-4 w-4" />,
-        getComponent: createToolRenderer(SubnetTool),
-      },
-      {
-        id: "certificate",
-        title: t("certificateTools.name"),
-        icon: <ShieldCheck className="h-4 w-4" />,
-        getComponent: createToolRenderer(CertificateTool),
-      },
-      {
-        id: "hex-binary",
-        title: t("hexBinaryTools.name"),
-        icon: <Binary className="h-4 w-4" />,
-        getComponent: createToolRenderer(HexBinaryTool),
-      },
-      {
-        id: "diff",
-        title: t("diff.name"),
-        icon: <GitCompareArrows className="h-4 w-4" />,
-        getComponent: createToolRenderer(DiffTool),
-      },
-    ],
+    () =>
+      TOOL_CATALOG.map((entry) => {
+        const Icon = TOOL_COMPONENTS[entry.id].icon
+        return {
+          id: entry.id,
+          title: t(`${entry.translationKey}.name`),
+          icon: <Icon className="h-4 w-4" />,
+          getComponent: createToolRenderer(TOOL_COMPONENTS[entry.id].load),
+        }
+      }),
     [t],
   )
 
@@ -649,7 +274,7 @@ export default function ToolsPage() {
       TOOL_CATEGORIES.map((category) => ({
         ...category,
         tools: toolDefinitions.filter(
-          (tool) => (TOOL_CATEGORY_MAP[tool.id] ?? DEFAULT_CATEGORY) === category.id,
+          (tool) => (getToolEntry(tool.id)?.category ?? DEFAULT_CATEGORY) === category.id,
         ),
       })),
     [toolDefinitions],
@@ -658,55 +283,10 @@ export default function ToolsPage() {
   // 初始化可搜索功能
   useEffect(() => {
     try {
-      const translations = {
-        hash: { name: t("hash.name") },
-        crypto: { name: t("crypto.name") },
-        encoding: { name: t("encoding.name") },
-        classicCipher: { name: t("classicCipher.name") },
-        hmac: { name: t("hmac.name") },
-        currency: { name: t("currency.name") },
-        time: { name: t("time.name") },
-        qrcode: { name: t("qrcode.name") },
-        qrcodeDecoder: { name: t("qrcodeDecoder.name") },
-        json: { name: t("json.name") },
-        color: { name: t("color.name") },
-        device: { name: t("device.name") },
-        protobuf: { name: t("protobuf.name") },
-        baseConverter: { name: t("baseConverter.name") },
-        temperatureConverter: { name: t("temperatureConverter.name") },
-        dockerConverter: { name: t("dockerConverter.name") },
-        crontab: { name: t("crontab.name") },
-        imageToBase64: { name: t("imageToBase64.name") },
-        exifViewer: { name: t("exifViewer.name") },
-        bmi: { name: t("bmi.name") },
-        regex: { name: t("regex.name") },
-        httpTester: { name: t("httpTester.name") },
-        whois: { name: t("whois.name") },
-        imageCompress: { name: t("imageCompress.name") },
-        imageEditor: { name: t("imageEditor.name") },
-        imageCoordinates: { name: t("imageCoordinates.name") },
-        caseConverter: { name: t("caseConverter.name") },
-        totp: { name: t("totp.name") },
-        jce: { name: t("jce.name") },
-        diff: { name: t("diff.name") },
-        passwordGenerator: { name: t("passwordGenerator.name") },
-        uuid: { name: t("uuid.name") },
-        jwt: { name: t("jwt.name") },
-        textStats: { name: t("textStats.name") },
-        imageConvert: { name: t("imageConvert.name") },
-        officeViewer: { name: t("officeViewer.name") },
-        memeSplitter: { name: t("memeSplitter.name") },
-        dataDetector: { name: t("dataDetector.name") },
-        compression: { name: t("compression.name") },
-        xmlTools: { name: t("xmlTools.name") },
-        csvTools: { name: t("csvTools.name") },
-        markdownTools: { name: t("markdownTools.name") },
-        sqlTools: { name: t("sqlTools.name") },
-        jsonSchemaTools: { name: t("jsonSchemaTools.name") },
-        subnetTools: { name: t("subnetTools.name") },
-        certificateTools: { name: t("certificateTools.name") },
-        hexBinaryTools: { name: t("hexBinaryTools.name") },
-      }
+      // 搜索索引需要每个工具的本地化名称,直接按目录取,不再手写 47 行映射
+      const translations = Object.fromEntries(
+        TOOL_CATALOG.map((entry) => [entry.translationKey, { name: t(`${entry.translationKey}.name`) }]),
+      )
 
       const validTranslations = Object.entries(translations).reduce(
         (acc: Record<string, { name: string }>, [key, value]) => {

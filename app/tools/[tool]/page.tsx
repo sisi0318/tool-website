@@ -1,8 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 
-import { TOOL_IDS } from "@/lib/tool-metadata"
-
-const KNOWN_TOOL_IDS = new Set(TOOL_IDS)
+import { isKnownToolId } from "@/lib/tools/catalog"
 
 /**
  * 每个工具都有自己的 app/tools/<id>/page.tsx,静态路由优先级更高,
@@ -26,7 +24,7 @@ export default async function ToolAliasPage({
     .map((id) => id.trim())
     .filter(Boolean)
 
-  if (toolIds.length === 0 || !toolIds.every((id) => KNOWN_TOOL_IDS.has(id))) {
+  if (toolIds.length === 0 || !toolIds.every(isKnownToolId)) {
     notFound()
   }
 

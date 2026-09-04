@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next"
-import { TOOL_IDS } from "@/lib/tool-metadata"
+import { TOOL_IDS } from "@/lib/tools/catalog"
 import { getSiteUrl } from "@/lib/site-url"
 
 export default function sitemap(): MetadataRoute.Sitemap {
