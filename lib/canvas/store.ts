@@ -9,6 +9,7 @@ import type {
 } from "./types"
 import { getNodeDefinition } from "./registry"
 import { createBypassOutputs, topologicalSort } from "./engine"
+import { convertPortValue, resolveInputPortType, resolveOutputPortType } from "./convert-value"
 import { validateConnectionStructure } from "./validation"
 import { normalizeWorkflowData } from "./workflow"
 import { stripUnpersistableNodes } from "./persist"
@@ -956,10 +957,52 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const incomingEdges = state.edges.filter((e) => e.target === nodeId)
     const inputs: Record<string, unknown> = {}
 
+    // 跨类型连线在边上显式转换。此前是原样透传,由各适配器自己 String()/Number(),
+    // 于是 json→string 得到 "[object Object]"、string→number 得到 NaN,
+    // 节点看起来跑成功了但结果是错的。
     for (const edge of incomingEdges) {
       const sourceOutput = state.nodeOutputs[edge.source]
-      if (sourceOutput && edge.sourcePort in sourceOutput) {
-        inputs[edge.targetPort] = sourceOutput[edge.sourcePort]
+      if (!sourceOutput || !(edge.sourcePort in sourceOutput)) continue
+
+      const raw = sourceOutput[edge.sourcePort]
+      const sourceNode = state.nodes.find((candidate) => candidate.id === edge.source)
+      const sourceDefinition = sourceNode ? getNodeDefinition(sourceNode.type) : undefined
+      const fromType = sourceDefinition
+        ? resolveOutputPortType(sourceDefinition, edge.sourcePort)
+        : undefined
+      const toType = resolveInputPortType(definition, edge.targetPort)
+
+      if (fromType === undefined || toType === undefined) {
+        // 端口类型查不到（旧数据或已改名的端口）时保持原样,不阻断执行
+        inputs[edge.targetPort] = raw
+        continue
+      }
+
+      try {
+        inputs[edge.targetPort] = convertPortValue(raw, fromType, toType)
+      } catch (error) {
+        // 转换失败要显示成节点错误,而不是抛出去打断整轮执行
+        const message = error instanceof Error ? error.message : String(error)
+        set((s) => ({
+          nodeErrors: { ...s.nodeErrors, [nodeId]: message },
+          nodeOutputs: Object.fromEntries(
+            Object.entries(s.nodeOutputs).filter(([id]) => id !== nodeId),
+          ),
+          nodeRunning: { ...s.nodeRunning, [nodeId]: false },
+          executionLog: [
+            ...s.executionLog,
+            {
+              id: runToken,
+              nodeId,
+              nodeType: node.type,
+              status: "error" as const,
+              startedAt,
+              durationMs: 0,
+              error: message,
+            },
+          ].slice(-MAX_EXECUTION_LOG_ENTRIES),
+        }))
+        return
       }
     }
 

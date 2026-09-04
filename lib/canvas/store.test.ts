@@ -1130,3 +1130,95 @@ describe("取消与并发执行", () => {
     )
   })
 })
+
+describe("跨类型连线的值转换", () => {
+  /** 带具体端口类型的定义，用于验证边上的转换 */
+  const registerTyped = (
+    harness: TestHarness,
+    type: string,
+    outputType: NodeDefinition["outputs"][number]["dataType"],
+    inputType: NodeDefinition["outputs"][number]["dataType"] | null,
+    execute: NodeDefinition["execute"],
+  ) => {
+    harness.registry.registerNode({
+      type,
+      category: "basic",
+      label: type,
+      icon: () => null,
+      config: inputType
+        ? [{ id: "in", name: "输入", dataType: inputType, hasInput: true }]
+        : [],
+      outputs: [{ id: "out", name: "输出", dataType: outputType }],
+      execute,
+    })
+  }
+
+  it("json → string 传的是序列化结果，而不是 [object Object]", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    const sink = vi.fn(async (inputs: Record<string, unknown>) => ({ out: String(inputs.in) }))
+
+    registerTyped(harness, "json-src", "json", null, async () => ({ out: { b: 1, a: 2 } }))
+    registerTyped(harness, "string-sink", "string", "string", sink)
+
+    useCanvasStore.setState({
+      nodes: [node("a", "json-src"), node("b", "string-sink")],
+      edges: [edge("a-b", "a", "b", "out", "in")],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+    await useCanvasStore.getState().executeAll()
+
+    expect(sink).toHaveBeenCalledWith(
+      { in: '{"b":1,"a":2}' },
+      expect.anything(),
+      expect.anything(),
+    )
+    expect(useCanvasStore.getState().nodeErrors.b).toBeUndefined()
+  })
+
+  it("string → number 转不过去时节点报错，而不是把 NaN 传下去", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    const sink = vi.fn(async () => ({ out: "should not run" }))
+
+    registerTyped(harness, "text-src", "string", null, async () => ({ out: "abc" }))
+    registerTyped(harness, "number-sink", "string", "number", sink)
+
+    useCanvasStore.setState({
+      nodes: [node("a", "text-src"), node("b", "number-sink")],
+      edges: [edge("a-b", "a", "b", "out", "in")],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+    await useCanvasStore.getState().executeAll()
+
+    expect(sink).not.toHaveBeenCalled()
+    expect(useCanvasStore.getState().nodeErrors.b).toMatch(/不是数值/)
+    expect(useCanvasStore.getState().nodeOutputs.b).toBeUndefined()
+    // 转换失败不应把节点卡在“运行中”
+    expect(useCanvasStore.getState().nodeRunning.b).toBe(false)
+  })
+
+  it('string "false" → boolean 得到 false', async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    const sink = vi.fn(async (inputs: Record<string, unknown>) => ({ out: String(inputs.in) }))
+
+    registerTyped(harness, "false-src", "string", null, async () => ({ out: "false" }))
+    registerTyped(harness, "bool-sink", "string", "boolean", sink)
+
+    useCanvasStore.setState({
+      nodes: [node("a", "false-src"), node("b", "bool-sink")],
+      edges: [edge("a-b", "a", "b", "out", "in")],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+    await useCanvasStore.getState().executeAll()
+
+    expect(sink).toHaveBeenCalledWith({ in: false }, expect.anything(), expect.anything())
+  })
+})
