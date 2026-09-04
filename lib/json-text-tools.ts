@@ -31,3 +31,21 @@ export function tryRepairCommonJson(value: string): unknown | null {
     return null
   }
 }
+
+/**
+ * 递归按键名排序。
+ *
+ * 不能用 `JSON.stringify(value, Object.keys(value).sort())`:replacer 数组是
+ * 作用于所有层级的键名白名单,嵌套对象里不在顶层键名表中的字段会被整体丢弃
+ * (`{"b":{"x":1},"a":2}` 会变成 `{"a":2,"b":{}}`),数组还会退化成按索引筛选。
+ */
+export function sortJsonKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJsonKeys)
+  if (value === null || typeof value !== "object") return value
+
+  return Object.fromEntries(
+    Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map((key) => [key, sortJsonKeys((value as Record<string, unknown>)[key])]),
+  )
+}

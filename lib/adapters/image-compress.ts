@@ -3,6 +3,26 @@ import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
 
+/**
+ * "保持原格式"应当真的保持原格式。旧实现只认 png/webp,
+ * gif / bmp / avif / tiff 会被一律转成 JPEG,带透明通道的图因此变黑底。
+ */
+const RECOMPRESSABLE_MIME_TYPES = new Set([
+  "image/png",
+  "image/webp",
+  "image/jpeg",
+  "image/gif",
+  "image/bmp",
+  "image/avif",
+])
+
+function preservedMimeType(sourceType: string): string {
+  // canvas 无法输出 gif 动画等格式时,浏览器会回退到 PNG(无损、保留 alpha),
+  // 这比静默压成 JPEG 更安全。
+  if (RECOMPRESSABLE_MIME_TYPES.has(sourceType)) return sourceType
+  return "image/png"
+}
+
 export const imageCompressAdapter: ToolAdapter = {
   type: "image-compress",
   category: "image",
@@ -53,18 +73,24 @@ export const imageCompressAdapter: ToolAdapter = {
     const quality = Number(inputs.quality ?? config.quality ?? 80) / 100
     const format = String(inputs.outputFormat ?? config.outputFormat ?? "original")
     const originalSize = file.size
+    let dimensions = ""
 
     const bitmap = await createImageBitmap(file)
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
-    const ctx = canvas.getContext("2d")!
-    ctx.drawImage(bitmap, 0, 0)
-    bitmap.close()
+    let blob: Blob
+    let mimeType: string
+    try {
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+      const ctx = canvas.getContext("2d")!
+      // 有透明通道的源图必须保留 alpha,否则转 JPEG 后透明区域会变黑。
+      ctx.drawImage(bitmap, 0, 0)
 
-    const mimeType = format === "original"
-      ? (file.type === "image/png" ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg")
-      : `image/${format}`
-
-    const blob = await canvas.convertToBlob({ type: mimeType, quality })
+      mimeType = format === "original" ? preservedMimeType(file.type) : `image/${format}`
+      blob = await canvas.convertToBlob({ type: mimeType, quality })
+      dimensions = `${canvas.width}x${canvas.height}`
+    } finally {
+      // 出错路径下也要释放,否则大图会一直占着解码后的位图内存。
+      bitmap.close()
+    }
     const ext = mimeType.split("/")[1]
     const outFile = new File([blob], file.name.replace(/\.[^.]+$/, `.${ext}`), { type: mimeType })
 
@@ -74,7 +100,7 @@ export const imageCompressAdapter: ToolAdapter = {
         originalSize,
         compressedSize: outFile.size,
         ratio: `${((1 - outFile.size / originalSize) * 100).toFixed(1)}%`,
-        dimensions: `${canvas.width}x${canvas.height}`,
+        dimensions,
         format: mimeType,
       },
     }

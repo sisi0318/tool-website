@@ -1,6 +1,7 @@
 import { FileJson } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { sortJsonKeys } from "../json-text-tools"
 
 export const jsonFormatAdapter: ToolAdapter = {
   type: "json-format",
@@ -40,19 +41,22 @@ export const jsonFormatAdapter: ToolAdapter = {
     { id: "minified", name: "Minified", dataType: "string" },
   ],
   async execute(inputs, config) {
-    const data = String(inputs.data ?? config.data ?? "")
+    const raw = inputs.data ?? config.data ?? ""
     const indent = Number(inputs.indent ?? config.indent ?? 2)
     const sortKeys = inputs.sortKeys ?? config.sortKeys ?? false
 
     try {
-      const parsed = JSON.parse(data)
-      const replacer = sortKeys ? Object.keys(parsed).sort() : undefined
+      // 上游端口可能直接送来已解析的对象(json→string 被视为兼容连接),
+      // 这时 String(...) 会得到 "[object Object]" 并必然解析失败。
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw
+      if (parsed === undefined) throw new Error("no input")
+      const value = sortKeys ? sortJsonKeys(parsed) : parsed
       return {
-        formatted: JSON.stringify(parsed, replacer, indent),
-        minified: JSON.stringify(parsed, replacer),
+        formatted: JSON.stringify(value, null, indent),
+        minified: JSON.stringify(value),
       }
     } catch (error) {
-      throw new Error(`JSON format error: ${error}`)
+      throw new Error(`JSON format error: ${error instanceof Error ? error.message : String(error)}`)
     }
   },
 }

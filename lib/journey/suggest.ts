@@ -33,15 +33,30 @@ const CURATED: Partial<Record<DetectedDataType, CuratedEntry[]>> = {
   ],
   hex: [
     { tool: "encoding", label: "Hex decode", config: { encoding: "hex", mode: "decode" }, score: 100 },
-    { tool: "base-converter", label: "Convert base", score: 60 },
+    { tool: "base-converter", label: "Convert base", config: { fromBase: "16" }, score: 60 },
   ],
   xml: [{ tool: "xml", label: "Format XML", score: 90 }],
   timestamp: [{ tool: "time", label: "Convert timestamp", score: 90 }],
   pem: [{ tool: "certificate", label: "Inspect certificate", score: 100 }],
   csv: [{ tool: "csv", label: "Parse CSV", score: 90 }],
   uuid: [],
-  gzip: [{ tool: "compression", label: "Decompress", config: { operation: "decompress" }, score: 90 }],
-  zip: [{ tool: "compression", label: "Extract archive", config: { operation: "decompress" }, score: 90 }],
+  gzip: [
+    {
+      tool: "compression",
+      label: "Decompress",
+      // 识别器只在 base64 文本上判定 gzip,因此必须显式声明输入编码与格式。
+      config: { operation: "decompress", format: "gzip", inputEncoding: "base64", outputEncoding: "text" },
+      score: 90,
+    },
+  ],
+  zip: [
+    {
+      tool: "compression",
+      label: "Extract archive",
+      config: { operation: "decompress", format: "zip", inputEncoding: "base64", outputEncoding: "text" },
+      score: 90,
+    },
+  ],
   "plain-text": [
     { tool: "hash", label: "Hash", score: 60 },
     { tool: "encoding", label: "Base64 encode", config: { encoding: "base64", mode: "encode" }, score: 55 },
@@ -61,11 +76,14 @@ const BYTES_CURATED: CuratedEntry[] = [
   { tool: "file-to-string", label: "File to text", score: 55 },
 ]
 
+// hash 的主输入是 string,bytes 无法直接喂进去;要哈希文件先经 file-to-string / file-to-base64。
 const GENERIC_BYTES: CuratedEntry[] = [
   { tool: "file-to-base64", label: "File to Base64", score: 60 },
   { tool: "file-to-string", label: "File to text", score: 55 },
-  { tool: "hash", label: "Hash file", score: 50 },
 ]
+
+/** 供测试遍历:每条精选建议都应能在真实注册表下通过校验并成功执行。 */
+export const CURATED_MATRIX = { byDetection: CURATED, imageBytes: BYTES_CURATED, genericBytes: GENERIC_BYTES }
 
 const EXCLUDED_CATEGORIES = new Set(["basic"])
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest"
 import { getNodeDefinition, clearRegistry } from "../canvas/registry"
 import { registerBasicNodes } from "../adapters/basic"
 import { registerHashAdapter } from "../adapters/hash"
@@ -299,6 +299,33 @@ describe("Adapter Execute Functions", () => {
     })
   })
 
+  describe("JSON Path - 路径解析", () => {
+    const run = async (json: unknown, path: string) => {
+      const def = getNodeDefinition("json-path")!
+      return def.execute({ json, path }, {})
+    }
+
+    it("支持含点与引号的键名", async () => {
+      const result = await run({ "a.b": { c: 1 } }, '$["a.b"].c')
+      expect(result.number).toBe(1)
+    })
+
+    it("区分数组下标与对象数字键", async () => {
+      expect((await run({ list: [10, 20] }, "$.list[1]")).number).toBe(20)
+      expect((await run({ "0": "zero" }, "$.0")).string).toBe("zero")
+    })
+
+    it("取不到值时 number 是 NaN 而不是被伪装成 0", async () => {
+      const result = await run({ a: {} }, "$.a.missing")
+      expect(Number.isNaN(result.number)).toBe(true)
+    })
+
+    it("拒绝非法路径", async () => {
+      await expect(run({}, "$.a[")).rejects.toThrow(/Unclosed/)
+      await expect(run({}, "$.a[x]")).rejects.toThrow(/Invalid array index/)
+    })
+  })
+
   describe("JSON Format", () => {
     it("formats JSON with indent", async () => {
       const def = getNodeDefinition("json-format")!
@@ -465,25 +492,79 @@ describe("Adapter Execute Functions", () => {
     })
   })
 
+  describe("持久化残留的文件值", () => {
+    it("重载后 config.file 变成 `{}` 时给出明确错误,而不是 TypeError", async () => {
+      // JSON.stringify(File) === "{}",旧版本存下来的画布仍可能带着这种坏值。
+      for (const type of ["file-to-base64", "file-to-string", "image-preview"]) {
+        const def = getNodeDefinition(type)!
+        await expect(def.execute({}, { file: {} })).rejects.toThrow(/file/i)
+      }
+    })
+  })
+
+  describe("JSON Format — 回归", () => {
+    it("接受上游直接送来的对象,而不是 String(obj)", async () => {
+      const def = getNodeDefinition("json-format")!
+      const result = await def.execute({ data: { a: 1, b: [2, 3] } }, {})
+      expect(JSON.parse(String(result.minified))).toEqual({ a: 1, b: [2, 3] })
+    })
+
+    it("sortKeys 递归排序且不丢嵌套字段", async () => {
+      const def = getNodeDefinition("json-format")!
+      const result = await def.execute({ data: '{"b":{"x":1},"a":2}', sortKeys: true }, {})
+      expect(result.minified).toBe('{"a":2,"b":{"x":1}}')
+    })
+
+    it("sortKeys 对数组不再退化成按索引筛选", async () => {
+      const def = getNodeDefinition("json-format")!
+      const result = await def.execute({ data: '[{"b":1,"a":2}]', sortKeys: true }, {})
+      expect(result.minified).toBe('[{"a":2,"b":1}]')
+    })
+  })
+
   describe("Currency", () => {
+    // 这几个用例原本直接请求 open.er-api.com:结果不确定,离线必挂,还会消耗上游额度。
+    beforeEach(() => {
+      window.localStorage.clear()
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => ({ result: "success", rates: { USD: 1, EUR: 0.92, CNY: 7.2 } }),
+        }),
+      )
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      window.localStorage.clear()
+    })
+
     it("converts USD to EUR", async () => {
       const def = getNodeDefinition("currency")!
       const result = await def.execute({ amount: 100, from: "USD", to: "EUR" }, {})
-      expect(typeof result.converted).toBe("number")
-      expect(result.converted).toBeGreaterThan(0)
+      expect(result.converted).toBeCloseTo(92)
     })
 
     it("returns rate", async () => {
       const def = getNodeDefinition("currency")!
       const result = await def.execute({ amount: 100, from: "USD", to: "CNY" }, {})
-      expect(typeof result.rate).toBe("number")
-      expect(result.rate).toBeGreaterThan(0)
+      expect(result.rate).toBeCloseTo(7.2)
     })
 
     it("defaults to 0 amount", async () => {
       const def = getNodeDefinition("currency")!
       const result = await def.execute({}, {})
       expect(result.converted).toBe(0)
+    })
+
+    it("不会在单测里真的联网", async () => {
+      const def = getNodeDefinition("currency")!
+      await def.execute({ amount: 1, from: "USD", to: "EUR" }, {})
+      const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      expect(calls.length).toBeGreaterThan(0)
+      expect(String(calls[0][0])).toContain("open.er-api.com")
     })
   })
 

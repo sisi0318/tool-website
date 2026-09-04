@@ -60,7 +60,10 @@ export const httpTesterAdapter: ToolAdapter = {
   async execute(inputs, config) {
     const url = String(inputs.url ?? config.url ?? "")
     const method = String(inputs.method ?? config.method ?? "GET")
-    const body = inputs.body ? String(inputs.body) : config.body ? String(config.body) : undefined
+    // 用真值判断会让"上游显式给了空 body"退回到 config 里的旧 body。
+    // 只要端口上有值(哪怕是空串)就以它为准。
+    const rawBody = inputs.body !== undefined && inputs.body !== null ? inputs.body : config.body
+    const body = rawBody === undefined || rawBody === null ? undefined : String(rawBody)
     const headersStr = String(inputs.headers ?? config.headers ?? "{}")
 
     if (!url) {
@@ -79,14 +82,22 @@ export const httpTesterAdapter: ToolAdapter = {
       throw e
     }
 
+    // headers 解析失败与网络失败以前共用一条 "HTTP error" 文案,难以区分。
+    let headers: Record<string, string>
     try {
-      const headers: Record<string, string> = JSON.parse(headersStr)
+      headers = JSON.parse(headersStr)
+    } catch {
+      throw new Error("Headers must be a JSON object")
+    }
+
+    try {
       const options: RequestInit = {
         method,
         headers,
       }
 
-      if (body && method !== "GET") {
+      // 空串是合法的请求体,不能用真值判断丢掉。
+      if (body !== undefined && method !== "GET" && method !== "HEAD") {
         options.body = body
       }
 

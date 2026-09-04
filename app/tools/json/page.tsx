@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import yaml from "js-yaml"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
-import { escapeJsonText, tryRepairCommonJson, unescapeJsonText } from "@/lib/json-text-tools"
+import { escapeJsonText, sortJsonKeys, tryRepairCommonJson, unescapeJsonText } from "@/lib/json-text-tools"
 import { downloadBlob } from "@/lib/object-url"
 
 export default function JsonTool() {
@@ -87,10 +87,8 @@ export default function JsonTool() {
           repaired === null
             ? null
             : JSON.stringify(
-                repaired,
-                sortKeys && repaired && typeof repaired === "object" && !Array.isArray(repaired)
-                  ? Object.keys(repaired).sort()
-                  : null,
+                sortKeys ? sortJsonKeys(repaired) : repaired,
+                null,
                 useTab ? "\t" : indentSize,
               ),
         )
@@ -104,7 +102,7 @@ export default function JsonTool() {
   const formatJson = () => {
     try {
       const parsed = JSON.parse(jsonText)
-      const formatted = JSON.stringify(parsed, sortKeys ? Object.keys(parsed).sort() : null, useTab ? "\t" : indentSize)
+      const formatted = JSON.stringify(sortKeys ? sortJsonKeys(parsed) : parsed, null, useTab ? "\t" : indentSize)
       setJsonText(formatted)
       setError(null)
       setErrorPosition(null)
@@ -130,10 +128,8 @@ export default function JsonTool() {
           repaired === null
             ? null
             : JSON.stringify(
-                repaired,
-                sortKeys && repaired && typeof repaired === "object" && !Array.isArray(repaired)
-                  ? Object.keys(repaired).sort()
-                  : null,
+                sortKeys ? sortJsonKeys(repaired) : repaired,
+                null,
                 useTab ? "\t" : indentSize,
               ),
         )
@@ -220,8 +216,8 @@ export default function JsonTool() {
     try {
       const parsed = yaml.load(jsonText)
       const formatted = JSON.stringify(
-        parsed,
-        sortKeys ? Object.keys(parsed as object).sort() : null,
+        sortKeys ? sortJsonKeys(parsed) : parsed,
+        null,
         useTab ? "\t" : indentSize,
       )
       setJsonText(formatted)
