@@ -1,5 +1,6 @@
 "use client"
 
+import { formatFileSizeLimit, SERVER_HASH_MAX_BYTES } from "@/lib/file-limits"
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
 
 import type React from "react"
@@ -18,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
-import { Copy, Check, Upload, FileText, X } from "lucide-react"
+import { Copy, Check, Upload, FileText, Info, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -382,6 +383,13 @@ export default function HashPage() {
     options: { algorithmSize?: number; text?: string; file?: File },
     signal?: AbortSignal,
   ): Promise<string> => {
+    // 这几种算法在服务端计算,请求体整块读进内存,超限先在本地挡掉。
+    if (options.file && options.file.size > SERVER_HASH_MAX_BYTES) {
+      throw new Error(
+        t("serverHashFileTooBig").replace("{size}", formatFileSizeLimit(SERVER_HASH_MAX_BYTES)),
+      )
+    }
+
     const formData = new FormData()
     formData.append("algorithm", algorithmId)
     formData.append("outputFormat", outputFormat)
@@ -1341,6 +1349,13 @@ export default function HashPage() {
                   ))}
                 </RadioGroup>
               </div>
+            )}
+
+            {(showAllResults || serverBackedAlgorithms.has(algorithm)) && (
+              <p className="flex items-start gap-2 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-tertiary-container)] p-3 text-xs leading-relaxed text-[var(--md-sys-color-on-tertiary-container)]">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>{t("serverHashNotice")}</span>
+              </p>
             )}
           </CardContent>
         </Card>

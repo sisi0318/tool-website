@@ -65,4 +65,21 @@ describe("WHOIS/RDAP tools", () => {
       "https://rdap.example/ip/2001:db8::1",
     )
   })
+
+  it("neutralizes path-traversal payloads before they reach an RDAP server", () => {
+    // 未规范化时,".." 段会把请求带到注册局主机上的任意路径。
+    const hostile = "..%2F..%2F..%2Fanything%3Fq%3D1%23.com"
+    const normalized = normalizeRdapQuery(hostile)
+    const url = buildRdapQueryUrl("https://rdap.example/root/", "domain", normalized)
+    const prefix = "https://rdap.example/root/domain/"
+    expect(url.startsWith(prefix)).toBe(true)
+    // 关键是整段落在一个路径片段里:没有裸 "/"、"?"、"#" 可以跳出去。
+    expect(url.slice(prefix.length)).not.toMatch(/[/?#]/)
+
+    // 带 scheme/端口/路径的输入统一收敛成主机名。
+    expect(normalizeRdapQuery("https://evil.test:8443/a/b?c=d#e")).toBe("evil.test")
+    expect(buildRdapQueryUrl("https://rdap.example/", "domain", "a/b")).toBe(
+      "https://rdap.example/domain/a%2Fb",
+    )
+  })
 })

@@ -1,122 +1,105 @@
-import { extractDomain, extractTLD } from "@/lib/domain-extractor"
+import {
+  buildRdapQueryUrl,
+  detectRdapQueryType,
+  findDomainRdapServer,
+  findIpRdapServer,
+  normalizeRdapQuery,
+  type RdapBootstrapRegistry,
+} from "@/lib/whois-tools"
 import { type NextRequest, NextResponse } from "next/server"
 
 // 标记为动态路由
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-// Add a simple in-memory cache
-const rdapBaseUrlCache = new Map<string, { url: string | null; timestamp: number }>()
-const CACHE_EXPIRY = 12 * 60 * 60 * 1000 // 12 hours
+const BOOTSTRAP_URLS = {
+  domain: "https://data.iana.org/rdap/dns.json",
+  ipv4: "https://data.iana.org/rdap/ipv4.json",
+  ipv6: "https://data.iana.org/rdap/ipv6.json",
+} as const
 
-// Helper function to fetch RDAP base URL with caching
-async function getRdapBaseUrl(domain: string): Promise<string | null> {
-  const now = Date.now()
-  const cached = rdapBaseUrlCache.get(domain)
+/** IANA 引导文件一天刷新一次:force-cache 会让新 TLD / 迁移后的服务器永远拿不到。 */
+const BOOTSTRAP_TTL_SECONDS = 24 * 60 * 60
+const UPSTREAM_TIMEOUT_MS = 8000
+/** RDAP 服务器域名白名单:只允许引导文件里出现过的主机,防止被构造出的地址带走。 */
+const ALLOWED_HOST_PATTERN = /^[a-z0-9.-]+$/i
 
-  if (cached && now - cached.timestamp < CACHE_EXPIRY) {
-    return cached.url
-  }
-
+async function fetchBootstrap(kind: keyof typeof BOOTSTRAP_URLS): Promise<RdapBootstrapRegistry | null> {
   try {
-    // Fetch dns.js from IANA
-    const response = await fetch("https://data.iana.org/rdap/dns.json", {
-      cache: "force-cache",
+    const response = await fetch(BOOTSTRAP_URLS[kind], {
+      next: { revalidate: BOOTSTRAP_TTL_SECONDS },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     })
-    if (!response.ok) {
-      console.error(`Failed to fetch dns.js: ${response.status} ${response.statusText}`)
+    if (!response.ok) return null
+    // 引导文件是标准 JSON,直接解析;旧代码按 JS 片段截断,遇到含 "=" 的 URL 会整体失败。
+    const data: unknown = await response.json()
+    if (data === null || typeof data !== "object" || !Array.isArray((data as RdapBootstrapRegistry).services)) {
       return null
     }
-
-    const text = await response.text()
-
-    // Extract JSON from dns.js
-    const jsonString = text
-      .substring(text.indexOf("=") + 1)
-      .trim()
-      .replace(";", "")
-    const data = JSON.parse(jsonString)
-
-    const tld = extractTLD(domain)
-    const tldData = data.services.find((service: any) => service[0].includes(tld))
-
-    if (tldData && tldData[1] && tldData[1].length > 0) {
-      const rdapUrl = tldData[1][0] // Return the first RDAP base URL
-      rdapBaseUrlCache.set(domain, { url: rdapUrl, timestamp: now }) // Cache the URL
-      return rdapUrl
-    }
-
-    rdapBaseUrlCache.set(domain, { url: null, timestamp: now }) // Cache the null result
-    return null
-  } catch (error) {
-    console.error("Error fetching or parsing dns.js:", error)
+    return data as RdapBootstrapRegistry
+  } catch {
     return null
   }
 }
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const domainToQuery = searchParams.get("domain")
+function errorResponse(message: string, query: string, status: number) {
+  return NextResponse.json(
+    { error: message, domainName: query, raw: JSON.stringify({ error: message }, null, 2) },
+    { status },
+  )
+}
 
-  if (!domainToQuery) {
+export async function GET(request: NextRequest) {
+  const rawQuery = request.nextUrl.searchParams.get("domain")
+
+  if (!rawQuery) {
     return NextResponse.json({ error: "Missing domain parameter" }, { status: 400 })
   }
 
+  // 规范化后才可信:剥掉 scheme/端口/路径,统一小写,拒绝任何非主机字符。
+  const query = normalizeRdapQuery(rawQuery)
+  const queryType = detectRdapQueryType(query)
+
+  if (!query || queryType === "auto" || !ALLOWED_HOST_PATTERN.test(query.replace(/:/g, ""))) {
+    return errorResponse("Invalid domain or IP address", rawQuery, 400)
+  }
+
+  const isIp = queryType === "ipv4" || queryType === "ipv6"
+  const registry = await fetchBootstrap(isIp ? queryType : "domain")
+
+  if (!registry) {
+    return errorResponse("Could not load the RDAP bootstrap registry.", query, 502)
+  }
+
+  const rdapBaseUrl = isIp
+    ? findIpRdapServer(query, registry)
+    : findDomainRdapServer(query, registry)
+
+  if (!rdapBaseUrl) {
+    return errorResponse("Could not determine RDAP server for this query.", query, 404)
+  }
+
+  const queryUrl = buildRdapQueryUrl(rdapBaseUrl, isIp ? "ip" : "domain", query)
+
   try {
-    const extractedDomain = extractDomain(domainToQuery)
-
-    // Step 1: Determine the RDAP base URL
-    const rdapBaseUrl = await getRdapBaseUrl(extractedDomain)
-
-    if (!rdapBaseUrl) {
-      return NextResponse.json(
-        {
-          error: "Could not determine RDAP server for this domain.",
-          domainName: extractedDomain,
-          raw: JSON.stringify({ error: "Could not determine RDAP server" }, null, 2),
-        },
-        { status: 404 },
-      )
-    }
-
-    // Step 2: Query the RDAP server
-    const rdapResponse = await fetch(`${rdapBaseUrl}/domain/${extractedDomain}`, {
-      headers: {
-        Accept: "application/rdap+json",
-      },
+    const rdapResponse = await fetch(queryUrl, {
+      headers: { Accept: "application/rdap+json" },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     })
 
     if (!rdapResponse.ok) {
-      console.error(`RDAP query failed: ${rdapResponse.status} ${rdapResponse.statusText}`)
-      return NextResponse.json(
-        {
-          error: `RDAP query failed: ${rdapResponse.status} ${rdapResponse.statusText}`,
-          domainName: extractedDomain,
-          raw: JSON.stringify(
-            { error: `RDAP query failed: ${rdapResponse.status} ${rdapResponse.statusText}` },
-            null,
-            2,
-          ),
-        },
-        { status: rdapResponse.status },
-      )
+      return errorResponse(`RDAP query failed (${rdapResponse.status})`, query, rdapResponse.status)
     }
 
     const rdapData = await rdapResponse.json()
 
-    // Step 3: Return the RDAP data
-    return NextResponse.json({
-      domainName: extractedDomain,
-      raw: JSON.stringify(rdapData, null, 2),
-    })
-  } catch (error: any) {
-    console.error("Error during RDAP query:", error)
     return NextResponse.json(
-      {
-        error: error.message || "An unexpected error occurred",
-        domainName: domainToQuery,
-        raw: JSON.stringify({ error: error.message || "An unexpected error occurred" }, null, 2),
-      },
-      { status: 500 },
+      { domainName: query, raw: JSON.stringify(rdapData, null, 2) },
+      // 公开数据,让 CDN 吸收重复查询。
+      { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } },
     )
+  } catch (error) {
+    // 不回显上游异常文本,避免泄露内部网络细节。
+    console.error("RDAP query failed:", error)
+    return errorResponse("RDAP query failed", query, 502)
   }
 }
