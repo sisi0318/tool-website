@@ -21,7 +21,7 @@ type: Permanent
 
 | 项目 | 规范 | 示例 |
 |------|------|------|
-| 文件名 (组件) | kebab-case | `tool-grid.tsx`, `json-tree-view.tsx` |
+| 文件名 (组件) | kebab-case | `tool-route-bar.tsx`, `json-tree-view.tsx` |
 | 文件名 (工具页) | kebab-case 目录 | `app/tools/qrcode-decode/page.tsx` |
 | React 组件 | PascalCase | `ToolGrid`, `JsonTreeView` |
 | 函数/变量 | camelCase | `useBreakpoint`, `formatJson` |

@@ -25,11 +25,11 @@ app/layout.tsx
 |------|------|------|
 | Header | `components/header.tsx` | 顶部导航栏 |
 | BottomNav | `components/bottom-nav.tsx` | 底部导航栏 |
-| ToolGrid | `components/tool-grid.tsx` | 工具列表网格 |
-| ToolSearch | `components/tool-search.tsx` | 工具搜索 |
+| ToolRouteBar | `components/tool-route-bar.tsx` | 独立工具页的返回 / 分享条 |
+| ToolActivityProvider | `components/tool-activity.tsx` | 后台标签暂停计时器 |
 | JsonTreeView | `components/json-tree-view.tsx` | JSON 树形视图 |
 | I18nProvider | `components/i18n-provider.tsx` | 国际化 Provider |
-| ThemeProvider | `components/theme-provider.tsx` | 主题 Provider |
+| M3ThemeProvider | `lib/m3/theme/provider.tsx` | 主题 Provider（含 M3 动态配色） |
 | LanguageSwitcher | `components/language-switcher.tsx` | 语言切换 |
 
 ## shadcn/ui 组件 (ui/)

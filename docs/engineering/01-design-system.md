@@ -79,8 +79,8 @@ lib/m3/
 
 | 组件库 | 数量 | 基础 | 用途 |
 |--------|------|------|------|
-| `components/ui/` | 52 文件 | Radix UI 原语 | 通用 UI 控件 (源自 shadcn/ui) |
-| `components/m3/` | 53 文件 | 手搓 M3 样式 | Material You 3 风格组件 |
+| `components/ui/` | 24 文件 | Radix UI 原语 | 通用 UI 控件 (源自 shadcn/ui)，全站主力 |
+| `components/m3/` | 6 个模块 | 手搓 M3 样式 | card / chip / slider / progress / tabs / bottom-sheet；其余未接入的模块已清理 |
 
 ## 相关文档
 

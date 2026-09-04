@@ -10,7 +10,6 @@ type: Permanent
 | 工具 | 目录 | 核心依赖 |
 |------|------|----------|
 | Office 预览 | `app/tools/office-viewer/` | `mammoth`, `xlsx`, `pptx-preview` |
-| 文档查看 | `app/tools/doc-viewer/` | `docx-preview`, `xlsx` |
 
 ## Office 预览 (`office-viewer/`)
 
@@ -90,37 +89,6 @@ function detectFormat(filename: string): 'word' | 'excel' | 'ppt' | 'unknown' {
   return 'unknown'
 }
 ```
-
-## 文档查看 (`doc-viewer/`)
-
-### 核心逻辑
-
-比 Office Viewer 更轻量的文档查看器，专注 docx/xlsx/xls。
-
-**支持的格式**：.docx, .xlsx, .xls
-
-**Word 处理**：
-```typescript
-import { renderAsync } from 'docx-preview'
-
-const container = document.getElementById('doc-container')
-await renderAsync(fileBuffer, container, undefined, {
-  className: 'doc-preview',
-  inlinerWorkaround: true,
-})
-```
-
-- `docx-preview` 专为浏览器设计
-- 比 `mammoth` 更适合复杂文档
-
-**Excel 处理**：与 Office Viewer 相同，使用 `xlsx` 库
-
-### UI 设计
-
-- 单列布局
-- 上方拖拽上传区域
-- 下方预览区
-- 不支持多格式混排
 
 ## 限制与注意事项
 

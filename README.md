@@ -9,6 +9,22 @@
 - **PWA**：可安装、离线回退页、静态资源缓存
 - **Material 3 设计系统** + 中英双语 i18n + 移动端适配
 
+## 数据与隐私
+
+绝大多数工具在浏览器本地完成计算。以下几处会离开你的设备，界面上均有说明：
+
+| 场景 | 去向 | 说明 |
+|---|---|---|
+| 哈希：BLAKE2 / SM3 / SHA-512/t | 本站 `/api/hash` | 浏览器没有原生实现，文本或文件（≤4MB）上传后计算，结果返回即丢弃 |
+| HTTP 测试 | `web-proxy.apifox.cn` | 浏览器无法跨域直连任意接口，请求（含请求头与请求体）经该第三方代理转发 |
+| 设备信息：公网 IP 与归属地 | `api-ipv4.ip.sb` | 可在页面上关闭缓存；浏览器指纹本身只在本地计算 |
+| 汇率换算 | `open.er-api.com` | 公开汇率数据，经本站服务端缓存后下发 |
+| WHOIS | 本站 `/api/whois` → IANA 与各注册局 RDAP | 只发送查询的域名或 IP |
+
+本地存储（localStorage）会保留工具偏好、标签页状态、画布与数据旅程。其中画布配置与
+TOTP 账户以明文保存，请勿在共享设备上录入长期凭据。分享链接会携带各步骤的参数，
+但不含数据本体；标记为长期凭据的字段（如 TOTP 种子）不会进入链接。
+
 ## 技术栈
 
 Next.js 15 (App Router) · React 18 · TypeScript (strict) · Tailwind CSS + M3 design tokens · Zustand · @xyflow/react · Vitest + Playwright · ESLint 9

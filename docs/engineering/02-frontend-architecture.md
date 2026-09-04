@@ -35,13 +35,13 @@ app/                          # Next.js App Router
     └── ... (35+ 工具目录)
 
 components/                   # 共享组件
-├── ui/                       # shadcn/ui 原语 (52 文件)
-├── m3/                       # M3 风格组件 (53 文件)
+├── ui/                       # shadcn/ui 原语 (24 文件，全站主力)
+├── m3/                       # M3 风格组件 (6 个模块)
 ├── header.tsx                # 顶栏
 ├── bottom-nav.tsx            # 底部导航 (移动端)
 ├── i18n-provider.tsx         # 国际化上下文
-├── tool-grid.tsx             # 工具卡片网格
-├── tool-search.tsx           # 工具搜索
+├── tool-route-bar.tsx        # 独立工具页的返回/分享条
+├── tool-activity.tsx         # 后台标签暂停计时器的上下文
 └── json-tree-view.tsx        # JSON 树查看
 
 hooks/                        # 自定义 Hooks (11 文件)
