@@ -117,6 +117,54 @@ function collectReachableNodeIds(
   return result
 }
 
+/**
+ * 整图执行的收敛与合流。
+ *
+ * 每次结构/配置改动都会递增 executionRevision,在飞的执行检测到 revision 变化
+ * 就中止。此前中止之后没有任何补偿:被中断的节点停在无输出状态,界面上看不出
+ * 异常,而 `await executeAll()` 也会提前返回,调用方以为跑完了。
+ *
+ * 现在改为:中止即用新图重跑,直到一轮跑完期间图没再变(有次数上限兜底);
+ * 并发的整图执行合流到同一次运行,后来者等待同一个收敛结果。
+ */
+/**
+ * 环上的节点排不进拓扑序。它们以前只是静默不执行,界面上看不出任何异常;
+ * 交互式连线会拦环,但导入的工作流不做校验,所以这里显式标成错误。
+ */
+function markCyclicNodes(candidates: NodeInstance[], sorted: NodeInstance[]): void {
+  const sortedIds = new Set(sorted.map((node) => node.id))
+  const cyclicIds = candidates.filter((node) => !sortedIds.has(node.id)).map((node) => node.id)
+  console.warn("Canvas contains cycles, skipped cyclic nodes", cyclicIds)
+  useCanvasStore.setState((s) => ({
+    nodeErrors: {
+      ...s.nodeErrors,
+      ...Object.fromEntries(cyclicIds.map((id) => [id, CYCLE_ERROR])),
+    },
+  }))
+}
+
+const MAX_GRAPH_RUN_ATTEMPTS = 5
+
+let activeGraphRun: { promise: Promise<void>; includeManual: boolean } | null = null
+
+/**
+ * @param attempt 返回 true 表示这一轮完整跑完,未被更新的图取代
+ * @param shouldRetry 被取代后是否用新图重跑。自动执行关闭时由用户手动驱动,
+ *   不该替他重跑;开启时画布本就承诺结果跟随图变化,必须收敛。
+ */
+async function runUntilStable(
+  attempt: (planRevision: number) => Promise<boolean>,
+  shouldRetry: () => boolean,
+): Promise<void> {
+  for (let round = 0; round < MAX_GRAPH_RUN_ATTEMPTS; round += 1) {
+    invalidateExecutionPlan()
+    const planRevision = executionRevision
+    if (await attempt(planRevision)) return
+    if (!shouldRetry()) return
+  }
+  console.warn("Canvas graph kept changing while executing; stopped after retries")
+}
+
 function isManualNode(node: NodeInstance | undefined): boolean {
   return Boolean(node && getNodeDefinition(node.type)?.executionMode === "manual")
 }
@@ -914,41 +962,51 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   executeAll: async (includeManual = true) => {
-    // 后来的全量执行取代仍在进行中的执行，避免同一 revision 下双重跑图
-    invalidateExecutionPlan()
-    const planRevision = executionRevision
-    const state = get()
-    stepExecutionRevision = -1
-    stepExecutionIndex = 0
-    set({ stepProgress: emptyStepProgress() })
-    const { sorted, hasCycle } = topologicalSort(state.nodes, state.edges)
-    if (hasCycle) {
-      // Nodes on a cycle never enter the topological order. They used to sit idle
-      // with no visible sign; imported workflows are not cycle-checked, so mark them.
-      const sortedIds = new Set(sorted.map((node) => node.id))
-      const cyclicIds = state.nodes.filter((node) => !sortedIds.has(node.id)).map((node) => node.id)
-      console.warn("Canvas contains cycles, skipped cyclic nodes", cyclicIds)
-      set((s) => ({
-        nodeErrors: {
-          ...s.nodeErrors,
-          ...Object.fromEntries(cyclicIds.map((id) => [id, CYCLE_ERROR])),
-        },
-      }))
-    }
-    const skippedNodes = new Set<string>()
-    for (const node of sorted) {
-      if (executionRevision !== planRevision) return
-      const dependsOnSkippedNode = state.edges.some(
-        (edge) => edge.target === node.id && skippedNodes.has(edge.source)
-      )
-      if (!includeManual && (isManualNode(node) || dependsOnSkippedNode)) {
-        skippedNodes.add(node.id)
-        continue
+    // 已有整图执行在跑:它会在图变化后自行重跑,这里合流等待同一个收敛结果。
+    if (activeGraphRun) {
+      if (includeManual && !activeGraphRun.includeManual) {
+        // 用户显式点了"全部运行",意图比后台自动执行更宽,让当前轮次带着新意图重跑
+        activeGraphRun.includeManual = true
+        invalidateExecutionPlan()
       }
-      // Execute in topological order without recursively running descendants.
-      // This ensures converging branches have all upstream outputs available.
-      await get().executeNode(node.id, undefined, false, includeManual)
-      if (executionRevision !== planRevision) return
+      await activeGraphRun.promise
+      return
+    }
+
+    const run = { includeManual, promise: Promise.resolve() }
+    run.promise = runUntilStable(async (planRevision) => {
+      const state = get()
+      stepExecutionRevision = -1
+      stepExecutionIndex = 0
+      set({ stepProgress: emptyStepProgress() })
+      const { sorted, hasCycle } = topologicalSort(state.nodes, state.edges)
+      if (hasCycle) {
+        markCyclicNodes(state.nodes, sorted)
+      }
+
+      const skippedNodes = new Set<string>()
+      for (const node of sorted) {
+        if (executionRevision !== planRevision) return false
+        const dependsOnSkippedNode = state.edges.some(
+          (edge) => edge.target === node.id && skippedNodes.has(edge.source)
+        )
+        if (!run.includeManual && (isManualNode(node) || dependsOnSkippedNode)) {
+          skippedNodes.add(node.id)
+          continue
+        }
+        // Execute in topological order without recursively running descendants.
+        // This ensures converging branches have all upstream outputs available.
+        await get().executeNode(node.id, undefined, false, run.includeManual)
+        if (executionRevision !== planRevision) return false
+      }
+      return true
+    }, () => get().autoRun)
+
+    activeGraphRun = run
+    try {
+      await run.promise
+    } finally {
+      if (activeGraphRun === run) activeGraphRun = null
     }
   },
 

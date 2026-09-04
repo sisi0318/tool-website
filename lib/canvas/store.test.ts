@@ -906,3 +906,95 @@ describe("executeToNode 与手动节点", () => {
     expect(manualRuns).toBe(1)
   })
 })
+
+describe("整图执行的收敛与合流", () => {
+  it("并发的 executeAll 合流为一次运行,不再互相作废", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    const slow = deferred<Record<string, unknown>>()
+    let runs = 0
+    registerDefinition(harness, "counted", async () => {
+      runs += 1
+      return slow.promise
+    })
+
+    useCanvasStore.setState({
+      nodes: [node("a", "counted")],
+      edges: [],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    // 第二次调用曾经会递增 revision 把第一次判死,于是两边都不产出结果
+    const first = useCanvasStore.getState().executeAll()
+    await Promise.resolve()
+    const second = useCanvasStore.getState().executeAll()
+    slow.resolve({ out: "done" })
+    await Promise.all([first, second])
+
+    expect(runs).toBe(1)
+    expect(useCanvasStore.getState().nodeOutputs.a).toEqual({ out: "done" })
+  })
+
+  it("自动执行开启时,执行期间改动过的图会被重跑到收敛", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    useCanvasStore.getState().setAutoRun(true)
+
+    const slow = deferred<Record<string, unknown>>()
+    let sourceRuns = 0
+    registerDefinition(harness, "slow-source", async () => {
+      sourceRuns += 1
+      return sourceRuns === 1 ? slow.promise : { out: "fast" }
+    })
+    const executeLate = vi.fn(async () => ({ out: "late" }))
+    registerDefinition(harness, "late", executeLate)
+
+    useCanvasStore.setState({
+      nodes: [node("a", "slow-source")],
+      edges: [],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    const run = useCanvasStore.getState().executeAll()
+    await Promise.resolve()
+
+    // 执行途中加入新节点:此前这会让在飞执行中止且无人补跑,新节点永远不出结果
+    useCanvasStore.getState().addNode(node("b", "late"))
+    slow.resolve({ out: "slow" })
+    await run
+
+    expect(executeLate).toHaveBeenCalled()
+    expect(useCanvasStore.getState().nodeOutputs.b).toEqual({ out: "late" })
+  })
+
+  it("自动执行关闭时不替用户重跑", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    useCanvasStore.getState().setAutoRun(false)
+
+    const slow = deferred<Record<string, unknown>>()
+    registerDefinition(harness, "slow-source", async () => slow.promise)
+    const executeLate = vi.fn(async () => ({ out: "late" }))
+    registerDefinition(harness, "late", executeLate)
+
+    useCanvasStore.setState({
+      nodes: [node("a", "slow-source")],
+      edges: [],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    const run = useCanvasStore.getState().executeAll()
+    await Promise.resolve()
+    useCanvasStore.getState().addNode(node("b", "late"))
+    slow.resolve({ out: "slow" })
+    await run
+
+    expect(executeLate).not.toHaveBeenCalled()
+  })
+})
