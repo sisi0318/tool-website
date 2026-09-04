@@ -1,8 +1,10 @@
-import CryptoJS from "crypto-js"
-import { SHA3 } from "sha3"
+import { hmac } from "@noble/hashes/hmac.js"
+import { md5, ripemd160 } from "@noble/hashes/legacy.js"
+import { sha224 } from "@noble/hashes/sha2.js"
+import { sha3_224, sha3_256, sha3_384, sha3_512 } from "@noble/hashes/sha3.js"
+import type { CHash } from "@noble/hashes/utils.js"
 
 import { base64ToBytes, bytesToBase64, bytesToHex, hexToBytes } from "./binary"
-import { bytesToCryptoWordArray, cryptoWordArrayToBytes } from "./crypto-js-bytes"
 
 export type HmacKeyFormat = "raw" | "hex" | "base64"
 export type HmacOutputFormat = "hex" | "base64"
@@ -15,6 +17,7 @@ export interface HmacOptions {
   outputFormat: HmacOutputFormat
 }
 
+/** 浏览器原生支持的算法优先走 Web Crypto。 */
 const WEB_CRYPTO_ALGORITHMS: Record<string, string> = {
   sha1: "SHA-1",
   sha256: "SHA-256",
@@ -22,68 +25,25 @@ const WEB_CRYPTO_ALGORITHMS: Record<string, string> = {
   sha512: "SHA-512",
 }
 
-const SHA3_BLOCK_SIZES: Record<number, number> = {
-  224: 144,
-  256: 136,
-  384: 104,
-  512: 72,
+/**
+ * Web Crypto 覆盖不到的算法。此前 SHA-3 的 HMAC 是在这里手写 ipad/opad 与
+ * 分组长度表拼出来的，md5 / sha224 / ripemd160 则依赖已停止维护的 crypto-js；
+ * 现在统一交给 @noble/hashes 的 hmac 实现。
+ */
+const NOBLE_ALGORITHMS: Record<string, CHash> = {
+  md5,
+  sha224,
+  ripemd160,
+  "sha3-224": sha3_224,
+  "sha3-256": sha3_256,
+  "sha3-384": sha3_384,
+  "sha3-512": sha3_512,
 }
 
 function decodeKey(key: string, format: HmacKeyFormat): Uint8Array {
   if (format === "hex") return hexToBytes(key)
   if (format === "base64") return base64ToBytes(key)
   return new TextEncoder().encode(key)
-}
-
-function sha3Digest(size: 224 | 256 | 384 | 512, parts: Uint8Array[]): Uint8Array {
-  const hash = new SHA3(size)
-  for (const part of parts) {
-    hash.update(bytesToBase64(part), "base64")
-  }
-  return Uint8Array.from(hash.digest())
-}
-
-function calculateSha3Hmac(
-  dataBytes: Uint8Array,
-  keyBytes: Uint8Array,
-  size: 224 | 256 | 384 | 512,
-): Uint8Array {
-  const blockSize = SHA3_BLOCK_SIZES[size]
-  let normalizedKey = keyBytes
-
-  if (normalizedKey.length > blockSize) {
-    normalizedKey = sha3Digest(size, [normalizedKey])
-  }
-
-  const paddedKey = new Uint8Array(blockSize)
-  paddedKey.set(normalizedKey)
-  const innerKey = new Uint8Array(blockSize)
-  const outerKey = new Uint8Array(blockSize)
-
-  for (let index = 0; index < blockSize; index += 1) {
-    innerKey[index] = paddedKey[index] ^ 0x36
-    outerKey[index] = paddedKey[index] ^ 0x5c
-  }
-
-  const innerDigest = sha3Digest(size, [innerKey, dataBytes])
-  return sha3Digest(size, [outerKey, innerDigest])
-}
-
-function calculateLegacyHmac(
-  dataBytes: Uint8Array,
-  keyBytes: Uint8Array,
-  algorithm: "md5" | "sha224" | "ripemd160",
-): Uint8Array {
-  const data = bytesToCryptoWordArray(dataBytes)
-  const key = bytesToCryptoWordArray(keyBytes)
-  const digest =
-    algorithm === "md5"
-      ? CryptoJS.HmacMD5(data, key)
-      : algorithm === "sha224"
-        ? CryptoJS.HmacSHA224(data, key)
-        : CryptoJS.HmacRIPEMD160(data, key)
-
-  return cryptoWordArrayToBytes(digest)
 }
 
 export async function calculateHmac(
@@ -107,18 +67,8 @@ export async function calculateHmac(
       ["sign"],
     )
     digest = new Uint8Array(await subtle.sign("HMAC", cryptoKey, message))
-  } else if (options.algorithm.startsWith("sha3-")) {
-    const size = Number.parseInt(options.algorithm.slice(5), 10)
-    if (![224, 256, 384, 512].includes(size)) {
-      throw new Error(`不支持的 HMAC 算法: ${options.algorithm}`)
-    }
-    digest = calculateSha3Hmac(dataBytes, keyBytes, size as 224 | 256 | 384 | 512)
-  } else if (["md5", "sha224", "ripemd160"].includes(options.algorithm)) {
-    digest = calculateLegacyHmac(
-      dataBytes,
-      keyBytes,
-      options.algorithm as "md5" | "sha224" | "ripemd160",
-    )
+  } else if (NOBLE_ALGORITHMS[options.algorithm]) {
+    digest = hmac(NOBLE_ALGORITHMS[options.algorithm], keyBytes, dataBytes)
   } else {
     throw new Error(`不支持的 HMAC 算法: ${options.algorithm}`)
   }

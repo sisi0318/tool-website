@@ -9,13 +9,13 @@ type: Permanent
 
 | 工具 | 目录 | 核心依赖 |
 |------|------|----------|
-| Hash 计算器 | `app/tools/hash/` | Node.js `crypto` |
-| HMAC 计算器 | `app/tools/hmac/` | Node.js `crypto` |
-| Crypto 加解密 | `app/tools/crypto/` | Node.js `crypto` |
+| Hash 计算器 | `app/tools/hash/` | `@noble/hashes`（SM3 用 `hash-wasm`，按需加载）|
+| HMAC 计算器 | `app/tools/hmac/` | Web Crypto（SHA-1/256/384/512）+ `@noble/hashes`（其余）|
+| Crypto 加解密 | `app/tools/crypto/` | `crypto-js`（AES / DES / 3DES / RC4 / Rabbit）|
 | 经典密码 | `app/tools/classic-cipher/` | 自定义算法 |
-| JWT 解析 | `app/tools/jwt/` | `jose` |
+| JWT 解析 | `app/tools/jwt/` | 自定义解析（仅解码，不验签）|
 | JCE 解析 | `app/tools/jce/` | 自定义编码器 |
-| TOTP 认证器 | `app/tools/totp/` | `otpauth` |
+| TOTP 认证器 | `app/tools/totp/` | Web Crypto HMAC + 自定义 Base32 |
 
 ## Hash 计算器 (`hash/`)
 

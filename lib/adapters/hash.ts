@@ -1,9 +1,7 @@
 import { Hash } from "lucide-react"
-import CryptoJS from "crypto-js"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
-import { hashExtra } from "../hash-extra"
-import { SHA3, Keccak, SHAKE } from "sha3"
+import { hashBytes } from "../hash-algorithms"
 
 const CATEGORIES = [
   { label: "MD5", value: "md" },
@@ -48,82 +46,8 @@ const ALGORITHM_MAP: Record<string, Array<{ label: string; value: string }>> = {
   crc: [{ label: "CRC32", value: "crc32" }],
 }
 
-function crc32Bytes(bytes: Uint8Array): number {
-  function makeCRCTable() {
-    let c
-    const crcTable: number[] = []
-    for (let n = 0; n < 256; n++) {
-      c = n
-      for (let k = 0; k < 8; k++) {
-        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-      }
-      crcTable[n] = c
-    }
-    return crcTable
-  }
-
-  const crcTable = makeCRCTable()
-  let crc = 0 ^ -1
-
-  for (let i = 0; i < bytes.length; i++) {
-    crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xff]
-  }
-
-  return (crc ^ -1) >>> 0
-}
-
-function calculateLocalHash(data: string, algorithm: string, outputFormat: string): string | null {
-  const hashers: Record<string, (message: string) => { toString: (encoder?: unknown) => string }> = {
-    md5: CryptoJS.MD5,
-    sha1: CryptoJS.SHA1,
-    "sha2-224": CryptoJS.SHA224,
-    "sha2-256": CryptoJS.SHA256,
-    "sha2-384": CryptoJS.SHA384,
-    "sha2-512": CryptoJS.SHA512,
-    ripemd160: CryptoJS.RIPEMD160,
-  }
-  const hasher = hashers[algorithm]
-  if (!hasher) return null
-
-  const result = hasher(data)
-  return result.toString(outputFormat === "base64" ? CryptoJS.enc.Base64 : CryptoJS.enc.Hex)
-}
-
 async function calculateHash(data: string, algorithm: string, outputFormat: string): Promise<string> {
-  if (algorithm === "crc32") {
-    const bytes = new TextEncoder().encode(data)
-    const result = crc32Bytes(bytes).toString(16).padStart(8, "0")
-    if (outputFormat !== "base64") return result
-    const crcBytes = result.match(/.{2}/g)?.map((byte) => Number.parseInt(byte, 16)) ?? []
-    return btoa(String.fromCharCode(...crcBytes))
-  }
-
-  if (algorithm.startsWith("sha3-") || algorithm.startsWith("keccak-") || algorithm.startsWith("shake-")) {
-    const size = parseInt(algorithm.split("-")[1]) as 128 | 224 | 256 | 384 | 512
-    let hash: SHA3 | Keccak | SHAKE
-
-    if (algorithm.startsWith("sha3-")) {
-      hash = new SHA3(size as 224 | 256 | 384 | 512)
-    } else if (algorithm.startsWith("keccak-")) {
-      hash = new Keccak(size as 224 | 256 | 384 | 512)
-    } else {
-      hash = new SHAKE(size as 128 | 256)
-    }
-
-    hash.update(data)
-    return outputFormat === "base64" ? hash.digest("base64") : hash.digest("hex")
-  }
-
-  const localResult = calculateLocalHash(data, algorithm, outputFormat)
-  if (localResult) return localResult
-
-  // BLAKE2 / SM3 / SHA-512-t:以前这里会把数据 POST 到 /api/hash,现在本地算。
-  return hashExtra(
-    new TextEncoder().encode(data),
-    algorithm,
-    undefined,
-    outputFormat === "base64" ? "base64" : "hex",
-  )
+  return hashBytes(new TextEncoder().encode(data), algorithm, undefined, outputFormat)
 }
 
 export const hashAdapter: ToolAdapter = {

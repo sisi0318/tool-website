@@ -1,6 +1,5 @@
 "use client"
 
-import { createExtraHasher, isExtraHashAlgorithm } from "@/lib/hash-extra"
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
 
 import type React from "react"
@@ -11,10 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
-import CryptoJS from "crypto-js"
 import { Buffer } from "buffer"
-import { Keccak, SHA3, SHAKE } from "sha3"
-import { bytesToCryptoWordArray } from "@/lib/crypto-js-bytes"
+import { createIncrementalHasher } from "@/lib/hash-algorithms"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -33,64 +30,6 @@ interface HashAlgorithm {
   name: string
   configurable: boolean
   sizes?: number[]
-}
-
-const CRC32_TABLE = (() => {
-  const table = new Uint32Array(256)
-  for (let n = 0; n < 256; n++) {
-    let value = n
-    for (let k = 0; k < 8; k++) {
-      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1
-    }
-    table[n] = value >>> 0
-  }
-  return table
-})()
-
-function updateCrc32(crc: number, bytes: Uint8Array): number {
-  for (let i = 0; i < bytes.length; i++) {
-    crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ bytes[i]) & 0xff]
-  }
-  return crc >>> 0
-}
-
-// 基于字节的 CRC32，保证文本与文件模式都按原始字节计算
-function crc32Bytes(bytes: Uint8Array) {
-  const crc = updateCrc32(0xffffffff, bytes)
-  return (crc ^ -1) >>> 0
-}
-
-function crc32Text(str: string) {
-  return crc32Bytes(new TextEncoder().encode(str))
-}
-
-function hexToBase64(hex: string): string {
-  const bytes = hex.match(/.{2}/g)?.map((byte) => Number.parseInt(byte, 16)) ?? []
-  return btoa(String.fromCharCode(...bytes))
-}
-
-// 浏览器端可用的增量哈希实现（SHA-3 家族走 sha3 库，BLAKE2 / SM3 / SHA-512-t 走 lib/hash-extra）
-const CRYPTO_JS_HASHERS: Record<string, () => any> = {
-  md5: () => CryptoJS.algo.MD5.create(),
-  sha1: () => CryptoJS.algo.SHA1.create(),
-  sha224: () => CryptoJS.algo.SHA224.create(),
-  sha256: () => CryptoJS.algo.SHA256.create(),
-  sha384: () => CryptoJS.algo.SHA384.create(),
-  sha512: () => CryptoJS.algo.SHA512.create(),
-  ripemd160: () => CryptoJS.algo.RIPEMD160.create(),
-}
-
-function createCryptoJsHasher(algorithmName: string) {
-  const factory = CRYPTO_JS_HASHERS[algorithmName]
-  if (!factory) {
-    throw new Error(`Unsupported client-side hash algorithm: ${algorithmName}`)
-  }
-  return factory()
-}
-
-function cryptoJsDigest(hasher: any, outputFormat: string): string {
-  const wordArray = hasher.finalize()
-  return wordArray.toString(outputFormat === "base64" ? CryptoJS.enc.Base64 : CryptoJS.enc.Hex)
 }
 
 // 哈希结果类型
@@ -114,69 +53,6 @@ interface FileInfo {
 interface VerifyResultType {
   isMatch: boolean
   matchedAlgorithm?: string
-}
-
-interface IncrementalHasher {
-  update: (bytes: Uint8Array) => void
-  digest: () => string
-}
-
-async function createIncrementalHasher(
-  algorithmId: string,
-  algorithmSize: number | undefined,
-  fallbackSize: number,
-  outputFormat: string,
-): Promise<IncrementalHasher> {
-  // BLAKE2 / SM3 / SHA-512-t:以前浏览器没有实现,只能上传到 /api/hash 计算
-  if (isExtraHashAlgorithm(algorithmId, algorithmSize ?? fallbackSize)) {
-    return createExtraHasher(
-      algorithmId,
-      algorithmSize ?? fallbackSize,
-      outputFormat === "base64" ? "base64" : "hex",
-    )
-  }
-
-  if (algorithmId === "crc32") {
-    let crc = 0xffffffff
-    return {
-      update: (bytes) => {
-        crc = updateCrc32(crc, bytes)
-      },
-      digest: () => {
-        const hex = ((crc ^ -1) >>> 0).toString(16).padStart(8, "0")
-        return outputFormat === "hex" ? hex : hexToBase64(hex)
-      },
-    }
-  }
-
-  if (algorithmId === "sha3" || algorithmId === "keccak" || algorithmId === "shake") {
-    let hash: SHA3 | Keccak | SHAKE
-    if (algorithmId === "sha3") {
-      hash = new SHA3((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
-    } else if (algorithmId === "keccak") {
-      hash = new Keccak((algorithmSize || fallbackSize) as 224 | 256 | 384 | 512)
-    } else {
-      hash = new SHAKE((algorithmSize || fallbackSize) as 128 | 256)
-    }
-
-    return {
-      update: (bytes) => {
-        hash.update(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
-      },
-      digest: () => (outputFormat === "hex" ? hash.digest("hex") : hash.digest("base64")),
-    }
-  }
-
-  const hasher = createCryptoJsHasher(
-    algorithmId === "sha2" ? `sha${algorithmSize || fallbackSize}` : algorithmId,
-  )
-
-  return {
-    update: (bytes) => {
-      hasher.update(bytesToCryptoWordArray(bytes))
-    },
-    digest: () => cryptoJsDigest(hasher, outputFormat),
-  }
 }
 
 async function readFileInChunks(
@@ -393,39 +269,10 @@ export default function HashPage() {
     algorithmSize?: number,
     signal?: AbortSignal,
   ): Promise<string> => {
-    if (isExtraHashAlgorithm(algorithmId, algorithmSize ?? size)) {
-      const hasher = await createIncrementalHasher(algorithmId, algorithmSize, size, outputFormat)
-      hasher.update(new TextEncoder().encode(text))
-      return hasher.digest()
-    }
-
-    let result = ""
-
-    if (algorithmId === "sha3") {
-      const sha3 = new SHA3((algorithmSize || size) as 224 | 256 | 384 | 512)
-      sha3.update(text)
-      result = outputFormat === "hex" ? sha3.digest("hex") : sha3.digest("base64")
-    } else if (algorithmId === "keccak") {
-      const keccak = new Keccak((algorithmSize || size) as 224 | 256 | 384 | 512)
-      keccak.update(text)
-      result = outputFormat === "hex" ? keccak.digest("hex") : keccak.digest("base64")
-    } else if (algorithmId === "shake") {
-      const shake = new SHAKE((algorithmSize || size) as 128 | 256)
-      shake.update(text)
-      result = outputFormat === "hex" ? shake.digest("hex") : shake.digest("base64")
-    } else if (algorithmId === "crc32") {
-      const crcResult = crc32Text(text).toString(16).padStart(8, "0")
-      result = outputFormat === "hex" ? crcResult : hexToBase64(crcResult)
-    } else {
-      // md5 / sha1 / sha2-* / ripemd160 走 crypto-js（与 Node createHash 的 UTF-8 语义一致）
-      const hasher = createCryptoJsHasher(
-        algorithmId === "sha2" ? `sha${algorithmSize || size}` : algorithmId,
-      )
-      hasher.update(CryptoJS.enc.Utf8.parse(text))
-      result = cryptoJsDigest(hasher, outputFormat)
-    }
-
-    return result
+    // 所有算法都走同一个增量 hasher，文本与文件路径不再各写一套。
+    const hasher = await createIncrementalHasher(algorithmId, algorithmSize, size, outputFormat)
+    hasher.update(new TextEncoder().encode(text))
+    return hasher.digest()
   }
 
   // 获取算法显示名称

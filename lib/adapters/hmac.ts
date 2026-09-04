@@ -1,7 +1,13 @@
 import { Key } from "lucide-react"
-import CryptoJS from "crypto-js"
+import { hmac } from "@noble/hashes/hmac.js"
+import { md5, sha1 } from "@noble/hashes/legacy.js"
+import { sha256, sha384, sha512 } from "@noble/hashes/sha2.js"
+import type { CHash } from "@noble/hashes/utils.js"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { encodeDigest } from "../hash-algorithms"
+
+const HMAC_HASHERS: Record<string, CHash> = { md5, sha1, sha256, sha384, sha512 }
 
 export const hmacAdapter: ToolAdapter = {
   type: "hmac",
@@ -63,19 +69,11 @@ export const hmacAdapter: ToolAdapter = {
     const outputFormat = String(inputs.outputFormat ?? config.outputFormat ?? "hex")
 
     try {
-      const hashers: Record<string, (message: string, secret: string) => { toString: (encoder?: unknown) => string }> = {
-        md5: CryptoJS.HmacMD5,
-        sha1: CryptoJS.HmacSHA1,
-        sha256: CryptoJS.HmacSHA256,
-        sha384: CryptoJS.HmacSHA384,
-        sha512: CryptoJS.HmacSHA512,
-      }
-      const hasher = hashers[algorithm]
+      const hasher = HMAC_HASHERS[algorithm]
       if (!hasher) throw new Error(`Unsupported algorithm: ${algorithm}`)
-      const result = hasher(data, key)
-      return {
-        hmac: result.toString(outputFormat === "base64" ? CryptoJS.enc.Base64 : CryptoJS.enc.Hex),
-      }
+      const encoder = new TextEncoder()
+      const digest = hmac(hasher, encoder.encode(key), encoder.encode(data))
+      return { hmac: encodeDigest(digest, outputFormat) }
     } catch (error) {
       throw new Error(`HMAC error: ${error}`)
     }
