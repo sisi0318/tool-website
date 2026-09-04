@@ -40,6 +40,11 @@ async function openCanvas(page: Page) {
       .catch((error) => ({ mounted: false as const, error }))
     const result = await Promise.race([canvasMounted, scriptError])
     if (result.mounted) {
+      // 这些用例通过 executeAll / executeToNode 显式驱动执行。autoRun 会在
+      // addNode / addEdge 之后排队后台执行,与显式执行相互作废,读到空输出。
+      await page.evaluate(() => {
+        ;(window as any).__ZUSTAND_STORE__.getState().setAutoRun(false)
+      })
       return
     }
     lastError = result.error
@@ -110,7 +115,7 @@ test.describe("Pipeline: Deterministic Output", () => {
 
   test("String('hello') → Hash(SHA-256) → String", async ({ page }) => {
     const src = await addNode(page, "string", { value: "hello" })
-    const hash = await addNode(page, "hash", { algorithm: "sha256" })
+    const hash = await addNode(page, "hash", { category: "sha2", algorithm: "sha2-256" })
     const out = await addNode(page, "string", { value: "" })
     await connectNodes(page, src, "value", hash, "data")
     await connectNodes(page, hash, "hash", out, "value")
@@ -504,9 +509,9 @@ test.describe("Pipeline: Deterministic Output", () => {
     expect((result as string).length).toBeGreaterThan(0)
   })
 
-  test("String('hello') → Hash(MD5) connected via config field port", async ({ page }) => {
+  test("String('hello') → Hash(SHA-256) connected via config field port", async ({ page }) => {
     const src = await addNode(page, "string", { value: "hello" })
-    const hash = await addNode(page, "hash", { algorithm: "sha256" })
+    const hash = await addNode(page, "hash", { category: "sha2", algorithm: "sha2-256" })
     const out = await addNode(page, "string", { value: "" })
     await connectNodes(page, src, "value", hash, "data")
     await connectNodes(page, hash, "hash", out, "value")

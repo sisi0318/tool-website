@@ -11,6 +11,7 @@ import { createBypassOutputs, topologicalSort } from "./engine"
 import { validateConnectionStructure } from "./validation"
 import { normalizeWorkflowData } from "./workflow"
 import { stripUnpersistableNodes } from "./persist"
+import { withDefaultConfig } from "./node-factory"
 import { readLocalStorage } from "../safe-storage"
 
 const nodeExecVersion = new Map<string, number>()
@@ -348,12 +349,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     invalidateExecutionPlan()
     resetConfigHistoryGroup()
     get().pushHistory()
+    // 无论从画布、面板还是导入进来,都在这里补齐默认配置:
+    // visible() 谓词读的是 config,缺默认值会让依赖它的参数直接不渲染。
+    const withDefaults = { ...node, config: withDefaultConfig(node.type, node.config) }
     set((state) => {
       debouncedSave(() => get().saveToLocalStorage())
       return {
-        nodes: [...state.nodes, node],
-        selectedNodeId: node.id,
-        selectedNodeIds: [node.id],
+        nodes: [...state.nodes, withDefaults],
+        selectedNodeId: withDefaults.id,
+        selectedNodeIds: [withDefaults.id],
         stepProgress: emptyStepProgress(),
       }
     })

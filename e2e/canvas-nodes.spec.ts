@@ -44,8 +44,8 @@ const NODE_PORTS: Record<string, { inputs: number; outputs: number }> = {
   "image-editor": { inputs: 5, outputs: 5 },
   qrcode: { inputs: 5, outputs: 6 },
   "qrcode-decode": { inputs: 1, outputs: 1 },
-  "meme-splitter": { inputs: 3, outputs: 3 },
-  "image-coordinates": { inputs: 1, outputs: 1 },
+  "meme-splitter": { inputs: 3, outputs: 4 },
+  "image-coordinates": { inputs: 3, outputs: 1 },
   "text-stats": { inputs: 1, outputs: 6 },
   "case-converter": { inputs: 1, outputs: 6 },
   regex: { inputs: 4, outputs: 5 },
@@ -62,8 +62,8 @@ const NODE_PORTS: Record<string, { inputs: number; outputs: number }> = {
   currency: { inputs: 3, outputs: 4 },
   bmi: { inputs: 2, outputs: 2 },
   "device-info": { inputs: 0, outputs: 1 },
-  "office-viewer": { inputs: 1, outputs: 1 },
-  time: { inputs: 1, outputs: 5 },
+  "office-viewer": { inputs: 1, outputs: 2 },
+  time: { inputs: 2, outputs: 5 },
 }
 
 test.describe("Canvas node ports", () => {

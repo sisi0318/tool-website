@@ -145,8 +145,9 @@ test.describe("mobile tool layouts", () => {
     await page.locator("#crypto-input").fill("hello")
     await page.getByRole("button", { name: "立即加密" }).click()
 
+    // 加密是异步的,先等输出落定再读,否则读到的是上一帧的空值
+    await expect(page.locator("#crypto-output")).toHaveValue(/^[0-9a-f]+$/)
     const encrypted = await page.locator("#crypto-output").inputValue()
-    expect(encrypted).toMatch(/^[0-9a-f]+$/)
     await page.locator("#crypto-operation-decrypt").click()
     await page.locator("#crypto-input").fill(encrypted)
     await page.getByRole("button", { name: "立即解密" }).click()
