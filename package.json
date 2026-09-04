@@ -1,7 +1,10 @@
 {
-  "name": "my-v0-project",
+  "name": "tool-website",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <25"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -10,7 +13,8 @@
     "start": "next start",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit --incremental false"
+    "typecheck": "tsc --noEmit --incremental false",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
@@ -65,7 +69,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^14.0.0",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
@@ -82,13 +86,15 @@
     "eslint-config-next": "^15.5.22",
     "fast-check": "^4.4.0",
     "jsdom": "^27.3.0",
-    "postcss": "^8.5",
+    "postcss": "^8.5.28",
+    "sharp": "^0.35.4",
     "tailwindcss": "^3.4.17",
     "typescript": "^5",
     "vite": "^7.3.6",
     "vitest": "^4.1.9"
   },
   "overrides": {
-    "serialize-javascript": "^7.0.7"
+    "serialize-javascript": "^7.0.7",
+    "postcss": "$postcss"
   }
 }

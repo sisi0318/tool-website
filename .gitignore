@@ -1,6 +1,11 @@
 .vercel
 node_modules
 
+# 本地环境变量,任何情况下都不入库
+.env
+.env.*
+!.env.example
+
 .next
 out/
 build/
@@ -30,4 +35,9 @@ tsconfig.tsbuildinfo
 # 只忽略仓库根目录的临时笔记类 markdown，docs/ 等目录的文档正常纳入版本控制
 /*.md
 !/README.md
+!/CONTRIBUTING.md
+!/SECURITY.md
+!/CHANGELOG.md
+!/LICENSE.md
 CyberChef/*
+.claude/settings.local.json
