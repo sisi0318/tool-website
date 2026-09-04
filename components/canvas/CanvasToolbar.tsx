@@ -11,6 +11,7 @@ import {
   Play,
   Redo2,
   ScrollText,
+  Square,
   Trash2,
   Undo2,
   Zap,
@@ -89,6 +90,7 @@ export function CanvasToolbar({
   const undo = useCanvasStore((state) => state.undo)
   const redo = useCanvasStore((state) => state.redo)
   const clearCanvas = useCanvasStore((state) => state.clearCanvas)
+  const stopExecution = useCanvasStore((state) => state.stopExecution)
   const [requestedAction, setRequestedAction] = useState<"all" | "step" | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
 
@@ -124,16 +126,23 @@ export function CanvasToolbar({
           role="toolbar"
           aria-label={t("canvasToolbar")}
         >
-          <ToolbarButton
-            label={t("runAll")}
-            onClick={runAll}
-            disabled={nodes.length === 0 || isRunning}
-          >
-            {requestedAction === "all" || (runningCount > 0 && requestedAction !== "step")
-              ? <LoaderCircle className="size-4 animate-spin" />
-              : <Play className="size-4" />}
-            <span className="hidden sm:inline">{t("run")}</span>
-          </ToolbarButton>
+          {isRunning ? (
+            // 执行中把「运行」换成「停止」:节点的 execute 拿得到 AbortSignal,
+            // 网络请求会真正中断,而不只是丢弃结果。
+            <ToolbarButton label={t("stopExecution")} onClick={stopExecution}>
+              <Square className="size-4" />
+              <span className="hidden sm:inline">{t("stop")}</span>
+            </ToolbarButton>
+          ) : (
+            <ToolbarButton
+              label={t("runAll")}
+              onClick={runAll}
+              disabled={nodes.length === 0}
+            >
+              <Play className="size-4" />
+              <span className="hidden sm:inline">{t("run")}</span>
+            </ToolbarButton>
+          )}
 
           <ToolbarButton
             label={t("runNextStep")}

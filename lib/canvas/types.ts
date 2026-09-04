@@ -37,6 +37,16 @@ export interface PortDefinition extends DerivedOutput {
   jsonTypename?: string
 }
 
+/**
+ * 执行上下文。signal 会在超时、被更新的图取代或用户点停止时中止 ——
+ * 适配器应把它透传给 fetch,长循环则定期检查 signal.aborted。
+ *
+ * 参数可选:绝大多数适配器是纯计算,无需关心取消。
+ */
+export interface NodeExecutionContext {
+  signal: AbortSignal
+}
+
 export interface NodeDefinition {
   type: string
   category: "basic" | "crypto" | "data" | "image" | "text" | "dev" | "utility" | "viewer"
@@ -51,7 +61,11 @@ export interface NodeDefinition {
   icon: React.ComponentType<{ className?: string }>
   config: ConfigField[]
   outputs: DerivedOutput[]   // Computed outputs (like Hash result)
-  execute: (inputs: Record<string, unknown>, config: Record<string, unknown>) => Promise<Record<string, unknown>>
+  execute: (
+    inputs: Record<string, unknown>,
+    config: Record<string, unknown>,
+    context?: NodeExecutionContext,
+  ) => Promise<Record<string, unknown>>
 }
 
 export interface NodeInstance {

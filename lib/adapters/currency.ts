@@ -63,11 +63,11 @@ function setCachedRates(base: string, rates: Record<string, number>): void {
   }
 }
 
-async function fetchRates(base: string): Promise<Record<string, number>> {
+async function fetchRates(base: string, signal?: AbortSignal): Promise<Record<string, number>> {
   const cached = getCachedRates(base)
   if (cached) return cached
 
-  const response = await fetch(`https://open.er-api.com/v6/latest/${base}`)
+  const response = await fetch(`https://open.er-api.com/v6/latest/${base}`, { signal })
   if (!response.ok) {
     throw new Error(`Failed to fetch exchange rates: ${response.status}`)
   }
@@ -119,12 +119,12 @@ export const currencyAdapter: ToolAdapter = {
     { id: "converted", name: "Converted", dataType: "number" },
     { id: "rate", name: "Rate", dataType: "number" },
   ],
-  async execute(inputs, config) {
+  async execute(inputs, config, context) {
     const amount = Number(inputs.amount ?? config.amount ?? 0)
     const from = String(inputs.from ?? config.from ?? "USD")
     const to = String(inputs.to ?? config.to ?? "EUR")
 
-    const rates = await fetchRates(from)
+    const rates = await fetchRates(from, context?.signal)
     const rate = rates[to]
 
     if (!rate) {

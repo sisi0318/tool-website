@@ -21,7 +21,7 @@ export const whoisAdapter: ToolAdapter = {
   outputs: [
     { id: "result", name: "Result", dataType: "json" },
   ],
-  async execute(inputs, config) {
+  async execute(inputs, config, context) {
     const domain = String(inputs.domain ?? config.domain ?? "").trim()
 
     if (!domain) {
@@ -29,7 +29,9 @@ export const whoisAdapter: ToolAdapter = {
     }
 
     try {
-      const response = await fetch(`/api/whois?domain=${encodeURIComponent(domain)}`)
+      const response = await fetch(`/api/whois?domain=${encodeURIComponent(domain)}`, {
+        signal: context?.signal,
+      })
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
         throw new Error(err.error ?? `Lookup failed (${response.status})`)

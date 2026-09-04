@@ -57,7 +57,7 @@ export const httpTesterAdapter: ToolAdapter = {
     { id: "response", name: "Response", dataType: "json" },
     { id: "status", name: "Status", dataType: "number" },
   ],
-  async execute(inputs, config) {
+  async execute(inputs, config, context) {
     const url = String(inputs.url ?? config.url ?? "")
     const method = String(inputs.method ?? config.method ?? "GET")
     // 用真值判断会让"上游显式给了空 body"退回到 config 里的旧 body。
@@ -94,6 +94,8 @@ export const httpTesterAdapter: ToolAdapter = {
       const options: RequestInit = {
         method,
         headers,
+        // 超时、被更新的图取代或用户点停止时,请求要真的中断
+        signal: context?.signal,
       }
 
       // 空串是合法的请求体,不能用真值判断丢掉。

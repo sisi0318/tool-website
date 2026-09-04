@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import type {
+  NodeDefinition,
   NodeInstance,
   Edge,
   ExecutionLogEntry,
@@ -13,6 +14,7 @@ import { normalizeWorkflowData } from "./workflow"
 import { stripUnpersistableNodes } from "./persist"
 import { withDefaultConfig } from "./node-factory"
 import { readLocalStorage, writeLocalStorage } from "../safe-storage"
+import { mapWithConcurrency } from "../async-pool"
 
 const nodeExecVersion = new Map<string, number>()
 const activeNodeRunTokens = new Map<string, number>()
@@ -35,22 +37,60 @@ const MAX_EXECUTION_LOG_ENTRIES = 100
 const NODE_EXECUTION_TIMEOUT_MS = 60_000
 
 // 给 adapter 的 execute 加硬超时，避免挂起的 Promise 永久占用 running 状态
-function withExecutionTimeout<T>(promise: Promise<T>, ms = NODE_EXECUTION_TIMEOUT_MS): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`Execution timed out after ${Math.round(ms / 1000)}s`))
-    }, ms)
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      },
-    )
+/**
+ * 每次节点执行对应一个 AbortController。
+ *
+ * 此前只是和一个 60 秒定时器赛跑:超时后丢弃结果,但 fetch 与图片解码仍在后台
+ * 继续占着网络和主线程。现在把 signal 交给适配器,愿意配合的能真正停下来;
+ * 不配合的仍会因为竞速而及时释放界面。
+ */
+const activeRunControllers = new Map<number, AbortController>()
+
+/** 用户点了停止:除了中止在飞执行,还要阻止自动执行的收敛循环立刻重跑 */
+let executionStopRequested = false
+
+function rejectOnAbort(signal: AbortSignal): Promise<never> {
+  return new Promise<never>((_, reject) => {
+    const fail = () => {
+      const reason = signal.reason
+      reject(reason instanceof Error ? reason : new Error("Execution cancelled"))
+    }
+    if (signal.aborted) {
+      fail()
+      return
+    }
+    signal.addEventListener("abort", fail, { once: true })
   })
+}
+
+async function runNodeExecute(
+  definition: NodeDefinition,
+  inputs: Record<string, unknown>,
+  config: Record<string, unknown>,
+  runToken: number,
+  ms = NODE_EXECUTION_TIMEOUT_MS,
+): Promise<Record<string, unknown>> {
+  const controller = new AbortController()
+  activeRunControllers.set(runToken, controller)
+  const timer = setTimeout(() => {
+    controller.abort(new Error(`Execution timed out after ${Math.round(ms / 1000)}s`))
+  }, ms)
+
+  try {
+    return await Promise.race([
+      definition.execute(inputs, config, { signal: controller.signal }),
+      rejectOnAbort(controller.signal),
+    ])
+  } finally {
+    clearTimeout(timer)
+    activeRunControllers.delete(runToken)
+  }
+}
+
+/** 中止所有在飞的节点执行 */
+function abortActiveRuns(reason: Error): void {
+  for (const controller of activeRunControllers.values()) controller.abort(reason)
+  activeRunControllers.clear()
 }
 
 let configHistoryGroup: { nodeId: string; updatedAt: number } | null = null
@@ -168,6 +208,76 @@ async function runUntilStable(
   console.warn("Canvas graph kept changing while executing; stopped after retries")
 }
 
+/**
+ * 同一层内并发的上限。图里多数节点是纯计算,并行度再高也只是抢主线程;
+ * 真正受益的是网络类节点(whois / 汇率 / HTTP)与图片解码这类 await 密集的工作。
+ */
+const MAX_PARALLEL_NODES = 4
+
+/**
+ * 按拓扑分层执行:同一层内并发,层与层之间保持顺序。
+ *
+ * 此前是严格串行的 for...await —— 相互独立的分支也要排队,一个 60 秒才超时的
+ * 网络节点会把整张图挡住。
+ *
+ * @param shouldSkip 返回 true 表示跳过该节点,其下游会被视为「依赖了被跳过的节点」
+ * @returns 是否完整跑完(false 表示中途被更新的图取代)
+ */
+async function runGraphInWaves(
+  sorted: NodeInstance[],
+  edges: Edge[],
+  planRevision: number,
+  shouldSkip: (node: NodeInstance, dependsOnSkipped: boolean) => boolean,
+  runNode: (nodeId: string) => Promise<void>,
+): Promise<boolean> {
+  const nodeById = new Map(sorted.map((node) => [node.id, node]))
+  const inDegree = new Map<string, number>(sorted.map((node) => [node.id, 0]))
+  const outgoing = new Map<string, string[]>()
+  const incoming = new Map<string, string[]>()
+
+  for (const edge of edges) {
+    if (!nodeById.has(edge.source) || !nodeById.has(edge.target)) continue
+    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1)
+    outgoing.set(edge.source, [...(outgoing.get(edge.source) ?? []), edge.target])
+    incoming.set(edge.target, [...(incoming.get(edge.target) ?? []), edge.source])
+  }
+
+  const skipped = new Set<string>()
+  let wave = sorted.filter((node) => (inDegree.get(node.id) ?? 0) === 0).map((node) => node.id)
+
+  while (wave.length > 0) {
+    if (executionRevision !== planRevision) return false
+
+    const runnable: string[] = []
+    for (const id of wave) {
+      const node = nodeById.get(id)!
+      const dependsOnSkipped = (incoming.get(id) ?? []).some((source) => skipped.has(source))
+      if (shouldSkip(node, dependsOnSkipped)) {
+        skipped.add(id)
+        continue
+      }
+      runnable.push(id)
+    }
+
+    await mapWithConcurrency(runnable, MAX_PARALLEL_NODES, async (id) => {
+      await runNode(id)
+    })
+    if (executionRevision !== planRevision) return false
+
+    const next: string[] = []
+    for (const id of wave) {
+      for (const target of outgoing.get(id) ?? []) {
+        const remaining = (inDegree.get(target) ?? 1) - 1
+        inDegree.set(target, remaining)
+        if (remaining === 0) next.push(target)
+      }
+    }
+    wave = next
+  }
+
+  return true
+}
+
 function isManualNode(node: NodeInstance | undefined): boolean {
   return Boolean(node && getNodeDefinition(node.type)?.executionMode === "manual")
 }
@@ -262,6 +372,8 @@ interface CanvasState {
   executeAll: (includeManual?: boolean) => Promise<void>
   executeToNode: (nodeId: string, includeManual?: boolean) => Promise<void>
   executeStep: (includeManual?: boolean) => Promise<void>
+  /** 中止在飞执行,并阻止自动执行立刻重跑 */
+  stopExecution: () => void
   setAutoRun: (enabled: boolean) => void
   clearExecutionLog: () => void
 
@@ -891,7 +1003,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                   return [field.id, value]
                 })
             ),
-            ...await withExecutionTimeout(definition.execute(inputs, node.config)),
+            ...await runNodeExecute(definition, inputs, node.config, runToken),
           }
 
       if (
@@ -976,6 +1088,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       return
     }
 
+    executionStopRequested = false
     const run = { includeManual, promise: Promise.resolve() }
     run.promise = runUntilStable(async (planRevision) => {
       const state = get()
@@ -987,23 +1100,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         markCyclicNodes(state.nodes, sorted)
       }
 
-      const skippedNodes = new Set<string>()
-      for (const node of sorted) {
-        if (executionRevision !== planRevision) return false
-        const dependsOnSkippedNode = state.edges.some(
-          (edge) => edge.target === node.id && skippedNodes.has(edge.source)
-        )
-        if (!run.includeManual && (isManualNode(node) || dependsOnSkippedNode)) {
-          skippedNodes.add(node.id)
-          continue
-        }
-        // Execute in topological order without recursively running descendants.
-        // This ensures converging branches have all upstream outputs available.
-        await get().executeNode(node.id, undefined, false, run.includeManual)
-        if (executionRevision !== planRevision) return false
-      }
-      return true
-    }, () => get().autoRun)
+      return runGraphInWaves(
+        sorted,
+        state.edges,
+        planRevision,
+        (node, dependsOnSkipped) =>
+          !run.includeManual && (isManualNode(node) || dependsOnSkipped),
+        // 不递归执行下游:分层调度已经保证汇聚分支的上游都已就绪
+        (nodeId) => get().executeNode(nodeId, undefined, false, run.includeManual),
+      )
+    }, () => get().autoRun && !executionStopRequested)
 
     activeGraphRun = run
     try {
@@ -1047,31 +1153,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }))
     }
 
-    const skippedNodes = new Set<string>()
-    for (const node of sorted) {
-      if (executionRevision !== planRevision) return
-      const dependsOnSkippedNode = requiredEdges.some(
-        (edge) => edge.target === node.id && skippedNodes.has(edge.source)
-      )
-      // 点击某个节点的"运行"只对该节点表示同意。上游的手动节点(如 HTTP 请求)
-      // 会真的发出带副作用的请求,不能因为它恰好在上游就替用户按下确认。
-      const isExplicitTarget = node.id === nodeId
-      if (!isExplicitTarget && isManualNode(node)) {
-        skippedNodes.add(node.id)
-        continue
-      }
-      if (!includeManual && (isManualNode(node) || dependsOnSkippedNode)) {
-        skippedNodes.add(node.id)
-        continue
-      }
-      if (dependsOnSkippedNode && !isExplicitTarget) {
-        skippedNodes.add(node.id)
-        continue
-      }
-
-      await get().executeNode(node.id, undefined, false, includeManual)
-      if (executionRevision !== planRevision) return
-    }
+    await runGraphInWaves(
+      sorted,
+      requiredEdges,
+      planRevision,
+      (node, dependsOnSkipped) => {
+        // 点击某个节点的"运行"只对该节点表示同意。上游的手动节点(如 HTTP 请求)
+        // 会真的发出带副作用的请求,不能因为它恰好在上游就替用户按下确认。
+        const isExplicitTarget = node.id === nodeId
+        if (!isExplicitTarget && isManualNode(node)) return true
+        if (!includeManual && (isManualNode(node) || dependsOnSkipped)) return true
+        return dependsOnSkipped && !isExplicitTarget
+      },
+      (id) => get().executeNode(id, undefined, false, includeManual),
+    )
   },
 
   executeStep: async (includeManual = true) => {
@@ -1131,6 +1226,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         nextNodeId: executableNodes[stepExecutionIndex]?.id ?? null,
       },
     })
+  },
+
+  stopExecution: () => {
+    executionStopRequested = true
+    invalidateExecutionPlan()
+    clearAllNodeExecutionTimers()
+    abortActiveRuns(new Error("Execution stopped"))
+    set((s) => ({
+      nodeRunning: {},
+      executionLog: cancelRunningExecutionLogs(s.executionLog, Date.now()),
+      stepProgress: emptyStepProgress(),
+    }))
   },
 
   setAutoRun: (enabled) => {

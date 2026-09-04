@@ -358,7 +358,7 @@ describe("canvas store execution", () => {
 
     await vi.advanceTimersByTimeAsync(1)
     expect(execute).toHaveBeenCalledTimes(1)
-    expect(execute).toHaveBeenCalledWith({}, { value: "latest" })
+    expect(execute).toHaveBeenCalledWith({}, { value: "latest" }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
   it("executeAll 在汇合节点执行前等待所有上游，且只执行一次", async () => {
@@ -402,7 +402,8 @@ describe("canvas store execution", () => {
     expect(executeMerge).toHaveBeenCalledTimes(1)
     expect(executeMerge).toHaveBeenCalledWith(
       { left: "A", right: "B" },
-      {}
+      {},
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
     expect(harness.useCanvasStore.getState().nodeOutputs.c).toEqual({ out: "AB" })
   })
@@ -495,7 +496,8 @@ describe("canvas store execution", () => {
     expect(executeMerge).toHaveBeenCalledTimes(1)
     expect(executeMerge).toHaveBeenCalledWith(
       { left: "root-left", right: "root-right" },
-      {}
+      {},
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
     expect(harness.useCanvasStore.getState().nodeOutputs.d).toEqual({
       out: "root-left|root-right",
@@ -626,7 +628,7 @@ describe("canvas store execution", () => {
 
     expect(harness.useCanvasStore.getState().nodeOutputs.a).toBeUndefined()
     expect(harness.useCanvasStore.getState().nodeErrors.a).toBe("failed")
-    expect(executeDownstream).toHaveBeenCalledWith({}, {})
+    expect(executeDownstream).toHaveBeenCalledWith({}, {}, expect.objectContaining({ signal: expect.any(AbortSignal) }))
     expect(harness.useCanvasStore.getState().nodeOutputs.b).toEqual({ out: "empty" })
   })
 
@@ -808,7 +810,7 @@ describe("canvas guided execution", () => {
     await harness.useCanvasStore.getState().executeAll()
 
     expect(transform).not.toHaveBeenCalled()
-    expect(sink).toHaveBeenCalledWith({ in: "raw" }, {})
+    expect(sink).toHaveBeenCalledWith({ in: "raw" }, {}, expect.objectContaining({ signal: expect.any(AbortSignal) }))
     expect(harness.useCanvasStore.getState().nodeOutputs.b).toEqual({ out: "raw" })
     expect(harness.useCanvasStore.getState().executionLog.map((entry) => entry.status)).toEqual([
       "success",
@@ -996,5 +998,135 @@ describe("整图执行的收敛与合流", () => {
     await run
 
     expect(executeLate).not.toHaveBeenCalled()
+  })
+})
+
+describe("取消与并发执行", () => {
+  it("把 AbortSignal 交给 execute，停止时真的中止而不只是丢结果", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+
+    let observed: AbortSignal | undefined
+    let aborted = false
+    const started = deferred<void>()
+    registerDefinition(harness, "abortable", async (_inputs, _config, context) => {
+      observed = context?.signal
+      context?.signal.addEventListener("abort", () => {
+        aborted = true
+      })
+      started.resolve()
+      // 一直挂着,只能靠取消结束
+      return new Promise<Record<string, unknown>>(() => {})
+    })
+
+    useCanvasStore.setState({
+      nodes: [node("a", "abortable")],
+      edges: [],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    const run = useCanvasStore.getState().executeAll()
+    await started.promise
+
+    expect(observed).toBeInstanceOf(AbortSignal)
+    expect(observed!.aborted).toBe(false)
+
+    useCanvasStore.getState().stopExecution()
+    await run
+
+    expect(aborted, "适配器应当收到 abort 事件").toBe(true)
+    expect(useCanvasStore.getState().nodeRunning.a).toBeFalsy()
+  })
+
+  it("停止后不会因为自动执行又立刻重跑", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    useCanvasStore.getState().setAutoRun(true)
+
+    let starts = 0
+    const first = deferred<Record<string, unknown>>()
+    registerDefinition(harness, "counted", async () => {
+      starts += 1
+      return starts === 1 ? first.promise : { out: "again" }
+    })
+
+    useCanvasStore.setState({
+      nodes: [node("a", "counted")],
+      edges: [],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    const run = useCanvasStore.getState().executeAll()
+    await Promise.resolve()
+    useCanvasStore.getState().stopExecution()
+    first.resolve({ out: "late" })
+    await run
+
+    expect(starts).toBe(1)
+  })
+
+  it("同一层的独立分支并发执行，慢节点不再阻塞其它分支", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+
+    const slow = deferred<Record<string, unknown>>()
+    let fastFinished = false
+    registerDefinition(harness, "slow", async () => slow.promise)
+    registerDefinition(harness, "fast", async () => {
+      fastFinished = true
+      return { out: "fast" }
+    })
+
+    useCanvasStore.setState({
+      // 两条互不相干的分支
+      nodes: [node("slow", "slow"), node("fast", "fast")],
+      edges: [],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    const run = useCanvasStore.getState().executeAll()
+    // 串行执行时 fast 必须等 slow 结束;并发下它可以先跑完
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(fastFinished, "独立分支不应被慢节点挡住").toBe(true)
+
+    slow.resolve({ out: "slow" })
+    await run
+    expect(useCanvasStore.getState().nodeOutputs.slow).toEqual({ out: "slow" })
+    expect(useCanvasStore.getState().nodeOutputs.fast).toEqual({ out: "fast" })
+  })
+
+  it("仍然等齐上游:汇合节点在两个上游都完成后才执行一次", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+
+    registerDefinition(harness, "src-a", async () => ({ out: "A" }))
+    registerDefinition(harness, "src-b", async () => ({ out: "B" }))
+    const merge = vi.fn(async (inputs: Record<string, unknown>) => ({ out: JSON.stringify(inputs) }))
+    registerDefinition(harness, "merge", merge)
+
+    useCanvasStore.setState({
+      nodes: [node("a", "src-a"), node("b", "src-b"), node("m", "merge")],
+      edges: [edge("a-m", "a", "m", "out", "left"), edge("b-m", "b", "m", "out", "right")],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+
+    await useCanvasStore.getState().executeAll()
+
+    expect(merge).toHaveBeenCalledTimes(1)
+    expect(merge).toHaveBeenCalledWith(
+      { left: "A", right: "B" },
+      {},
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
   })
 })
