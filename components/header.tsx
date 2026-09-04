@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MoonIcon, Route, SunIcon, Workflow, Wrench } from "lucide-react"
+import { MoonIcon, Route, Settings, SunIcon, Workflow, Wrench } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useTranslations } from "@/hooks/use-translations"
 import { LanguageSwitcher } from "@/components/language-switcher"
@@ -244,6 +244,26 @@ export default function Header() {
 
         {/* Trailing: Actions */}
         <div className="flex items-center gap-1">
+          {/* 本地数据一览与清除入口 */}
+          <Link
+            href="/settings"
+            aria-label={t("settings")}
+            title={t("settings")}
+            aria-current={pathname.startsWith("/settings") ? "page" : undefined}
+            className={cn(
+              "inline-flex min-h-[48px] min-w-[48px] items-center justify-center",
+              "rounded-[var(--md-sys-shape-corner-full)]",
+              "text-[var(--md-sys-color-on-surface-variant)]",
+              "hover:bg-[var(--md-sys-color-on-surface)]/[0.08]",
+              "focus-visible:outline-none focus-visible:ring-2",
+              "focus-visible:ring-[var(--md-sys-color-primary)]",
+              "transition-colors duration-md-short-4",
+              pathname.startsWith("/settings") && "text-[var(--md-sys-color-primary)]",
+            )}
+          >
+            <Settings className="h-5 w-5" />
+          </Link>
+
           {/* Language switcher */}
           <LanguageSwitcher />
 

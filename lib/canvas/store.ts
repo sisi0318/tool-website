@@ -12,7 +12,7 @@ import { validateConnectionStructure } from "./validation"
 import { normalizeWorkflowData } from "./workflow"
 import { stripUnpersistableNodes } from "./persist"
 import { withDefaultConfig } from "./node-factory"
-import { readLocalStorage } from "../safe-storage"
+import { readLocalStorage, writeLocalStorage } from "../safe-storage"
 
 const nodeExecVersion = new Map<string, number>()
 const activeNodeRunTokens = new Map<string, number>()
@@ -27,6 +27,9 @@ const AUTO_EXEC_DEBOUNCE_MS = 350
 const CONFIG_HISTORY_WINDOW_MS = 750
 /** Nodes on a cycle cannot take part in execution; a stable code lets the UI localize it. */
 export const CYCLE_ERROR = "canvas:cycle"
+
+/** 画布自动保存的存储键,登记在 lib/storage/app-storage.ts */
+const CANVAS_STATE_KEY = "canvas-state"
 const MAX_HISTORY = 50
 const MAX_EXECUTION_LOG_ENTRIES = 100
 const NODE_EXECUTION_TIMEOUT_MS = 60_000
@@ -1139,19 +1142,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   saveToLocalStorage: () => {
     const state = get()
-    try {
-      localStorage.setItem(
-        "canvas-state",
-        // File/Blob 序列化后会变成 `{}`,重载时是个"看起来有值"的坏对象。
-        JSON.stringify({ nodes: stripUnpersistableNodes(state.nodes), edges: state.edges })
-      )
-    } catch (error) {
-      console.warn("Unable to persist canvas state", error)
+    const ok = writeLocalStorage(
+      CANVAS_STATE_KEY,
+      // File/Blob 序列化后会变成 `{}`,重载时是个"看起来有值"的坏对象。
+      JSON.stringify({ nodes: stripUnpersistableNodes(state.nodes), edges: state.edges })
+    )
+    if (!ok) {
+      console.warn("Unable to persist canvas state")
     }
   },
 
   loadFromLocalStorage: () => {
-    const saved = readLocalStorage("canvas-state")
+    const saved = readLocalStorage(CANVAS_STATE_KEY)
     if (saved) {
       try {
         const parsed = JSON.parse(saved)

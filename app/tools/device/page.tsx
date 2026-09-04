@@ -14,6 +14,7 @@ import { useTranslations } from "@/hooks/use-translations"
 import { useToolActivity } from "@/components/tool-activity"
 import { collectDeviceFingerprint, type DeviceFingerprint } from "@/lib/device-fingerprint"
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 const CLIENT_CACHE_DURATION = 3 * 60 * 60 * 1000
 const IP_CACHE_KEY = "device-info-ip-cache"
@@ -462,8 +463,8 @@ export default function DeviceInfoPage() {
 
     try {
       setIpLoading(true)
-      if (!enableCache) localStorage.removeItem(IP_CACHE_KEY)
-      const cachedData = enableCache ? localStorage.getItem(IP_CACHE_KEY) : null
+      if (!enableCache) removeLocalStorage(IP_CACHE_KEY)
+      const cachedData = enableCache ? readLocalStorage(IP_CACHE_KEY) : null
       if (cachedData) {
         try {
           const { data, timestamp } = JSON.parse(cachedData) as { data: IpGeoInfo; timestamp: number }
@@ -472,7 +473,7 @@ export default function DeviceInfoPage() {
             return
           }
         } catch {
-          localStorage.removeItem(IP_CACHE_KEY)
+          removeLocalStorage(IP_CACHE_KEY)
         }
       }
 
@@ -487,7 +488,7 @@ export default function DeviceInfoPage() {
 
       const ipData = await response.json() as IpGeoInfo
       if (enableCache) {
-        localStorage.setItem(IP_CACHE_KEY, JSON.stringify({ data: ipData, timestamp: Date.now() }))
+        writeLocalStorage(IP_CACHE_KEY, JSON.stringify({ data: ipData, timestamp: Date.now() }))
       }
       applyIpInfo(ipData)
     } catch {
@@ -563,7 +564,7 @@ export default function DeviceInfoPage() {
     ipFetchedRef.current = false
     ipRequestRef.current?.abort()
     try {
-      localStorage.removeItem(IP_CACHE_KEY)
+      removeLocalStorage(IP_CACHE_KEY)
     } catch {
       // Refresh still works when storage access is blocked.
     }
@@ -573,8 +574,8 @@ export default function DeviceInfoPage() {
   const handleCacheChange = (enabled: boolean) => {
     setEnableCache(enabled)
     try {
-      localStorage.setItem(IP_CACHE_PREFERENCE_KEY, String(enabled))
-      if (!enabled) localStorage.removeItem(IP_CACHE_KEY)
+      writeLocalStorage(IP_CACHE_PREFERENCE_KEY, String(enabled))
+      if (!enabled) removeLocalStorage(IP_CACHE_KEY)
     } catch {
       setEnableCache(false)
     }
@@ -582,7 +583,7 @@ export default function DeviceInfoPage() {
 
   useEffect(() => {
     try {
-      const savedPreference = localStorage.getItem(IP_CACHE_PREFERENCE_KEY)
+      const savedPreference = readLocalStorage(IP_CACHE_PREFERENCE_KEY)
       if (savedPreference !== null) setEnableCache(savedPreference === "true")
     } catch {
       setEnableCache(false)

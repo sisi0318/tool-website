@@ -25,6 +25,9 @@
 TOTP 账户以明文保存，请勿在共享设备上录入长期凭据。分享链接会携带各步骤的参数，
 但不含数据本体；标记为长期凭据的字段（如 TOTP 种子）不会进入链接。
 
+打开 `/settings` 可以看到本站在当前设备上写入的全部内容（分组、占用大小、哪些含
+敏感数据），并按类别或全部清除 —— 只删本站登记过的键，不影响同域下的其它数据。
+
 ## 技术栈
 
 Next.js 15 (App Router) · React 18 · TypeScript (strict) · Tailwind CSS + M3 design tokens · Zustand · @xyflow/react · Vitest + Playwright · ESLint 9

@@ -37,6 +37,7 @@ import {
   type ExchangeRateTable,
 } from "@/lib/currency-tools"
 import { getAllExchangeRates } from "./actions"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 const SELECTED_CURRENCIES_KEY = "currency_selected_currencies"
 const MULTI_CURRENCIES_KEY = "currency_multi_currencies"
@@ -108,7 +109,7 @@ interface HistoryItem extends ConversionResult {
 
 function readCurrencyList(key: string, fallback: string[]): string[] {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "null")
+    const parsed: unknown = JSON.parse(readLocalStorage(key) ?? "null")
     if (!Array.isArray(parsed)) return fallback
     const currencies = [...new Set(parsed.filter((value): value is string => typeof value === "string" && SUPPORTED_CODES.has(value)))]
     return currencies.length > 0 ? currencies : fallback
@@ -119,7 +120,7 @@ function readCurrencyList(key: string, fallback: string[]): string[] {
 
 function readClientCache(): ExchangeRateTable | null {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(CACHE_KEY) ?? "null")
+    const parsed: unknown = JSON.parse(readLocalStorage(CACHE_KEY) ?? "null")
     if (!parsed || typeof parsed !== "object") return null
     const cache = parsed as Partial<ClientCacheItem>
     if (
@@ -127,12 +128,12 @@ function readClientCache(): ExchangeRateTable | null {
       Date.now() - cache.timestamp >= CLIENT_CACHE_TTL ||
       !isExchangeRateTable(cache.data)
     ) {
-      localStorage.removeItem(CACHE_KEY)
+      removeLocalStorage(CACHE_KEY)
       return null
     }
     return cache.data
   } catch {
-    localStorage.removeItem(CACHE_KEY)
+    removeLocalStorage(CACHE_KEY)
     return null
   }
 }
@@ -140,7 +141,7 @@ function readClientCache(): ExchangeRateTable | null {
 function saveClientCache(data: ExchangeRateTable): void {
   try {
     const cache: ClientCacheItem = { timestamp: Date.now(), data }
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+    writeLocalStorage(CACHE_KEY, JSON.stringify(cache))
   } catch {
     // Storage may be unavailable in private or restricted browser contexts.
   }
@@ -148,7 +149,7 @@ function saveClientCache(data: ExchangeRateTable): void {
 
 function saveLocalValue(key: string, value: string): void {
   try {
-    localStorage.setItem(key, value)
+    writeLocalStorage(key, value)
   } catch {
     // The converter still works when persistent browser storage is unavailable.
   }
@@ -156,7 +157,7 @@ function saveLocalValue(key: string, value: string): void {
 
 function readActiveTab(): CurrencyTab | null {
   try {
-    const value = localStorage.getItem(ACTIVE_TAB_KEY)
+    const value = readLocalStorage(ACTIVE_TAB_KEY)
     return value === "single" || value === "multi" || value === "multiInput"
       ? value
       : null
@@ -264,7 +265,7 @@ export default function CurrencyConverterPage() {
           }
         } else {
           try {
-            localStorage.removeItem(CACHE_KEY)
+            removeLocalStorage(CACHE_KEY)
           } catch {
             // A forced server refresh can continue without local storage access.
           }

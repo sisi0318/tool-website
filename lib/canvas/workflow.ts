@@ -110,7 +110,7 @@ export function parseWorkflowFile(contents: string): { name: string; data: Workf
 export function getWorkflowList(): string[] {
   if (typeof window === "undefined") return []
   try {
-    const list: unknown = JSON.parse(localStorage.getItem(WORKFLOW_LIST_KEY) ?? "[]")
+    const list: unknown = JSON.parse(readLocalStorage(WORKFLOW_LIST_KEY) ?? "[]")
     return Array.isArray(list) ? list.filter((name): name is string => typeof name === "string") : []
   } catch {
     return []

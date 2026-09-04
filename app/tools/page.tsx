@@ -73,6 +73,7 @@ import { useToolPreferences } from "@/hooks/use-tool-preferences"
 import { haveEqualToolParams, uniqueToolIds } from "@/lib/tool-workspace"
 import { TOOL_CATALOG, getToolEntry, type ToolCategoryId } from "@/lib/tools/catalog"
 import { TOOL_COMPONENTS } from "./tool-components"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 function createToolRenderer(Component: React.ComponentType) {
   const ToolRenderer = (params?: ToolRuntimeParams) => (
@@ -346,8 +347,8 @@ export default function ToolsPage() {
         params: tab.params || {},
       }))
 
-      localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(serializableTabs))
-      localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, currentActiveTab || "")
+      writeLocalStorage(TABS_STORAGE_KEY, JSON.stringify(serializableTabs))
+      writeLocalStorage(ACTIVE_TAB_STORAGE_KEY, currentActiveTab || "")
     } catch (error) {
       console.error("Error saving tabs to localStorage:", error)
     }
@@ -358,8 +359,8 @@ export default function ToolsPage() {
     if (typeof window === "undefined") return null
 
     try {
-      const savedTabsJson = localStorage.getItem(TABS_STORAGE_KEY)
-      const savedActiveTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY)
+      const savedTabsJson = readLocalStorage(TABS_STORAGE_KEY)
+      const savedActiveTab = readLocalStorage(ACTIVE_TAB_STORAGE_KEY)
 
       if (!savedTabsJson) return null
 

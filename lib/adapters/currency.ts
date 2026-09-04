@@ -1,6 +1,7 @@
 import { DollarSign } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "../safe-storage"
 
 const CURRENCIES = [
   { label: "USD", value: "USD" },
@@ -43,7 +44,7 @@ interface CacheData {
 
 function getCachedRates(base: string): Record<string, number> | null {
   try {
-    const cached = localStorage.getItem(CACHE_KEY)
+    const cached = readLocalStorage(CACHE_KEY)
     if (!cached) return null
     const data: CacheData = JSON.parse(cached)
     if (Date.now() - data.timestamp > CACHE_TTL || data.base !== base) return null
@@ -56,7 +57,7 @@ function getCachedRates(base: string): Record<string, number> | null {
 function setCachedRates(base: string, rates: Record<string, number>): void {
   try {
     const data: CacheData = { timestamp: Date.now(), base, rates }
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+    writeLocalStorage(CACHE_KEY, JSON.stringify(data))
   } catch {
     // Ignore storage errors
   }
