@@ -29,8 +29,8 @@ export default defineConfig({
         ? "npm run start"
         : "npm run build && npm run start",
     env: useDevServer
-      ? { NEXT_DIST_DIR: ".next-e2e", DISABLE_PWA: "true" }
-      : { DISABLE_PWA: "true" },
+      ? { NEXT_DIST_DIR: ".next-e2e", DISABLE_PWA: "true", NEXT_PUBLIC_E2E: "true" }
+      : { DISABLE_PWA: "true", NEXT_PUBLIC_E2E: "true" },
     url: "http://localhost:3000/canvas",
     reuseExistingServer: false,
     timeout: useDevServer ? 30_000 : 180_000,

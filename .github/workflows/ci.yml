@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同一分支上只保留最新一次运行
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 类型 / 规范 / 单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: 单元测试
+        run: npm test
+
+      - name: 依赖安全审计
+        # 只看运行时依赖的高危项;开发依赖的传递告警不阻断构建。
+        run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    name: 端到端测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: 安装 Playwright 浏览器
+        run: npx playwright install --with-deps chromium
+
+      - name: 构建
+        run: npm run build
+        env:
+          DISABLE_PWA: "true"
+          NEXT_PUBLIC_E2E: "true"
+
+      - name: 运行 e2e
+        # 复用上一步的构建产物,避免 playwright.config 再构建一次
+        run: npm run e2e
+        env:
+          PLAYWRIGHT_SKIP_BUILD: "true"
+          DISABLE_PWA: "true"
+          NEXT_PUBLIC_E2E: "true"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
