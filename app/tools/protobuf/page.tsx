@@ -492,6 +492,8 @@ export default function ProtobufTool() {
     } finally {
       setIsProcessing(false)
     }
+  // 依赖数组已列全处理所需的数据；两个辅助函数每次渲染都是新的
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     inputData,
     jsonInput,

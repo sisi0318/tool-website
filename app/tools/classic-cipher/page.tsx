@@ -674,6 +674,8 @@ export default function ClassicCipherPage() {
         // 自动切换时忽略错误
       }
     }
+  // 密码参数变化时用当前输入重算；把输入本身加进依赖会变成每次按键都重算
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [algorithm, shift, key, railCount, colKey, affineA, affineB, autoSwitch])
 
   useEffect(() => () => {

@@ -267,7 +267,7 @@ export default function ImageConvertPage() {
               {items.map((item) => (
                 <article key={item.id} className="overflow-hidden rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
                   <div className="relative aspect-video bg-[var(--md-sys-color-surface-container-high)]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    { }
                     <img src={item.resultUrl ?? item.sourceUrl} alt={item.source.name} className="h-full w-full object-contain" />
                     <button type="button" onClick={() => removeItem(item.id)} aria-label={t("remove")} className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/75"><X className="h-4 w-4" /></button>
                     {item.status === "processing" && <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-white"><Loader2 className="h-7 w-7 animate-spin" /></div>}

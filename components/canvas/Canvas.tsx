@@ -634,7 +634,7 @@ export function Canvas() {
       laidOutNodes.map((node) => ({ id: node.id, position: node.position }))
     )
     showConnectionFeedback(t("autoLayoutApplied"), "success")
-  }, [fitView, getNodes, showConnectionFeedback, storeEdges, storeNodes, t, updateNodePositions])
+  }, [getNodes, showConnectionFeedback, storeEdges, storeNodes, t, updateNodePositions])
 
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {

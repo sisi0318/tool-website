@@ -173,10 +173,14 @@ export default function EncodingPage() {
 
     setEncodingType(matchedType)
     if (autoSwitch && input.length > 0) runTransform(input, matchedType)
+  // 深链参数变化时套用一次编码类型；加入 input 会变成每次按键都重放
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.feature])
 
   useEffect(() => {
     return () => {
+      // 卸载时要清掉“此刻挂着”的定时器，读的正是 cleanup 时刻的 .current，规则在这里是误报
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       Object.values(copyTimeoutRef.current).forEach((timeout) => {
         if (timeout) clearTimeout(timeout)
       })

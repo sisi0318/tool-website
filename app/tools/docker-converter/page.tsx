@@ -751,6 +751,8 @@ export default function DockerConverterPage() {
     }, 500)
 
     return () => window.clearTimeout(timer)
+  // 依赖数组已列全转换所需的数据；加入函数身份会让防抖每次渲染重触发
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dockerRunCommand, autoConvert, composeVersion])
 
   useEffect(() => {

@@ -218,6 +218,8 @@ export default function TimePage() {
 
   useEffect(() => {
     return () => {
+      // 卸载时要清掉“此刻挂着”的定时器，读的正是 cleanup 时刻的 .current，规则在这里是误报
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       Object.values(copyTimeoutRef.current).forEach((timeout) => {
         if (timeout) clearTimeout(timeout)
       })

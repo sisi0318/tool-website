@@ -255,6 +255,8 @@ export default function ColorPickerPage() {
       debounce((hexColor: string) => {
         updateAllFormats(hexColor)
       }, 150),
+    // 防抖函数只建一次；updateAllFormats 每次渲染都是新函数，加进依赖会让防抖失效
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
 
@@ -283,6 +285,8 @@ export default function ColorPickerPage() {
   // Clean up timeouts on unmount
   useEffect(() => {
     return () => {
+      // 卸载时要清掉“此刻挂着”的定时器，读的正是 cleanup 时刻的 .current，规则在这里是误报
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       Object.values(copyTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout))
     }
   }, [])

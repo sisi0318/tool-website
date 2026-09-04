@@ -28,7 +28,8 @@ jobs:
         run: npm run typecheck
 
       - name: ESLint
-        run: npm run lint
+        # 警告一律当错误:现存的每一处豁免都写明了理由,新增的必须同样交代清楚
+        run: npm run lint -- --max-warnings 0
 
       - name: 单元测试
         run: npm test

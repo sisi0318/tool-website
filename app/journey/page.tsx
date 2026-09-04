@@ -162,6 +162,8 @@ export default function JourneyPage() {
     }
     const draft = loadDraft()
     if (draft) setJourney(draft)
+  // 挂载引导，由 bootedRef 保证只跑一次；加入 t/toast 会在切换语言时重放导入流程
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Autosave the draft (debounced) whenever the journey changes.

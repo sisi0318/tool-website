@@ -408,6 +408,8 @@ export default function CrontabPage() {
     
     setExpression(expr)
     parseCron(expr)
+  // 由可视化选择器拼出表达式并解析；parseCron 每次渲染都是新函数
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMinutes, selectedHours, selectedDays, selectedMonths, selectedWeekdays, includeSeconds])
 
   // 增强的验证函数
@@ -750,6 +752,8 @@ export default function CrontabPage() {
 
   useEffect(() => {
     parseCron(expression)
+  // 显示设置变化时重新解析当前表达式；加入 expression 会变成每次按键都解析
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [includeSeconds, use24HourFormat, selectedTimezone, t])
 
   useEffect(() => {

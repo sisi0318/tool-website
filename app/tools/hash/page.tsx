@@ -710,6 +710,8 @@ export default function HashPage() {
       void calculateHash()
     }, 300)
     return () => clearTimeout(timer)
+  // 依赖数组已列全计算所需的数据；加入函数身份会让防抖每次渲染重触发
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, fileInfo, algorithm, outputFormat, size, autoCalculate, showAllResults, inputMode])
 
   // 当验证哈希变化时，验证哈希
@@ -725,6 +727,8 @@ export default function HashPage() {
     } else {
       setVerifyResult(null)
     }
+  // 依赖数组已列全校验所需的数据；加入函数身份会让防抖每次渲染重触发
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verifyHash, showAllResults, allHashResults, hashResult])
 
   // 清理复制超时
@@ -733,6 +737,8 @@ export default function HashPage() {
       cancelCalculationRef.current = true
       calculationIdRef.current += 1
       calculationAbortRef.current?.abort()
+      // 卸载时要清掉“此刻挂着”的定时器，读的正是 cleanup 时刻的 .current，规则在这里是误报
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       Object.values(copyTimeoutRef.current).forEach((timeout) => {
         if (timeout) {
           clearTimeout(timeout)

@@ -847,6 +847,8 @@ export default function HTTPTester() {
     } catch (error) {
       console.error("Error updating URL:", error)
     }
+  // 只为避免重复 setState 才读 url（见上方注释）；把它加进依赖正好造成那里所防的循环
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestParams, manualUrlChange])
 
   // 延迟自动解析，避免输入时的干扰

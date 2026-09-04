@@ -272,6 +272,19 @@ export default function RegexTester() {
   }, [flags])
 
   // 测试正则表达式
+  // 定义在 testRegex 之前：后者的依赖数组里要引用它
+  const addToHistory = useCallback((pattern: string, flags: string, matchCount: number) => {
+    const historyItem: RegexHistory = {
+      id: Date.now().toString(),
+      pattern,
+      flags,
+      timestamp: Date.now(),
+      matchCount
+    }
+    
+    setHistory(prev => [historyItem, ...prev.slice(0, 49)]) // 保留最近50条
+  }, [])
+
   const testRegex = useCallback(() => {
     setError(null)
     setMatches([])
@@ -339,7 +352,7 @@ export default function RegexTester() {
       setError(errorMessage)
       setIsValid(false)
     }
-  }, [pattern, testText, flags, getFlagsString, t])
+  }, [pattern, testText, flags, getFlagsString, t, addToHistory])
 
   // 执行替换
   const performReplace = useCallback(() => {
@@ -358,19 +371,6 @@ export default function RegexTester() {
     }
   }, [pattern, testText, replaceText, getFlagsString, t])
 
-  // 添加到历史记录
-  const addToHistory = useCallback((pattern: string, flags: string, matchCount: number) => {
-    const historyItem: RegexHistory = {
-      id: Date.now().toString(),
-      pattern,
-      flags,
-      timestamp: Date.now(),
-      matchCount
-    }
-    
-    setHistory(prev => [historyItem, ...prev.slice(0, 49)]) // 保留最近50条
-  }, [])
-
   // 高亮显示匹配项
   const highlightedTextSegments = useMemo(
     () => buildRegexHighlightSegments(testText, highlightMatches ? matches : []),
@@ -384,7 +384,7 @@ export default function RegexTester() {
     }, 300)
 
     return () => clearTimeout(debounceTimer)
-  }, [pattern, testText, flags])
+  }, [pattern, testText, flags, testRegex])
 
   // 执行替换
   useEffect(() => {
@@ -395,7 +395,7 @@ export default function RegexTester() {
     }, 300)
 
     return () => clearTimeout(debounceTimer)
-  }, [pattern, testText, replaceText, flags])
+  }, [pattern, testText, replaceText, flags, performReplace])
 
   // 加载示例
   const loadExample = useCallback((example: RegexExample) => {

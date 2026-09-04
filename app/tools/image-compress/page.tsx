@@ -256,7 +256,7 @@ export default function ImageCompressPage() {
       processedImage.isProcessing = false
       return processedImage
     }
-  }, [quality, outputFormat, maxWidth, maxHeight, compressImage])
+  }, [quality, outputFormat, maxWidth, maxHeight, compressImage, objectUrls])
 
   // 处理文件选择
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

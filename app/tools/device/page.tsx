@@ -595,10 +595,14 @@ export default function DeviceInfoPage() {
       collectionRunRef.current += 1
       ipRunRef.current += 1
       ipRequestRef.current?.abort()
+      // 卸载时要清掉“此刻挂着”的定时器，读的正是 cleanup 时刻的 .current，规则在这里是误报
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       Object.values(copyTimeoutRef.current).forEach((timeout) => {
         if (timeout) clearTimeout(timeout)
       })
     }
+  // 按监控开关启停；gatherDeviceInfo 每次渲染都是新函数，加进依赖会不断重启采集
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -647,6 +651,8 @@ export default function DeviceInfoPage() {
       void gatherDeviceInfo()
     }, 60_000)
     return () => window.clearInterval(interval)
+  // 按监控开关启停；gatherDeviceInfo 每次渲染都是新函数，加进依赖会不断重启采集
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, isToolActive])
 
   useEffect(() => {
@@ -689,6 +695,8 @@ export default function DeviceInfoPage() {
     if (deviceInfo && !ipFetchedRef.current) {
       fetchIPInfo()
     }
+  // 设备信息就绪后取一次 IP，另有 ipFetchedRef 守卫；加入 fetchIPInfo 会反复发起请求
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceInfo])
 
   // Render a data item with copy button

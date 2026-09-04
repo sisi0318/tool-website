@@ -32,6 +32,8 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
     if (needsAutoUpdate && dynamicOpts) {
       onChangeRef.current(dynamicOpts[0].value)
     }
+  // dynamicOpts 每次渲染都是新数组；加进依赖会让自动纠正每次渲染都触发一次 onChange
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsAutoUpdate, dependentValue])
 
   if (field.visible && !field.visible(allConfig)) {
