@@ -2,6 +2,7 @@ import { Hash } from "lucide-react"
 import CryptoJS from "crypto-js"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { hashExtra } from "../hash-extra"
 import { SHA3, Keccak, SHAKE } from "sha3"
 
 const CATEGORIES = [
@@ -116,22 +117,13 @@ async function calculateHash(data: string, algorithm: string, outputFormat: stri
   const localResult = calculateLocalHash(data, algorithm, outputFormat)
   if (localResult) return localResult
 
-  const formData = new FormData()
-  formData.append("algorithm", algorithm)
-  formData.append("outputFormat", outputFormat)
-  formData.append("text", data)
-
-  const response = await fetch("/api/hash", {
-    method: "POST",
-    body: formData,
-  })
-
-  if (!response.ok) {
-    throw new Error(`Hash API responded with ${response.status}`)
-  }
-
-  const result = await response.json()
-  return result.result
+  // BLAKE2 / SM3 / SHA-512-t:以前这里会把数据 POST 到 /api/hash,现在本地算。
+  return hashExtra(
+    new TextEncoder().encode(data),
+    algorithm,
+    undefined,
+    outputFormat === "base64" ? "base64" : "hex",
+  )
 }
 
 export const hashAdapter: ToolAdapter = {

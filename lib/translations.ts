@@ -348,8 +348,6 @@ export const translations = {
       calculating: "计算中...",
       removeFile: "移除文件",
       fileTooBig: "文件过大，最大支持100MB",
-      serverHashFileTooBig: "该算法在服务器上计算，文件不能超过 {size}",
-      serverHashNotice: "BLAKE2、SM3 与 SHA-512/t 浏览器没有原生实现，由本站服务器计算：所选文本或文件会上传，计算后不保存。",
       cancel: "取消",
     },
     crypto: {
@@ -3672,8 +3670,6 @@ export const translations = {
       calculating: "Calculating...",
       removeFile: "Remove File",
       fileTooBig: "File too large, maximum size is 100MB",
-      serverHashFileTooBig: "This algorithm runs on the server; files must stay under {size}",
-      serverHashNotice: "BLAKE2, SM3 and SHA-512/t have no browser implementation, so this site computes them server-side: the selected text or file is uploaded and discarded after hashing.",
       cancel: "Cancel",
     },
     crypto: {

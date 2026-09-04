@@ -1,6 +1,6 @@
 "use client"
 
-import { formatFileSizeLimit, SERVER_HASH_MAX_BYTES } from "@/lib/file-limits"
+import { createExtraHasher, isExtraHashAlgorithm } from "@/lib/hash-extra"
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
 
 import type React from "react"
@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
-import { Copy, Check, Upload, FileText, Info, X } from "lucide-react"
+import { Copy, Check, Upload, FileText, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -69,7 +69,7 @@ function hexToBase64(hex: string): string {
   return btoa(String.fromCharCode(...bytes))
 }
 
-// 浏览器端可用的增量哈希实现（其余算法走 sha3 库或服务端 /api/hash）
+// 浏览器端可用的增量哈希实现（SHA-3 家族走 sha3 库，BLAKE2 / SM3 / SHA-512-t 走 lib/hash-extra）
 const CRYPTO_JS_HASHERS: Record<string, () => any> = {
   md5: () => CryptoJS.algo.MD5.create(),
   sha1: () => CryptoJS.algo.SHA1.create(),
@@ -121,12 +121,21 @@ interface IncrementalHasher {
   digest: () => string
 }
 
-function createIncrementalHasher(
+async function createIncrementalHasher(
   algorithmId: string,
   algorithmSize: number | undefined,
   fallbackSize: number,
   outputFormat: string,
-): IncrementalHasher {
+): Promise<IncrementalHasher> {
+  // BLAKE2 / SM3 / SHA-512-t:以前浏览器没有实现,只能上传到 /api/hash 计算
+  if (isExtraHashAlgorithm(algorithmId, algorithmSize ?? fallbackSize)) {
+    return createExtraHasher(
+      algorithmId,
+      algorithmSize ?? fallbackSize,
+      outputFormat === "base64" ? "base64" : "hex",
+    )
+  }
+
   if (algorithmId === "crc32") {
     let crc = 0xffffffff
     return {
@@ -272,7 +281,6 @@ const algorithmDescriptions: Record<string, string> = {
   shake: "shakeDescription",
 }
 
-const serverBackedAlgorithms = new Set(["sha512", "blake2s256", "blake2b512", "sm3"])
 
 export default function HashPage() {
   const t = useTranslations("hash")
@@ -378,48 +386,6 @@ export default function HashPage() {
   // 其余代码保持不变...
   // 这里省略了原有的函数实现，实际代码中应保留所有原有功能
 
-  const calculateServerHash = async (
-    algorithmId: string,
-    options: { algorithmSize?: number; text?: string; file?: File },
-    signal?: AbortSignal,
-  ): Promise<string> => {
-    // 这几种算法在服务端计算,请求体整块读进内存,超限先在本地挡掉。
-    if (options.file && options.file.size > SERVER_HASH_MAX_BYTES) {
-      throw new Error(
-        t("serverHashFileTooBig").replace("{size}", formatFileSizeLimit(SERVER_HASH_MAX_BYTES)),
-      )
-    }
-
-    const formData = new FormData()
-    formData.append("algorithm", algorithmId)
-    formData.append("outputFormat", outputFormat)
-
-    if (options.algorithmSize) {
-      formData.append("size", options.algorithmSize.toString())
-    }
-
-    if (typeof options.text === "string") {
-      formData.append("text", options.text)
-    }
-
-    if (options.file) {
-      formData.append("file", options.file)
-    }
-
-    const response = await fetch("/api/hash", {
-      method: "POST",
-      body: formData,
-      signal,
-    })
-
-    if (!response.ok) {
-      throw new Error(`Hash API responded with ${response.status}`)
-    }
-
-    const data = await response.json()
-    return data.result
-  }
-
   // 计算单个哈希值（文本）
   const calculateSingleTextHash = async (
     text: string,
@@ -427,15 +393,10 @@ export default function HashPage() {
     algorithmSize?: number,
     signal?: AbortSignal,
   ): Promise<string> => {
-    if (serverBackedAlgorithms.has(algorithmId)) {
-      return calculateServerHash(
-        algorithmId,
-        {
-          algorithmSize,
-          text,
-        },
-        signal,
-      )
+    if (isExtraHashAlgorithm(algorithmId, algorithmSize ?? size)) {
+      const hasher = await createIncrementalHasher(algorithmId, algorithmSize, size, outputFormat)
+      hasher.update(new TextEncoder().encode(text))
+      return hasher.digest()
     }
 
     let result = ""
@@ -564,18 +525,7 @@ export default function HashPage() {
     calculationId: number,
     signal: AbortSignal,
   ): Promise<string> => {
-    if (serverBackedAlgorithms.has(algorithmId)) {
-      return calculateServerHash(
-        algorithmId,
-        {
-          algorithmSize,
-          file,
-        },
-        signal,
-      )
-    }
-
-    const hasher = createIncrementalHasher(algorithmId, algorithmSize, size, outputFormat)
+    const hasher = await createIncrementalHasher(algorithmId, algorithmSize, size, outputFormat)
     await readFileInChunks(
       file,
       (chunk) => hasher.update(chunk),
@@ -635,92 +585,40 @@ export default function HashPage() {
       // 立即设置结果数组，这样用户可以看到将要计算的所有算法
       setAllHashResults([...results])
 
-      const localJobs = results
-        .map((result, index) => ({ result, index }))
-        .filter(({ result }) => !serverBackedAlgorithms.has(result.algorithm))
-      const serverJobs = results
-        .map((result, index) => ({ result, index }))
-        .filter(({ result }) => serverBackedAlgorithms.has(result.algorithm))
-
-      if (localJobs.length > 0) {
-        const hashers = localJobs.map(({ result, index }) => {
+      // 全部算法现在都能在本地增量计算,一次遍历文件即可。
+      const hashers = await Promise.all(
+        results.map(async (result, index) => {
           results[index].status = "calculating"
           return {
             index,
-            hasher: createIncrementalHasher(
+            hasher: await createIncrementalHasher(
               result.algorithm,
               result.algorithmSize,
               size,
               outputFormat,
             ),
           }
-        })
-        setAllHashResults([...results])
+        }),
+      )
+      setAllHashResults([...results])
 
-        const localProgressWeight = serverJobs.length > 0 ? 80 : 100
-        await readFileInChunks(
-          selectedFile.file,
-          (chunk) => {
-            hashers.forEach(({ hasher }) => hasher.update(chunk))
-          },
-          (progress) => setFileProgress(Math.round((progress * localProgressWeight) / 100)),
-          () =>
-            cancelCalculationRef.current ||
-            signal.aborted ||
-            calculationIdRef.current !== calculationId,
-        )
+      await readFileInChunks(
+        selectedFile.file,
+        (chunk) => {
+          hashers.forEach(({ hasher }) => hasher.update(chunk))
+        },
+        setFileProgress,
+        () =>
+          cancelCalculationRef.current ||
+          signal.aborted ||
+          calculationIdRef.current !== calculationId,
+      )
 
-        hashers.forEach(({ index, hasher }) => {
-          results[index].value = hasher.digest()
-          results[index].status = "completed"
-        })
-        setAllHashResults([...results])
-      }
-
-      if (
-        !cancelCalculationRef.current &&
-        !signal.aborted &&
-        calculationIdRef.current === calculationId &&
-        serverJobs.length > 0
-      ) {
-        serverJobs.forEach(({ index }) => {
-          results[index].status = "calculating"
-        })
-        setAllHashResults([...results])
-
-        let completedServerJobs = 0
-        const serverProgressBase = localJobs.length > 0 ? 80 : 0
-        const serverProgressWeight = localJobs.length > 0 ? 20 : 100
-        await Promise.all(serverJobs.map(async ({ result, index }) => {
-          try {
-            results[index].value = await calculateServerHash(
-              result.algorithm,
-              {
-                algorithmSize: result.algorithmSize,
-                file: selectedFile.file,
-              },
-              signal,
-            )
-            results[index].status = "completed"
-          } catch (error) {
-            if (signal.aborted) return
-            console.error(`Error calculating hash for ${result.algorithm}:`, error)
-            results[index].value = `${t("error")}: ${result.algorithm}`
-            results[index].status = "error"
-          } finally {
-            completedServerJobs += 1
-            if (calculationIdRef.current === calculationId) {
-              setFileProgress(
-                serverProgressBase +
-                  Math.round(
-                    (completedServerJobs / serverJobs.length) * serverProgressWeight,
-                  ),
-              )
-              setAllHashResults([...results])
-            }
-          }
-        }))
-      }
+      hashers.forEach(({ index, hasher }) => {
+        results[index].value = hasher.digest()
+        results[index].status = "completed"
+      })
+      setAllHashResults([...results])
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
         console.error("Error calculating file hashes:", error)
@@ -1349,13 +1247,6 @@ export default function HashPage() {
                   ))}
                 </RadioGroup>
               </div>
-            )}
-
-            {(showAllResults || serverBackedAlgorithms.has(algorithm)) && (
-              <p className="flex items-start gap-2 rounded-[var(--md-sys-shape-corner-small)] bg-[var(--md-sys-color-tertiary-container)] p-3 text-xs leading-relaxed text-[var(--md-sys-color-on-tertiary-container)]">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span>{t("serverHashNotice")}</span>
-              </p>
             )}
           </CardContent>
         </Card>
