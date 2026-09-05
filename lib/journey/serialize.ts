@@ -187,8 +187,10 @@ function persistValue(value: unknown): { value?: unknown; valueMissing?: boolean
 export function persistJourney(journey: Journey): PersistedJourney {
   const nodes: Record<string, PersistedNode> = {}
   for (const [id, node] of Object.entries(journey.nodes)) {
-    const { value, ...rest } = node
-    const persisted = persistValue(value)
+    // 已标记缺失的节点按缺失写回,不把恢复时补上的 null 当成值。
+    // 这样 persist(restore(x)) 与 x 完全一致,isJourneySaved 才能把刚打开的存档判为已保存。
+    const { value, valueMissing, ...rest } = node
+    const persisted = valueMissing ? { valueMissing: true } : persistValue(value)
     nodes[id] = {
       ...rest,
       via: node.via ? { ...node.via, config: sanitizeConfig(node.via.config) } : null,
@@ -225,6 +227,22 @@ export function saveJourney(journey: Journey): boolean {
   const saves = readSaves()
   saves[journey.name] = persistJourney(journey)
   return writeLocalStorage(SAVES_KEY, JSON.stringify(saves))
+}
+
+/**
+ * 当前旅程是否已完整地存在于同名存档里。
+ * 两个条件缺一不可:写入形态与存档逐字节一致;并且没有值在写入时被降级为缺失
+ * (超长 / 二进制)。后者即使刚保存过也算未保存 —— 存档里没有那些值,
+ * 替换掉内存里的这份就真的丢了。从存档打开、未做改动的旅程则两条都满足。
+ */
+export function isJourneySaved(journey: Journey): boolean {
+  const saved = readSaves()[journey.name]
+  if (!saved) return false
+  const persisted = persistJourney(journey)
+  const lossy = Object.entries(persisted.nodes).some(
+    ([id, node]) => node.valueMissing && !journey.nodes[id]?.valueMissing,
+  )
+  return !lossy && JSON.stringify(persisted) === JSON.stringify(saved)
 }
 
 export function loadJourney(name: string): Journey | null {

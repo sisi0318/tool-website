@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { LoaderCircle, Trash2 } from "lucide-react"
 import type { ConfigField } from "@/lib/canvas/types"
 import { getNodeDefinition } from "@/lib/canvas/registry"
+import { withDefaultConfig } from "@/lib/canvas/node-factory"
 import { getMainInputPort, getOutputPorts } from "@/lib/journey/engine"
 import type { JourneyNode } from "@/lib/journey/types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -35,7 +36,9 @@ export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete
 
   useEffect(() => {
     if (open && via) {
-      setDraft({ ...via.config })
+      // 旧存档与分享链接里的步骤可能只带部分配置;缺省字段不补齐的话,
+      // 联动下拉(如哈希算法依赖分类)会拿到空串而退化成一个空文本框
+      setDraft(withDefaultConfig(via.tool, via.config))
       setOutputPort(via.outputPort)
     }
   }, [open, via])
@@ -49,7 +52,21 @@ export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete
       )
     : []
 
-  const setField = (id: string, value: unknown) => setDraft((prev) => ({ ...prev, [id]: value }))
+  const setField = (id: string, value: unknown) =>
+    setDraft((prev) => {
+      const next = { ...prev, [id]: value }
+      // 父字段变了,依赖它的联动下拉要换选项;旧值不在新列表里就落到第一项,
+      // 否则提交的会是「分类 sha2 + 算法 md5」这种自相矛盾的组合
+      for (const dependent of definition?.config ?? []) {
+        if (dependent.dependsOn !== id || !dependent.dynamicOptions) continue
+        const options = dependent.dynamicOptions(String(value ?? ""))
+        const current = String(next[dependent.id] ?? "")
+        if (options.length > 0 && !options.some((option) => option.value === current)) {
+          next[dependent.id] = options[0].value
+        }
+      }
+      return next
+    })
 
   const renderField = (field: ConfigField) => {
     const raw = draft[field.id] ?? field.defaultValue

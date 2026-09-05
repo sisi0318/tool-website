@@ -26,6 +26,7 @@ import {
   decodeSharedPath,
   deleteDraft,
   encodeSharedPath,
+  isJourneySaved,
   reviewSharedPath,
   loadDraft,
   loadJourney,
@@ -137,6 +138,34 @@ describe("engine", () => {
     const result = await applyStep("aGVsbG8=", BASE64_DECODE)
     expect(result.value).toBe("hello")
     expect(result.valueType).toBe("string")
+  })
+
+  it("fills declared defaults into a sparse step config before executing", async () => {
+    const seen: Array<Record<string, unknown>> = []
+    registerNode({
+      type: "echo-config",
+      category: "dev",
+      label: "Echo",
+      icon: (() => null) as never,
+      config: [
+        { id: "input", name: "In", dataType: "string", hasInput: true },
+        { id: "mode", name: "Mode", dataType: "string", defaultValue: "upper" },
+        { id: "extra", name: "Extra", dataType: "string" },
+      ],
+      outputs: [{ id: "output", name: "Out", dataType: "string" }],
+      execute: async (_inputs, config) => {
+        seen.push(config)
+        return { output: String(config.mode) }
+      },
+    })
+
+    const result = await applyStep("x", { tool: "echo-config", config: { extra: "kept" }, outputPort: "output" })
+    expect(result.value).toBe("upper")
+    expect(seen[0]).toEqual({ mode: "upper", extra: "kept" })
+
+    // 显式取值优先于默认值
+    await applyStep("x", { tool: "echo-config", config: { mode: "lower" }, outputPort: "output" })
+    expect(seen[1]).toEqual({ mode: "lower" })
   })
 
   it("rejects unknown tools", async () => {
@@ -357,6 +386,27 @@ describe("serialize", () => {
     expect(saveJourney(withFile.journey)).toBe(true)
     expect(loadJourney("save-me")?.rootId).toBe(journey.rootId)
     expect(loadJourney("missing")).toBeNull()
+  })
+
+  it("tells a journey that matches its saved copy from one with unsaved changes", () => {
+    const journey = createJourney("keep", "root", "输入")
+    expect(isJourneySaved(journey)).toBe(false)
+
+    expect(saveJourney(journey)).toBe(true)
+    expect(isJourneySaved(journey)).toBe(true)
+
+    const extended = appendNode(journey, journey.rootId, BASE64_DECODE, "decoded", "Decoded").journey
+    expect(isJourneySaved(extended)).toBe(false)
+    expect(isJourneySaved({ ...journey, name: "other" })).toBe(false)
+
+    // 存档是有损的(超长值降级为缺失):保存后内存里的那份仍算未保存,
+    // 但打开存档后未改动的那份必须算已保存,否则每次打开都会被追问一次
+    const big = appendNode(journey, journey.rootId, BASE64_DECODE, "y".repeat(70 * 1024), "Big").journey
+    expect(saveJourney(big)).toBe(true)
+    expect(isJourneySaved(big)).toBe(false)
+    const reopened = loadJourney("keep")
+    expect(reopened).not.toBeNull()
+    expect(isJourneySaved(reopened!)).toBe(true)
   })
 
   it("saves and deletes the draft", () => {

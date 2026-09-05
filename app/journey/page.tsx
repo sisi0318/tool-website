@@ -6,11 +6,13 @@ import { FilePlus2, FolderOpen, Repeat2, Save, Share2, Workflow } from "lucide-r
 
 import { registerAllAdapters } from "@/lib/adapters"
 import { getNodeDefinition } from "@/lib/canvas/registry"
+import { withDefaultConfig } from "@/lib/canvas/node-factory"
 import type { NodeDefinition } from "@/lib/canvas/types"
 import { applyStep, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
 import {
   decodeSharedPath,
   deleteDraft,
+  isJourneySaved,
   loadDraft,
   loadJourney,
   reviewSharedPath,
@@ -96,6 +98,8 @@ export default function JourneyPage() {
   const [journey, setJourney] = useState<Journey | null>(null)
   const [pendingSharedPath, setPendingSharedPath] = useState<SharedJourneyPath | null>(null)
   const [pendingReview, setPendingReview] = useState<SharedStepReview[] | null>(null)
+  // 分享链接待导入期间被挡在后面的本地草稿:导入一开始,自动保存就会覆盖它
+  const [draftBehindImport, setDraftBehindImport] = useState<Journey | null>(null)
   const [running, setRunning] = useState(false)
   const [dialog, setDialog] = useState<DialogKind | null>(null)
   const [stepSheetOpen, setStepSheetOpen] = useState(false)
@@ -157,6 +161,7 @@ export default function JourneyPage() {
         // Never auto-run: the user reviews the steps and starts explicitly.
         setPendingSharedPath(shared)
         setPendingReview(review.steps)
+        setDraftBehindImport(loadDraft())
         return
       }
     }
@@ -185,17 +190,27 @@ export default function JourneyPage() {
       const shared = pendingSharedPath
       setPendingSharedPath(null)
       setPendingReview(null)
+      setDraftBehindImport(null)
       void runSharedPath(value, shared)
       return
     }
     setJourney(createJourney(t("namePlaceholder"), value, t("trailInput")))
   }
 
+  const handleRestoreDraft = () => {
+    if (running) return
+    setPendingSharedPath(null)
+    setPendingReview(null)
+    setJourney(draftBehindImport)
+    setDraftBehindImport(null)
+  }
+
   const applyTool = async (tool: string, config: Record<string, unknown>, outputPort: string) => {
     if (!journey || running) return
     const parentId = journey.activeId
     const parentValue = journey.nodes[parentId]?.value
-    const step: JourneyStep = { tool, config, outputPort }
+    // 建议与工具选择器给的配置只含它们关心的字段;落成完整配置,步骤面板与分享才有据可依
+    const step: JourneyStep = { tool, config: withDefaultConfig(tool, config), outputPort }
     setRunning(true)
     try {
       const result = await applyStep(parentValue, step)
@@ -384,6 +399,8 @@ export default function JourneyPage() {
         pendingText={pendingSharedPath?.rootText}
         starting={running}
         onStart={handleStart}
+        draftBehindImport={draftBehindImport !== null}
+        onRestoreDraft={handleRestoreDraft}
       />
     )
   }
@@ -394,7 +411,13 @@ export default function JourneyPage() {
     { key: "canvas", label: t("openInCanvas"), icon: Workflow, onClick: handleOpenInCanvas },
     { key: "save", label: t("saveJourney"), icon: Save, onClick: handleSave },
     { key: "open", label: t("loadJourneyTitle"), icon: FolderOpen, onClick: () => setDialog("open") },
-    { key: "new", label: t("newJourney"), icon: FilePlus2, onClick: () => setDialog("confirmNew") },
+    {
+      key: "new",
+      label: t("newJourney"),
+      icon: FilePlus2,
+      // 与存档完全一致时没有可丢失的内容,直接新建;否则先确认
+      onClick: () => (isJourneySaved(journey) ? handleNewJourney() : setDialog("confirmNew")),
+    },
   ]
 
   return (
@@ -483,6 +506,7 @@ export default function JourneyPage() {
         open={dialog === "open"}
         onOpenChange={(open) => setDialog(open ? "open" : null)}
         onLoad={handleLoad}
+        isCurrentSaved={() => isJourneySaved(journey)}
       />
       <ReplayDialog
         open={dialog === "replay"}
@@ -490,6 +514,7 @@ export default function JourneyPage() {
         stepCount={getPathSteps(journey, journey.activeId).length}
         running={running}
         onRun={(text) => void handleReplayRun(text)}
+        isCurrentSaved={() => isJourneySaved(journey)}
       />
       <ConfirmNewDialog
         open={dialog === "confirmNew"}

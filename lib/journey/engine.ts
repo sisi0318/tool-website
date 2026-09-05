@@ -1,5 +1,6 @@
 import type { ConfigField, DerivedOutput, NodeDefinition } from "../canvas/types"
 import { getNodeDefinition } from "../canvas/registry"
+import { withDefaultConfig } from "../canvas/node-factory"
 import { getChildren, inferDataType } from "./tree"
 import type {
   ApplyStepResult,
@@ -59,7 +60,8 @@ export async function applyStep(value: unknown, step: JourneyStep): Promise<Appl
   if (!mainPort) throw new Error(`Tool has no input port: ${step.tool}`)
 
   const inputs: Record<string, unknown> = { [mainPort.id]: value }
-  const outputs = await withTimeout(definition.execute(inputs, step.config))
+  // 分享链接、旧存档和建议创建的步骤都可能只带部分配置,执行前补齐声明的默认值
+  const outputs = await withTimeout(definition.execute(inputs, withDefaultConfig(step.tool, step.config)))
 
   const portId = resolveOutputPort(definition, step.outputPort)
   const nextValue = portId in outputs ? outputs[portId] : outputs[Object.keys(outputs)[0] ?? ""]

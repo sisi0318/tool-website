@@ -30,9 +30,20 @@ interface InputStageProps {
   /** True while an imported path is being replayed against the provided data. */
   starting: boolean
   onStart: (value: unknown) => void
+  /** True when a local draft exists that starting the imported path would overwrite. */
+  draftBehindImport?: boolean
+  /** Drops the imported path and restores the local draft instead. */
+  onRestoreDraft?: () => void
 }
 
-export function InputStage({ pendingSteps, pendingText, starting, onStart }: InputStageProps) {
+export function InputStage({
+  pendingSteps,
+  pendingText,
+  starting,
+  onStart,
+  draftBehindImport = false,
+  onRestoreDraft,
+}: InputStageProps) {
   const t = useTranslations("journey")
   const [text, setText] = useState("")
   const [dragOver, setDragOver] = useState(false)
@@ -97,6 +108,20 @@ export function InputStage({ pendingSteps, pendingText, starting, onStart }: Inp
                 </li>
               ))}
             </ol>
+            {draftBehindImport && (
+              <div className="mt-3 flex flex-col gap-2 border-t border-[var(--md-sys-color-on-tertiary-container)]/20 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-xs">{t("draftBehindImport")}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRestoreDraft}
+                  disabled={starting}
+                  className="shrink-0 rounded-full border-[var(--md-sys-color-on-tertiary-container)]/40 bg-transparent text-[var(--md-sys-color-on-tertiary-container)]"
+                >
+                  {t("restoreDraftInstead")}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
