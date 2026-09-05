@@ -184,7 +184,7 @@
     /* Success, Warning ... */
     --md-sys-color-success: #A5D6A7;
     --md-sys-color-on-success: #1B5E20;
-    --md-sys-color-success-container: #2E7D32;
+    --md-sys-color-success-container: #286E2C; /* 4.6:1 on on-success-container #C8E6C9 */
     --md-sys-color-on-success-container: #C8E6C9;
 
     --md-sys-color-warning: #FFCC80;
@@ -215,7 +215,7 @@
     --md-sys-color-scrim: #000000;
     --md-sys-color-inverse-surface: #E1E3DF;
     --md-sys-color-inverse-on-surface: #2F312E;
-    --md-sys-color-inverse-primary: #40702E;
+    --md-sys-color-inverse-primary: #3D6C2C; /* 4.6:1 on on-primary-container #C8E6C9 */
 
     /* Legacy shadcn mappings */
     --background: 120 4% 8%;

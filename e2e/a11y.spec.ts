@@ -43,3 +43,15 @@ test.describe("无障碍自动扫描", () => {
     })
   }
 })
+
+// 深色主题另有一套色板,对比度问题两边各查各的
+test.describe("无障碍自动扫描(深色主题)", () => {
+  test.use({ colorScheme: "dark" })
+
+  for (const path of PAGES) {
+    test(`${path} 深色下无 serious/critical 违规`, async ({ page }) => {
+      const violations = await scan(page, path)
+      expect(violations, JSON.stringify(violations, null, 2)).toEqual([])
+    })
+  }
+})
