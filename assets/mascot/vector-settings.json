@@ -2,14 +2,14 @@
   "mode": "spline",
   "hierarchical": "stacked",
   "colorPrecision": 6,
-  "layerDifference": 10,
-  "filterSpeckle": 8,
+  "layerDifference": 6,
+  "filterSpeckle": 2,
   "cornerThreshold": 60,
   "lengthThreshold": 4,
   "maxIterations": 10,
   "spliceThreshold": 45,
-  "simplify": 1,
+  "simplify": 0.7,
   "pathPrecision": 2,
-  "maxColors": 128,
+  "maxColors": 192,
   "optimize": 2
 }

@@ -7,7 +7,9 @@ const vtracer = require('../../node_modules/.cache/mascot-vector/node_modules/@v
 const settings = require('./vector-settings.json')
 
 async function main() {
-  const { data, info } = await sharp(path.join(__dirname, 'reference.png'))
+  const source = path.join(__dirname, process.argv[2] || 'reference-v3.png')
+  const sourceMetadata = await sharp(source).metadata()
+  const { data, info } = await sharp(source)
     .ensureAlpha().raw().toBuffer({ resolveWithObject: true })
 
   // Ignore almost transparent fringes; keep RGB untouched. Remove only tiny
@@ -15,6 +17,42 @@ async function main() {
   const count = info.width * info.height
   const seen = new Uint8Array(count)
   const queue = new Uint32Array(count)
+
+  // V3 has a painted checkerboard instead of an alpha channel. During tracing,
+  // discard only neutral light background connected to the image boundary.
+  // Closed dark outlines protect the pale hair, cream jacket and code window.
+  if (!sourceMetadata.hasAlpha) {
+    let head = 0
+    let tail = 0
+    const addBackground = (pixel) => {
+      if (pixel < 0 || pixel >= count || seen[pixel]) return
+      seen[pixel] = 1
+      const offset = pixel * 4
+      const minimum = Math.min(data[offset], data[offset + 1], data[offset + 2])
+      const maximum = Math.max(data[offset], data[offset + 1], data[offset + 2])
+      if (minimum < 224 || maximum - minimum > 18) return
+      data[offset + 3] = 0
+      queue[tail++] = pixel
+    }
+    for (let x = 0; x < info.width; x++) {
+      addBackground(x)
+      addBackground((info.height - 1) * info.width + x)
+    }
+    for (let y = 0; y < info.height; y++) {
+      addBackground(y * info.width)
+      addBackground(y * info.width + info.width - 1)
+    }
+    while (head < tail) {
+      const current = queue[head++]
+      const x = current % info.width
+      if (x) addBackground(current - 1)
+      if (x < info.width - 1) addBackground(current + 1)
+      addBackground(current - info.width)
+      addBackground(current + info.width)
+    }
+    seen.fill(0)
+  }
+
   for (let i = 0; i < count; i++) data[i * 4 + 3] = data[i * 4 + 3] >= 128 ? 255 : 0
   for (let seed = 0; seed < count; seed++) {
     if (seen[seed] || !data[seed * 4 + 3]) continue
@@ -46,7 +84,7 @@ async function main() {
   svg = svg.replace(/<svg\b[^>]*>/,
     `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="560" viewBox="${-padding} ${-padding} ${info.width + padding * 2} ${info.height + padding * 2}" role="img" aria-labelledby="mascot-title mascot-description">\n` +
     '<title id="mascot-title">小栈 · 工具站小助手</title>\n' +
-    '<desc id="mascot-description">以 ImageGen 生成的角色参考图为基础矢量化：绿发、叶片发夹的小人穿抹茶绿工装，怀抱代码终端，向你招手。</desc>')
+    '<desc id="mascot-description">原创工具站小助手小栈：薄荷白短发、金色光标发夹，穿青白色宽松夹克，托着笔记本并指向代码窗口。</desc>')
   if (/<image\b|data:image|base64|<script\b/i.test(svg)) throw new Error('Expected a self-contained path-only SVG')
   fs.writeFileSync(path.join(__dirname, '../../public/mascot.svg'), svg)
   console.log(JSON.stringify({

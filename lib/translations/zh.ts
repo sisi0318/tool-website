@@ -169,7 +169,7 @@ journey: {
 home: {
   mascotName: "小栈",
   mascotDescription: "你的本地工具搭子",
-  mascotAlt: "工具站小助手小栈：绿发、叶片发夹，穿抹茶绿外套，抱着代码终端向你招手，身旁环绕工具节点和隐私盾牌。",
+  mascotAlt: "工具站小助手小栈：薄荷白短发、金色光标发夹，穿青白色宽松夹克，托着笔记本并指向代码窗口。",
   eyebrow: "40+ 个实用工具，即开即用",
   titlePrefix: "把零散的小任务，交给一个",
   titleHighlight: "顺手的工具站",
