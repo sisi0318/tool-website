@@ -145,6 +145,7 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
     const curated = mime.startsWith("image/") ? BYTES_CURATED : GENERIC_BYTES
     curated.forEach((entry) => pushEntry(entry))
   } else if (typeof value === "string" && value.trim().length > 0) {
+    if (/[\r\n]/.test(value)) pushEntry({ tool: "text-lines", label: "Process text lines", config: { operation: "dedupe" }, outputPort: "output", score: 65 })
     if (/[\u00a0\u0300-\u036f\u2000-\u200f\u2028-\u202f\u2060-\u206f\ufeff]/.test(value)) {
       pushEntry({ tool: "unicode", label: "Inspect Unicode characters", config: { operation: "inspect" }, outputPort: "report", score: 70 })
     }

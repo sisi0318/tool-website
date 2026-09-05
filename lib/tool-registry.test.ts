@@ -14,8 +14,8 @@ import { zh } from "@/lib/translations/zh"
  * 所以这里守住那张表与目录的一致性。
  */
 describe("工具目录", () => {
-  it("覆盖 48 个工具且 id 无重复", () => {
-    expect(TOOL_CATALOG).toHaveLength(48)
+  it("覆盖 49 个工具且 id 无重复", () => {
+    expect(TOOL_CATALOG).toHaveLength(49)
     expect(new Set(TOOL_IDS).size).toBe(TOOL_IDS.length)
   })
 

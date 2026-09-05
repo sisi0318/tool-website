@@ -42,6 +42,7 @@ interface UtilityWorkbenchProps {
   onSample?: () => void
   running?: boolean
   allowWhitespaceInput?: boolean
+  canRun?: boolean
   error?: string
   inputLabel?: string
   outputLabel?: string
@@ -49,6 +50,7 @@ interface UtilityWorkbenchProps {
   outputPlaceholder?: string
   runLabel?: string
   controls?: ReactNode
+  additionalInput?: ReactNode
   result?: ReactNode
   footer?: ReactNode
 }
@@ -68,6 +70,7 @@ export function UtilityWorkbench({
   onSample,
   running = false,
   allowWhitespaceInput = false,
+  canRun,
   error,
   inputLabel,
   outputLabel,
@@ -75,6 +78,7 @@ export function UtilityWorkbench({
   outputPlaceholder,
   runLabel,
   controls,
+  additionalInput,
   result,
   footer,
 }: UtilityWorkbenchProps) {
@@ -197,6 +201,8 @@ export function UtilityWorkbench({
               />
             </div>
 
+            {additionalInput}
+
             {error && (
               <p
                 role="alert"
@@ -207,7 +213,7 @@ export function UtilityWorkbench({
             )}
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <Button onClick={() => void onRun()} disabled={running || (allowWhitespaceInput ? !input.length : !input.trim())} className="col-span-2 min-h-11 w-full gap-2 sm:w-auto">
+              <Button onClick={() => void onRun()} disabled={running || !(canRun ?? (allowWhitespaceInput ? input.length > 0 : input.trim().length > 0))} className="col-span-2 min-h-11 w-full gap-2 sm:w-auto">
                 <Play className="h-4 w-4" />
                 {running ? t("processing") : (runLabel ?? t("run"))}
               </Button>

@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "text-lines", translationKey: "textLinesTools", category: "text",
+    seo: { title: "文本行处理", description: "浏览器本地文本行去重、自然与精确数值排序、空白清理、添加前后缀、列提取及文本集合并集交集差集。" },
+    features: [["去重 / 排序", "Deduplicate, natural and exact numeric sorting"], ["空白 / 前后缀", "Trim lines, remove blanks, add prefix and suffix"], ["列提取", "Extract and reorder delimited columns"], ["集合操作", "Union, intersection, difference and symmetric difference"]],
+  },
+  {
     id: "unicode", translationKey: "unicodeTools", category: "text",
     seo: { title: "Unicode 字符检查器", description: "本地查看 Unicode 码点、UTF-8 字节、UTF-16 偏移、不可见字符及字素簇，支持 NFC、NFD、NFKC、NFKD 规范化。" },
     features: [["Unicode 码点", "Code points, UTF-8 bytes and UTF-16 offsets"], ["不可见字符", "Zero-width, bidi controls, whitespace and combining marks"], ["Unicode 规范化", "NFC NFD NFKC NFKD normalization"]],

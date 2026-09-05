@@ -27,6 +27,7 @@ import { registerMemeSplitterAdapter } from "./meme-splitter"
 import { registerImageCoordinatesAdapter } from "./image-coordinates"
 import { registerTextStatsAdapter } from "./text-stats"
 import { registerUnicodeAdapter } from "./unicode"
+import { registerTextLinesAdapter } from "./text-lines"
 import { registerCaseConverterAdapter } from "./case-converter"
 import { registerRegexAdapter } from "./regex"
 import { registerDiffAdapter } from "./diff"
@@ -127,6 +128,7 @@ export function registerAllAdapters(): void {
   // Text (4)
   safeRegister("text-stats", registerTextStatsAdapter)
   safeRegister("unicode", registerUnicodeAdapter)
+  safeRegister("text-lines", registerTextLinesAdapter)
   safeRegister("case-converter", registerCaseConverterAdapter)
   safeRegister("regex", registerRegexAdapter)
   safeRegister("diff", registerDiffAdapter)
