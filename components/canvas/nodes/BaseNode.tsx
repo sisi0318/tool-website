@@ -6,11 +6,14 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
 import { CYCLE_ERROR, UPSTREAM_ERROR, useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
-import { formatCanvasValue } from "@/lib/canvas/format-value"
+import { previewCanvasValue } from "@/lib/canvas/format-value"
 import type { NodeInstance, ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
 import { NodeRunButton } from "./NodeRunButton"
 import { NodeBypassButton } from "./NodeBypassButton"
+
+/** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
+const NODE_PREVIEW_CHARS = 160
 
 interface BaseNodeProps {
   data: NodeInstance & {
@@ -150,7 +153,8 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
           <div className="mt-1 border-t border-md-outline-variant/60 pt-1">
             {definition.outputs.map((output) => {
               const outputValue = nodeOutputs?.[output.id]
-              const outputText = formatCanvasValue(outputValue)
+              const preview = previewCanvasValue(outputValue, NODE_PREVIEW_CHARS)
+              const outputText = preview.truncated ? `${preview.text}…` : preview.text
               return (
                 <div key={output.id} className="flex items-center gap-1 px-2 py-1">
                   <div className="w-3" />

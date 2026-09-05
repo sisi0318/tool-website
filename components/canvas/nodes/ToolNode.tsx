@@ -7,12 +7,17 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
 import { CYCLE_ERROR, UPSTREAM_ERROR, useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
-import { formatCanvasValue } from "@/lib/canvas/format-value"
+import { previewCanvasValue } from "@/lib/canvas/format-value"
 import type { ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
 import { JsonTreeViewer } from "./JsonTreeViewer"
 import { NodeRunButton } from "./NodeRunButton"
 import { NodeBypassButton } from "./NodeBypassButton"
+
+/** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
+const NODE_PREVIEW_CHARS = 160
+/** 字符串预览节点的展示上限。整段塞进 DOM 会在大文本上卡死画布 */
+const STRING_PREVIEW_CHARS = 4000
 
 interface ToolNodeProps {
   data: {
@@ -28,6 +33,10 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const t = useTranslations("canvas")
   const definition = getNodeDefinition(data.type)
   const nodeOutputs = useCanvasStore((s) => s.nodeOutputs[data.id])
+  const contentPreview = useMemo(
+    () => (data.type === "string-preview" ? previewCanvasValue(nodeOutputs?.content, STRING_PREVIEW_CHARS) : null),
+    [data.type, nodeOutputs],
+  )
   const nodeErrors = useCanvasStore((s) => s.nodeErrors[data.id])
   const nodeRunning = useCanvasStore((s) => s.nodeRunning[data.id])
   const isPrimarySelected = useCanvasStore((s) => s.selectedNodeId === data.id)
@@ -177,7 +186,8 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
           <div className="mt-1 border-t border-md-outline-variant/60 pt-1">
             {definition.outputs.map((output) => {
               const outputValue = nodeOutputs?.[output.id]
-              const outputText = formatCanvasValue(outputValue)
+              const preview = previewCanvasValue(outputValue, NODE_PREVIEW_CHARS)
+              const outputText = preview.truncated ? `${preview.text}…` : preview.text
               return (
                 <div key={output.id} className="flex items-center gap-1 px-2 py-1">
                   <div className="w-3" />
@@ -215,11 +225,16 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       {/* Preview Content */}
       {(data.type === "string-preview" || data.type === "json-preview" || data.type === "image-preview") && (
         <div className="border-t border-md-outline-variant px-3 py-2">
-          {data.type === "string-preview" && !!nodeOutputs?.content && (
+          {data.type === "string-preview" && contentPreview && contentPreview.text.length > 0 && (
             <div className="max-h-32 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container p-2">
               <pre className="text-[10px] whitespace-pre-wrap break-words">
-                {String(nodeOutputs.content)}
+                {contentPreview.text}
               </pre>
+              {contentPreview.truncated && (
+                <p className="mt-1 text-[10px] text-md-on-surface-variant">
+                  {t("outputTruncated").replace("{shown}", String(STRING_PREVIEW_CHARS))}
+                </p>
+              )}
             </div>
           )}
           {data.type === "json-preview" && !!nodeOutputs?.parsed && (

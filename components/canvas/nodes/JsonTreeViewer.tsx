@@ -2,6 +2,14 @@
 
 import { useState, useCallback } from "react"
 
+/** 每层最多渲染的子项数。十万条的数组展开成十万个 DOM 节点,画布会直接卡死 */
+const MAX_CHILDREN = 200
+
+function OverflowRow({ hidden }: { hidden: number }) {
+  if (hidden <= 0) return null
+  return <div className="text-md-on-surface-variant opacity-70">… +{hidden.toLocaleString()}</div>
+}
+
 interface JsonTreeViewerProps {
   data: unknown
   depth?: number
@@ -29,12 +37,13 @@ export function JsonTreeViewer({ data, depth = 0 }: JsonTreeViewerProps) {
         </button>
         {expanded && (
           <div className="ml-4 border-l border-md-outline-variant pl-2">
-            {data.map((item, i) => (
+            {data.slice(0, MAX_CHILDREN).map((item, i) => (
               <div key={i} className="flex gap-1">
                 <span className="text-md-on-surface-variant">{i}:</span>
                 <JsonTreeViewer data={item} depth={depth + 1} />
               </div>
             ))}
+            <OverflowRow hidden={data.length - MAX_CHILDREN} />
           </div>
         )}
       </div>
@@ -52,12 +61,13 @@ export function JsonTreeViewer({ data, depth = 0 }: JsonTreeViewerProps) {
         </button>
         {expanded && (
           <div className="ml-4 border-l border-md-outline-variant pl-2">
-            {entries.map(([key, value]) => (
+            {entries.slice(0, MAX_CHILDREN).map(([key, value]) => (
               <div key={key} className="flex gap-1">
                 <span className="text-md-secondary">&quot;{key}&quot;</span>:
                 <JsonTreeViewer data={value} depth={depth + 1} />
               </div>
             ))}
+            <OverflowRow hidden={entries.length - MAX_CHILDREN} />
           </div>
         )}
       </div>

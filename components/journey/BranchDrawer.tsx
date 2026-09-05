@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 import { Trash2 } from "lucide-react"
 import type { Journey, JourneyNode } from "@/lib/journey/types"
 import { getChildren } from "@/lib/journey/tree"
-import { formatCanvasValue } from "@/lib/canvas/format-value"
+import { previewCanvasValue } from "@/lib/canvas/format-value"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -23,7 +23,7 @@ export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }
   const renderNode = (node: JourneyNode, depth: number): ReactNode => {
     const isActive = node.id === journey.activeId
     const isRoot = node.parentId === null
-    const compact = node.valueMissing ? t("valueMissingTitle") : formatCanvasValue(node.value).slice(0, 80)
+    const compact = node.valueMissing ? t("valueMissingTitle") : previewCanvasValue(node.value, 80).text
     return (
       <div key={node.id}>
         <div className="flex items-center gap-1" style={{ paddingLeft: `${depth * 16}px` }}>

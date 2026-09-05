@@ -3325,6 +3325,7 @@ canvas: {
   deleteNodeTitle: "Delete this node?",
   deleteNodeMessage: "Connected edges will also be removed. You can undo this action.",
   copyOutput: "Copy output",
+  outputTruncated: "Output is too long; showing the first {shown} characters. Copy to get the full content.",
   copied: "Copied",
   selectionToolbar: "Bulk node actions",
   selectedNodes: "{count} nodes selected",

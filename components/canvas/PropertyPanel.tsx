@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useCanvasStore } from "@/lib/canvas/store"
-import { formatCanvasValue } from "@/lib/canvas/format-value"
+import { formatCanvasValue, previewCanvasValue } from "@/lib/canvas/format-value"
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { Check, CircleSlash2, Copy, LoaderCircle, Play, Power, RotateCcw, Trash2, X } from "lucide-react"
@@ -11,14 +11,18 @@ import { Label } from "@/components/ui/label"
 import { ConfigInput } from "./nodes/ConfigInput"
 import { ConfirmDialog } from "./workflow/ConfirmDialog"
 
+/** 面板展示上限;超过的部分靠复制拿完整内容 */
+const PANEL_PREVIEW_CHARS = 20_000
+
 function OutputField({ label, value }: { label: string; value: unknown }) {
   const t = useTranslations("canvas")
   const [copied, setCopied] = useState(false)
-  const text = formatCanvasValue(value, true)
+  // 只展示前一段;完整文本在点击复制时才序列化
+  const preview = useMemo(() => previewCanvasValue(value, PANEL_PREVIEW_CHARS, true), [value])
 
   const handleCopy = async () => {
     try {
-      if (!await copyTextToClipboard(text)) throw new Error("Clipboard unavailable")
+      if (!await copyTextToClipboard(formatCanvasValue(value, true))) throw new Error("Clipboard unavailable")
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -43,8 +47,13 @@ function OutputField({ label, value }: { label: string; value: unknown }) {
         </button>
       </div>
       <div className="max-h-40 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container-high px-2 py-1.5 font-mono text-xs text-md-on-surface break-all">
-        {text}
+        {preview.text}
       </div>
+      {preview.truncated && (
+        <p className="text-[10px] text-md-on-surface-variant">
+          {t("outputTruncated").replace("{shown}", PANEL_PREVIEW_CHARS.toLocaleString())}
+        </p>
+      )}
     </div>
   )
 }
