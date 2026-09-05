@@ -138,6 +138,37 @@ export default function JourneyPage() {
     }
   }
 
+  /**
+   * 审查分享路径并进入待导入状态,返回是否接受。
+   * 被挡在后面的当前旅程(或本地草稿)留在 draftBehindImport 里,输入页可以恢复它。
+   */
+  const importSharedPath = (shared: SharedJourneyPath, current: Journey | null): boolean => {
+    const review = reviewSharedPath(shared)
+    if (review.blocked) {
+      // A link is untrusted input: refuse paths that could run side-effecting tools.
+      const offenders = review.steps
+        .filter((entry) => entry.issue)
+        .map((entry) => `${entry.label}（${t(ISSUE_KEYS[entry.issue!])}）`)
+        .join("、")
+      toast({
+        title: t("importBlockedTitle"),
+        description: t("importBlockedDescription").replace("{tools}", offenders),
+        variant: "destructive",
+      })
+      return false
+    }
+    // Never auto-run: the user reviews the steps and starts explicitly.
+    setPendingSharedPath(shared)
+    setPendingReview(review.steps)
+    setDraftBehindImport(current ?? loadDraft())
+    setJourney(null)
+    setDialog(null)
+    setStepSheetOpen(false)
+    setBranchesOpen(false)
+    setToolPickerOpen(false)
+    return true
+  }
+
   // Mount: import a shared path from the URL hash, otherwise restore the local draft.
   useEffect(() => {
     if (bootedRef.current) return
@@ -147,31 +178,29 @@ export default function JourneyPage() {
     if (shared) {
       // Only drop the hash once it decoded, so a failed import stays retryable/bookmarkable.
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
-      const review = reviewSharedPath(shared)
-      if (review.blocked) {
-        // A link is untrusted input: refuse paths that could run side-effecting tools.
-        const offenders = review.steps
-          .filter((entry) => entry.issue)
-          .map((entry) => `${entry.label}（${t(ISSUE_KEYS[entry.issue!])}）`)
-          .join("、")
-        toast({
-          title: t("importBlockedTitle"),
-          description: t("importBlockedDescription").replace("{tools}", offenders),
-          variant: "destructive",
-        })
-      } else {
-        // Never auto-run: the user reviews the steps and starts explicitly.
-        setPendingSharedPath(shared)
-        setPendingReview(review.steps)
-        setDraftBehindImport(loadDraft())
-        return
-      }
+      if (importSharedPath(shared, null)) return
     }
     const draft = loadDraft()
     if (draft) setJourney(draft)
   // 挂载引导，由 bootedRef 保证只跑一次；加入 t/toast 会在切换语言时重放导入流程
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 已经停在 /journey 上时粘贴分享链接只会改 hash(片段导航),页面不会重新挂载。
+  // 不带依赖数组:每次渲染重新订阅,回调里读到的 journey / running 永远是最新的。
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (running) return
+      const hash = window.location.hash
+      if (!hash.includes("j=")) return
+      const shared = decodeSharedPath(hash)
+      if (!shared) return
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
+      importSharedPath(shared, journey)
+    }
+    window.addEventListener("hashchange", handleHashChange)
+    return () => window.removeEventListener("hashchange", handleHashChange)
+  })
 
   // Autosave the draft (debounced) whenever the journey changes.
   useEffect(() => {

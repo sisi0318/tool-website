@@ -98,5 +98,14 @@ test.describe("数据旅程", () => {
 
     await expect(valueCard(page, "draft-data-123")).toBeVisible()
     await expect(page.getByText(/已从分享链接导入/)).toHaveCount(0)
+
+    // 已经停在页面上时粘贴链接只会改 hash:同样要进入导入流程,且当前旅程仍可恢复
+    await page.evaluate((hash) => {
+      window.location.hash = hash
+    }, `#j=${encoded}`)
+    await expect(page.getByText(/已从分享链接导入 1 步/)).toBeVisible()
+    await expect(page.getByText("本地还有一份未保存的旅程草稿")).toBeVisible()
+    await page.getByRole("button", { name: "放弃导入，恢复草稿" }).click()
+    await expect(valueCard(page, "draft-data-123")).toBeVisible()
   })
 })
