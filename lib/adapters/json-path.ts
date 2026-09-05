@@ -42,7 +42,7 @@ export function parseJsonPath(path: string): PathSegment[] {
       const isQuoted =
         raw.length >= 2 && (raw[0] === "'" || raw[0] === '"') && raw[raw.length - 1] === raw[0]
       if (isQuoted) {
-        segments.push({ key: raw.slice(1, -1), isIndex: false })
+        segments.push({ key: parseQuotedKey(raw), isIndex: false })
         continue
       }
       if (!/^-?\d+$/.test(raw)) throw new Error(`Invalid array index: [${raw}]`)
@@ -61,6 +61,7 @@ function findClosingBracket(path: string, open: number): number {
   for (let i = open + 1; i < path.length; i += 1) {
     const char = path[i]
     if (quote) {
+      if (char === "\\") { i += 1; continue }
       if (char === quote) quote = null
       continue
     }
@@ -71,6 +72,25 @@ function findClosingBracket(path: string, open: number): number {
     if (char === "]") return i
   }
   throw new Error(`Unclosed '[' in ${path}`)
+}
+
+function parseQuotedKey(raw: string): string {
+  if (raw[0] === '"') return JSON.parse(raw) as string
+  const body = raw.slice(1, -1)
+  const escapes: Record<string, string> = { "'": "'", '"': '"', "\\": "\\", "/": "/", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t" }
+  let value = ""
+  for (let index = 0; index < body.length; index++) {
+    if (body[index] !== "\\") { value += body[index]; continue }
+    const escape = body[++index]
+    if (escape === "u") {
+      const hex = body.slice(index + 1, index + 5)
+      if (!/^[\da-f]{4}$/i.test(hex)) throw new Error("Invalid Unicode escape in JSONPath")
+      value += String.fromCharCode(Number.parseInt(hex, 16))
+      index += 4
+    } else if (Object.hasOwn(escapes, escape)) value += escapes[escape]
+    else throw new Error("Invalid escape in JSONPath")
+  }
+  return value
 }
 
 /** 只有真正能解释成数字的标量才转换,其余返回 NaN 以示"不是数字"。 */

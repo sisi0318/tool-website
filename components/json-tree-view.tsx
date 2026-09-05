@@ -1,219 +1,21 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Focus, MoreHorizontal, Search, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useTranslations } from "@/hooks/use-translations"
 import { cn } from "@/lib/utils"
 import { copyTextToClipboard } from "@/lib/clipboard"
-import { Check, ChevronDown, ChevronRight, Copy } from "lucide-react"
-import { SendToMenu } from "@/components/tools/send-to-menu"
+import { expandJsonTreeToDepth, indexJsonTree, jsonTreePreview, visibleJsonTreeEntries, type JsonTreeEntry, type JsonTreeIndex, type JsonTreeValue } from "@/lib/json-tree"
 
-type JsonPrimitive = string | number | boolean | null
-type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
-
-const isJsonContainer = (value: JsonValue): value is JsonValue[] | { [key: string]: JsonValue } =>
-  typeof value === "object" && value !== null
-
-type JsonTreeTranslator = (key: string) => string
-
-const getNodeSummary = (value: JsonValue, t: JsonTreeTranslator) => {
-  if (Array.isArray(value)) {
-    return `${t("array")}(${value.length})`
-  }
-
-  if (value && typeof value === "object") {
-    return `${t("object")}(${Object.keys(value).length})`
-  }
-
-  if (typeof value === "string") {
-    return `"${value}"`
-  }
-
-  return String(value)
-}
-
-const getNodeTypeLabel = (value: JsonValue) => {
-  if (Array.isArray(value)) return "array"
-  if (value === null) return "null"
-  return typeof value
-}
-
-const collectCollapsiblePaths = (value: JsonValue, currentPath = "root"): string[] => {
-  if (!isJsonContainer(value)) {
-    return []
-  }
-
-  const childEntries = Array.isArray(value)
-    ? value.map((item, index) => [index.toString(), item] as const)
-    : Object.entries(value)
-
-  return childEntries.flatMap(([key, childValue]) => {
-    if (!isJsonContainer(childValue)) {
-      return []
-    }
-
-    const nextPath = `${currentPath}.${key}`
-    return [nextPath, ...collectCollapsiblePaths(childValue, nextPath)]
-  })
-}
-
-interface JsonTreeNodeProps {
-  copied: Record<string, boolean>
-  depth?: number
-  emphasizeIndentation: boolean
-  indentText: string | number
-  isCollapsed: (path: string) => boolean
-  label: string
-  onCopy: (text: string, key?: string) => void
-  onToggle: (path: string) => void
-  path: string
-  t: JsonTreeTranslator
-  value: JsonValue
-}
-
-function JsonTreeNode({
-  copied,
-  depth = 0,
-  emphasizeIndentation,
-  indentText,
-  isCollapsed,
-  label,
-  onCopy,
-  onToggle,
-  path,
-  t,
-  value,
-}: JsonTreeNodeProps) {
-  const collapsible = isJsonContainer(value)
-  const collapsed = collapsible ? isCollapsed(path) : false
-  const nodeCopyText = typeof value === "string" ? value : JSON.stringify(value, null, indentText)
-  const typeLabel = getNodeTypeLabel(value)
-  const branchClassName = emphasizeIndentation && depth > 0
-    ? "relative before:pointer-events-none before:absolute before:right-full before:top-6 before:w-4 before:border-t before:border-[var(--md-sys-color-outline)] sm:before:w-6"
-    : undefined
-
-  if (!collapsible) {
-    const primitiveClassName =
-      value === null
-        ? "text-[var(--md-sys-color-on-surface-variant)]"
-        : typeof value === "string"
-          ? "text-[var(--md-sys-color-success)]"
-          : typeof value === "number"
-            ? "text-[var(--md-sys-color-tertiary)]"
-            : "text-[var(--md-sys-color-primary)]"
-
-    return (
-      <div className={cn("rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-3 py-2.5 transition-colors hover:border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container-low)]", branchClassName)}>
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm font-semibold text-[var(--md-sys-color-on-surface)]">{label}</span>
-              <Badge variant="secondary" className="rounded-full px-2 py-0 text-[10px] uppercase tracking-[0.12em]">
-                {typeLabel}
-              </Badge>
-            </div>
-            <div className="mt-1 font-mono text-sm leading-6">
-              <span className="mr-2 text-[var(--md-sys-color-outline)]">=</span>
-              <span className={cn("break-all", primitiveClassName)}>
-                {typeof value === "string" ? `"${value}"` : String(value)}
-              </span>
-            </div>
-          </div>
-          <SendToMenu value={value} source={path} compact />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 shrink-0 rounded-full px-2.5 text-xs"
-            onClick={() => onCopy(nodeCopyText, path)}
-            aria-label={t("copyAria").replace("{label}", label)}
-          >
-            {copied[path] ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            <span className="ml-1 hidden sm:inline">{copied[path] ? t("copied") : t("copy")}</span>
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  const entries = Array.isArray(value)
-    ? value.map((item, index) => [index.toString(), item] as const)
-    : Object.entries(value)
-
-  return (
-    <div className={cn("space-y-3", branchClassName)}>
-      <div className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-3 py-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-full px-2.5 font-mono text-xs"
-            onClick={() => onToggle(path)}
-            aria-label={(collapsed ? t("expandAria") : t("collapseAria")).replace("{label}", label)}
-          >
-            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            <span className="ml-1 font-semibold">{label}</span>
-          </Button>
-          <Badge variant="secondary" className="rounded-full px-2 py-0 font-mono text-[10px] uppercase tracking-[0.12em]">
-            {typeLabel}
-          </Badge>
-          <Badge variant="secondary" className="rounded-full px-2 py-0 font-mono text-[11px]">
-            {getNodeSummary(value, t)}
-          </Badge>
-          <div className="ml-auto flex items-center gap-1">
-            <SendToMenu value={value} source={path} compact />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 rounded-full px-2.5 text-xs"
-              onClick={() => onCopy(nodeCopyText, path)}
-              aria-label={t("copyNodeAria").replace("{label}", label)}
-            >
-              {copied[path] ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              <span className="ml-1 hidden sm:inline">{copied[path] ? t("copied") : t("copyNode")}</span>
-            </Button>
-          </div>
-        </div>
-
-        {collapsed ? (
-          <div className="mt-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] px-3 py-2 font-mono text-xs text-[var(--md-sys-color-on-surface-variant)]">
-            {Array.isArray(value) ? "[ ... ]" : "{ ... }"}
-          </div>
-        ) : (
-          <div
-            className={cn(
-              "mt-3 space-y-3",
-              emphasizeIndentation
-                ? "border-l-2 border-solid border-[var(--md-sys-color-outline)] pl-4 sm:pl-6"
-                : "border-l border-dashed border-[var(--md-sys-color-outline-variant)] pl-4",
-              !emphasizeIndentation && depth === 0 && "pl-3 sm:pl-4",
-            )}
-          >
-            {entries.map(([childKey, childValue]) => (
-              <JsonTreeNode
-                key={`${path}.${childKey}`}
-                copied={copied}
-                depth={depth + 1}
-                emphasizeIndentation={emphasizeIndentation}
-                indentText={indentText}
-                isCollapsed={isCollapsed}
-                label={Array.isArray(value) ? `[${childKey}]` : childKey}
-                onCopy={onCopy}
-                onToggle={onToggle}
-                path={`${path}.${childKey}`}
-                t={t}
-                value={childValue}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+const PAGE_SIZE = 100
+const MAX_INPUT_CHARS = 10 * 1024 * 1024
+const previewEntry = (node: JsonTreeEntry, limit = 120) => node.type === "array" ? "[" + node.childCount + "]" : node.type === "object" ? "{" + node.childCount + "}" : jsonTreePreview(node.value, limit)
 
 interface JsonTreeViewProps {
   className?: string
@@ -222,142 +24,180 @@ interface JsonTreeViewProps {
   indentSize?: number
   jsonText: string
   rootLabel?: string
+  defaultView?: "compact" | "cards"
 }
 
-export function JsonTreeView({
-  className,
-  emptyMessage,
-  emphasizeIndentation = false,
-  indentSize = 2,
-  jsonText,
-  rootLabel,
-}: JsonTreeViewProps) {
+export function JsonTreeView({ className, emptyMessage, emphasizeIndentation = false, indentSize = 2, jsonText, rootLabel, defaultView = "compact" }: JsonTreeViewProps) {
   const t = useTranslations("jsonTree")
-  const [copied, setCopied] = useState<Record<string, boolean>>({})
-  const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
-  const resolvedEmptyMessage = emptyMessage ?? t("emptyMessage")
-  const resolvedRootLabel = rootLabel ?? t("root")
-
-  const parsedResult = useMemo(() => {
-    if (!jsonText.trim()) {
-      return { parsed: null as JsonValue | null, valid: false }
-    }
-
-    try {
-      return {
-        parsed: JSON.parse(jsonText) as JsonValue,
-        valid: true,
-      }
-    } catch {
-      return { parsed: null as JsonValue | null, valid: false }
-    }
+  const parsed = useMemo(() => {
+    if (jsonText.length > MAX_INPUT_CHARS) return { index: null, tooLarge: true }
+    try { return { index: indexJsonTree(JSON.parse(jsonText) as JsonTreeValue), tooLarge: false } }
+    catch { return { index: null, tooLarge: false } }
   }, [jsonText])
+  const index = parsed.index
+  const [view, setView] = useState(defaultView)
+  const [scope, setScope] = useState("")
+  const [query, setQuery] = useState("")
+  const deferredQuery = useDeferredValue(query)
+  const [expanded, setExpanded] = useState(() => index ? expandJsonTreeToDepth(index, 2) : new Set<string>())
+  const [searchCollapsed, setSearchCollapsed] = useState(new Set<string>())
+  const [level, setLevel] = useState("2")
+  const [page, setPage] = useState(0)
+  const [copied, setCopied] = useState<string | null>(null)
+  const [copyFailed, setCopyFailed] = useState(false)
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollArea = useRef<HTMLDivElement>(null)
+  const root = index?.byId.get(scope) ?? index?.entries[0]
 
   useEffect(() => {
-    setCollapsedPaths(new Set())
-    setCopied({})
-  }, [jsonText])
+    setScope("")
+    setQuery("")
+    setExpanded(index ? expandJsonTreeToDepth(index, 2) : new Set())
+    setSearchCollapsed(new Set())
+    setLevel("2")
+    setPage(0)
+    setCopied(null)
+    setCopyFailed(false)
+  }, [index])
 
-  const copyToClipboard = (text: string, key = "main") => {
-    if (text === undefined || text === null) return
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current) }, [])
+  useEffect(() => { if (scrollArea.current) scrollArea.current.scrollTop = 0 }, [page, scope, deferredQuery, view])
 
-    void copyTextToClipboard(text).then((success) => {
-      if (!success) return
-      setCopied((prev) => ({ ...prev, [key]: true }))
-
-      window.setTimeout(() => {
-        setCopied((prev) => ({ ...prev, [key]: false }))
-      }, 2000)
-    })
-  }
-
-  const toggleNodeCollapse = (path: string) => {
-    setCollapsedPaths((prev) => {
-      const next = new Set(prev)
-      if (next.has(path)) {
-        next.delete(path)
-      } else {
-        next.add(path)
+  const selected = useMemo(() => index && root ? visibleJsonTreeEntries(index, expanded, root.id, deferredQuery, searchCollapsed) : { entries: [], matches: new Set<string>() }, [index, root, expanded, deferredQuery, searchCollapsed])
+  const pages = Math.max(1, Math.ceil(selected.entries.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pages - 1)
+  const displayed = useMemo(() => selected.entries.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE), [selected.entries, currentPage])
+  const cardIds = useMemo(() => {
+    const result = new Set<string>()
+    if (!index || !root) return result
+    for (const node of displayed) {
+      let current: JsonTreeEntry | undefined = node
+      while (current && !result.has(current.id)) {
+        result.add(current.id)
+        if (current.id === root.id || current.parent === null) break
+        current = index.byId.get(current.parent)
       }
-      return next
-    })
+    }
+    return result
+  }, [index, root, displayed])
+
+  const copy = async (value: string, key: string) => {
+    const ok = await copyTextToClipboard(value)
+    setCopyFailed(!ok)
+    setCopied(ok ? key : null)
+    if (copyTimer.current) clearTimeout(copyTimer.current)
+    copyTimer.current = setTimeout(() => { setCopied(null); setCopyFailed(false) }, 2000)
   }
-
-  const collapseAllNodes = () => {
-    if (!parsedResult.valid || !parsedResult.parsed || !isJsonContainer(parsedResult.parsed)) return
-    setCollapsedPaths(new Set(collectCollapsiblePaths(parsedResult.parsed)))
+  const copyValue = (node: JsonTreeEntry) => void copy(typeof node.value === "string" ? node.value : JSON.stringify(node.value, null, indentSize), "value:" + node.id)
+  const toggle = (id: string) => {
+    const update = (previous: Set<string>) => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next }
+    if (deferredQuery.trim()) setSearchCollapsed(update)
+    else setExpanded(update)
+    setLevel("custom")
   }
-
-  const expandAllNodes = () => {
-    setCollapsedPaths(new Set())
+  const setDepth = (value: string) => {
+    if (!index || !root) return
+    setLevel(value)
+    setQuery("")
+    setSearchCollapsed(new Set())
+    setExpanded(expandJsonTreeToDepth(index, value === "all" ? Infinity : Number(value), root.id))
+    setPage(0)
   }
-
-  if (!parsedResult.valid) {
-    return (
-      <div className={cn("rounded-2xl border border-dashed border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-6 text-sm text-[var(--md-sys-color-on-surface-variant)]", className)}>
-        {resolvedEmptyMessage}
-      </div>
-    )
+  const focus = (id: string) => {
+    if (!index) return
+    setScope(id)
+    setQuery("")
+    setSearchCollapsed(new Set())
+    setExpanded(expandJsonTreeToDepth(index, 2, id))
+    setLevel("2")
+    setPage(0)
   }
+  const isOpen = (node: JsonTreeEntry) => node.childCount > 0 && (deferredQuery.trim() ? !searchCollapsed.has(node.id) : expanded.has(node.id))
+  const label = (node: JsonTreeEntry) => node.id === "" ? rootLabel ?? t("root") : index?.byId.get(node.parent ?? "")?.type === "array" ? "[" + node.key + "]" : node.key
+  const indent = Math.max(4, Math.min(8, indentSize) * 4)
+  const typeClass = (node: JsonTreeEntry) => node.type === "string" ? "text-[var(--md-sys-color-success)]" : node.type === "number" ? "text-md-tertiary" : node.type === "null" ? "text-md-on-surface-variant" : "text-md-primary"
 
-  const rootTypeLabel = parsedResult.parsed === null ? "null" : getNodeTypeLabel(parsedResult.parsed)
-  const rootSummary = getNodeSummary(parsedResult.parsed, t)
+  const actions = (node: JsonTreeEntry) => <div className="ml-auto flex shrink-0 items-center gap-1">
+    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label={t("copyAria").replace("{label}", node.path)} onClick={() => copyValue(node)}>
+      {copied === "value:" + node.id ? <Check /> : <Copy />}
+    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label={t("nodeActions").replace("{path}", node.path)}><MoreHorizontal /></Button></DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => void copy(node.path, "path:" + node.id)}><Copy className="mr-2 h-4 w-4" />{t("copyPath")}</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => void copy(node.id, "pointer:" + node.id)}><Copy className="mr-2 h-4 w-4" />{t("copyPointer")}</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => focus(node.id)}><Focus className="mr-2 h-4 w-4" />{t("focusSubtree")}</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <SendToMenu value={node.value} source={node.path} compact />
+  </div>
 
-  return (
-    <div className={cn("space-y-4", className)}>
-      <div className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] p-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-[var(--md-sys-color-on-surface)]">{t("nodeView")}</span>
-              <Badge variant="secondary" className="rounded-full px-2 py-0 text-[10px] uppercase tracking-[0.12em]">
-                {rootTypeLabel}
-              </Badge>
-              <Badge variant="secondary" className="rounded-full px-2 py-0 font-mono text-[11px]">
-                {rootSummary}
-              </Badge>
-            </div>
-            <p className="text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">
-              {t("description")}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={() => copyToClipboard(JSON.stringify(parsedResult.parsed, null, indentSize), "tree-all")}
-            >
-              {copied["tree-all"] ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-              {copied["tree-all"] ? t("copied") : t("copyAll")}
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-full" onClick={expandAllNodes}>
-              <ChevronDown className="h-4 w-4 mr-1" />
-              {t("expandAll")}
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-full" onClick={collapseAllNodes}>
-              <ChevronRight className="h-4 w-4 mr-1" />
-              {t("collapseAll")}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-h-[36rem] overflow-auto rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3 sm:p-4">
-        <JsonTreeNode
-          emphasizeIndentation={emphasizeIndentation}
-          copied={copied}
-          indentText={indentSize}
-          isCollapsed={(path) => collapsedPaths.has(path)}
-          label={resolvedRootLabel}
-          onCopy={copyToClipboard}
-          onToggle={toggleNodeCollapse}
-          path="root"
-          t={t}
-          value={parsedResult.parsed}
-        />
-      </div>
+  const compactRow = (node: JsonTreeEntry) => {
+    const depth = Math.min(24, node.depth - (root?.depth ?? 0))
+    return <div key={node.id} data-tree-path={node.id} className={cn("flex min-w-[20rem] items-center gap-1 border-b border-md-outline-variant/30 py-0.5 pr-2 font-mono text-xs hover:bg-md-surface-container-high", selected.matches.has(node.id) && "bg-md-secondary-container/60")} style={{
+      paddingInlineStart: 8 + depth * indent,
+      ...(emphasizeIndentation && depth > 0 ? {
+        backgroundImage: "repeating-linear-gradient(90deg, transparent 0 " + (indent - 1) + "px, var(--md-sys-color-outline) " + (indent - 1) + "px " + indent + "px)",
+        backgroundSize: depth * indent + "px 100%", backgroundRepeat: "no-repeat", backgroundPosition: "8px 0",
+      } : {}),
+    }}>
+      {node.childCount > 0 ? <button type="button" className="flex min-w-0 shrink-0 items-center gap-1 rounded px-1 py-1 text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary" aria-label={(isOpen(node) ? t("collapseAria") : t("expandAria")).replace("{label}", node.path)} aria-expanded={isOpen(node)} onClick={() => toggle(node.id)} title={node.path}>
+        {isOpen(node) ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}<span className="max-w-40 truncate font-semibold">{label(node)}</span>
+      </button> : <span title={node.path} className="max-w-40 shrink-0 truncate pl-6 font-semibold text-md-on-surface">{label(node)}</span>}
+      <span className="mx-1 hidden text-[10px] uppercase text-md-on-surface-variant sm:inline">{node.type}</span>
+      <span className={cn("min-w-0 flex-1 truncate", typeClass(node))} title={previewEntry(node, 300)}>{previewEntry(node)}</span>
+      {actions(node)}
     </div>
-  )
+  }
+
+  const cardNode = (node: JsonTreeEntry, tree: JsonTreeIndex): ReactNode => {
+    const open = isOpen(node)
+    const children = node.children.filter((id) => cardIds.has(id))
+    const container = node.type === "array" || node.type === "object"
+    return <div key={node.id} data-tree-path={node.id} className="rounded-xl border border-md-outline-variant bg-md-surface-container-lowest p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {node.childCount > 0 ? <Button type="button" variant="ghost" size="sm" className="h-8 max-w-full px-1 font-mono" aria-label={(open ? t("collapseAria") : t("expandAria")).replace("{label}", node.path)} aria-expanded={open} onClick={() => toggle(node.id)}>{open ? <ChevronDown /> : <ChevronRight />}<span className="truncate">{label(node)}</span></Button> : <strong className="max-w-full truncate font-mono text-sm">{label(node)}</strong>}
+        <Badge variant="secondary" className="px-2 text-[10px] uppercase">{node.type}</Badge>
+        {container && <span className="font-mono text-xs text-md-on-surface-variant">{previewEntry(node)}</span>}
+        {actions(node)}
+      </div>
+      {container ? open && children.length > 0 ? <div className={cn("mt-3 space-y-2 border-l", emphasizeIndentation ? "border-l-2 border-solid border-md-outline" : "border-dashed border-md-outline-variant")} style={{ paddingInlineStart: Math.max(12, indent) }}>{children.map((id) => cardNode(tree.byId.get(id)!, tree))}</div> : <p className="mt-2 font-mono text-xs text-md-on-surface-variant">{node.type === "array" ? node.childCount ? "[ … ]" : "[]" : node.childCount ? "{ … }" : "{}"}</p> : <pre className={cn("mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-sm", typeClass(node))}>{jsonTreePreview(node.value, 16_000)}</pre>}
+    </div>
+  }
+
+  if (!index || !root) return <div className={cn("rounded-2xl border border-dashed border-md-outline-variant bg-md-surface-container-low px-4 py-6 text-sm text-md-on-surface-variant", className)}>{parsed.tooLarge ? t("inputTooLarge") : emptyMessage ?? t("emptyMessage")}</div>
+
+  return <div className={cn("space-y-3", className)}>
+    <div className="space-y-3 rounded-2xl border border-md-outline-variant bg-md-surface-container-lowest p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold">{t("nodeView")}</span><Badge variant="secondary" className="font-mono text-[10px] uppercase">{root.type}</Badge>
+        <SegmentedControl aria-label={t("viewMode")} value={view} onValueChange={(value) => setView(value as typeof view)} className="ml-auto h-9">
+          <SegmentedControlItem value="compact" className="text-xs">{t("compact")}</SegmentedControlItem><SegmentedControlItem value="cards" className="text-xs">{t("cards")}</SegmentedControlItem>
+        </SegmentedControl>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-40 flex-1"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-md-on-surface-variant" /><Input aria-label={t("search")} placeholder={t("search")} className="h-10 pl-9 pr-9 text-sm" value={query} maxLength={200} onChange={(event) => { setQuery(event.target.value); setSearchCollapsed(new Set()); setPage(0) }} />{query && <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-9" aria-label={t("clearSearch")} onClick={() => { setQuery(""); setSearchCollapsed(new Set()); setPage(0) }}><X /></Button>}</div>
+        <label className="flex items-center gap-2 text-xs">{t("expandDepth")}<select aria-label={t("expandDepth")} value={level} onChange={(event) => setDepth(event.target.value)} className="h-10 rounded-lg border border-md-outline-variant bg-md-surface px-2 text-md-on-surface">
+          {[0, 1, 2, 3, 4].map((depth) => <option key={depth} value={String(depth)}>{t("depthOption").replace("{depth}", String(depth))}</option>)}<option value="all">{t("allLevels")}</option>{level === "custom" && <option value="custom">{t("customDepth")}</option>}
+        </select></label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => void copy(JSON.stringify(root.value, null, indentSize), "all:" + root.id)}>{copied === "all:" + root.id ? <Check /> : <Copy />}{scope ? t("copySubtree") : t("copyAll")}</Button>
+        <Button variant="outline" size="sm" onClick={() => setDepth("all")}><ChevronDown />{t("expandAll")}</Button>
+        <Button variant="outline" size="sm" onClick={() => setDepth("0")}><ChevronRight />{t("collapseAll")}</Button>
+        <span role="status" className={cn("text-xs", copyFailed ? "text-md-error" : "text-md-primary")}>{copyFailed ? t("copyFailed") : copied ? t("copied") : ""}</span>
+      </div>
+      {scope && <div className="flex flex-wrap items-center gap-2 rounded-lg bg-md-secondary-container px-3 py-2 text-md-on-secondary-container"><code className="min-w-0 flex-1 break-all text-xs">{root.path}</code><Button variant="ghost" size="sm" onClick={() => focus(root.parent ?? "")}><ArrowUp />{t("parent")}</Button><Button variant="ghost" size="sm" onClick={() => focus("")}>{t("backToRoot")}</Button></div>}
+      <p className="text-xs text-md-on-surface-variant">{t("description")}</p>
+    </div>
+    {index.limited && <p role="status" className="rounded-lg bg-md-tertiary-container p-3 text-xs text-md-on-tertiary-container">{t("indexLimited")}</p>}
+    {deferredQuery.trim() && <p role="status" className="text-xs text-md-on-surface-variant">{t("matchCount").replace("{count}", String(selected.matches.size))}</p>}
+    <div ref={scrollArea} className="max-h-[36rem] overflow-auto rounded-xl border border-md-outline-variant bg-md-surface-container-low">
+      {displayed.length ? view === "compact" ? displayed.map(compactRow) : <div className="min-w-[20rem] p-3">{cardNode(root, index)}</div> : <p className="p-6 text-center text-sm text-md-on-surface-variant">{t("noMatches")}</p>}
+    </div>
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-md-on-surface-variant">
+      <span>{t("visibleCount").replace("{count}", String(selected.entries.length))}{pages > 1 ? " · " + t("pageSize").replace("{count}", String(PAGE_SIZE)) : ""}</span>
+      {pages > 1 && <div className="flex items-center gap-1"><Button variant="ghost" size="icon" aria-label={t("previousPage")} disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}><ChevronLeft /></Button><span>{currentPage + 1} / {pages}</span><Button variant="ghost" size="icon" aria-label={t("nextPage")} disabled={currentPage + 1 >= pages} onClick={() => setPage(currentPage + 1)}><ChevronRight /></Button></div>}
+    </div>
+  </div>
 }
