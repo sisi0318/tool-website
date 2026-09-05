@@ -61,6 +61,7 @@ import { registerCsvAdapter } from "./csv"
 import { registerTabularAdapters } from "./tabular"
 import { registerMarkdownAdapter } from "./markdown"
 import { registerSqlAdapter } from "./sql"
+import { registerSqliteAdapter } from "./sqlite"
 import { registerJsonSchemaAdapter } from "./json-schema"
 import { registerSubnetAdapter } from "./subnet"
 import { registerCertificateAdapter } from "./certificate"
@@ -144,6 +145,7 @@ export function registerAllAdapters(): void {
   safeRegister("docker-converter", registerDockerConverterAdapter)
   safeRegister("whois", registerWhoisAdapter)
   safeRegister("sql", registerSqlAdapter)
+  safeRegister("sqlite", registerSqliteAdapter)
   safeRegister("subnet", registerSubnetAdapter)
 
   // Utility (7)

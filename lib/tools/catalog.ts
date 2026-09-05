@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "sqlite", translationKey: "sqliteTools", category: "developer",
+    seo: { title: "SQLite 文件查看器", description: "在浏览器本地打开 SQLite 数据库，浏览表、视图、索引和结构，执行只读 SQL，预览 BLOB 并导出 CSV 或 JSON。" },
+    features: [["SQLite 数据库", "Local database files, tables, views and indexes"], ["只读 SQL", "Bounded worker queries with exact 64-bit integers"], ["BLOB / 数据导出", "Binary preview, CSV and JSON result export"]],
+  },
+  {
     id: "binary-codec", translationKey: "binaryCodecTools", category: "developer",
     seo: { title: "MessagePack / CBOR 编解码", description: "浏览器本地 MessagePack 与 CBOR 编解码，支持二进制文件、Hex、Base64 和扩展 JSON，保留大整数、字节串、映射键与标签。" },
     features: [["MessagePack", "Binary serialization, 64-bit integers and extension payloads"], ["CBOR", "Tags, bignums, indefinite containers and simple values"], ["扩展 JSON", "Lossless bytes, maps, special numbers and tagged values"]],
