@@ -27,6 +27,8 @@ import {
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { computeLineDiff, type DiffLine } from "@/lib/text-diff"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
+import { StructuredDiffPanel } from "@/components/tools/structured-diff-panel"
 
 const MAX_RENDERED_DIFF_LINES = 2_000
 
@@ -34,6 +36,7 @@ export default function DiffPage() {
   const t = useTranslations("diff")
 
   const [oldText, setOldText] = useState("")
+  const [comparisonMode, setComparisonMode] = useState("text")
   const [newText, setNewText] = useState("")
   const [showLineNumbers, setShowLineNumbers] = useState(true)
   const [algorithm, setAlgorithm] = useState<"simple" | "myers">("myers")
@@ -49,11 +52,11 @@ export default function DiffPage() {
   // 计算差异
   const diffResult = useMemo(
     () => computeLineDiff(
-      deferredOldText,
-      deferredNewText,
+      comparisonMode === "text" ? deferredOldText : "",
+      comparisonMode === "text" ? deferredNewText : "",
       algorithm === "myers" ? "precise" : "quick",
     ),
-    [algorithm, deferredNewText, deferredOldText],
+    [algorithm, comparisonMode, deferredNewText, deferredOldText],
   )
   const diff = diffResult.lines
   const renderedDiff = diff.slice(0, MAX_RENDERED_DIFF_LINES)
@@ -167,8 +170,12 @@ function add(a, b) {
   return (
     <div className="container mx-auto px-4 py-4 max-w-6xl">
       <h2 className="text-2xl font-bold text-center mb-6">{t("title")}</h2>
+      <SegmentedControl aria-label={t("comparisonMode")} value={comparisonMode} onValueChange={setComparisonMode} className="mb-5">
+        <SegmentedControlItem value="text">{t("textMode")}</SegmentedControlItem>
+        <SegmentedControlItem value="structured">{t("structuredMode")}</SegmentedControlItem>
+      </SegmentedControl>
 
-      <div className="space-y-6">
+      {comparisonMode === "text" && <div className="space-y-6">
         {/* 控制面板 */}
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <div className="flex flex-wrap gap-2">
@@ -324,6 +331,9 @@ function add(a, b) {
             </div>
           </div>
         </div>
+      </div>}
+      <div hidden={comparisonMode !== "structured"}>
+        <StructuredDiffPanel left={oldText} right={newText} onLeftChange={setOldText} onRightChange={setNewText} active={comparisonMode === "structured"} />
       </div>
     </div>
   )

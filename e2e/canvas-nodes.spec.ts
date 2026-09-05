@@ -49,7 +49,7 @@ const NODE_PORTS: Record<string, { inputs: number; outputs: number }> = {
   "text-stats": { inputs: 1, outputs: 6 },
   "case-converter": { inputs: 1, outputs: 6 },
   regex: { inputs: 4, outputs: 5 },
-  diff: { inputs: 2, outputs: 5 },
+  diff: { inputs: 2, outputs: 6 },
   "http-tester": { inputs: 4, outputs: 4 },
   crontab: { inputs: 1, outputs: 2 },
   "docker-converter": { inputs: 2, outputs: 3 },

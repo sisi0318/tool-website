@@ -219,12 +219,13 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     translationKey: "diff",
     category: "text",
     seo: {
-      title: "文本对比",
-      description: "在线文本差异对比工具，逐行高亮新增、删除与修改内容。",
+      title: "文本与结构化数据对比",
+      description: "对比文本、JSON 和 YAML，逐行高亮或按字段路径显示差异，支持忽略字段和数组按 id 对齐。",
     },
     features: [
       ["文本对比", "Compare two texts"],
       ["差异高亮", "Added, removed and changed lines"],
+      ["JSON / YAML 结构化比较", "Structured JSON / YAML diff, ignored paths, arrays matched by id"],
     ],
   },
   {
