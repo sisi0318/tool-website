@@ -1,5 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import {
+  CANVAS_SCHEMA_VERSION,
+  decodeWorkflowData,
+  encodeWorkflowData,
   getWorkflowList,
   saveWorkflow,
   loadWorkflow,
@@ -43,13 +46,50 @@ describe("workflow", () => {
     })
   })
 
+  describe("schema version", () => {
+    const sample = {
+      nodes: [{ id: "a", type: "string", position: { x: 1, y: 2 }, config: { value: "x" } }],
+      edges: [],
+    }
+
+    it("落盘数据带版本号,读回后与原数据一致", () => {
+      const encoded = JSON.parse(encodeWorkflowData(sample))
+      expect(encoded.version).toBe(CANVAS_SCHEMA_VERSION)
+      expect(decodeWorkflowData(encoded)).toEqual(sample)
+    })
+
+    it("没有版本号的历史数据按 v1 读取", () => {
+      expect(decodeWorkflowData({ nodes: sample.nodes, edges: [] })).toEqual(sample)
+    })
+
+    it("比当前代码更新的版本拒绝读取,而不是当成损坏数据", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+      expect(decodeWorkflowData({ version: CANVAS_SCHEMA_VERSION + 1, ...sample })).toBeNull()
+      expect(warn).toHaveBeenCalledOnce()
+      warn.mockRestore()
+    })
+
+    it("导出文件版本高于当前时 parseWorkflowFile 报 UNSUPPORTED_VERSION", () => {
+      const file = JSON.parse(serializeWorkflow("x", sample))
+      expect(file.version).toBe(CANVAS_SCHEMA_VERSION)
+      file.version = CANVAS_SCHEMA_VERSION + 1
+      expect(() => parseWorkflowFile(JSON.stringify(file))).toThrow("UNSUPPORTED_VERSION")
+    })
+
+    it("保存的工作流带版本号并能读回", () => {
+      expect(saveWorkflow("versioned", sample)).toBe("created")
+      expect(JSON.parse(localStorageMock.getItem("WORKFLOW_versioned")!).version).toBe(CANVAS_SCHEMA_VERSION)
+      expect(loadWorkflow("versioned")).toEqual(sample)
+    })
+  })
+
   describe("saveWorkflow", () => {
     it("saves workflow and updates list", () => {
       const data = { nodes: [], edges: [] }
       const result = saveWorkflow("test", data)
       expect(result).toBe("created")
       expect(getWorkflowList()).toEqual(["test"])
-      expect(JSON.parse(localStorageMock.getItem("WORKFLOW_test")!)).toEqual(data)
+      expect(JSON.parse(localStorageMock.getItem("WORKFLOW_test")!)).toEqual({ version: CANVAS_SCHEMA_VERSION, ...data })
     })
 
     it("reports an overwrite of an existing name", () => {

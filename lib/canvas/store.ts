@@ -11,8 +11,7 @@ import { getNodeDefinition } from "./registry"
 import { createBypassOutputs, topologicalSort } from "./engine"
 import { convertPortValue, resolveInputPortType, resolveOutputPortType } from "./convert-value"
 import { validateConnectionStructure } from "./validation"
-import { normalizeWorkflowData } from "./workflow"
-import { stripUnpersistableNodes } from "./persist"
+import { decodeWorkflowData, encodeWorkflowData } from "./workflow"
 import { withDefaultConfig } from "./node-factory"
 import { readLocalStorage, writeLocalStorage } from "../safe-storage"
 import { mapWithConcurrency } from "../async-pool"
@@ -1330,11 +1329,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   saveToLocalStorage: () => {
     const state = get()
-    const ok = writeLocalStorage(
-      CANVAS_STATE_KEY,
-      // File/Blob 序列化后会变成 `{}`,重载时是个"看起来有值"的坏对象。
-      JSON.stringify({ nodes: stripUnpersistableNodes(state.nodes), edges: state.edges })
-    )
+    const ok = writeLocalStorage(CANVAS_STATE_KEY, encodeWorkflowData({ nodes: state.nodes, edges: state.edges }))
     if (!ok) {
       console.warn("Unable to persist canvas state")
     }
@@ -1345,7 +1340,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        const normalized = normalizeWorkflowData(parsed)
+        const normalized = decodeWorkflowData(parsed)
         if (!normalized) return
         const { nodes, edges } = normalized
         invalidateExecutionPlan()

@@ -4,6 +4,12 @@ import { stripUnpersistableNodes } from "./persist"
 
 const WORKFLOW_LIST_KEY = "canvas-workflow-list"
 
+/**
+ * 持久化数据的结构版本:canvas-state、WORKFLOW_<name> 与导出文件共用。
+ * 节点 / 边的持久化形态一旦改动就递增,并在 decodeWorkflowData 里补上迁移。
+ */
+export const CANVAS_SCHEMA_VERSION = 1
+
 export type SaveWorkflowResult = "created" | "overwritten" | "failed"
 
 export interface WorkflowData {
@@ -13,7 +19,7 @@ export interface WorkflowData {
 
 export interface PortableWorkflow {
   kind: "tool-website-workflow"
-  version: 1
+  version: number
   name: string
   exportedAt: string
   workflow: WorkflowData
@@ -73,10 +79,35 @@ export function normalizeWorkflowData(value: unknown): WorkflowData | null {
   return { nodes, edges }
 }
 
+/** 落盘形态:带版本号;配置里剥掉 File/Blob 这类序列化后会变成坏值的东西 */
+export function encodeWorkflowData(data: WorkflowData): string {
+  return JSON.stringify({
+    version: CANVAS_SCHEMA_VERSION,
+    nodes: stripUnpersistableNodes(data.nodes),
+    edges: data.edges,
+  })
+}
+
+/**
+ * 读盘入口:先按版本号迁移到当前形态,再做结构校验。
+ * 没有版本号的是加版本号之前写的数据,按 v1 处理;比当前代码还新的版本读不懂,
+ * 返回 null(画布保持为空),不把它当成损坏数据。
+ */
+export function decodeWorkflowData(raw: unknown): WorkflowData | null {
+  if (!isRecord(raw)) return null
+  const version = typeof raw.version === "number" ? raw.version : 1
+  if (version > CANVAS_SCHEMA_VERSION) {
+    console.warn(`Canvas data schema v${version} is newer than the supported v${CANVAS_SCHEMA_VERSION}`)
+    return null
+  }
+  // 目前只有 v1。以后的迁移在这里按 version 逐级升到 CANVAS_SCHEMA_VERSION 再交给 normalize。
+  return normalizeWorkflowData(raw)
+}
+
 export function serializeWorkflow(name: string, data: WorkflowData): string {
   const portable: PortableWorkflow = {
     kind: "tool-website-workflow",
-    version: 1,
+    version: CANVAS_SCHEMA_VERSION,
     name: name.trim() || "workflow",
     exportedAt: new Date().toISOString(),
     workflow: { nodes: stripUnpersistableNodes(data.nodes), edges: data.edges },
@@ -93,8 +124,11 @@ export function parseWorkflowFile(contents: string): { name: string; data: Workf
   }
 
   if (isRecord(parsed) && parsed.kind === "tool-website-workflow") {
-    if (parsed.version !== 1) throw new Error("UNSUPPORTED_VERSION")
-    const data = normalizeWorkflowData(parsed.workflow)
+    const version = parsed.version
+    if (!Number.isInteger(version) || (version as number) < 1 || (version as number) > CANVAS_SCHEMA_VERSION) {
+      throw new Error("UNSUPPORTED_VERSION")
+    }
+    const data = isRecord(parsed.workflow) ? decodeWorkflowData({ ...parsed.workflow, version }) : null
     if (!data) throw new Error("INVALID_WORKFLOW")
     return { name: typeof parsed.name === "string" ? parsed.name : "workflow", data }
   }
@@ -134,10 +168,9 @@ function getWorkflowKey(name: string): string {
 export function saveWorkflow(name: string, data: WorkflowData): SaveWorkflowResult {
   const list = getWorkflowList()
   const exists = list.includes(name)
-  const payload: WorkflowData = { nodes: stripUnpersistableNodes(data.nodes), edges: data.edges }
 
   // 数据写不进去就不能登记名字,否则列表里会留下一个加载不出内容的幽灵条目。
-  if (!writeLocalStorage(getWorkflowKey(name), JSON.stringify(payload))) {
+  if (!writeLocalStorage(getWorkflowKey(name), encodeWorkflowData(data))) {
     console.warn("Unable to persist workflow", name)
     return "failed"
   }
@@ -160,7 +193,7 @@ export function loadWorkflow(name: string): WorkflowData | null {
   const data = readLocalStorage(getWorkflowKey(name))
   if (!data) return null
   try {
-    return normalizeWorkflowData(JSON.parse(data))
+    return decodeWorkflowData(JSON.parse(data))
   } catch {
     return null
   }

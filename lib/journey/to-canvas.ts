@@ -1,5 +1,6 @@
 import type { Edge, NodeInstance } from "../canvas/types"
 import { getNodeDefinition } from "../canvas/registry"
+import { encodeWorkflowData } from "../canvas/workflow"
 import { writeLocalStorage } from "../safe-storage"
 import { getMainInputPort, resolveOutputPort } from "./engine"
 import { sanitizeConfig } from "./serialize"
@@ -109,6 +110,6 @@ export function pathToWorkflow(path: JourneyNode[]): CanvasWorkflow & { skipped:
 export function exportPathToCanvas(path: JourneyNode[]): { ok: boolean; skipped: string[] } {
   const { nodes, edges, skipped } = pathToWorkflow(path)
   if (nodes.length === 0) return { ok: false, skipped }
-  const ok = writeLocalStorage("canvas-state", JSON.stringify({ nodes, edges }))
+  const ok = writeLocalStorage("canvas-state", encodeWorkflowData({ nodes, edges }))
   return { ok, skipped }
 }
