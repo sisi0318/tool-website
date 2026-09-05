@@ -1,7 +1,7 @@
 import { Braces } from "lucide-react"
 
 import { registerNode } from "../canvas/registry"
-import { processJsonSchema, type JsonSchemaOperation } from "../json-schema-tools"
+import type { JsonSchemaOperation } from "../json-schema-tools"
 import type { ToolAdapter } from "./types"
 
 export const jsonSchemaAdapter: ToolAdapter = {
@@ -24,6 +24,8 @@ export const jsonSchemaAdapter: ToolAdapter = {
     { id: "output", name: "Result", dataType: "string" },
   ],
   async execute(inputs, config) {
+    // ajv + ajv-formats 按需加载:适配器随 registerAllAdapters() 全量打进画布与旅程页,静态引入会把整个库拖进首屏
+    const { processJsonSchema } = await import("../json-schema-tools")
     const result = processJsonSchema(
       inputs.data ?? config.data ?? {},
       String(inputs.operation ?? config.operation ?? "validate") as JsonSchemaOperation,
