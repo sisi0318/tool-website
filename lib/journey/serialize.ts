@@ -245,6 +245,16 @@ export function isJourneySaved(journey: Journey): boolean {
   return !lossy && JSON.stringify(persisted) === JSON.stringify(saved)
 }
 
+/**
+ * 保存会不会覆盖掉「另一份」旅程:同名存档存在,且不是当前这份的前身(根节点 id 不同)。
+ * 默认名都是「未命名旅程」,不做这个区分的话,第二次保存就静默吃掉第一份。
+ * 从存档打开后再保存、或反复保存自己,根 id 一致,不算冲突。
+ */
+export function hasSavedConflict(journey: Journey): boolean {
+  const saved = readSaves()[journey.name]
+  return saved !== undefined && saved.rootId !== journey.rootId
+}
+
 export function loadJourney(name: string): Journey | null {
   const persisted = readSaves()[name]
   if (!persisted) return null

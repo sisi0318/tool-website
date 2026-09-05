@@ -277,6 +277,40 @@ export function ReplayDialog({
   )
 }
 
+export function ConfirmOverwriteDialog({
+  open,
+  onOpenChange,
+  name,
+  onConfirm,
+}: DialogBaseProps & { name: string; onConfirm: () => void }) {
+  const t = useTranslations("journey")
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={DIALOG_CLASS}>
+        <DialogHeader>
+          <DialogTitle className="text-[var(--md-sys-color-on-surface)]">{t("confirmOverwriteTitle")}</DialogTitle>
+          <DialogDescription className="text-[var(--md-sys-color-on-surface-variant)]">
+            {t("confirmOverwriteDescription").replace("{name}", name)}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-full border-[var(--md-sys-color-outline-variant)] px-6"
+          >
+            {t("cancel")}
+          </Button>
+          <Button onClick={onConfirm} className={PRIMARY_BUTTON}>
+            {t("overwrite")}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ConfirmNewDialog({
   open,
   onOpenChange,

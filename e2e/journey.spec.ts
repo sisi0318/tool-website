@@ -51,6 +51,30 @@ test.describe("数据旅程", () => {
     await expect(valueCard(page, "hello world")).toBeVisible()
   })
 
+  test("用默认名保存第二份旅程时先确认覆盖", async ({ page }) => {
+    await page.goto("/journey", { waitUntil: "domcontentloaded" })
+    await startJourney(page, "first journey")
+    await page.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(page.getByText("已保存")).toBeVisible()
+
+    // 已保存的旅程新建时不追问;新旅程沿用默认名再保存就会撞名
+    await page.getByRole("button", { name: "新建", exact: true }).click()
+    await startJourney(page, "second journey")
+    await page.getByRole("button", { name: "保存", exact: true }).click()
+    const dialog = page.getByRole("dialog", { name: "覆盖同名旅程" })
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole("button", { name: "取消", exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+
+    await page.getByRole("button", { name: "保存", exact: true }).click()
+    await page.getByRole("dialog", { name: "覆盖同名旅程" }).getByRole("button", { name: "覆盖", exact: true }).click()
+    await expect(page.getByText("已保存").last()).toBeVisible()
+
+    // 覆盖之后就是自己的存档了,再保存不再追问
+    await page.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+  })
+
   test("分享链接与本地草稿并存时可以放弃导入恢复草稿", async ({ page }) => {
     await page.goto("/journey", { waitUntil: "domcontentloaded" })
     await startJourney(page, "draft-data-123")

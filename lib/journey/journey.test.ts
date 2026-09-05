@@ -26,6 +26,7 @@ import {
   decodeSharedPath,
   deleteDraft,
   encodeSharedPath,
+  hasSavedConflict,
   isJourneySaved,
   reviewSharedPath,
   loadDraft,
@@ -407,6 +408,21 @@ describe("serialize", () => {
     const reopened = loadJourney("keep")
     expect(reopened).not.toBeNull()
     expect(isJourneySaved(reopened!)).toBe(true)
+  })
+
+  it("flags a save that would replace a different journey with the same name", () => {
+    const first = createJourney("shared-name", "one", "输入")
+    expect(hasSavedConflict(first)).toBe(false)
+    expect(saveJourney(first)).toBe(true)
+
+    // 自己再保存、从存档打开后保存:同一根节点,不算冲突
+    expect(hasSavedConflict(first)).toBe(false)
+    expect(hasSavedConflict(loadJourney("shared-name")!)).toBe(false)
+
+    // 另起的旅程用了同一个名字:会吃掉第一份
+    const second = createJourney("shared-name", "two", "输入")
+    expect(hasSavedConflict(second)).toBe(true)
+    expect(hasSavedConflict({ ...second, name: "another-name" })).toBe(false)
   })
 
   it("saves and deletes the draft", () => {

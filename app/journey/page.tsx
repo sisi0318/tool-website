@@ -12,6 +12,7 @@ import { applyStep, replayDescendants, replaySteps, resolveOutputPort } from "@/
 import {
   decodeSharedPath,
   deleteDraft,
+  hasSavedConflict,
   isJourneySaved,
   loadDraft,
   loadJourney,
@@ -42,6 +43,7 @@ import { BranchDrawer } from "@/components/journey/BranchDrawer"
 import { InputStage } from "@/components/journey/InputStage"
 import {
   ConfirmNewDialog,
+  ConfirmOverwriteDialog,
   OpenJourneyDialog,
   ReplayDialog,
   ShareDialog,
@@ -88,7 +90,7 @@ function buildJourneyFromOutcomes(
   return journey
 }
 
-type DialogKind = "share" | "open" | "replay" | "confirmNew"
+type DialogKind = "share" | "open" | "replay" | "confirmNew" | "confirmOverwrite"
 
 export default function JourneyPage() {
   const t = useTranslations("journey")
@@ -340,9 +342,20 @@ export default function JourneyPage() {
     setJourney((prev) => (prev ? removeSubtree(prev, prev.activeId) : prev))
   }
 
+  const commitSave = () => {
+    if (!journey) return
+    setDialog(null)
+    toast(saveJourney(journey) ? { title: t("saved") } : { title: t("saveFailed"), variant: "destructive" })
+  }
+
   const handleSave = () => {
     if (!journey) return
-    toast(saveJourney(journey) ? { title: t("saved") } : { title: t("saveFailed"), variant: "destructive" })
+    // 同名但不是同一份旅程:先问,不然默认名「未命名旅程」会让第二份静默吃掉第一份
+    if (hasSavedConflict(journey)) {
+      setDialog("confirmOverwrite")
+      return
+    }
+    commitSave()
   }
 
   const handleLoad = (name: string) => {
@@ -515,6 +528,12 @@ export default function JourneyPage() {
         running={running}
         onRun={(text) => void handleReplayRun(text)}
         isCurrentSaved={() => isJourneySaved(journey)}
+      />
+      <ConfirmOverwriteDialog
+        open={dialog === "confirmOverwrite"}
+        onOpenChange={(open) => setDialog(open ? "confirmOverwrite" : null)}
+        name={journey.name}
+        onConfirm={commitSave}
       />
       <ConfirmNewDialog
         open={dialog === "confirmNew"}
