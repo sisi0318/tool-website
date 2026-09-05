@@ -6,6 +6,7 @@ import type { Journey, JourneyNode } from "@/lib/journey/types"
 import { getChildren } from "@/lib/journey/tree"
 import { previewCanvasValue } from "@/lib/canvas/format-value"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { useTranslations } from "@/hooks/use-translations"
 
 interface BranchDrawerProps {
@@ -80,7 +81,7 @@ export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-3xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+      <DialogContent className={`max-w-lg ${JOURNEY_DIALOG_CLASS}`}>
         <DialogHeader>
           <DialogTitle className="text-[var(--md-sys-color-on-surface)]">{t("branchesTitle")}</DialogTitle>
         </DialogHeader>

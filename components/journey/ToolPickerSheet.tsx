@@ -5,6 +5,7 @@ import { SearchX } from "lucide-react"
 import type { DataType, NodeDefinition } from "@/lib/canvas/types"
 import { getCompatibleTools } from "@/lib/journey/suggest"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -37,7 +38,7 @@ export function ToolPickerSheet({ open, onOpenChange, valueType, running, onPick
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-3xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+      <DialogContent className={`max-w-lg ${JOURNEY_DIALOG_CLASS}`}>
         <DialogHeader>
           <DialogTitle className="text-[var(--md-sys-color-on-surface)]">{t("moreToolsTitle")}</DialogTitle>
         </DialogHeader>

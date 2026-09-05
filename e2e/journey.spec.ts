@@ -75,6 +75,26 @@ test.describe("数据旅程", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0)
   })
 
+  test.describe("手机上的弹层", () => {
+    test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+    test("工具选择器贴底展开成抽屉", async ({ page }) => {
+      await page.goto("/journey", { waitUntil: "domcontentloaded" })
+      await startJourney(page, "hello")
+      await page.getByRole("button", { name: "更多工具" }).click()
+
+      const dialog = page.getByRole("dialog")
+      await expect(dialog).toBeVisible()
+      // 入场动画结束后再量
+      await page.waitForTimeout(400)
+      const box = await dialog.boundingBox()
+      expect(box).not.toBeNull()
+      expect(box!.x).toBe(0)
+      expect(box!.width).toBe(390)
+      expect(Math.round(box!.y + box!.height)).toBe(844)
+    })
+  })
+
   test("分享链接与本地草稿并存时可以放弃导入恢复草稿", async ({ page }) => {
     await page.goto("/journey", { waitUntil: "domcontentloaded" })
     await startJourney(page, "draft-data-123")

@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -20,8 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
 
-const DIALOG_CLASS =
-  "max-w-md rounded-3xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]"
+const DIALOG_CLASS = `max-w-md ${JOURNEY_DIALOG_CLASS}`
 const PRIMARY_BUTTON =
   "rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
 
