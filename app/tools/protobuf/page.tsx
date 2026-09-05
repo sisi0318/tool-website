@@ -15,19 +15,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
-import { bytesToBase64, bytesToHex } from "@/lib/binary"
+import { bytesToHex } from "@/lib/binary"
 import { downloadBlob } from "@/lib/object-url"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
 import type * as Protobuf from "protobufjs"
-
-// protobufjs 约 300KB，首次真正解析/编码时才按需加载
-let protobufModule: typeof Protobuf | null = null
-async function loadProtobuf(): Promise<typeof Protobuf> {
-  if (!protobufModule) {
-    protobufModule = await import("protobufjs")
-  }
-  return protobufModule
-}
+import { decodeProtobuf, decodeProtobufWithSchema, detectProtobufInput, encodeProtobuf, encodeProtobufWithSchema, loadProtobuf, parseProtobufInput, ProtobufError } from "@/lib/protobuf-tools"
 
 function collectMessageTypes(pb: typeof Protobuf, namespace: Protobuf.NamespaceBase): string[] {
   const messageTypes: string[] = []
@@ -69,6 +61,7 @@ export default function ProtobufTool() {
   const protoFileInputRef = useRef<HTMLInputElement>(null)
   const copyResetTimerRef = useRef<number | null>(null)
   const protoParseRequestRef = useRef(0)
+  const processingRequestRef = useRef(0)
 
   // 解析 proto 定义并刷新可选消息类型；文本与文件两条路径共用
   const applyParsedProto = useCallback(
@@ -98,46 +91,7 @@ export default function ProtobufTool() {
     [t],
   )
 
-  // Detect input format (base64 or hex)
-  const detectInputFormat = (input: string): "base64" | "hex" | "unknown" => {
-    // Remove whitespace
-    const cleanInput = input.replace(/\s/g, "")
-
-    // Check if it's hex (only contains hex characters)
-    if (/^(?:[0-9a-fA-F]{2})+$/.test(cleanInput)) {
-      return "hex"
-    }
-
-    // Check if it's base64 (contains only base64 characters and has valid padding)
-    if (/^[A-Za-z0-9+/]*={0,2}$/.test(cleanInput)) {
-      return "base64"
-    }
-
-    return "unknown"
-  }
-
-  // Convert input to buffer based on detected format
-  const inputToBuffer = (input: string): Uint8Array => {
-    const format = detectInputFormat(input)
-    const cleanInput = input.replace(/\s/g, "")
-
-    if (format === "hex") {
-      return new Uint8Array(cleanInput.match(/.{1,2}/g)!.map((byte) => Number.parseInt(byte, 16)))
-    } else if (format === "base64") {
-      try {
-        const binary = atob(cleanInput)
-        const buffer = new Uint8Array(binary.length)
-        for (let i = 0; i < binary.length; i++) {
-          buffer[i] = binary.charCodeAt(i)
-        }
-        return buffer
-      } catch (e) {
-        throw new Error("Invalid base64 input")
-      }
-    } else {
-      throw new Error("Unknown input format")
-    }
-  }
+  const detectInputFormat = detectProtobufInput
 
   // Handle file upload
   const handleFileChange = useCallback(
@@ -317,137 +271,18 @@ export default function ProtobufTool() {
     )
   }, [outputData, mode])
 
-  // Encode JSON to Protobuf
-  const encodeJsonToProtobuf = useCallback((jsonStr: string, pb: typeof Protobuf) => {
-    try {
-      const jsonObj = JSON.parse(jsonStr)
-
-      // Create a writer
-      const writer = new pb.Writer()
-
-      // Helper function to encode a value with a tag
-      const encodeValue = (tag: number, value: any, writer: Protobuf.Writer) => {
-        if (value === null || value === undefined) return
-
-        // Determine wire type
-        let wireType = 2 // Default to length-delimited (string, bytes, embedded message)
-
-        if (typeof value === "number") {
-          if (Number.isInteger(value)) {
-            wireType = 0 // Varint
-          } else {
-            wireType = 1 // 64-bit
-          }
-        } else if (typeof value === "boolean") {
-          wireType = 0 // Varint
-          value = value ? 1 : 0
-        } else if (typeof value === "string") {
-          // Keep as string, wireType 2
-        } else if (typeof value === "object") {
-          // Recursively encode objects
-          const nestedWriter = new pb.Writer()
-          encodeObject(value, nestedWriter)
-          value = nestedWriter.finish()
-        }
-
-        // Write field header (tag << 3 | wire_type)
-        writer.uint32((tag << 3) | wireType)
-
-        // Write value based on wire type
-        switch (wireType) {
-          case 0: // Varint
-            writer.int64(value)
-            break
-          case 1: // 64-bit
-            writer.double(value)
-            break
-          case 2: // Length-delimited
-            if (typeof value === "string") {
-              writer.string(value)
-            } else {
-              writer.bytes(value)
-            }
-            break
-        }
-      }
-
-      // Recursively encode an object
-      const encodeObject = (obj: any, writer: Protobuf.Writer) => {
-        for (const key in obj) {
-          if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const tag = Number.parseInt(key)
-            if (isNaN(tag)) continue // Skip non-numeric keys
-
-            const value = obj[key]
-
-            if (Array.isArray(value)) {
-              // Handle repeated fields
-              for (const item of value) {
-                encodeValue(tag, item, writer)
-              }
-            } else {
-              encodeValue(tag, value, writer)
-            }
-          }
-        }
-      }
-
-      // Encode the root object
-      encodeObject(jsonObj, writer)
-
-      // Get the final buffer
-      const buffer = writer.finish()
-
-      // Convert to hex string
-      return Array.from(buffer)
-        .map((byte) => byte.toString(16).padStart(2, "0"))
-        .join("")
-    } catch (err) {
-      console.error("JSON to Protobuf encoding error:", err)
-      throw err
-    }
-  }, [])
-
-  // Encode JSON to Protobuf using schema
-  const encodeJsonToProtobufWithSchema = useCallback(
-    (jsonStr: string, messageType: string) => {
-      try {
-        if (!root) {
-          throw new Error("No proto schema loaded")
-        }
-
-        const jsonObj = JSON.parse(jsonStr)
-        const Message = root.lookupType(messageType)
-
-        // Verify the object
-        const errMsg = Message.verify(jsonObj)
-        if (errMsg) {
-          throw new Error(`Invalid message object: ${errMsg}`)
-        }
-
-        // Create a message instance
-        const message = Message.create(jsonObj)
-
-        // Encode the message
-        const buffer = Message.encode(message).finish()
-
-        // Convert to hex string
-        return Array.from(buffer)
-          .map((byte) => byte.toString(16).padStart(2, "0"))
-          .join("")
-      } catch (err) {
-        console.error("Schema-based JSON to Protobuf encoding error:", err)
-        throw err
-      }
-    },
-    [root],
-  )
-
   // Parse Protobuf data
   const parseProtobuf = useCallback(async () => {
+    const requestId = ++processingRequestRef.current
     const requiredInput = mode === "decode" ? inputData : jsonInput
     if (!requiredInput) {
       setError(t("noInput"))
+      return
+    }
+    if (schemaMode === "schema" && (!root || !selectedMessageType)) {
+      setOutputData("")
+      setIsProcessing(false)
+      setError(t("schemaRequired"))
       return
     }
 
@@ -455,21 +290,18 @@ export default function ProtobufTool() {
     setError(null)
 
     try {
-      const pb = await loadProtobuf()
-
       if (mode === "decode") {
         // Convert input to buffer
-        const buffer = inputToBuffer(inputData)
+        const buffer = parseProtobufInput(inputData)
 
         let decoded
         if (schemaMode === "schema" && root && selectedMessageType) {
           // Parse using schema
           const Message = root.lookupType(selectedMessageType)
-          const msg = Message.decode(buffer)
-          decoded = Message.toObject(msg, { longs: Number, enums: String, defaults: true })
+          decoded = decodeProtobufWithSchema(buffer, Message)
         } else {
           // Parse without schema
-          decoded = decodeProtobuf(pb, buffer)
+          decoded = decodeProtobuf(buffer)
         }
 
         // Format the output
@@ -480,21 +312,23 @@ export default function ProtobufTool() {
         let encoded
         if (schemaMode === "schema" && root && selectedMessageType) {
           // Encode using schema
-          encoded = encodeJsonToProtobufWithSchema(jsonInput, selectedMessageType)
+          encoded = encodeProtobufWithSchema(jsonInput, root.lookupType(selectedMessageType))
         } else {
           // Encode without schema
-          encoded = encodeJsonToProtobuf(jsonInput, pb)
+          encoded = await encodeProtobuf(jsonInput)
         }
-        setOutputData(encoded)
+        if (requestId === processingRequestRef.current) setOutputData(bytesToHex(encoded))
       }
     } catch (err) {
+      if (requestId !== processingRequestRef.current) return
       console.error("Protobuf processing error:", err)
-      setError(t(mode === "decode" ? "parseError" : "encodeError"))
+      setOutputData("")
+      setError(err instanceof ProtobufError
+        ? t(`errors.${err.code}`).replace("{offset}", String(err.offset))
+        : t(mode === "decode" ? "parseError" : "encodeError"))
     } finally {
-      setIsProcessing(false)
+      if (requestId === processingRequestRef.current) setIsProcessing(false)
     }
-  // 依赖数组已列全处理所需的数据；两个辅助函数每次渲染都是新的
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     inputData,
     jsonInput,
@@ -504,80 +338,12 @@ export default function ProtobufTool() {
     selectedMessageType,
     indentSize,
     t,
-    encodeJsonToProtobuf,
-    encodeJsonToProtobufWithSchema,
   ])
-
-  // Decode Protobuf without schema
-  const decodeProtobuf = (pb: typeof Protobuf, buffer: Uint8Array): any => {
-    // This function implements a simple Protobuf decoder that doesn't require schema
-    // It tries to identify fields and their types based on wire format
-    const reader = pb.Reader.create(buffer)
-    const result: Record<string, any> = {}
-
-    while (reader.pos < reader.len) {
-      try {
-        const tag = reader.uint32()
-        const fieldNumber = tag >>> 3
-        const wireType = tag & 7
-
-        let value: any
-
-        switch (wireType) {
-          case 0: // Varint
-            value = Number(reader.uint64().toString())
-            break
-          case 1: // Fixed64
-            value = Number(reader.fixed64().toString())
-            break
-          case 2: { // Length-delimited
-            const bytes = reader.bytes()
-            try {
-              const str = new TextDecoder("utf-8", { fatal: true }).decode(bytes)
-              if (!/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(str) && str.length > 0) {
-                value = str
-              } else {
-                try {
-                  value = decodeProtobuf(pb, bytes)
-                } catch {
-                  value = bytesToBase64(bytes)
-                }
-              }
-            } catch {
-              try {
-                value = decodeProtobuf(pb, bytes)
-              } catch {
-                value = bytesToBase64(bytes)
-              }
-            }
-            break
-          }
-          case 5: // Fixed32
-            value = reader.fixed32()
-            break
-          default:
-            reader.skipType(wireType)
-            continue
-        }
-
-        if (result[fieldNumber] !== undefined) {
-          if (!Array.isArray(result[fieldNumber])) {
-            result[fieldNumber] = [result[fieldNumber]]
-          }
-          result[fieldNumber].push(value)
-        } else {
-          result[fieldNumber] = value
-        }
-      } catch {
-        break
-      }
-    }
-
-    return result
-  }
 
   // Clear input and output
   const clearAll = useCallback(() => {
+    processingRequestRef.current += 1
+    setIsProcessing(false)
     setInputData("")
     setJsonInput("")
     setOutputData("")
@@ -590,6 +356,8 @@ export default function ProtobufTool() {
 
   // Process when input changes
   useEffect(() => {
+    processingRequestRef.current += 1
+    setIsProcessing(false)
     const source = mode === "decode" ? inputData : jsonInput
     if (!source) {
       setOutputData("")
@@ -604,7 +372,10 @@ export default function ProtobufTool() {
       void parseProtobuf()
     }, 250)
 
-    return () => window.clearTimeout(timeout)
+    return () => {
+      window.clearTimeout(timeout)
+      processingRequestRef.current += 1
+    }
   }, [inputData, jsonInput, mode, parseProtobuf])
 
   useEffect(() => {

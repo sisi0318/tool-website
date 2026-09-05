@@ -50,7 +50,7 @@ describe("Adapter Config Validation", () => {
     { type: "encoding", expectedConfigCount: 3, hasLinkedOptions: false },
     { type: "classic-cipher", expectedConfigCount: 3, hasLinkedOptions: false },
     { type: "json-format", expectedConfigCount: 3, hasLinkedOptions: false },
-    { type: "protobuf", expectedConfigCount: 3, hasLinkedOptions: false },
+    { type: "protobuf", expectedConfigCount: 5, hasLinkedOptions: false },
     { type: "image-compress", expectedConfigCount: 3, hasLinkedOptions: false },
     { type: "image-editor", expectedConfigCount: 5, hasLinkedOptions: false },
     { type: "qrcode", expectedConfigCount: 5, hasLinkedOptions: false },
