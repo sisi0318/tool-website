@@ -82,10 +82,6 @@ export default function HomePage() {
               <span className="block text-gradient">{t("titleHighlight")}</span>
             </h1>
 
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--md-sys-color-on-surface-variant)] sm:text-xl">
-              {t("description")}
-            </p>
-
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" className="btn-gradient h-14 px-7 text-base font-semibold shadow-lg">
                 <Link href="/tools">
