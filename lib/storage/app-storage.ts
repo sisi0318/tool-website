@@ -57,6 +57,9 @@ export const STORAGE_ENTRIES: readonly StorageEntry[] = [
   // 各工具
   { key: "totp_accounts", group: "tools", descriptionKey: "storageTotp", sensitive: true },
   { key: "http_tester_templates", group: "tools", descriptionKey: "storageHttpTemplates", sensitive: true },
+  { key: "regex-history", group: "tools", descriptionKey: "storageToolHistory" },
+  { key: "whois-history", group: "tools", descriptionKey: "storageToolHistory" },
+  { key: "currency-history", group: "tools", descriptionKey: "storageToolHistory" },
   { key: "device-info-ip-cache", group: "tools", descriptionKey: "storageDeviceIp", sensitive: true },
   { key: "device-info-ip-cache-enabled", group: "tools", descriptionKey: "storageDeviceIpPref" },
   { key: "currency_rates_all", group: "tools", descriptionKey: "storageCurrencyRates" },

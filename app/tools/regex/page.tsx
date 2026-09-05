@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
 import { RegexTimeoutError, runRegex } from "@/lib/regex-runner"
 import { downloadBlob } from "@/lib/object-url"
@@ -59,6 +60,21 @@ interface RegexHistory {
   flags: string
   timestamp: number
   matchCount: number
+}
+
+const REGEX_HISTORY_KEY = "regex-history"
+const REGEX_HISTORY_LIMIT = 50
+
+function isRegexHistory(value: unknown): value is RegexHistory {
+  if (typeof value !== "object" || value === null) return false
+  const item = value as Record<string, unknown>
+  return (
+    typeof item.id === "string" &&
+    typeof item.pattern === "string" &&
+    typeof item.flags === "string" &&
+    typeof item.timestamp === "number" &&
+    typeof item.matchCount === "number"
+  )
 }
 
 const FLAG_OPTIONS: Array<{ key: keyof RegexFlags; flag: string; labelKey: string }> = [
@@ -258,7 +274,7 @@ export default function RegexTester() {
   const [selectedMatch, setSelectedMatch] = useState<number | null>(null)
 
   // 历史记录
-  const [history, setHistory] = useState<RegexHistory[]>([])
+  const [history, setHistory] = usePersistedHistory<RegexHistory>(REGEX_HISTORY_KEY, REGEX_HISTORY_LIMIT, isRegexHistory)
 
   // 生成标志字符串
   const getFlagsString = useCallback(() => {
@@ -283,8 +299,12 @@ export default function RegexTester() {
       matchCount
     }
     
-    setHistory(prev => [historyItem, ...prev.slice(0, 49)]) // 保留最近50条
-  }, [])
+    // 同一表达式只留最新一条;边打边测每个键入都会进来,不去重的话历史全是前缀
+    setHistory(prev => [
+      historyItem,
+      ...prev.filter((item) => item.pattern !== pattern || item.flags !== flags),
+    ])
+  }, [setHistory])
 
   const testRegex = useCallback(async () => {
     setError(null)

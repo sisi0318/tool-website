@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
+import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/components/i18n-provider"
 import { copyTextToClipboard } from "@/lib/clipboard"
@@ -107,6 +108,23 @@ interface HistoryItem extends ConversionResult {
   timestamp: string
 }
 
+const CURRENCY_HISTORY_KEY = "currency-history"
+const CURRENCY_HISTORY_LIMIT = 10
+
+function isHistoryItem(value: unknown): value is HistoryItem {
+  if (typeof value !== "object" || value === null) return false
+  const item = value as Record<string, unknown>
+  return (
+    typeof item.id === "string" &&
+    typeof item.timestamp === "string" &&
+    typeof item.amount === "number" &&
+    typeof item.from === "string" &&
+    typeof item.to === "string" &&
+    typeof item.rate === "number" &&
+    typeof item.result === "number"
+  )
+}
+
 function readCurrencyList(key: string, fallback: string[]): string[] {
   try {
     const parsed: unknown = JSON.parse(readLocalStorage(key) ?? "null")
@@ -186,7 +204,7 @@ export default function CurrencyConverterPage() {
   const [loading, setLoading] = useState(true)
   const [dataError, setDataError] = useState("")
   const [amountError, setAmountError] = useState("")
-  const [history, setHistory] = useState<HistoryItem[]>([])
+  const [history, setHistory] = usePersistedHistory<HistoryItem>(CURRENCY_HISTORY_KEY, CURRENCY_HISTORY_LIMIT, isHistoryItem)
   const [selectedRateCurrencies, setSelectedRateCurrencies] = useState<string[]>([])
   const [newRateCurrency, setNewRateCurrency] = useState("")
   const [activeTab, setActiveTab] = useState<CurrencyTab>("single")
@@ -367,7 +385,7 @@ export default function CurrencyConverterPage() {
         setHistory((current) => [historyItem, ...current].slice(0, 10))
       }
     },
-    [amount, fromCurrency, rateData, t, toCurrency],
+    [amount, fromCurrency, rateData, setHistory, t, toCurrency],
   )
 
   useEffect(() => {

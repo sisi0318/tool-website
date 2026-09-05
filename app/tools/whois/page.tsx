@@ -42,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { createClientId } from "@/lib/client-id"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { downloadBlob } from "@/lib/object-url"
@@ -66,6 +67,25 @@ interface QueryHistoryItem {
   success: boolean
   rdapServer?: string
   duration: number
+}
+
+const WHOIS_HISTORY_KEY = "whois-history"
+const WHOIS_HISTORY_LIMIT = 50
+const CONCRETE_QUERY_TYPES = new Set<string>(["domain", "ipv4", "ipv6"])
+
+function isQueryHistoryItem(value: unknown): value is QueryHistoryItem {
+  if (typeof value !== "object" || value === null) return false
+  const item = value as Record<string, unknown>
+  return (
+    typeof item.id === "string" &&
+    typeof item.query === "string" &&
+    typeof item.type === "string" &&
+    CONCRETE_QUERY_TYPES.has(item.type) &&
+    typeof item.timestamp === "number" &&
+    typeof item.success === "boolean" &&
+    typeof item.duration === "number" &&
+    (item.rdapServer === undefined || typeof item.rdapServer === "string")
+  )
 }
 
 const WHOIS_CARD_CLASS =
@@ -133,7 +153,7 @@ export default function RdapQueryPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("formatted")
-  const [history, setHistory] = useState<QueryHistoryItem[]>([])
+  const [history, setHistory] = usePersistedHistory<QueryHistoryItem>(WHOIS_HISTORY_KEY, WHOIS_HISTORY_LIMIT, isQueryHistoryItem)
   const [historyExpanded, setHistoryExpanded] = useState(false)
 
   const bootstrapCacheRef = useRef(new Map<ConcreteQueryType, RdapBootstrapRegistry>())
@@ -203,7 +223,7 @@ export default function RdapQueryPage() {
       duration,
     }
     setHistory((previous) => [item, ...previous].slice(0, 50))
-  }, [])
+  }, [setHistory])
 
   const runQuery = useCallback(async (
     input: string,

@@ -58,6 +58,7 @@ settings: {
   storageJourneySaves: "Saved data journeys",
   storageTotp: "TOTP accounts and secrets",
   storageHttpTemplates: "HTTP tester request templates, including headers",
+  storageToolHistory: "Tool history (regex, WHOIS, currency conversions)",
   storageDeviceIp: "Public IP and geolocation cache",
   storageDeviceIpPref: "Device info cache toggle",
   storageCurrencyRates: "Exchange rate cache",
