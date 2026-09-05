@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "binary-codec", translationKey: "binaryCodecTools", category: "developer",
+    seo: { title: "MessagePack / CBOR 编解码", description: "浏览器本地 MessagePack 与 CBOR 编解码，支持二进制文件、Hex、Base64 和扩展 JSON，保留大整数、字节串、映射键与标签。" },
+    features: [["MessagePack", "Binary serialization, 64-bit integers and extension payloads"], ["CBOR", "Tags, bignums, indefinite containers and simple values"], ["扩展 JSON", "Lossless bytes, maps, special numbers and tagged values"]],
+  },
+  {
     id: "url", translationKey: "urlTools", category: "network",
     seo: { title: "URL 解析与参数编辑", description: "本地解析和重新组装 URL，保留重复查询参数、顺序和原始编码，编辑主机端口路径并查看百分号解码、IDN 域名及片段。" },
     features: [["URL 解析", "URL components, IDN, IPv6 and relative references"], ["查询参数", "Retain duplicate parameters, flags and query order"], ["URL 编辑 / 解码", "Edit and rebuild query strings without losing raw encodings"]],

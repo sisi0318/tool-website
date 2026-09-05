@@ -26,9 +26,15 @@ export function hexToBytes(value: string): Uint8Array {
     throw new Error("Invalid hexadecimal input")
   }
 
-  return Uint8Array.from(normalized.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
+  const bytes = new Uint8Array(normalized.length / 2)
+  const nibble = (code: number) => code >= 97 ? code - 87 : code >= 65 ? code - 55 : code - 48
+  for (let index = 0; index < bytes.length; index++) bytes[index] = nibble(normalized.charCodeAt(index * 2)) * 16 + nibble(normalized.charCodeAt(index * 2 + 1))
+  return bytes
 }
 
+const HEX_BYTES = Array.from({ length: 256 }, (_, value) => value.toString(16).padStart(2, "0"))
 export function bytesToHex(bytes: Uint8Array): string {
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("")
+  const chunks: string[] = []
+  for (let offset = 0; offset < bytes.length; offset += 32768) { let chunk = ""; for (let index = offset; index < Math.min(bytes.length, offset + 32768); index++) chunk += HEX_BYTES[bytes[index]]; chunks.push(chunk) }
+  return chunks.join("")
 }

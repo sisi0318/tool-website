@@ -65,6 +65,7 @@ import { registerJsonSchemaAdapter } from "./json-schema"
 import { registerSubnetAdapter } from "./subnet"
 import { registerCertificateAdapter } from "./certificate"
 import { registerHexBinaryAdapter } from "./hex-binary"
+import { registerBinaryCodecAdapters } from "./binary-codec"
 import { registerNode } from "../canvas/registry"
 import type { ToolAdapter } from "./types"
 
@@ -114,6 +115,7 @@ export function registerAllAdapters(): void {
   safeRegister("tabular", registerTabularAdapters)
   safeRegister("json-schema", registerJsonSchemaAdapter)
   safeRegister("hex-binary", registerHexBinaryAdapter)
+  safeRegister("binary-codec", registerBinaryCodecAdapters)
 
   // Image (8)
   safeRegister("image-to-base64", registerImageToBase64Adapter)

@@ -133,6 +133,9 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
   if (valueType === "bytes") {
     const mime = typeof Blob !== "undefined" && value instanceof Blob ? value.type : ""
     const filename = typeof File !== "undefined" && value instanceof File ? value.name : ""
+    if (/\.(cbor|msgpack|mpk)$/i.test(filename) || ["application/cbor", "application/msgpack", "application/x-msgpack"].includes(mime)) {
+      pushEntry({ tool: "binary-codec-file", label: "Decode MessagePack / CBOR file", config: { format: /\.cbor$/i.test(filename) || mime === "application/cbor" ? "cbor" : "msgpack" }, outputPort: "value", score: 110 })
+    }
     if (/\.(csv|tsv|jsonl|ndjson)$/i.test(filename) || ["text/csv", "text/tab-separated-values", "application/x-ndjson"].includes(mime)) {
       pushEntry({ tool: "tabular-file", label: "Query CSV / JSONL file", config: { format: /\.(jsonl|ndjson)$/i.test(filename) || mime === "application/x-ndjson" ? "jsonl" : "csv" }, outputPort: "rows", score: 110 })
     }

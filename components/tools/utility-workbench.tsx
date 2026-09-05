@@ -47,6 +47,7 @@ interface UtilityWorkbenchProps {
   inputLabel?: string
   outputLabel?: string
   inputPlaceholder?: string
+  inputDisabled?: boolean
   outputPlaceholder?: string
   runLabel?: string
   controls?: ReactNode
@@ -75,6 +76,7 @@ export function UtilityWorkbench({
   inputLabel,
   outputLabel,
   inputPlaceholder,
+  inputDisabled = false,
   outputPlaceholder,
   runLabel,
   controls,
@@ -194,6 +196,7 @@ export function UtilityWorkbench({
               <Textarea
                 id="utility-workbench-input"
                 value={input}
+                disabled={inputDisabled}
                 onChange={(event) => onInputChange(event.target.value)}
                 placeholder={inputPlaceholder ?? t("inputPlaceholder")}
                 spellCheck={false}

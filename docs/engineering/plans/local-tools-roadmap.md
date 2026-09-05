@@ -22,7 +22,7 @@ type: Permanent
 7. [x] Unicode 字符检查：码点、UTF-8、不可见字符和规范化
 8. [x] 文本行处理：去重、排序、空白清理、前后缀、列提取和集合操作
 9. [x] URL 参数编辑：拆解、重复参数、解码和重新组装
-10. [ ] MessagePack/CBOR：浏览器本地编解码和特殊类型表示
+10. [x] MessagePack/CBOR：浏览器本地编解码和特殊类型表示
 11. [ ] SQLite：本地文件、表结构、查询和数据导出
 12. [ ] PDF：合并、拆分、重排、旋转、图片生成和页码
 
@@ -89,3 +89,11 @@ type: Permanent
 `lib/url-tools.ts` 与 URL 页面／节点共享解析和重组。支持 HTTP(S)、WS(S)、FTP、file、IDN／IPv6，以及显式基础 URL 下的相对地址。参数使用有序数组，保留重复键、裸参数、空值、空段、空查询／片段标记；每个字段独立保留未编辑的百分号编码，支持百分号与加号空格样式。
 
 页面可逐条启用、增删、重排参数并编辑协议、主机、端口、编码路径及片段。解码视图不用于重建路径，避免 `%2F` 改变分段；无效百分号／UTF-8 显示诊断并保留原始字段。拒绝孤立代理项、非法端口／路径与超过 65,536 字符或 2,000 参数的输入；主机、默认端口及路径遵循 [WHATWG URL 标准](https://url.spec.whatwg.org/)。参数按 50 条分页，修改后即时重组，失败时清空可复制结果。操作仅处理文本，不请求目标 URL。
+
+## MessagePack / CBOR
+
+`lib/binary-codecs.ts` 依据 [MessagePack 规范](https://github.com/msgpack/msgpack/blob/master/spec.md) 和 [RFC 8949](https://www.rfc-editor.org/rfc/rfc8949.html) 提供有界编解码。扩展 JSON 使用 `$binary`、`$bigint`、`$number`、`$map`、`$msgpackExt`、`$cborTag`、`$cborSimple` 和 `$undefined` 保留特殊类型；普通对象与保留标签重名时用 `$object` 包裹。非字符串／重复映射键保留为键值对列表，整数值浮点与整数键区分表示。
+
+MessagePack 扩展含时间戳均保留原始载荷；无效 UTF-8 字符串通过 `$msgpackString` 暴露原始字节。CBOR 支持半／单／双精度浮点、不定长容器及字符串、bignum 和未知标签；编码输出明确容器长度与 64 位浮点，不承诺保留原始分块或浮点宽度。拒绝尾部多余数据、保留值、截断及越界长度，读取前检查范围和工作量。
+
+二进制上限 8 MB，扩展 JSON 16M 字符、100,000 值、64 层，JSON 解析前检查 token／嵌套预算。`lib/binary-codec-tools.ts` 供页面、文本节点及文件节点复用，文件输出保留 File 类型，支持反向处理、下载和 JSON 树；异步文件读取结果有版本及中止保护。共享 Hex 转换改为分块编码／直接解码，避免为每个字节分配临时数组项。测试含规范独立字节样例、长度边界、特殊类型、格式错误和页面任务失效。
