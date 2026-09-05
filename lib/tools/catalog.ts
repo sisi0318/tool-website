@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "unicode", translationKey: "unicodeTools", category: "text",
+    seo: { title: "Unicode 字符检查器", description: "本地查看 Unicode 码点、UTF-8 字节、UTF-16 偏移、不可见字符及字素簇，支持 NFC、NFD、NFKC、NFKD 规范化。" },
+    features: [["Unicode 码点", "Code points, UTF-8 bytes and UTF-16 offsets"], ["不可见字符", "Zero-width, bidi controls, whitespace and combining marks"], ["Unicode 规范化", "NFC NFD NFKC NFKD normalization"]],
+  },
+  {
     id: "base-converter",
     translationKey: "baseConverter",
     category: "developer",

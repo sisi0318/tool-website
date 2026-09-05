@@ -64,6 +64,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  unicode: { icon: CaseSensitive, load: dynamic(() => import("./unicode/page"), { ssr: false }) },
   "base-converter": {
     icon: Calculator,
     load: dynamic(() => import("./base-converter/page"), { ssr: false }),

@@ -145,6 +145,9 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
     const curated = mime.startsWith("image/") ? BYTES_CURATED : GENERIC_BYTES
     curated.forEach((entry) => pushEntry(entry))
   } else if (typeof value === "string" && value.trim().length > 0) {
+    if (/[\u00a0\u0300-\u036f\u2000-\u200f\u2028-\u202f\u2060-\u206f\ufeff]/.test(value)) {
+      pushEntry({ tool: "unicode", label: "Inspect Unicode characters", config: { operation: "inspect" }, outputPort: "report", score: 70 })
+    }
     const sampleLines = value.slice(0, 8192).trim().split(/\r?\n/)
     if (sampleLines.length >= 2 && sampleLines.slice(0, 2).every((line) => { try { const row: unknown = JSON.parse(line); return row !== null && typeof row === "object" && !Array.isArray(row) } catch { return false } })) {
       pushEntry({ tool: "tabular", label: "Query JSONL logs", config: { format: "jsonl" }, outputPort: "rows", score: 2000 })

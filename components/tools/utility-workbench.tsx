@@ -41,6 +41,7 @@ interface UtilityWorkbenchProps {
   onClear: () => void
   onSample?: () => void
   running?: boolean
+  allowWhitespaceInput?: boolean
   error?: string
   inputLabel?: string
   outputLabel?: string
@@ -66,6 +67,7 @@ export function UtilityWorkbench({
   onClear,
   onSample,
   running = false,
+  allowWhitespaceInput = false,
   error,
   inputLabel,
   outputLabel,
@@ -205,7 +207,7 @@ export function UtilityWorkbench({
             )}
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <Button onClick={() => void onRun()} disabled={running || !input.trim()} className="col-span-2 min-h-11 w-full gap-2 sm:w-auto">
+              <Button onClick={() => void onRun()} disabled={running || (allowWhitespaceInput ? !input.length : !input.trim())} className="col-span-2 min-h-11 w-full gap-2 sm:w-auto">
                 <Play className="h-4 w-4" />
                 {running ? t("processing") : (runLabel ?? t("run"))}
               </Button>
