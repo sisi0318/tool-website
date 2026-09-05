@@ -60,6 +60,7 @@ const collectCollapsiblePaths = (value: JsonValue, currentPath = "root"): string
 interface JsonTreeNodeProps {
   copied: Record<string, boolean>
   depth?: number
+  emphasizeIndentation: boolean
   indentText: string | number
   isCollapsed: (path: string) => boolean
   label: string
@@ -73,6 +74,7 @@ interface JsonTreeNodeProps {
 function JsonTreeNode({
   copied,
   depth = 0,
+  emphasizeIndentation,
   indentText,
   isCollapsed,
   label,
@@ -86,6 +88,9 @@ function JsonTreeNode({
   const collapsed = collapsible ? isCollapsed(path) : false
   const nodeCopyText = typeof value === "string" ? value : JSON.stringify(value, null, indentText)
   const typeLabel = getNodeTypeLabel(value)
+  const branchClassName = emphasizeIndentation && depth > 0
+    ? "relative before:pointer-events-none before:absolute before:right-full before:top-6 before:w-4 before:border-t before:border-[var(--md-sys-color-outline)] sm:before:w-6"
+    : undefined
 
   if (!collapsible) {
     const primitiveClassName =
@@ -98,7 +103,7 @@ function JsonTreeNode({
             : "text-[var(--md-sys-color-primary)]"
 
     return (
-      <div className="rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-3 py-2.5 transition-colors hover:border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container-low)]">
+      <div className={cn("rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-3 py-2.5 transition-colors hover:border-[var(--md-sys-color-outline)] hover:bg-[var(--md-sys-color-surface-container-low)]", branchClassName)}>
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -135,7 +140,7 @@ function JsonTreeNode({
     : Object.entries(value)
 
   return (
-    <div className="space-y-3">
+    <div className={cn("space-y-3", branchClassName)}>
       <div className="rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -177,8 +182,11 @@ function JsonTreeNode({
         ) : (
           <div
             className={cn(
-              "mt-3 space-y-3 border-l border-dashed border-[var(--md-sys-color-outline-variant)] pl-4",
-              depth === 0 && "pl-3 sm:pl-4",
+              "mt-3 space-y-3",
+              emphasizeIndentation
+                ? "border-l-2 border-solid border-[var(--md-sys-color-outline)] pl-4 sm:pl-6"
+                : "border-l border-dashed border-[var(--md-sys-color-outline-variant)] pl-4",
+              !emphasizeIndentation && depth === 0 && "pl-3 sm:pl-4",
             )}
           >
             {entries.map(([childKey, childValue]) => (
@@ -186,6 +194,7 @@ function JsonTreeNode({
                 key={`${path}.${childKey}`}
                 copied={copied}
                 depth={depth + 1}
+                emphasizeIndentation={emphasizeIndentation}
                 indentText={indentText}
                 isCollapsed={isCollapsed}
                 label={Array.isArray(value) ? `[${childKey}]` : childKey}
@@ -206,6 +215,7 @@ function JsonTreeNode({
 interface JsonTreeViewProps {
   className?: string
   emptyMessage?: string
+  emphasizeIndentation?: boolean
   indentSize?: number
   jsonText: string
   rootLabel?: string
@@ -214,6 +224,7 @@ interface JsonTreeViewProps {
 export function JsonTreeView({
   className,
   emptyMessage,
+  emphasizeIndentation = false,
   indentSize = 2,
   jsonText,
   rootLabel,
@@ -332,6 +343,7 @@ export function JsonTreeView({
 
       <div className="max-h-[36rem] overflow-auto rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-3 sm:p-4">
         <JsonTreeNode
+          emphasizeIndentation={emphasizeIndentation}
           copied={copied}
           indentText={indentSize}
           isCollapsed={(path) => collapsedPaths.has(path)}
