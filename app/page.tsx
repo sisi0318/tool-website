@@ -79,7 +79,7 @@ export default function HomePage() {
 
             <h1 className="max-w-3xl text-balance text-5xl font-bold leading-[1.04] tracking-[-0.045em] text-[var(--md-sys-color-on-surface)] sm:text-6xl lg:text-7xl">
               {t("titlePrefix")}
-              <span className="text-gradient">{t("titleHighlight")}</span>
+              <span className="block text-gradient">{t("titleHighlight")}</span>
             </h1>
 
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[var(--md-sys-color-on-surface-variant)] sm:text-xl">
