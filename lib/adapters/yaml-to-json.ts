@@ -1,5 +1,4 @@
 import { FileJson } from "lucide-react"
-import yaml from "js-yaml"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 
@@ -24,6 +23,8 @@ export const yamlToJsonAdapter: ToolAdapter = {
   ],
   async execute(inputs, config) {
     const yamlStr = String(inputs.yaml ?? config.yaml ?? "")
+    // 重依赖按需加载:适配器随 registerAllAdapters() 全量打进画布与旅程页,静态引入会把整个库拖进首屏
+    const yaml = (await import("js-yaml")).default
     try {
       const parsed = yaml.load(yamlStr)
       return { json: parsed }

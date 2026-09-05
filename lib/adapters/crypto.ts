@@ -1,5 +1,5 @@
 import { Shield } from "lucide-react"
-import CryptoJS from "crypto-js"
+import type CryptoJS from "crypto-js"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 
@@ -89,18 +89,21 @@ export const cryptoAdapter: ToolAdapter = {
     if (!data) throw new Error("Data is required")
     if (!key) throw new Error("Key is required")
 
+    // 重依赖按需加载:适配器随 registerAllAdapters() 全量打进画布与旅程页,静态引入会把整个库拖进首屏
+    const cryptoJs: typeof CryptoJS = (await import("crypto-js")).default
+
     const algoMap: Record<string, typeof CryptoJS.AES> = {
-      aes: CryptoJS.AES,
-      des: CryptoJS.DES,
-      tripledes: CryptoJS.TripleDES,
+      aes: cryptoJs.AES,
+      des: cryptoJs.DES,
+      tripledes: cryptoJs.TripleDES,
     }
 
     const modeMap: Record<string, typeof CryptoJS.mode.CBC> = {
-      CBC: CryptoJS.mode.CBC,
-      ECB: CryptoJS.mode.ECB,
-      CFB: CryptoJS.mode.CFB,
-      OFB: CryptoJS.mode.OFB,
-      CTR: CryptoJS.mode.CTR,
+      CBC: cryptoJs.mode.CBC,
+      ECB: cryptoJs.mode.ECB,
+      CFB: cryptoJs.mode.CFB,
+      OFB: cryptoJs.mode.OFB,
+      CTR: cryptoJs.mode.CTR,
     }
 
     const cipher = algoMap[algorithm]
@@ -109,12 +112,12 @@ export const cryptoAdapter: ToolAdapter = {
     if (!cipher) throw new Error(`Unsupported algorithm: ${algorithm}`)
     if (!cipherMode) throw new Error(`Unsupported mode: ${mode}`)
 
-    const keyParsed = CryptoJS.enc.Utf8.parse(key)
-    const ivParsed = iv ? CryptoJS.enc.Utf8.parse(iv) : undefined
+    const keyParsed = cryptoJs.enc.Utf8.parse(key)
+    const ivParsed = iv ? cryptoJs.enc.Utf8.parse(iv) : undefined
 
     const options: CryptoJS.CipherOption = {
       mode: cipherMode,
-      padding: CryptoJS.pad.Pkcs7,
+      padding: cryptoJs.pad.Pkcs7,
     }
 
     if (ivParsed && mode !== "ECB") {
@@ -127,7 +130,7 @@ export const cryptoAdapter: ToolAdapter = {
         return { result: encrypted.toString() }
       } else {
         const decrypted = cipher.decrypt(data, keyParsed, options)
-        return { result: decrypted.toString(CryptoJS.enc.Utf8) }
+        return { result: decrypted.toString(cryptoJs.enc.Utf8) }
       }
     } catch (error) {
       throw new Error(`Crypto error: ${error}`)

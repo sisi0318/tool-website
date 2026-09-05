@@ -1,7 +1,7 @@
 import { Database } from "lucide-react"
 
 import { registerNode } from "../canvas/registry"
-import { processSql, type SqlDialect, type SqlOperation } from "../sql-tools"
+import type { SqlDialect, SqlOperation } from "../sql-tools"
 import type { ToolAdapter } from "./types"
 
 export const sqlAdapter: ToolAdapter = {
@@ -23,6 +23,8 @@ export const sqlAdapter: ToolAdapter = {
   ],
   outputs: [{ id: "output", name: "SQL", dataType: "string" }],
   async execute(inputs, config) {
+    // 重依赖按需加载:适配器随 registerAllAdapters() 全量打进画布与旅程页,静态引入会把整个库拖进首屏
+    const { processSql } = await import("../sql-tools")
     return {
       output: processSql(
         String(inputs.input ?? config.input ?? ""),

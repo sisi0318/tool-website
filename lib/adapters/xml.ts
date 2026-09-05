@@ -1,7 +1,7 @@
 import { FileCode2 } from "lucide-react"
 
 import { registerNode } from "../canvas/registry"
-import { processXml, type XmlOperation } from "../xml-tools"
+import type { XmlOperation } from "../xml-tools"
 import type { ToolAdapter } from "./types"
 
 export const xmlAdapter: ToolAdapter = {
@@ -24,6 +24,8 @@ export const xmlAdapter: ToolAdapter = {
   ],
   outputs: [{ id: "output", name: "Output", dataType: "string" }],
   async execute(inputs, config) {
+    // 重依赖按需加载:适配器随 registerAllAdapters() 全量打进画布与旅程页,静态引入会把整个库拖进首屏
+    const { processXml } = await import("../xml-tools")
     return {
       output: processXml(
         String(inputs.input ?? config.input ?? ""),

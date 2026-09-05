@@ -1,7 +1,7 @@
 import { FileText } from "lucide-react"
 
 import { registerNode } from "../canvas/registry"
-import { processMarkdown, type MarkdownOperation } from "../markdown-tools"
+import type { MarkdownOperation } from "../markdown-tools"
 import type { ToolAdapter } from "./types"
 
 export const markdownAdapter: ToolAdapter = {
@@ -29,6 +29,8 @@ export const markdownAdapter: ToolAdapter = {
   async execute(inputs, config) {
     const input = String(inputs.input ?? config.input ?? "")
     const operation = String(inputs.operation ?? config.operation ?? "to-html") as MarkdownOperation
+    // 重依赖按需加载:适配器随 registerAllAdapters() 全量打进画布与旅程页,静态引入会把整个库拖进首屏
+    const { processMarkdown } = await import("../markdown-tools")
     return { output: processMarkdown(input, operation) }
   },
 }

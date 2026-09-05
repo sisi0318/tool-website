@@ -1,7 +1,7 @@
 import { Table2 } from "lucide-react"
 
 import { registerNode } from "../canvas/registry"
-import { processCsv, type CsvOperation } from "../csv-tools"
+import type { CsvOperation } from "../csv-tools"
 import type { ToolAdapter } from "./types"
 
 export const csvAdapter: ToolAdapter = {
@@ -27,6 +27,8 @@ export const csvAdapter: ToolAdapter = {
     { id: "columns", name: "Columns", dataType: "json" },
   ],
   async execute(inputs, config) {
+    // 重依赖按需加载:适配器随 registerAllAdapters() 全量打进画布与旅程页,静态引入会把整个库拖进首屏
+    const { processCsv } = await import("../csv-tools")
     const result = processCsv(
       String(inputs.input ?? config.input ?? ""),
       String(inputs.operation ?? config.operation ?? "to-json") as CsvOperation,
