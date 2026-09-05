@@ -61,7 +61,7 @@ export default function ProtobufTool() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
-  const [indentSize, setIndentSize] = useState(2)
+  const [indentSize, setIndentSize] = useState(4)
   const [root, setRoot] = useState<Protobuf.Root | null>(null)
   const [messageTypes, setMessageTypes] = useState<string[]>([])
   const [selectedMessageType, setSelectedMessageType] = useState<string>("")
@@ -962,10 +962,11 @@ export default function ProtobufTool() {
                     className="h-[320px] bg-[var(--md-sys-color-surface-container-low)] font-mono sm:h-[400px]"
                     value={outputData} 
                     readOnly 
+                    wrap="off"
                     placeholder={t("decodeResultPlaceholder")}
                   />
 
-                  {outputData && <JsonTreeView jsonText={outputData} indentSize={indentSize} />}
+                  {outputData && <JsonTreeView jsonText={outputData} indentSize={indentSize} emphasizeIndentation />}
                 </div>
 
                 <div className="mt-4 space-y-4 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-4">
