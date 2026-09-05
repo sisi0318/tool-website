@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
 import { Check, Copy, Play, RotateCcw, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
+
+/**
+ * 独立工具页(/tools/<id>)把操作类型写回 URL,链接可以直接指向某个模式(如 ?op=decode);
+ * 输入只读不写 —— 用户数据不该进浏览器历史,?input= 是主动构造链接时才带的。
+ * 工作台(/tools)里同一页面挂着多个工具、共用一个 URL,不做同步。
+ */
+const OPERATION_PARAM = "op"
+const INPUT_PARAM = "input"
+const MAX_URL_INPUT_CHARS = 4096
 
 export interface WorkbenchOperation {
   value: string
@@ -92,6 +102,42 @@ export function UtilityWorkbench({
       if (copyFeedbackTimeoutRef.current) clearTimeout(copyFeedbackTimeoutRef.current)
     }
   }, [])
+
+  const pathname = usePathname()
+  const syncUrl = pathname !== "/tools"
+  const urlBootedRef = useRef(false)
+
+  useEffect(() => {
+    if (!syncUrl || urlBootedRef.current) return
+    urlBootedRef.current = true
+    const params = new URLSearchParams(window.location.search)
+    const requestedOperation = params.get(OPERATION_PARAM)
+    if (
+      requestedOperation &&
+      requestedOperation !== operation &&
+      operations.some((item) => item.value === requestedOperation)
+    ) {
+      onOperationChange(requestedOperation)
+    }
+    const requestedInput = params.get(INPUT_PARAM)
+    if (requestedInput && requestedInput.length <= MAX_URL_INPUT_CHARS) onInputChange(requestedInput)
+    // 只在挂载时读一次 URL
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncUrl])
+
+  const urlWriteArmedRef = useRef(false)
+  useEffect(() => {
+    if (!syncUrl) return
+    // 首次提交时 URL 里的 op 还没来得及应用到 state,跳过,避免先删再写
+    if (!urlWriteArmedRef.current) {
+      urlWriteArmedRef.current = true
+      return
+    }
+    const url = new URL(window.location.href)
+    if (operation === operations[0]?.value) url.searchParams.delete(OPERATION_PARAM)
+    else url.searchParams.set(OPERATION_PARAM, operation)
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url)
+  }, [operation, operations, syncUrl])
 
   return (
     <div className="mx-auto max-w-7xl px-1 py-2 sm:px-3">
