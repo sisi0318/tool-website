@@ -45,7 +45,7 @@ describe("tabular panel", () => {
     await screen.findByRole("table")
     expect(screen.getAllByRole("row")).toHaveLength(51)
     expect(JSON.parse(await readFile(files.latest!))).toHaveLength(52)
-    fireEvent.click(screen.getByRole("button", { name: "nextPage", exact: true }))
+    fireEvent.click(screen.getByRole("button", { name: "nextPage" }))
     expect(screen.getAllByRole("row")).toHaveLength(3)
     expect(within(screen.getByRole("table")).getByText("51", { selector: "td" })).toBeInTheDocument()
     fireEvent.click(screen.getByRole("checkbox", { name: "status" }))
