@@ -4,6 +4,7 @@
 
 - `reference.png`：生成的原始参考图，保留透明通道。
 - `prompt.txt`：完整生成提示词，使用内置工具模式。
+- `reference-v2.png`、`prompt-v2.txt`：使用内置 ImageGen 重绘的第二版参考图及提示词，采用薄荷银发、光标发夹和递出数据方块的日系立绘设计。
 - `vector-settings.json`：矢量化参数。
 - `trace.cjs`：可复现的本地转换脚本。
 - `../../public/mascot.svg`：主页使用的纯路径 SVG，不包含嵌入位图、外部资源或脚本。
