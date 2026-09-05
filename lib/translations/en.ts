@@ -2220,6 +2220,8 @@ exifViewer: {
   noExifTitle: "This image has no EXIF data",
   noExifDescription: "The image may have been processed or never contained metadata",
   selectImagePrompt: "Select an image to view EXIF data",
+  exportFormat: "Export format",
+  filterCategory: "Filter by category",
   uploadPrompt: "Upload image files to start analyzing metadata",
   lensMake: "Lens Make",
   lensModel: "Lens Model",

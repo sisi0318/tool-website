@@ -986,7 +986,7 @@ export default function MemeSplitterPage() {
           </Card>
         </aside>
 
-        <main className="contents lg:col-span-3 lg:block lg:space-y-4">
+        <div className="contents lg:col-span-3 lg:block lg:space-y-4">
           <Card className={`order-2 min-h-[360px] ${M3_CARD_CLASS}`}>
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1186,7 +1186,7 @@ export default function MemeSplitterPage() {
               </CardContent>
             </Card>
           )}
-        </main>
+        </div>
       </div>
     </div>
   )

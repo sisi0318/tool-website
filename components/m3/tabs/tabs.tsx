@@ -280,6 +280,47 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
       tabRefs.current.set(id, el);
     };
 
+    // 键盘模型:方向键 / Home / End 在可用标签间移动并切换,Delete 关闭可关闭的当前标签。
+    // 只有当前标签留在 Tab 序列里(roving tabindex),其余标签靠方向键到达。
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const enabled = tabs.filter((tab) => !tab.disabled && !exitingTabs.has(tab.id));
+      if (enabled.length === 0) return;
+      const currentIndex = Math.max(0, enabled.findIndex((tab) => tab.id === activeTab));
+      let nextIndex: number;
+      switch (event.key) {
+        case 'ArrowRight':
+          nextIndex = (currentIndex + 1) % enabled.length;
+          break;
+        case 'ArrowLeft':
+          nextIndex = (currentIndex - 1 + enabled.length) % enabled.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = enabled.length - 1;
+          break;
+        case 'Delete': {
+          const current = enabled[currentIndex];
+          if (current?.closable && onTabClose && current.id === activeTab) {
+            event.preventDefault();
+            handleTabClose(current.id);
+          }
+          return;
+        }
+        default:
+          return;
+      }
+      event.preventDefault();
+      const next = enabled[nextIndex];
+      onTabChange(next.id);
+      tabRefs.current.get(next.id)?.focus();
+    };
+
+    const focusableTabId = tabs.some((tab) => tab.id === activeTab && !tab.disabled)
+      ? activeTab
+      : tabs.find((tab) => !tab.disabled)?.id;
+
     // Filter out exiting tabs from display
     const visibleTabs = tabs.filter(tab => !exitingTabs.has(tab.id) || exitingTabs.has(tab.id));
 
@@ -291,6 +332,7 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
         aria-orientation="horizontal"
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
+        onKeyDown={handleKeyDown}
         {...props}
       >
         <div ref={containerRef} className={cn(tabListVariants())}>
@@ -326,6 +368,7 @@ const M3Tabs = React.forwardRef<HTMLDivElement, M3TabsProps>(
                 ref={setTabRef(tab.id)}
                 variant={variant}
                 isActive={activeTab === tab.id}
+                tabIndex={tab.id === focusableTabId ? 0 : -1}
                 icon={tab.icon}
                 closable={tab.closable}
                 disabled={tab.disabled}

@@ -94,7 +94,7 @@ export function UtilityWorkbench({
   }, [])
 
   return (
-    <main className="mx-auto max-w-7xl px-1 py-2 sm:px-3">
+    <div className="mx-auto max-w-7xl px-1 py-2 sm:px-3">
       <section className="mb-4 flex items-start gap-3 sm:mb-6">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] sm:h-12 sm:w-12">
           {icon}
@@ -204,6 +204,6 @@ export function UtilityWorkbench({
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   )
 }

@@ -194,11 +194,12 @@ const M3Tab = React.forwardRef<HTMLButtonElement, M3TabProps>(
         {/* Label */}
         <span className="relative z-10">{children}</span>
 
-        {/* Close button - using span with role="button" to avoid nested button warning */}
+        {/* Close button - span 而不是 button,避免按钮嵌套;不进 Tab 序列(按钮里不能再有可聚焦后代),
+            键盘用户用 Delete 键关闭当前标签,由 M3Tabs 处理 */}
         {closable && (
           <span
             role="button"
-            tabIndex={0}
+            tabIndex={-1}
             className={cn(
               'relative z-10 ml-1 p-1 rounded-full',
               'hover:bg-[var(--md-sys-color-on-surface)]/[0.08]',

@@ -2221,6 +2221,8 @@ exifViewer: {
   noExifTitle: "该图片没有EXIF数据",
   noExifDescription: "可能是因为图片经过了处理或者原本就不包含元数据信息",
   selectImagePrompt: "选择图片查看EXIF数据",
+  exportFormat: "导出格式",
+  filterCategory: "按分类筛选",
   uploadPrompt: "上传图片文件开始分析元数据信息",
   lensMake: "镜头制造商",
   lensModel: "镜头型号",

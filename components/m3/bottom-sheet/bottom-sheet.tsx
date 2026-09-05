@@ -74,6 +74,21 @@ const dragHandleVariants = cva(
   ].join(' ')
 );
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function getFocusable(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => element.getAttribute('aria-hidden') !== 'true'
+  );
+}
+
 /**
  * M3 Bottom Sheet Component
  */
@@ -159,6 +174,42 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
       return () => document.removeEventListener('keydown', handleEscape);
     }, [open, onClose]);
 
+    // 打开时把焦点移进弹层,关闭时还给打开前的元素。模态弹层不接管焦点的话,
+    // 键盘用户的焦点会留在被遮住的页面上,Tab 一直在看不见的地方打转。
+    React.useEffect(() => {
+      if (!open || !shouldRender) return;
+      const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const frame = requestAnimationFrame(() => {
+        const sheet = sheetRef.current;
+        if (!sheet || sheet.contains(document.activeElement)) return;
+        (getFocusable(sheet)[0] ?? sheet).focus();
+      });
+      return () => {
+        cancelAnimationFrame(frame);
+        if (previouslyFocused?.isConnected) previouslyFocused.focus();
+      };
+    }, [open, shouldRender]);
+
+    // 焦点圈禁:Tab 到最后一个可聚焦元素后绕回第一个,Shift+Tab 反之
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'Tab' || !sheetRef.current) return;
+      const focusable = getFocusable(sheetRef.current);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === sheetRef.current)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
     // Prevent body scroll when sheet is open
     React.useEffect(() => {
       if (open) {
@@ -207,6 +258,8 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
           aria-label={title ? undefined : ariaLabel}
           aria-labelledby={title ? titleId : undefined}
           aria-describedby={ariaDescribedBy}
+          tabIndex={-1}
+          onKeyDown={handleKeyDown}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}

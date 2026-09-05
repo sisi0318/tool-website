@@ -456,7 +456,7 @@ export default function RdapQueryPage() {
       </Card>
 
       <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-6">
-        <main className="order-1 min-w-0 space-y-4 lg:order-2">
+        <div className="order-1 min-w-0 space-y-4 lg:order-2">
           {loading && (
             <Card className={WHOIS_CARD_CLASS}>
               <CardContent className="space-y-5 p-5 sm:p-6">
@@ -680,7 +680,7 @@ export default function RdapQueryPage() {
               </CardContent>
             </Card>
           )}
-        </main>
+        </div>
 
         <aside className="order-2 min-w-0 space-y-4 lg:order-1">
           <Card className={WHOIS_CARD_CLASS}>

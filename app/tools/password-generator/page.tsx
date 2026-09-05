@@ -127,7 +127,7 @@ export default function PasswordGeneratorPage() {
   )
 
   return (
-    <main className="mx-auto max-w-6xl px-1 py-2 sm:px-3">
+    <div className="mx-auto max-w-6xl px-1 py-2 sm:px-3">
       <section className="mb-6">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
@@ -263,6 +263,6 @@ export default function PasswordGeneratorPage() {
           </Card>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

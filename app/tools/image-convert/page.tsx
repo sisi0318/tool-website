@@ -186,7 +186,7 @@ export default function ImageConvertPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-1 py-2 sm:px-3">
+    <div className="mx-auto max-w-7xl px-1 py-2 sm:px-3">
       <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]"><ImageDown className="h-6 w-6" /></span>
@@ -287,6 +287,6 @@ export default function ImageConvertPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </div>
   )
 }

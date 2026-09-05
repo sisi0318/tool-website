@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -968,33 +969,29 @@ export default function ImageCompressPage() {
         </div>
       </div>
 
-      {/* 图片预览弹窗 */}
-      {previewImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setPreviewImage(null)}
+      {/* 图片预览弹窗:用 Dialog 拿到对话框语义、焦点圈禁与 Escape 关闭 */}
+      <Dialog
+        open={previewImage !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewImage(null)
+        }}
+      >
+        <DialogContent
+          aria-describedby={undefined}
+          className="max-w-[90vw] border-0 bg-transparent p-0 text-white shadow-none sm:max-w-[90vw]"
         >
-          <div className="relative max-w-[90vw] max-h-[90vh]">
-            <div className="absolute -top-10 left-0 right-0 flex items-center justify-between">
-              <span className="text-white text-sm">{previewTitle}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20"
-                onClick={() => setPreviewImage(null)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
+          <DialogHeader>
+            <DialogTitle className="pr-8 text-sm font-normal">{previewTitle}</DialogTitle>
+          </DialogHeader>
+          {previewImage && (
             <img
               src={previewImage}
               alt={previewTitle}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg"
-              onClick={(e) => e.stopPropagation()}
+              className="max-h-[85vh] max-w-full rounded-lg object-contain"
             />
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

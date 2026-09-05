@@ -540,6 +540,15 @@ export default function ExifViewerPage() {
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                aria-label={t("selectImage")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    fileInputRef.current?.click()
+                  }
+                }}
               >
                 <input
                   ref={fileInputRef}
@@ -771,7 +780,7 @@ export default function ExifViewerPage() {
                       <div className="space-y-2">
                         <div className="flex gap-2">
                           <Select value={exportFormat} onValueChange={(value: "json" | "csv" | "txt") => setExportFormat(value)}>
-                            <SelectTrigger className="flex-1">
+                            <SelectTrigger className="flex-1" aria-label={t("exportFormat")}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -800,6 +809,7 @@ export default function ExifViewerPage() {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--md-sys-color-on-surface-variant)]" />
                         <Input
                           placeholder={t("searchPlaceholder")}
+                          aria-label={t("searchPlaceholder")}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="pl-10"
@@ -808,7 +818,7 @@ export default function ExifViewerPage() {
                     </div>
 
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-48" aria-label={t("filterCategory")}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

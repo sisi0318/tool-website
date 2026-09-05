@@ -569,7 +569,7 @@ export default function ImageCoordinatesPage() {
           </div>
         </aside>
 
-        <main className="order-2 min-w-0 space-y-4 lg:col-span-3">
+        <div className="order-2 min-w-0 space-y-4 lg:col-span-3">
           <Card className={`min-h-[20rem] sm:min-h-[31.25rem] ${COORDINATE_CARD_CLASS}`}>
             <CardHeader className="pb-3">
               <CardTitle className="flex flex-col gap-2 text-base sm:flex-row sm:items-center sm:justify-between">
@@ -758,7 +758,7 @@ export default function ImageCoordinatesPage() {
               </CardContent>
             </Card>
           )}
-        </main>
+        </div>
       </div>
     </div>
   )

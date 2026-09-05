@@ -1109,7 +1109,7 @@ export default function ImageEditorPage() {
           )}
         </aside>
 
-        <main className="contents lg:col-span-3 lg:block lg:space-y-4">
+        <div className="contents lg:col-span-3 lg:block lg:space-y-4">
           {imageMeta && (
             <Card className={`order-3 mt-4 lg:mt-0 ${M3_CARD_CLASS}`}>
               <CardContent className="p-3">
@@ -1298,7 +1298,7 @@ export default function ImageEditorPage() {
               </CardContent>
             </Card>
           )}
-        </main>
+        </div>
       </div>
     </div>
   )
