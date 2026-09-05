@@ -37,6 +37,8 @@ const NODE_PORTS: Record<string, { inputs: number; outputs: number }> = {
   jwt: { inputs: 1, outputs: 3 },
   "json-format": { inputs: 3, outputs: 4 },
   protobuf: { inputs: 3, outputs: 4 },
+  "compression-file": { inputs: 1, outputs: 4 },
+  "zip-directory": { inputs: 1, outputs: 4 },
   jce: { inputs: 2, outputs: 2 },
   "image-to-base64": { inputs: 2, outputs: 3 },
   "exif-viewer": { inputs: 2, outputs: 2 },

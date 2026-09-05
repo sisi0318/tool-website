@@ -125,7 +125,9 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       ["GZip", "GZip compress and decompress"],
       ["Zlib / Deflate", "Zlib and Deflate"],
       ["Brotli", "Brotli compression"],
-      ["ZIP", "ZIP archive"],
+      ["ZIP 目录", "Browse ZIP folders and preview individual files"],
+      ["选择性提取", "Extract selected files, verify CRC32 and download binary results"],
+      ["多文件打包", "Create ZIP archives from files and folders"],
     ],
   },
   {

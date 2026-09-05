@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { strToU8, unzipSync, zipSync } from "fflate"
-import { createZip, extractZipEntries, extractZipEntry, inspectZip, normalizeZipPath } from "./zip-tools"
+import { browseZipFolder, createZip, extractZipEntries, extractZipEntry, inspectZip, normalizeZipPath } from "./zip-tools"
 import { crc32, MAX_BINARY_FILE_BYTES } from "./compression-files"
 
 describe("ZIP file tools", () => {
@@ -107,5 +107,14 @@ describe("ZIP file tools", () => {
     for (const name of ["../x", "/x", "C:\\x", "bad\0name"]) expect(() => normalizeZipPath(name)).toThrow(/unsafePath/)
     await expect(createZip([{ name: "a", data: new Uint8Array() }, { name: "./a", data: new Uint8Array() }])).rejects.toMatchObject({ code: "duplicatePath" })
     await expect(createZip([{ name: "a", data: new Uint8Array() }, { name: "a/b.txt", data: new Uint8Array() }])).rejects.toMatchObject({ code: "duplicatePath" })
+    await expect(createZip([{ name: "folder/", data: strToU8("not a directory") }])).rejects.toMatchObject({ code: "unsafePath" })
+  })
+  it("browses implicit folders and searches their descendants", () => {
+    const archive = inspectZip(zipSync({ "a/x.txt": strToU8("x"), "a/sub/y.txt": strToU8("yy"), "root.txt": strToU8("r"), "empty/": new Uint8Array() }))
+    const root = browseZipFolder(archive.entries)
+    expect(root.map((row) => row.name)).toEqual(["a", "empty", "root.txt"])
+    expect(root[0].ids).toEqual([0, 1])
+    expect(browseZipFolder(archive.entries, "a/").map((row) => row.name)).toEqual(["sub", "x.txt"])
+    expect(browseZipFolder(archive.entries, "a/", "y.txt").map((row) => row.name)).toEqual(["a/sub/y.txt"])
   })
 })

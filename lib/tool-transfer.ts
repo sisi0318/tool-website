@@ -1,6 +1,7 @@
 import { createClientId } from "./client-id"
 import { inferDataType } from "./journey/tree"
 import type { DataType } from "./canvas/types"
+import { detectFileSignature } from "./file-signature"
 
 export interface ToolTransfer {
   value: unknown
@@ -21,7 +22,7 @@ export function normalizeTransferValue(value: unknown, filename = "tool-output.b
   if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
     const bytes = value instanceof ArrayBuffer ? new Uint8Array(value) : new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
     if (bytes.byteLength > 64 * 1024 * 1024) throw new ToolTransferError("tooLarge")
-    return { value: new File([new Uint8Array(bytes).buffer], filename, { type: "application/octet-stream" }), size: bytes.byteLength }
+    return { value: new File([new Uint8Array(bytes).buffer], filename, { type: detectFileSignature(bytes).mime }), size: bytes.byteLength }
   }
   if (typeof value === "string") {
     if (value.length > 8 * 1024 * 1024) throw new ToolTransferError("tooLarge")

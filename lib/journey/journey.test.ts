@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { clearRegistry, registerNode } from "../canvas/registry"
 import { registerBasicNodes } from "../adapters/basic"
@@ -140,6 +140,17 @@ describe("engine", () => {
     const result = await applyStep("aGVsbG8=", BASE64_DECODE)
     expect(result.value).toBe("hello")
     expect(result.valueType).toBe("string")
+  })
+  it("aborts a timed-out step so file workers do not keep running", async () => {
+    vi.useFakeTimers()
+    try {
+      let signal!: AbortSignal
+      registerNode({ type: "slow-file", category: "data", label: "Slow file", icon: (() => null) as never, config: [{ id: "input", name: "In", dataType: "string", hasInput: true }], outputs: [{ id: "out", name: "Out", dataType: "string" }], execute: async (_input, _config, context) => { signal = context!.signal; return new Promise(() => {}) } })
+      const result = applyStep("data", { tool: "slow-file", config: {}, outputPort: "out" }).catch((error: Error) => error)
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(signal.aborted).toBe(true)
+      expect(await result).toBeInstanceOf(Error)
+    } finally { vi.useRealTimers() }
   })
 
   it("uses the same port conversions as canvas for transferred JSON and scalar values", async () => {

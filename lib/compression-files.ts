@@ -3,7 +3,7 @@ import { AsyncDeflate, AsyncGzip, AsyncGunzip, AsyncInflate, AsyncUnzlib, AsyncZ
 export const MAX_BINARY_FILE_BYTES = 64 * 1024 * 1024
 export const MAX_EXPANDED_BYTES = 128 * 1024 * 1024
 export type FileCompressionFormat = "gzip" | "zlib" | "deflate" | "brotli"
-export type BinaryFileErrorCode = "invalidZip" | "unsupportedZip" | "encrypted" | "unsupportedMethod" | "unsafePath" | "duplicatePath" | "notFound" | "inputLimit" | "outputLimit" | "entryLimit" | "corrupt" | "nameEncoding" | "cancelled" | "invalidInput"
+export type BinaryFileErrorCode = "invalidZip" | "unsupportedZip" | "encrypted" | "unsupportedMethod" | "unsafePath" | "duplicatePath" | "notFound" | "inputLimit" | "outputLimit" | "entryLimit" | "corrupt" | "nameEncoding" | "cancelled" | "invalidInput" | "formatRequired" | "entryRequired"
 export class BinaryFileError extends Error {
   constructor(public readonly code: BinaryFileErrorCode, public readonly entry = "", public readonly detail = "") { super([code, entry, detail].filter(Boolean).join(": ")); this.name = "BinaryFileError" }
 }

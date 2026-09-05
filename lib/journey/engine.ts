@@ -15,10 +15,11 @@ import type {
 
 const STEP_TIMEOUT_MS = 30_000
 
-function withTimeout<T>(promise: Promise<T>, ms = STEP_TIMEOUT_MS): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms = STEP_TIMEOUT_MS, onTimeout?: () => void): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Step timed out after ${Math.round(ms / 1000)}s`))
+      onTimeout?.()
     }, ms)
     promise.then(
       (value) => {
@@ -62,7 +63,8 @@ export async function applyStep(value: unknown, step: JourneyStep): Promise<Appl
 
   const inputs: Record<string, unknown> = { [mainPort.id]: convertPortValue(value, inferDataType(value), mainPort.dataType) }
   // 分享链接、旧存档和建议创建的步骤都可能只带部分配置,执行前补齐声明的默认值
-  const outputs = await withTimeout(definition.execute(inputs, withDefaultConfig(step.tool, step.config)))
+  const controller = new AbortController()
+  const outputs = await withTimeout(definition.execute(inputs, withDefaultConfig(step.tool, step.config), { signal: controller.signal }), STEP_TIMEOUT_MS, () => controller.abort())
 
   const portId = resolveOutputPort(definition, step.outputPort)
   const nextValue = portId in outputs ? outputs[portId] : outputs[Object.keys(outputs)[0] ?? ""]

@@ -42,7 +42,7 @@ describe("journey tool transfer intake", () => {
     expect(window.location.hash).toBe("")
     expect(calls.execute).not.toHaveBeenCalled()
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Run new step" })))
-    expect(calls.execute).toHaveBeenCalledWith({ input: '{"name":"Ada"}' }, {})
+    expect(calls.execute).toHaveBeenCalledWith({ input: '{"name":"Ada"}' }, {}, { signal: expect.any(AbortSignal) })
   })
   it("keeps binary values as files", () => {
     window.history.replaceState(null, "", toolTransferUrl(toolTransfers.put(new Uint8Array([0, 255, 1]), "Wire payload")))

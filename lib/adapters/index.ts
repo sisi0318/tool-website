@@ -52,6 +52,7 @@ import { registerJsonPreviewAdapter } from "./json-preview"
 import { registerImagePreviewAdapter } from "./image-preview"
 import { registerDataDetectorAdapter } from "./data-detector"
 import { registerCompressionAdapter } from "./compression"
+import { registerFileCompressionAdapters } from "./file-compression"
 import { registerXmlAdapter } from "./xml"
 import { registerCsvAdapter } from "./csv"
 import { registerMarkdownAdapter } from "./markdown"
@@ -103,6 +104,7 @@ export function registerAllAdapters(): void {
   safeRegister("string-to-file", registerStringToFileAdapter)
   safeRegister("data-detector", registerDataDetectorAdapter)
   safeRegister("compression", registerCompressionAdapter)
+  safeRegister("file-compression", registerFileCompressionAdapters)
   safeRegister("xml", registerXmlAdapter)
   safeRegister("csv", registerCsvAdapter)
   safeRegister("json-schema", registerJsonSchemaAdapter)

@@ -132,6 +132,13 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
 
   if (valueType === "bytes") {
     const mime = typeof Blob !== "undefined" && value instanceof Blob ? value.type : ""
+    const filename = typeof File !== "undefined" && value instanceof File ? value.name : ""
+    if (mime === "application/zip" || /\.(zip|jar|apk|docx|xlsx|pptx)$/i.test(filename)) {
+      pushEntry({ tool: "zip-directory", label: "Browse ZIP directory", outputPort: "entries", score: 110 })
+    }
+    if (["application/gzip", "application/zip"].includes(mime) || /\.(gz|zip|br|zlib|deflate)$/i.test(filename)) {
+      pushEntry({ tool: "compression-file", label: "Decompress file", config: { operation: "decompress", format: "auto" }, outputPort: "file", score: 100 })
+    }
     const curated = mime.startsWith("image/") ? BYTES_CURATED : GENERIC_BYTES
     curated.forEach((entry) => pushEntry(entry))
   } else if (typeof value === "string" && value.trim().length > 0) {

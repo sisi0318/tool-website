@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 import { Archive, FileUp } from "lucide-react"
 
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,8 +20,9 @@ import {
 } from "@/lib/file-limits"
 
 const SAMPLE = "Compression works best when text contains repeated text. ".repeat(8)
+const FileCompressionPanel = dynamic(() => import("@/components/tools/file-compression-panel"), { ssr: false })
 
-export default function CompressionPage() {
+function CompressionTextPage() {
   const t = useTranslations("compression")
   const [input, setInput] = useState("")
   const [output, setOutput] = useState("")
@@ -136,4 +140,22 @@ export default function CompressionPage() {
       )}
     />
   )
+}
+
+export default function CompressionPage() {
+  const t = useTranslations("compressionFiles")
+  const params = useToolRuntimeParams()
+  const [mode, setMode] = useState("files")
+  const booted = useRef(false)
+  useEffect(() => {
+    if (booted.current) return
+    booted.current = true
+    const query = new URLSearchParams(window.location.search)
+    if (params?.op || params?.input || query.has("op") || query.has("input")) setMode("text")
+  }, [params])
+  return <>
+    <div className="mx-auto mb-4 max-w-6xl px-1 sm:px-3"><SegmentedControl aria-label={t("panelMode")} value={mode} onValueChange={setMode}><SegmentedControlItem value="files">{t("filesMode")}</SegmentedControlItem><SegmentedControlItem value="text">{t("textMode")}</SegmentedControlItem></SegmentedControl></div>
+    <div hidden={mode !== "files"}><FileCompressionPanel /></div>
+    <div hidden={mode !== "text"}><CompressionTextPage /></div>
+  </>
 }

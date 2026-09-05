@@ -26,7 +26,7 @@ function decodeName(bytes: Uint8Array, encoding: Exclude<ZipNameEncoding, "auto"
   } catch { throw new BinaryFileError("nameEncoding") }
 }
 
-/** Read metadata before inflating anything. Layout follows PKWARE APPNOTE sections 4.3 / 4.5.3 / 4.6.9. */
+/** Read metadata before inflating anything. See https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT sections 4.3 / 4.5.3 / 4.6.9. */
 export function inspectZip(bytes: Uint8Array, nameEncoding: ZipNameEncoding = "auto"): ZipArchive {
   if (bytes.length > MAX_BINARY_FILE_BYTES) throw new BinaryFileError("inputLimit")
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -163,6 +163,7 @@ export async function createZip(sources: ZipSource[], options: { level?: number;
   assertNotAborted(options.signal)
   if (sources.length > MAX_ZIP_ENTRIES) throw new BinaryFileError("entryLimit")
   const names = sources.map((source) => normalizeZipPath(source.name))
+  names.forEach((name, index) => { if (name.endsWith("/") && sources[index].data.length) throw new BinaryFileError("unsafePath", name) })
   const unique = new Set(names)
   if (unique.size !== names.length) throw new BinaryFileError("duplicatePath")
   const files = new Set(names.filter((name) => !name.endsWith("/")))
@@ -213,4 +214,26 @@ export async function createZip(sources: ZipSource[], options: { level?: number;
       } catch (error) { fail(error) }
     })()
   })
+}
+
+export interface ZipFolderRow { key: string; name: string; path: string; directory: boolean; ids: number[]; originalSize: number; entry?: ZipEntry }
+export function browseZipFolder(entries: ZipEntry[], folder = "", query = ""): ZipFolderRow[] {
+  const needle = query.trim().toLowerCase()
+  const rows = new Map<string, ZipFolderRow>()
+  for (const entry of entries) {
+    if (entry.blocked === "unsafePath") {
+      if (!folder && (!needle || entry.name.toLowerCase().includes(needle))) rows.set("file:" + entry.id, { key: "file:" + entry.id, name: entry.name, path: entry.path, directory: false, ids: [entry.id], originalSize: entry.originalSize, entry })
+      continue
+    }
+    if (!entry.path.startsWith(folder) || entry.path === folder || (needle && !entry.path.toLowerCase().includes(needle))) continue
+    const relative = entry.path.slice(folder.length)
+    const slash = relative.indexOf("/")
+    if (!needle && slash >= 0) {
+      const path = folder + relative.slice(0, slash + 1)
+      const row = rows.get(path) ?? { key: path, name: relative.slice(0, slash), path, directory: true, ids: [], originalSize: 0 }
+      if (!entry.directory) { row.ids.push(entry.id); row.originalSize += entry.originalSize }
+      rows.set(path, row)
+    } else if (!entry.directory) rows.set("file:" + entry.id, { key: "file:" + entry.id, name: needle ? entry.path : relative, path: entry.path, directory: false, ids: [entry.id], originalSize: entry.originalSize, entry })
+  }
+  return [...rows.values()].sort((a, b) => Number(b.directory) - Number(a.directory) || a.name.localeCompare(b.name, undefined, { numeric: true }))
 }

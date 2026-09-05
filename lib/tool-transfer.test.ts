@@ -32,6 +32,10 @@ describe("tool value transfer", () => {
     expect(normalizeTransferValue(file).value).toBe(file)
     expect(normalizeTransferValue(new Blob(["data"])).value).toBeInstanceOf(File)
   })
+  it("tags recognized raw bytes so journey suggestions can offer decompression", () => {
+    const transferred = store.take(store.put(new Uint8Array([0x1f, 0x8b, 8, 0]), "payload"))!
+    expect((transferred.value as File).type).toBe("application/gzip")
+  })
   it("expires unconsumed data", () => {
     vi.useFakeTimers()
     const id = store.put("data", "source")
