@@ -167,7 +167,7 @@ journey: {
 home: {
   mascotName: "Stacky",
   mascotDescription: "Your local tool companion",
-  mascotAlt: "Stacky, the tool companion: an anime character with short mint-white hair, a gold cursor hair clip and a loose cyan-and-cream jacket, holding a laptop and pointing to a code window.",
+  mascotAlt: "Stacky, the tool companion: fluffy white bobbed hair, a chip hair clip and a mint hoodie, holding a terminal tablet and raising a stylus, drawn with navy hand-drawn outlines and fresh flat colors.",
   eyebrow: "40+ practical tools, ready when you are",
   titlePrefix: "Small tasks feel lighter with one ",
   titleHighlight: "handy tool station",

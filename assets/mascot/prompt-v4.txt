@@ -1,0 +1,17 @@
+Use case: stylized-concept.
+The input picture is a STYLE REFERENCE ONLY, not a character to copy.
+
+Create a NEW original mascot for a browser utility website. The most important requirement is to closely study and use the reference's actual DRAWING LANGUAGE, not merely its mint palette:
+- lively hand-drawn indigo/navy outlines with tiny intentional irregularities;
+- broad, nearly uniform pastel paint fills and clear, HARD-EDGED graphic shadows;
+- very large simply drawn oval anime eyes: dark teal upper iris, pale mint lower iris with a few fine vertical strokes, one small white catchlight; no elaborate glassy eye rendering;
+- softly rounded face, extremely minimal nose, tiny gentle mouth, pale skin with rose-pink cheek hatching and a simple pink neck shadow;
+- white hair separated into broad irregular locks, mint/cyan shadow blocks and a few ink strand lines, no blended shine or volumetric rendering;
+- playful small geometric accents, a few loose ink/hatching marks. Limit the drawing to roughly 12–18 distinct solid colors.
+The result should have the fresh, charming, slightly sketchy graphic quality of the reference. Keep it FLAT and illustrative. Avoid polished game-CG rendering, silky gradients, airbrush shading, glossy gacha art, 3D anatomy shading, realistic fabric, or a corporate vector-clip-art finish.
+
+Original character and composition: a friendly young-adult anime software tinkerer, waist-up, large head relative to the upper body, shoulders relaxed and head almost upright. Short fluffy icy-white bob with a single mint side lock and a simple navy rectangular circuit hair clip. A roomy mint utility hoodie with an ivory central panel, navy ribbed cuffs and one small square pocket. She holds a small plain navy terminal tablet against her lower torso with one hand; the other hand holds up a mint stylus beside her face. Curious, calm, approachable expression. Tiny >_ mark on the tablet only. Both hands clearly drawn, full hair and torso visible. The face and drawing style are the main focus.
+Palette close to the reference: bright mint #66EBC9, cool cyan #75CCD1, warm white #F5FCF4, ink navy #263F67, pale skin, a little rose pink #F4A8B2 and pale lemon.
+Use a plain solid WHITE background, no checkerboard, no frame, no scenery, no caption or watermark. Square canvas with clear margins around the silhouette.
+
+Originality: completely new character design, outfit, props, pose and layout. Do NOT reuse the reference's hat, large bow, twin tails, cherries, bears, cloud clips, sailor uniform, detached sleeves, drink, spoon, tiled background or their arrangement. Transfer only the linework, flat coloring, expressive simplification and illustration texture.
