@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Edge, NodeDefinition, NodeInstance } from "./types"
+import { UPSTREAM_ERROR } from "./store"
 
 type TestHarness = Awaited<ReturnType<typeof createTestHarness>>
 
@@ -628,8 +629,45 @@ describe("canvas store execution", () => {
 
     expect(harness.useCanvasStore.getState().nodeOutputs.a).toBeUndefined()
     expect(harness.useCanvasStore.getState().nodeErrors.a).toBe("failed")
-    expect(executeDownstream).toHaveBeenCalledWith({}, {}, expect.objectContaining({ signal: expect.any(AbortSignal) }))
-    expect(harness.useCanvasStore.getState().nodeOutputs.b).toEqual({ out: "empty" })
+    // 此前这里的期望是「下游拿空输入照样执行并输出 empty」—— 那正是要修的问题:
+    // 上游失败后下游会用默认值算出一个看似正经的结果。现在下游被阻断且不执行。
+    expect(executeDownstream).not.toHaveBeenCalled()
+    expect(harness.useCanvasStore.getState().nodeOutputs.b).toBeUndefined()
+    expect(harness.useCanvasStore.getState().nodeErrors.b).toBe(UPSTREAM_ERROR)
+  })
+
+  it("上游失败沿链路一直阻断到末端，不相干的分支照常执行", async () => {
+    const harness = await createTestHarness()
+    const { useCanvasStore } = harness
+    registerDefinition(harness, "boom", async () => {
+      throw new Error("boom")
+    })
+    const mid = vi.fn(async (inputs: Record<string, unknown>) => ({ out: String(inputs.in) }))
+    const tail = vi.fn(async (inputs: Record<string, unknown>) => ({ out: String(inputs.in) }))
+    const other = vi.fn(async () => ({ out: "independent" }))
+    registerDefinition(harness, "mid", mid)
+    registerDefinition(harness, "tail", tail)
+    registerDefinition(harness, "other", other)
+
+    useCanvasStore.setState({
+      nodes: [node("a", "boom"), node("b", "mid"), node("c", "tail"), node("x", "other")],
+      edges: [edge("a-b", "a", "b"), edge("b-c", "b", "c")],
+      nodeOutputs: {},
+      nodeErrors: {},
+      nodeRunning: {},
+    })
+    await useCanvasStore.getState().executeAll()
+
+    expect(mid).not.toHaveBeenCalled()
+    expect(tail).not.toHaveBeenCalled()
+    expect(useCanvasStore.getState().nodeErrors.b).toBe(UPSTREAM_ERROR)
+    expect(useCanvasStore.getState().nodeErrors.c).toBe(UPSTREAM_ERROR)
+    // 与失败链路无关的分支不受影响
+    expect(other).toHaveBeenCalledTimes(1)
+    expect(useCanvasStore.getState().nodeOutputs.x).toEqual({ out: "independent" })
+    // 阻断的节点在执行日志里可见
+    const blocked = useCanvasStore.getState().executionLog.filter((entry) => entry.status === "skipped")
+    expect(blocked.map((entry) => entry.nodeId).sort()).toEqual(["b", "c"])
   })
 
   it("执行日志从 running 原地更新为 success，并记录耗时", async () => {

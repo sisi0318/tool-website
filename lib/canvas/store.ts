@@ -30,6 +30,8 @@ const AUTO_EXEC_DEBOUNCE_MS = 350
 const CONFIG_HISTORY_WINDOW_MS = 750
 /** Nodes on a cycle cannot take part in execution; a stable code lets the UI localize it. */
 export const CYCLE_ERROR = "canvas:cycle"
+/** 上游节点执行失败,本节点被阻断;用统一错误码让 UI 能本地化提示。 */
+export const UPSTREAM_ERROR = "canvas:upstream-failed"
 
 /** 画布自动保存的存储键,登记在 lib/storage/app-storage.ts */
 const CANVAS_STATE_KEY = "canvas-state"
@@ -187,6 +189,28 @@ function markCyclicNodes(candidates: NodeInstance[], sorted: NodeInstance[]): vo
   }))
 }
 
+/** 上游失败:清掉本节点的陈旧输出、记错误、写一条 skipped 日志,不执行。 */
+function markBlockedByUpstream(node: NodeInstance): void {
+  useCanvasStore.setState((s) => ({
+    nodeErrors: { ...s.nodeErrors, [node.id]: UPSTREAM_ERROR },
+    nodeOutputs: Object.fromEntries(
+      Object.entries(s.nodeOutputs).filter(([id]) => id !== node.id),
+    ),
+    executionLog: [
+      ...s.executionLog,
+      {
+        id: ++nextNodeRunToken,
+        nodeId: node.id,
+        nodeType: node.type,
+        status: "skipped" as const,
+        startedAt: Date.now(),
+        durationMs: 0,
+        error: UPSTREAM_ERROR,
+      },
+    ].slice(-MAX_EXECUTION_LOG_ENTRIES),
+  }))
+}
+
 const MAX_GRAPH_RUN_ATTEMPTS = 5
 
 let activeGraphRun: { promise: Promise<void>; includeManual: boolean } | null = null
@@ -244,6 +268,9 @@ async function runGraphInWaves(
   }
 
   const skipped = new Set<string>()
+  // 执行失败的节点。此前下游不会知道上游失败,会拿默认值(比如空字符串)继续算,
+  // 于是 Hash 节点在上游报错后照样输出 d41d8cd9… 这种"看起来正经"的结果。
+  const failed = new Set<string>()
   let wave = sorted.filter((node) => (inDegree.get(node.id) ?? 0) === 0).map((node) => node.id)
 
   while (wave.length > 0) {
@@ -252,7 +279,13 @@ async function runGraphInWaves(
     const runnable: string[] = []
     for (const id of wave) {
       const node = nodeById.get(id)!
-      const dependsOnSkipped = (incoming.get(id) ?? []).some((source) => skipped.has(source))
+      const sources = incoming.get(id) ?? []
+      if (sources.some((source) => failed.has(source))) {
+        markBlockedByUpstream(node)
+        failed.add(id)
+        continue
+      }
+      const dependsOnSkipped = sources.some((source) => skipped.has(source))
       if (shouldSkip(node, dependsOnSkipped)) {
         skipped.add(id)
         continue
@@ -264,6 +297,11 @@ async function runGraphInWaves(
       await runNode(id)
     })
     if (executionRevision !== planRevision) return false
+
+    const errors = useCanvasStore.getState().nodeErrors
+    for (const id of runnable) {
+      if (errors[id]) failed.add(id)
+    }
 
     const next: string[] = []
     for (const id of wave) {

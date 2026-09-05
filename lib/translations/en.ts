@@ -3336,6 +3336,7 @@ canvas: {
   connectionReplaced: "The existing connection to this input was replaced.",
   connectionCycle: "This connection would create a cycle.",
   nodeInCycle: "This node is part of a cycle and cannot run.",
+  nodeUpstreamFailed: "An upstream node failed, so this node did not run.",
   connectionIncompatible: "Incompatible types: {source} → {target}.",
   selectNodeToEdit: "Select a node to edit",
   config: "Config",

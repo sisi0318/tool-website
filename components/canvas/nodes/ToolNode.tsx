@@ -5,7 +5,7 @@ import { Handle, Position } from "@xyflow/react"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
-import { CYCLE_ERROR, useCanvasStore } from "@/lib/canvas/store"
+import { CYCLE_ERROR, UPSTREAM_ERROR, useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import { formatCanvasValue } from "@/lib/canvas/format-value"
 import type { ConfigField } from "@/lib/canvas/types"
@@ -241,7 +241,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
 
       {nodeErrors && (
         <div className="rounded-b-[calc(var(--md-sys-shape-corner-medium)-2px)] border-t border-md-error/40 bg-md-error-container/60 px-3 py-2">
-          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-md-on-error-container">{nodeErrors === CYCLE_ERROR ? t("nodeInCycle") : nodeErrors}</p>
+          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-md-on-error-container">{nodeErrors === CYCLE_ERROR ? t("nodeInCycle") : nodeErrors === UPSTREAM_ERROR ? t("nodeUpstreamFailed") : nodeErrors}</p>
         </div>
       )}
     </div>

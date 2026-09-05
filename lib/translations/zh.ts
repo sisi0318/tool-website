@@ -3337,6 +3337,7 @@ canvas: {
   connectionReplaced: "已替换这个输入端口的原有连线。",
   connectionCycle: "该连接会形成循环依赖。",
   nodeInCycle: "该节点处于环中，无法执行。",
+  nodeUpstreamFailed: "上游节点执行失败，本节点未执行。",
   connectionIncompatible: "类型不兼容：{source} → {target}。",
   selectNodeToEdit: "选择节点以编辑",
   config: "配置",

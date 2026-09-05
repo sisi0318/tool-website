@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
 import { getNodeDefinition } from "@/lib/canvas/registry"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { CYCLE_ERROR, UPSTREAM_ERROR, useCanvasStore } from "@/lib/canvas/store"
 import type { ExecutionLogEntry } from "@/lib/canvas/types"
 
 interface ExecutionLogPanelProps {
@@ -143,7 +143,11 @@ export function ExecutionLogPanel({
                         </span>
                         {entry.error && (
                           <span className="mt-1 block max-h-16 overflow-auto whitespace-pre-wrap break-words text-[11px] text-md-error">
-                            {entry.error}
+                            {entry.error === UPSTREAM_ERROR
+                              ? t("nodeUpstreamFailed")
+                              : entry.error === CYCLE_ERROR
+                                ? t("nodeInCycle")
+                                : entry.error}
                           </span>
                         )}
                       </span>
