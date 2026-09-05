@@ -11,7 +11,7 @@ import {
   Copy, Trash2, ArrowRightLeft, Type, FileText,
   CaseSensitive, CaseUpper, CaseLower
 } from "lucide-react"
-import { M3Chip } from "@/components/m3/chip"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { toUnicodeSentenceCase, toUnicodeTitleCase } from "@/lib/case-converter-tools"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -192,22 +192,25 @@ export default function CaseConverterPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
+            <SegmentedControl
+              value={selectedCase}
+              onValueChange={(value) => handleConvert(value as CaseType)}
+              aria-label={t("conversionType")}
+              className="flex h-auto flex-wrap gap-2 rounded-none bg-transparent p-0"
+            >
               {CASE_OPTIONS.map((option) => (
-                <M3Chip
+                <SegmentedControlItem
                   key={option.id}
-                  variant={selectedCase === option.id ? "filter" : "suggestion"}
-                  selected={selectedCase === option.id}
-                  onClick={() => handleConvert(option.id)}
-                  className="cursor-pointer"
+                  value={option.id}
+                  className="rounded-full border border-[var(--md-sys-color-outline)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-on-surface)]/[0.08] data-[state=checked]:border-transparent data-[state=checked]:bg-[var(--md-sys-color-secondary-container)] data-[state=checked]:text-[var(--md-sys-color-on-secondary-container)] data-[state=checked]:shadow-none"
                 >
                   <span className="flex items-center gap-1">
                     {option.icon}
                     {t(`options.${option.id}`)}
                   </span>
-                </M3Chip>
+                </SegmentedControlItem>
               ))}
-            </div>
+            </SegmentedControl>
             <p className="mt-3 text-sm text-[var(--md-sys-color-on-surface-variant)]">
               {t("example")}: {CASE_OPTIONS.find((option) => option.id === selectedCase)?.description}
             </p>

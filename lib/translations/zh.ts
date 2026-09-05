@@ -2571,6 +2571,7 @@ totp: {
   issuerPlaceholder: "例如：Google",
   secret: "密钥（Base32）",
   secretPlaceholder: "例如：JBSWY3DPEHPK3PXP",
+  secondsRemaining: "剩余秒数",
   or: "或者",
   importFromUri: "从 otpauth:// URI 导入",
   import: "导入",

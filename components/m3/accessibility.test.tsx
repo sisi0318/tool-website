@@ -1,18 +1,15 @@
 /**
  * M3 Accessibility Tests
  *
- * 覆盖仍在使用的 M3 组件的可访问性约定：焦点指示、ARIA 角色与键盘操作。
- * （button / input / switch / navigation / dialog / search 等模块已随死代码清理删除，
- *  相关用例一并移除；表单与对话框现由 components/ui/ 的 shadcn 实现承担。）
+ * 覆盖仍在使用的 M3 组件的可访问性约定:ARIA 角色与键盘操作。
+ * card / chip / slider / progress 已换成 components/ui 的实现并删除,
+ * 这里只剩工具工作台在用的 Tabs(BottomSheet 的用例在它自己的测试文件里)。
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import * as React from 'react';
 
-import { M3Card } from './card';
-import { M3Chip } from './chip';
-import { M3Slider } from './slider';
 import { M3Tabs, type TabItem } from './tabs';
 
 const mockTabItems: TabItem[] = [
@@ -21,47 +18,7 @@ const mockTabItems: TabItem[] = [
   { id: 'tab3', label: 'Tab 3' },
 ];
 
-describe('M3 Accessibility - Focus Indicators', () => {
-  it('M3Card interactive should be focusable', () => {
-    render(
-      <M3Card interactive onClick={() => undefined}>
-        Card content
-      </M3Card>
-    );
-
-    const card = screen.getByRole('button');
-    expect(card).toHaveAttribute('tabIndex', '0');
-  });
-
-  it('M3Chip should have focus-visible styles', () => {
-    render(<M3Chip>Chip</M3Chip>);
-
-    const chip = screen.getByRole('button');
-    expect(chip.className).toContain('focus-visible:');
-  });
-});
-
 describe('M3 Accessibility - ARIA Labels and Roles', () => {
-  it('M3Card interactive should have role="button"', () => {
-    render(
-      <M3Card interactive onClick={() => undefined}>
-        Interactive card
-      </M3Card>
-    );
-
-    expect(screen.getByRole('button')).toBeInTheDocument();
-  });
-
-  it('M3Chip filter should have aria-pressed', () => {
-    render(
-      <M3Chip variant="filter" selected>
-        Filter chip
-      </M3Chip>
-    );
-
-    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
-  });
-
   it('M3Tabs should have role="tablist"', () => {
     render(<M3Tabs tabs={mockTabItems} activeTab="tab1" onTabChange={() => undefined} />);
 
@@ -75,50 +32,9 @@ describe('M3 Accessibility - ARIA Labels and Roles', () => {
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
   });
-
-  it('M3Slider should have proper ARIA attributes', () => {
-    render(<M3Slider value={[50]} min={0} max={100} aria-label="Volume" />);
-
-    const slider = screen.getByRole('slider');
-    expect(slider).toHaveAttribute('aria-valuenow', '50');
-    expect(slider).toHaveAttribute('aria-valuemin', '0');
-    expect(slider).toHaveAttribute('aria-valuemax', '100');
-  });
 });
 
 describe('M3 Accessibility - Keyboard Navigation', () => {
-  it('M3Card interactive should respond to Enter key', () => {
-    const handleClick = vi.fn();
-
-    render(
-      <M3Card interactive onClick={handleClick}>
-        Keyboard accessible card
-      </M3Card>
-    );
-
-    const card = screen.getByRole('button');
-    card.focus();
-    fireEvent.keyDown(card, { key: 'Enter', code: 'Enter' });
-
-    expect(handleClick).toHaveBeenCalled();
-  });
-
-  it('M3Card interactive should respond to Space key', () => {
-    const handleClick = vi.fn();
-
-    render(
-      <M3Card interactive onClick={handleClick}>
-        Keyboard accessible card
-      </M3Card>
-    );
-
-    const card = screen.getByRole('button');
-    card.focus();
-    fireEvent.keyDown(card, { key: ' ', code: 'Space' });
-
-    expect(handleClick).toHaveBeenCalled();
-  });
-
   it('M3Tabs 只有当前标签在 Tab 序列里,方向键在标签间移动焦点并切换', () => {
     const onTabChange = vi.fn();
     render(<M3Tabs tabs={mockTabItems} activeTab="tab1" onTabChange={onTabChange} />);
@@ -158,15 +74,5 @@ describe('M3 Accessibility - Keyboard Navigation', () => {
 
     fireEvent.keyDown(screen.getAllByRole('tab')[1], { key: 'Delete' });
     await waitFor(() => expect(onTabClose).toHaveBeenCalledWith('tab2'));
-  });
-
-  it('M3Chip should activate with click', () => {
-    const handleClick = vi.fn();
-
-    render(<M3Chip onClick={handleClick}>Clickable chip</M3Chip>);
-
-    fireEvent.click(screen.getByRole('button'));
-
-    expect(handleClick).toHaveBeenCalled();
   });
 });

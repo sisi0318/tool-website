@@ -10,7 +10,7 @@ import {
   Copy, Plus, Trash2, Key, Clock, Shield,
   QrCode, Eye, EyeOff, RefreshCw
 } from "lucide-react"
-import { M3CircularProgress } from "@/components/m3/progress"
+import { CircularProgress } from "@/components/ui/circular-progress"
 import { useToolActivity } from "@/components/tool-activity"
 import { createClientId } from "@/lib/client-id"
 import { copyTextToClipboard } from "@/lib/clipboard"
@@ -340,9 +340,9 @@ export default function TOTPPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap sm:justify-end">
                       {/* 倒计时 */}
                       <div className="relative w-10 h-10 flex items-center justify-center">
-                        <M3CircularProgress
+                        <CircularProgress
                           value={((timeLeft[account.id] ?? account.period) / Math.max(account.period, 1)) * 100}
-                          size="default"
+                          aria-label={t("secondsRemaining")}
                         />
                         <span className="absolute text-xs font-medium text-[var(--md-sys-color-on-surface)]">
                           {timeLeft[account.id] ?? account.period}

@@ -1,22 +1,9 @@
 /**
  * Material You 3 Expressive Components
  *
- * 只导出仍在使用的组件。此前这里还导出 button / dialog / input / switch /
- * search / layout / navigation / context-menu / lazy-content / pull-to-refresh,
- * 但全站零引用（表单与对话框统一走 components/ui/ 的 shadcn 实现），已删除。
+ * 只剩工具工作台在用的两个组件。card / chip / slider / progress 已换成
+ * components/ui 的实现并删除;表单与对话框统一走 components/ui/ 的 shadcn 实现。
  */
-
-// Card component
-export * from './card';
-
-// Chip component
-export * from './chip';
-
-// Progress components
-export * from './progress';
-
-// Slider component
-export * from './slider';
 
 // Tabs components
 export * from './tabs';

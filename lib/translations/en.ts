@@ -2570,6 +2570,7 @@ totp: {
   issuerPlaceholder: "For example: Google",
   secret: "Secret (Base32)",
   secretPlaceholder: "For example: JBSWY3DPEHPK3PXP",
+  secondsRemaining: "Seconds remaining",
   or: "or",
   importFromUri: "Import an otpauth:// URI",
   import: "Import",

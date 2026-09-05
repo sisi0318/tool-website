@@ -824,65 +824,6 @@
  * M3 Progress Indicator Animations
  * ============================================ */
 
-/* Linear Progress - Indeterminate animation */
-@keyframes m3-linear-progress-indeterminate {
-  0% {
-    left: -35%;
-    width: 35%;
-  }
-
-  60% {
-    left: 100%;
-    width: 35%;
-  }
-
-  100% {
-    left: 100%;
-    width: 35%;
-  }
-}
-
-/* Circular Progress - Rotation animation */
-@keyframes m3-circular-progress-rotate {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Circular Progress - Dash animation for indeterminate state */
-@keyframes m3-circular-progress-dash {
-  0% {
-    stroke-dasharray: 1, 150;
-    stroke-dashoffset: 0;
-  }
-
-  50% {
-    stroke-dasharray: 90, 150;
-    stroke-dashoffset: -35;
-  }
-
-  100% {
-    stroke-dasharray: 90, 150;
-    stroke-dashoffset: -124;
-  }
-}
-
-/* Animation utility classes */
-.animate-m3-linear-progress-indeterminate {
-  animation: m3-linear-progress-indeterminate 2s var(--md-sys-motion-easing-emphasized) infinite;
-}
-
-.animate-m3-circular-progress-rotate {
-  animation: m3-circular-progress-rotate 2s linear infinite;
-}
-
-.animate-m3-circular-progress-dash {
-  animation: m3-circular-progress-dash 1.5s var(--md-sys-motion-easing-emphasized) infinite;
-}
 
 /* ============================================
  * M3 Focus Ring Specifications
@@ -1026,17 +967,6 @@
   .animate-ripple {
     animation: none !important;
     opacity: 0.12 !important;
-  }
-
-  .animate-m3-linear-progress-indeterminate {
-    animation: none !important;
-    width: 50% !important;
-    left: 25% !important;
-  }
-
-  .animate-m3-circular-progress-rotate,
-  .animate-m3-circular-progress-dash {
-    animation: none !important;
   }
 
   /* Disable hover transforms */

@@ -22,7 +22,7 @@ import {
   Settings, Zap, FileImage, CheckCircle2,
   Minimize2, Maximize2
 } from "lucide-react"
-import { M3Slider } from "@/components/m3/slider"
+import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
 
 interface CompressedImage {
@@ -612,7 +612,7 @@ export default function ImageCompressPage() {
                   <Label className="text-[var(--md-sys-color-on-surface)]">{t("quality")}</Label>
                   <span className="text-sm font-medium text-[var(--md-sys-color-primary)]">{quality}%</span>
                 </div>
-                <M3Slider
+                <Slider
                   aria-label={t("quality")}
                   value={[quality]}
                   onValueChange={(values) => setQuality(values[0])}

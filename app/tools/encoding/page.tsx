@@ -16,11 +16,10 @@ import {
   Zap,
 } from "lucide-react"
 
-import { M3Card } from "@/components/m3/card"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -198,7 +197,7 @@ export default function EncodingPage() {
         </p>
       </div>
 
-      <M3Card variant="outlined" className="mb-5 overflow-hidden sm:mb-6">
+      <Card className="mb-5 overflow-hidden border-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-none sm:mb-6">
         <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)] md:p-5">
           <div>
             <Label className="mb-2 block text-sm font-medium">{t("direction")}</Label>
@@ -330,10 +329,10 @@ export default function EncodingPage() {
             </div>
           )}
         </div>
-      </M3Card>
+      </Card>
 
       <div className="mb-5 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:gap-6">
-        <M3Card variant="elevated" className="min-w-0 flex-1">
+        <Card className="min-w-0 flex-1 bg-gradient-to-br from-[var(--md-sys-color-surface-container-low)] to-[var(--md-sys-color-surface-container)] shadow-lg">
           <div className="flex h-full flex-col px-3 pb-3 pt-4 sm:px-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
@@ -421,7 +420,7 @@ export default function EncodingPage() {
               </Button>
             </div>
           </div>
-        </M3Card>
+        </Card>
 
         <div className="flex shrink-0 flex-row items-center justify-center gap-2 lg:w-28 lg:flex-col">
           {autoMode ? (
@@ -465,10 +464,7 @@ export default function EncodingPage() {
           </Button>
         </div>
 
-        <M3Card
-          variant="filled"
-          className="min-w-0 flex-1 border border-[var(--md-sys-color-outline-variant)]/50 bg-[var(--md-sys-color-surface-container)]"
-        >
+        <Card className="min-w-0 flex-1 border border-[var(--md-sys-color-outline-variant)]/50 bg-[var(--md-sys-color-surface-container)] shadow-none">
           <div className="flex h-full flex-col px-3 pb-3 pt-4 sm:px-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
@@ -535,10 +531,10 @@ export default function EncodingPage() {
               </Button>
             </div>
           </div>
-        </M3Card>
+        </Card>
       </div>
 
-      <M3Card variant="outlined">
+      <Card className="border-2 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] shadow-none">
         <CardHeader className="pb-3 pt-4">
           <div className="flex items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -584,7 +580,7 @@ export default function EncodingPage() {
             </div>
           </CardContent>
         )}
-      </M3Card>
+      </Card>
     </div>
   )
 }
