@@ -620,13 +620,19 @@ export default function ProtobufTool() {
 
                   <TabsContent value="text" className="space-y-4">
                     <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm">
-                        {t("inputEncoding")}
-                        <select aria-label={t("inputEncoding")} value={inputEncoding} onChange={(event) => setInputEncoding(event.target.value as typeof inputEncoding)} className="h-9 rounded-lg border border-md-outline bg-md-surface px-2 text-md-on-surface">
-                          <option value="auto">{t("autoEncoding")}</option><option value="hex">Hex</option><option value="base64">Base64</option>
-                        </select>
-                      </label>
-                      <Label htmlFor="input-data">{t("input")}</Label>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Label htmlFor="input-data">{t("input")}</Label>
+                        <Select value={inputEncoding} onValueChange={(value) => setInputEncoding(value as typeof inputEncoding)}>
+                          <SelectTrigger aria-label={t("inputEncoding")} className="h-8 w-auto min-w-0 gap-1.5 rounded-full border-0 bg-transparent px-2.5 py-1 text-xs text-md-on-surface-variant shadow-none hover:bg-md-surface-container-high focus:ring-1 focus:ring-offset-0">
+                            <SelectValue>{inputEncoding === "auto" ? t("autoEncodingShort") : inputEncoding === "hex" ? "Hex" : "Base64"}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent align="end">
+                            <SelectItem value="auto">{t("autoEncoding")}</SelectItem>
+                            <SelectItem value="hex">Hex</SelectItem>
+                            <SelectItem value="base64">Base64</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Textarea
                         id="input-data"
                         placeholder={t("inputPlaceholder")}

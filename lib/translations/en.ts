@@ -1553,6 +1553,7 @@ protobuf: {
   schemaRequired: "Provide a valid .proto definition and select a message type first.",
   inputEncoding: "Input encoding",
   autoEncoding: "Auto (Hex first)",
+  autoEncodingShort: "Auto-detect",
   inspector: {
     title: "Field and Hex inspector",
     help: "Without a schema, field types are inferred. Changing an interpretation updates the JSON above and preserves the raw bytes. Large integers and non-finite floats appear as strings.",

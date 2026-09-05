@@ -1555,6 +1555,7 @@ protobuf: {
   schemaRequired: "请先提供有效的 .proto 定义并选择消息类型。",
   inputEncoding: "输入编码",
   autoEncoding: "自动识别（优先 Hex）",
+  autoEncodingShort: "自动识别",
   inspector: {
     title: "字段与 Hex 检查器",
     help: "无 Schema 时，字段类型只是推断。切换解释方式会更新上方 JSON，原始字节保持不变；大整数和非有限浮点数以字符串显示。",
