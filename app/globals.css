@@ -662,6 +662,17 @@
   }
 }
 
+@keyframes home-mascot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .home-mascot-art {
+    animation: home-mascot-float 7s ease-in-out infinite;
+  }
+}
+
 .home-grid {
   background-image:
     linear-gradient(to right, color-mix(in srgb, var(--md-sys-color-outline-variant) 28%, transparent) 1px, transparent 1px),

@@ -165,6 +165,9 @@ journey: {
   stepCount: "{count} steps",
 },
 home: {
+  mascotName: "Stacky",
+  mascotDescription: "Your local tool companion",
+  mascotAlt: "Stacky, the tool companion: a green-haired anime character with a leaf hair clip and matcha jacket, holding a code terminal and waving, surrounded by tool nodes and a privacy shield.",
   eyebrow: "40+ practical tools, ready when you are",
   titlePrefix: "Small tasks feel lighter with one ",
   titleHighlight: "handy tool station",

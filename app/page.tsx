@@ -5,11 +5,9 @@ import Link from "next/link"
 import {
   ArrowRight,
   Braces,
-  Check,
   FileImage,
   Fingerprint,
   LockKeyhole,
-  Search,
   ShieldCheck,
   Sparkles,
   Workflow,
@@ -17,6 +15,7 @@ import {
 } from "lucide-react"
 
 import Header from "@/components/header"
+import { HomeMascot } from "@/components/home-mascot"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -119,68 +118,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-xl lg:mx-0 lg:justify-self-end">
-            <div className="absolute -inset-5 -rotate-2 rounded-[2.5rem] bg-[var(--md-sys-color-primary-container)]/55" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-[var(--md-sys-color-outline-variant)]/80 bg-[var(--md-sys-color-surface-container-lowest)]/90 p-4 shadow-[0_24px_70px_rgba(33,65,35,0.16)] backdrop-blur-xl sm:p-6">
-              <div className="flex items-center justify-between gap-4 border-b border-[var(--md-sys-color-outline-variant)]/70 pb-4">
-                <div>
-                  <p className="text-sm font-bold text-[var(--md-sys-color-on-surface)]">{t("previewTitle")}</p>
-                  <p className="mt-1 text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("previewSubtitle")}</p>
-                </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 py-1.5 text-xs font-bold text-[var(--md-sys-color-on-secondary-container)]">
-                  <span className="h-2 w-2 rounded-full bg-[var(--md-sys-color-primary)]" />
-                  {t("available")}
-                </span>
-              </div>
-
-              <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[var(--md-sys-color-surface-container)] px-4 py-3 text-[var(--md-sys-color-on-surface-variant)]">
-                <Search className="h-5 w-5" />
-                <span className="text-sm">{t("searchExample")}</span>
-                <kbd className="ml-auto hidden rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)] px-2 py-1 text-[11px] font-semibold sm:inline">⌘ K</kbd>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                {featuredTools.slice(0, 3).map((tool, index) => {
-                  const Icon = tool.icon
-                  return (
-                    <div
-                      key={tool.id}
-                      className={`rounded-2xl border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-low)] p-4 ${index === 0 ? "col-span-2" : ""}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tool.accent}`}>
-                          <Icon className="h-5 w-5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-[var(--md-sys-color-on-surface)]">
-                            {toolsT(`${tool.translationKey}.name`)}
-                          </p>
-                          <p className="mt-0.5 truncate text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                            {t(tool.descriptionKey)}
-                          </p>
-                        </div>
-                        {index === 0 && (
-                          <span className="ml-auto flex h-7 w-7 items-center justify-center rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]">
-                            <Check className="h-4 w-4" />
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="mt-4 rounded-2xl bg-[var(--md-sys-color-inverse-surface)] p-4 text-[var(--md-sys-color-inverse-on-surface)]">
-                <div className="flex items-center gap-3 text-xs font-semibold sm:text-sm">
-                  <span className="rounded-lg bg-white/10 px-2.5 py-1.5">Text</span>
-                  <ArrowRight className="h-4 w-4 opacity-60" />
-                  <span className="rounded-lg bg-white/10 px-2.5 py-1.5">SHA-256</span>
-                  <ArrowRight className="h-4 w-4 opacity-60" />
-                  <span className="truncate text-[var(--md-sys-color-inverse-primary)]">2cf24dba…</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HomeMascot
+            alt={t("mascotAlt")}
+            name={t("mascotName")}
+            description={t("mascotDescription")}
+          />
         </div>
       </section>
 
