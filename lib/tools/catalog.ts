@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "pdf", translationKey: "pdfTools", category: "developer",
+    seo: { title: "PDF 页面工具", description: "浏览器本地合并、拆分、选择、重排、旋转 PDF 页面并添加页码，支持 PNG/JPEG 图片转 PDF、逐页预览和批量下载。" },
+    features: [["PDF 合并 / 拆分", "Merge documents or split selected pages into groups"], ["PDF 重排 / 旋转", "Reorder, select and rotate pages with preview"], ["图片转 PDF", "PNG/JPEG and EXIF orientation"], ["PDF 页码", "Page numbers aligned to rotated and cropped pages"]],
+  },
+  {
     id: "sqlite", translationKey: "sqliteTools", category: "developer",
     seo: { title: "SQLite 文件查看器", description: "在浏览器本地打开 SQLite 数据库，浏览表、视图、索引和结构，执行只读 SQL，预览 BLOB 并导出 CSV 或 JSON。" },
     features: [["SQLite 数据库", "Local database files, tables, views and indexes"], ["只读 SQL", "Bounded worker queries with exact 64-bit integers"], ["BLOB / 数据导出", "Binary preview, CSV and JSON result export"]],

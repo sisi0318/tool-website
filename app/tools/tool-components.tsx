@@ -66,6 +66,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  pdf: { icon: FileText, load: dynamic(() => import("./pdf/page"), { ssr: false }) },
   sqlite: { icon: Database, load: dynamic(() => import("./sqlite/page"), { ssr: false }) },
   "binary-codec": { icon: Binary, load: dynamic(() => import("./binary-codec/page"), { ssr: false }) },
   url: { icon: Link2, load: dynamic(() => import("./url/page"), { ssr: false }) },

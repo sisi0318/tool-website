@@ -45,6 +45,7 @@ import { registerCurrencyAdapter } from "./currency"
 import { registerBmiAdapter } from "./bmi"
 import { registerDeviceInfoAdapter } from "./device-info"
 import { registerOfficeViewerAdapter } from "./office-viewer"
+import { registerPdfAdapters } from "./pdf"
 import { registerTimeAdapter } from "./time"
 import { registerBase64ToFileAdapter } from "./base64-to-file"
 import { registerFileToBase64Adapter } from "./file-to-base64"
@@ -161,6 +162,7 @@ export function registerAllAdapters(): void {
   // Viewer (6)
   safeRegister("device-info", registerDeviceInfoAdapter)
   safeRegister("office-viewer", registerOfficeViewerAdapter)
+  safeRegister("pdf", registerPdfAdapters)
   safeRegister("time", registerTimeAdapter)
   safeRegister("string-preview", registerStringPreviewAdapter)
   safeRegister("json-preview", registerJsonPreviewAdapter)

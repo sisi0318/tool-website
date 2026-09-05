@@ -133,6 +133,8 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
   if (valueType === "bytes") {
     const mime = typeof Blob !== "undefined" && value instanceof Blob ? value.type : ""
     const filename = typeof File !== "undefined" && value instanceof File ? value.name : ""
+    if (/\.pdf$/i.test(filename) || mime === "application/pdf") pushEntry({ tool: "pdf", label: "Inspect PDF pages", config: { operation: "inspect" }, outputPort: "info", score: 110 })
+    if (["image/png", "image/jpeg"].includes(mime)) pushEntry({ tool: "images-to-pdf", label: "Image to PDF", outputPort: "file", score: 65 })
     if (/\.(sqlite|sqlite3|db|db3|s3db)$/i.test(filename) || mime === "application/vnd.sqlite3") pushEntry({ tool: "sqlite", label: "Inspect SQLite database", config: { operation: "inspect" }, outputPort: "result", score: 110 })
     if (/\.(cbor|msgpack|mpk)$/i.test(filename) || ["application/cbor", "application/msgpack", "application/x-msgpack"].includes(mime)) {
       pushEntry({ tool: "binary-codec-file", label: "Decode MessagePack / CBOR file", config: { format: /\.cbor$/i.test(filename) || mime === "application/cbor" ? "cbor" : "msgpack" }, outputPort: "value", score: 110 })

@@ -32,3 +32,29 @@ export function parsePdfSelection(selection: string, count: number): number[] {
   }
   return pages
 }
+export function pdfImageDimensions(bytes: Uint8Array): { width: number; height: number; format: "png" | "jpeg" } {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  let width = 0, height = 0, format: "png" | "jpeg"
+  if (bytes.length >= 33 && [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => bytes[index] === value) && String.fromCharCode(...bytes.subarray(12, 16)) === "IHDR") {
+    width = view.getUint32(16); height = view.getUint32(20); format = "png"
+  } else if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    format = "jpeg"
+    let position = 2
+    const frames = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf])
+    while (position + 3 < bytes.length) {
+      if (bytes[position++] !== 0xff) throw new PdfToolError("invalidImage")
+      while (bytes[position] === 0xff) position++
+      const marker = bytes[position++]
+      if (marker === 0xda || marker === 0xd9) break
+      if (marker === 0x01 || marker >= 0xd0 && marker <= 0xd8) continue
+      if (position + 2 > bytes.length) throw new PdfToolError("invalidImage")
+      const length = view.getUint16(position)
+      if (length < 2 || position + length > bytes.length) throw new PdfToolError("invalidImage")
+      if (frames.has(marker)) { if (length < 8) throw new PdfToolError("invalidImage"); height = view.getUint16(position + 3); width = view.getUint16(position + 5); break }
+      position += length
+    }
+  } else throw new PdfToolError("invalidImage")
+  if (!width || !height) throw new PdfToolError("invalidImage")
+  if (width * height > PDF_LIMITS.imagePixels) throw new PdfToolError("imageLimit")
+  return { width, height, format }
+}
