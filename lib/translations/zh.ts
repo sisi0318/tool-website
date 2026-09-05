@@ -2317,6 +2317,7 @@ regex: {
   waitingForInput: "等待输入",
   regexError: "正则表达式错误",
   iterationLimit: "正则表达式执行次数过多，可能存在无限循环",
+  regexTimeout: "正则执行超时（2 秒），很可能存在灾难性回溯，请简化表达式",
   matches: "匹配结果",
   noMatches: "无匹配结果",
   matchCount: "匹配数量",

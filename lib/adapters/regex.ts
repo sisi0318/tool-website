@@ -1,6 +1,7 @@
 import { Regex } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { RegexTimeoutError, runRegex } from "../regex-runner"
 
 export const regexAdapter: ToolAdapter = {
   type: "regex",
@@ -60,35 +61,24 @@ export const regexAdapter: ToolAdapter = {
       throw new Error("Pattern too long (max 1000 characters)")
     }
 
-    let regex: RegExp
+    // 在 Worker 里执行并带超时,灾难性回溯不会拖死画布所在的主线程
     try {
-      regex = new RegExp(pattern, flags)
-    } catch (error) {
-      throw new Error(`Invalid regex: ${error instanceof Error ? error.message : String(error)}`)
-    }
-
-    try {
-      const matches: string[] = []
-      let match: RegExpExecArray | null
-      const maxMatches = 10000
-      let count = 0
-
-      while ((match = regex.exec(text)) !== null) {
-        matches.push(match[0])
-        if (!flags.includes("g")) break
-        if (match[0].length === 0) {
-          regex.lastIndex++
-        }
-        if (++count >= maxMatches) break
-      }
-
-      const replaced = replacement ? text.replace(regex, replacement) : text
-
+      const result = await runRegex({
+        pattern,
+        flags,
+        text,
+        replacement: replacement || undefined,
+        maxMatches: 10000,
+      })
       return {
-        matches,
-        test: replaced,
+        matches: result.matches.map((match) => match.match),
+        test: result.replaced ?? text,
       }
     } catch (error) {
+      if (error instanceof RegexTimeoutError) throw error
+      if (error instanceof SyntaxError) {
+        throw new Error(`Invalid regex: ${error.message}`)
+      }
       throw new Error(`Regex execution failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   },

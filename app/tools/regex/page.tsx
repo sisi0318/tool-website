@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
+import { RegexTimeoutError, runRegex } from "@/lib/regex-runner"
 import { downloadBlob } from "@/lib/object-url"
 import { 
   Search, Replace, Copy, Download, Upload, History, 
@@ -285,7 +286,7 @@ export default function RegexTester() {
     setHistory(prev => [historyItem, ...prev.slice(0, 49)]) // 保留最近50条
   }, [])
 
-  const testRegex = useCallback(() => {
+  const testRegex = useCallback(async () => {
     setError(null)
     setMatches([])
     setIsValid(true)
@@ -293,81 +294,44 @@ export default function RegexTester() {
 
     if (!pattern || !testText) return
 
+    // 交给 Worker 执行并带超时:灾难性回溯不会再冻结整个标签页
     try {
-      const startTime = performance.now()
       const flagsStr = getFlagsString()
-      const regex = new RegExp(pattern, flagsStr)
-      
-      const results: RegexMatch[] = []
+      const result = await runRegex({ pattern, flags: flagsStr, text: testText })
 
-      if (flags.global) {
-        let match
-        let iterationCount = 0
-        const maxIterations = 10000 // 防止无限循环
-
-        while ((match = regex.exec(testText)) !== null && iterationCount < maxIterations) {
-          results.push({
-            index: match.index,
-            match: match[0],
-            groups: match.slice(1),
-            namedGroups: match.groups,
-            length: match[0].length
-          })
-
-          iterationCount++
-          
-          // 防止无限循环
-          if (match.index === regex.lastIndex) {
-            regex.lastIndex++
-          }
-        }
-
-        if (iterationCount >= maxIterations) {
-          setError(t("iterationLimit"))
-          setIsValid(false)
-          return
-        }
-      } else {
-        const match = regex.exec(testText)
-        if (match) {
-          results.push({
-            index: match.index,
-            match: match[0],
-            groups: match.slice(1),
-            namedGroups: match.groups,
-            length: match[0].length
-          })
-        }
+      if (result.hitIterationLimit) {
+        setError(t("iterationLimit"))
+        setIsValid(false)
+        return
       }
 
-      const endTime = performance.now()
-      setExecutionTime(endTime - startTime)
-      setMatches(results)
-
-      // 添加到历史记录
-      addToHistory(pattern, getFlagsString(), results.length)
-      
+      setExecutionTime(result.durationMs)
+      setMatches(result.matches)
+      addToHistory(pattern, flagsStr, result.matches.length)
     } catch (err) {
-      const errorMessage = (err as Error).message
-      setError(errorMessage)
+      setError(err instanceof RegexTimeoutError ? t("regexTimeout") : (err as Error).message)
       setIsValid(false)
     }
-  }, [pattern, testText, flags, getFlagsString, t, addToHistory])
+  }, [pattern, testText, getFlagsString, t, addToHistory])
 
   // 执行替换
-  const performReplace = useCallback(() => {
+  const performReplace = useCallback(async () => {
     if (!pattern || !testText) {
       setReplaceResult("")
       return
     }
 
     try {
-      const flagsStr = getFlagsString()
-      const regex = new RegExp(pattern, flagsStr)
-      const result = testText.replace(regex, replaceText)
-      setReplaceResult(result)
+      const result = await runRegex({
+        pattern,
+        flags: getFlagsString(),
+        text: testText,
+        replacement: replaceText,
+      })
+      setReplaceResult(result.replaced ?? "")
     } catch (err) {
-      setReplaceResult(`${t("replaceFailed")}: ${(err as Error).message}`)
+      const message = err instanceof RegexTimeoutError ? t("regexTimeout") : (err as Error).message
+      setReplaceResult(`${t("replaceFailed")}: ${message}`)
     }
   }, [pattern, testText, replaceText, getFlagsString, t])
 
@@ -380,7 +344,7 @@ export default function RegexTester() {
   // 自动执行测试
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      testRegex()
+      void testRegex()
     }, 300)
 
     return () => clearTimeout(debounceTimer)
@@ -390,7 +354,7 @@ export default function RegexTester() {
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (replaceText !== undefined) {
-        performReplace()
+        void performReplace()
       }
     }, 300)
 

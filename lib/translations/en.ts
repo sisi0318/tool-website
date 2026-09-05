@@ -2316,6 +2316,7 @@ regex: {
   waitingForInput: "Waiting for input",
   regexError: "Regular expression error",
   iterationLimit: "The expression ran too many iterations and may contain an infinite loop",
+  regexTimeout: "Regex timed out after 2s — likely catastrophic backtracking; simplify the pattern",
   matches: "Matches",
   noMatches: "No matches found",
   matchCount: "Match count",
