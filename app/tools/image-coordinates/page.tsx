@@ -369,7 +369,7 @@ export default function ImageCoordinatesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Select value={coordinateFormat} onValueChange={(v) => setCoordinateFormat(v as CoordinateFormat)}>
-                <SelectTrigger>
+                <SelectTrigger aria-label={t("coordinateFormat")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -459,7 +459,7 @@ export default function ImageCoordinatesPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Select value={manualFormat} onValueChange={(v) => setManualFormat(v as CoordinateFormat)}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("coordinateFormat")}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

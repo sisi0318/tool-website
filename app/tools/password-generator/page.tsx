@@ -159,7 +159,7 @@ export default function PasswordGeneratorPage() {
                 <div>
                   <div className="mb-3 flex items-center justify-between">
                     <Label>{t("length")}</Label>
-                    <Input type="number" min={8} max={128} value={length} onChange={(event) => setLength(Math.min(128, Math.max(8, Number(event.target.value) || 8)))} className="h-10 w-20 text-center font-mono" />
+                    <Input type="number" min={8} max={128} value={length} onChange={(event) => setLength(Math.min(128, Math.max(8, Number(event.target.value) || 8)))} aria-label={t("length")} className="h-10 w-20 text-center font-mono" />
                   </div>
                   <Slider min={8} max={128} step={1} value={[length]} onValueChange={([value]) => setLength(value)} aria-label={t("length")} />
                 </div>

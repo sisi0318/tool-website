@@ -501,7 +501,7 @@ export default function RegexTester() {
                       <div className="flex items-center gap-2">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={clearAll}>
+                            <Button variant="ghost" size="sm" onClick={clearAll} aria-label={t("clearAll")}>
                               <RotateCcw className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
@@ -509,7 +509,7 @@ export default function RegexTester() {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(pattern, t("pattern"))}>
+                            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(pattern, t("pattern"))} aria-label={t("copyPattern")}>
                               <Copy className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
@@ -538,6 +538,8 @@ export default function RegexTester() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setShowFlags(!showFlags)}
+                          aria-expanded={showFlags}
+                          aria-label={t("flagOptions")}
                         >
                           {showFlags ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </Button>
@@ -610,7 +612,7 @@ export default function RegexTester() {
                           />
                           <Label htmlFor="highlight" className="text-sm">{t("highlightMatches")}</Label>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(testText, t("testString"))}>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(testText, t("testString"))} aria-label={t("copy")}>
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
@@ -858,6 +860,7 @@ export default function RegexTester() {
                       variant="outline"
                       onClick={() => copyToClipboard(replaceResult, t("replacementResult"))}
                       disabled={!replaceResult}
+                      aria-label={t("copy")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>

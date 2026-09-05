@@ -77,7 +77,7 @@ export default function CompressionPage() {
     <div className={className}>
       <Label>{label}</Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="mt-2 min-h-11"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="mt-2 min-h-11" aria-label={label}><SelectValue /></SelectTrigger>
         <SelectContent>{items.map(([itemValue, itemLabel]) => <SelectItem key={itemValue} value={itemValue}>{itemLabel}</SelectItem>)}</SelectContent>
       </Select>
     </div>

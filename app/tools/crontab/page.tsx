@@ -160,7 +160,12 @@ function CronTimeline({ times, use24HourFormat, translate, locale }: TimelinePro
 
       <div>
         <div className="mb-2 text-sm font-medium">{translate("executionTimeline")}</div>
-        <div className="relative overflow-x-auto scrollbar-m3 pb-2">
+        <div
+          className="relative overflow-x-auto scrollbar-m3 pb-2"
+          tabIndex={0}
+          role="region"
+          aria-label={translate("executionTimeline")}
+        >
           <div className="min-w-[400px]">
             {/* SVG 时间线 */}
             <svg width="100%" height={Math.max(60, dayGroups.size * 40 + 30)} className="overflow-visible">

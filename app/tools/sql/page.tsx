@@ -57,7 +57,7 @@ export default function SqlPage() {
         <div>
           <Label>{t("dialect")}</Label>
           <Select value={dialect} onValueChange={(value) => setDialect(value as SqlDialect)}>
-            <SelectTrigger className="mt-2 min-h-11"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="mt-2 min-h-11" aria-label={t("dialect")}><SelectValue /></SelectTrigger>
             <SelectContent>{DIALECTS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
           </Select>
         </div>

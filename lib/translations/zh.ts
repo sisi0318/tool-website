@@ -1087,6 +1087,7 @@ color: {
   selectColor: "颜色选择:",
   nameDetection: "名称检测",
   formatPlaceholder: "输入 {format} 格式...",
+  clearValue: "清空",
   copiedToClipboard: "已复制到剪贴板",
 },
 imageCompress: {
@@ -1505,6 +1506,7 @@ protobuf: {
   withSchema: "使用.proto文件",
   schemalessShort: "无 Schema",
   schemalessMode: "无 Schema 模式",
+  parseModeLabel: "解析模式",
   schemaMode: "Schema 模式",
   schemaConfiguration: "Schema 配置",
   removeSchema: "移除 Schema",
@@ -2739,6 +2741,7 @@ httpTester: {
   environmentVariable: "环境变量",
   environmentVariableHelp: "可在 URL、请求头或请求体中使用",
   enableEnvironmentVariable: "启用环境变量",
+  rowEnabled: "启用此行",
   deleteEnvironmentVariable: "删除环境变量",
   unnamed: "未命名",
   variableName: "变量名",

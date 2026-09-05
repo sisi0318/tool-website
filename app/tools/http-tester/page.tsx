@@ -1264,6 +1264,7 @@ export default function HTTPTester() {
                   <div className="flex-shrink-0 w-full md:w-auto">
                     <Select value={method} onValueChange={setMethod}>
                       <SelectTrigger
+                        aria-label={t("method")}
                         className={`h-10 w-full border-0 font-medium shadow-sm transition-transform active:scale-95 md:h-12 md:w-[120px] ${getMethodColor(method)}`}
                       >
                         <SelectValue placeholder={t("method")} />
@@ -1421,6 +1422,7 @@ export default function HTTPTester() {
                           <TableRow key={param.id}>
                             <TableCell>
                               <Checkbox
+                                aria-label={t("rowEnabled")}
                                 checked={param.enabled}
                                 onCheckedChange={(checked) => updateParam(param.id, "enabled", !!checked)}
                               />
@@ -1443,7 +1445,7 @@ export default function HTTPTester() {
                             </TableCell>
                             <TableCell>
                               <Select value={param.type} onValueChange={(value) => updateParam(param.id, "type", value)}>
-                                <SelectTrigger className="h-8">
+                                <SelectTrigger className="h-8" aria-label={t("type")}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1487,6 +1489,7 @@ export default function HTTPTester() {
                           <TableRow key={header.id}>
                             <TableCell>
                               <Checkbox
+                                aria-label={t("rowEnabled")}
                                 checked={header.enabled}
                                 onCheckedChange={(checked) => updateHeader(header.id, "enabled", !!checked)}
                               />
@@ -1626,6 +1629,7 @@ export default function HTTPTester() {
                                   <TableRow key={param.id}>
                                     <TableCell>
                                       <Checkbox
+                                        aria-label={t("rowEnabled")}
                                         checked={param.enabled}
                                         onCheckedChange={(checked) => updateFormDataParam(param.id, "enabled", !!checked)}
                                       />
@@ -1670,7 +1674,7 @@ export default function HTTPTester() {
                                         onValueChange={(value) => updateFormDataParam(param.id, "type", value)}
                                         disabled={bodyType === "urlencoded"}
                                       >
-                                        <SelectTrigger className="h-8">
+                                        <SelectTrigger className="h-8" aria-label={t("type")}>
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>

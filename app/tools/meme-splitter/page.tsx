@@ -821,6 +821,7 @@ export default function MemeSplitterPage() {
                     </Label>
                     <Slider
                       id="meme-sensitivity"
+                      aria-label={t("sensitivity").replace("{value}", String(sensitivity))}
                       value={[sensitivity]}
                       onValueChange={([value]) => setSensitivity(value)}
                       min={10}
@@ -841,6 +842,7 @@ export default function MemeSplitterPage() {
                         </Label>
                         <Slider
                           id="detected-rows"
+                          aria-label={t("rowsCount").replace("{value}", String(detectedRows))}
                           value={[detectedRows]}
                           onValueChange={([value]) => setDetectedRows(value)}
                           min={1}
@@ -854,6 +856,7 @@ export default function MemeSplitterPage() {
                         </Label>
                         <Slider
                           id="detected-cols"
+                          aria-label={t("colsCount").replace("{value}", String(detectedCols))}
                           value={[detectedCols]}
                           onValueChange={([value]) => setDetectedCols(value)}
                           min={1}
@@ -881,6 +884,7 @@ export default function MemeSplitterPage() {
                     </Label>
                     <Slider
                       id="manual-rows"
+                      aria-label={t("rowsCount").replace("{value}", String(manualRows))}
                       value={[manualRows]}
                       onValueChange={([value]) => setManualRows(value)}
                       min={1}
@@ -894,6 +898,7 @@ export default function MemeSplitterPage() {
                     </Label>
                     <Slider
                       id="manual-cols"
+                      aria-label={t("colsCount").replace("{value}", String(manualCols))}
                       value={[manualCols]}
                       onValueChange={([value]) => setManualCols(value)}
                       min={1}

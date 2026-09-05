@@ -1085,6 +1085,7 @@ color: {
   selectColor: "Select color:",
   nameDetection: "Name detection",
   formatPlaceholder: "Enter {format} format...",
+  clearValue: "Clear",
   copiedToClipboard: "Copied to clipboard",
 },
 imageCompress: {
@@ -1503,6 +1504,7 @@ protobuf: {
   withSchema: "With .proto File",
   schemalessShort: "No Schema",
   schemalessMode: "Schemaless Mode",
+  parseModeLabel: "Parsing mode",
   schemaMode: "Schema Mode",
   schemaConfiguration: "Schema Configuration",
   removeSchema: "Remove Schema",
@@ -2738,6 +2740,7 @@ httpTester: {
   environmentVariable: "Environment Variable",
   environmentVariableHelp: "Use this syntax in URLs, headers, or request bodies:",
   enableEnvironmentVariable: "Enable environment variable",
+  rowEnabled: "Enable this row",
   deleteEnvironmentVariable: "Delete environment variable",
   unnamed: "unnamed",
   variableName: "Variable name",

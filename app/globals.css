@@ -15,12 +15,12 @@
      * ============================================ */
 
     /* Primary colors - Matcha Green */
-    --md-sys-color-primary: #4A8135;
+    --md-sys-color-primary: #40702E; /* 原 #4A8135 在 surface-container 上只有 4.19:1,达不到 AA 的 4.5:1 */
     /* Deep Matcha */
     --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-primary-container: #C8E6C9;
     /* Light Mint */
-    --md-sys-color-on-primary-container: #1B5E20;
+    --md-sys-color-on-primary-container: #19561D; /* 原 #1B5E20 在 inverse-primary 上 4.17:1 */
     /* Dark Forest */
 
     /* Secondary colors - Fresh Tea */
@@ -32,7 +32,7 @@
     --md-sys-color-on-secondary-container: #2E7D32;
 
     /* Tertiary colors - Sky/Teal Accent */
-    --md-sys-color-tertiary: #00897B;
+    --md-sys-color-tertiary: #007B6F; /* 原 #00897B 在 surface 上 4.22:1 */
     /* Teal */
     --md-sys-color-on-tertiary: #FFFFFF;
     --md-sys-color-tertiary-container: #B2DFDB;
@@ -141,7 +141,7 @@
     /* Light Green */
     --secondary-foreground: 120 40% 15%;
     --muted: 100 10% 94%;
-    --muted-foreground: 100 5% 45%;
+    --muted-foreground: 100 5% 38%; /* 原 45% 亮度的 #71786D 在浅色容器上只有 4.0:1 */
     --accent: 100 10% 94%;
     --accent-foreground: 120 40% 15%;
     --destructive: 0 84% 60%;
@@ -215,7 +215,7 @@
     --md-sys-color-scrim: #000000;
     --md-sys-color-inverse-surface: #E1E3DF;
     --md-sys-color-inverse-on-surface: #2F312E;
-    --md-sys-color-inverse-primary: #4A8135;
+    --md-sys-color-inverse-primary: #40702E;
 
     /* Legacy shadcn mappings */
     --background: 120 4% 8%;

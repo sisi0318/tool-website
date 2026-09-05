@@ -6,6 +6,7 @@ import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -1043,19 +1044,23 @@ export default function HashPage() {
               </div>
             </div>
 
-            <Tabs value={algorithm} onValueChange={handleAlgorithmChange}>
-              <TabsList className="grid h-auto grid-cols-1 gap-2 bg-transparent p-0 sm:grid-cols-2 md:grid-cols-3">
+            <SegmentedControl
+              value={algorithm}
+              onValueChange={handleAlgorithmChange}
+              aria-label={t("algorithm")}
+              className="grid h-auto grid-cols-1 gap-2 bg-transparent p-0 sm:grid-cols-2 md:grid-cols-3"
+            >
                 {(
                   hashCategories.find(
                     (category) => category.name === selectedCategory,
                   )?.algorithms || []
                 ).map((algo) => (
-                  <TabsTrigger
+                  <SegmentedControlItem
                     key={algo.id}
                     value={algo.id}
                     className={cn(
                       "h-auto min-h-[72px] items-start justify-start rounded-[var(--md-sys-shape-corner-large)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-4 py-3 text-left transition-colors",
-                      "data-[state=active]:border-[var(--md-sys-color-primary)] data-[state=active]:bg-[var(--md-sys-color-primary-container)] data-[state=active]:text-[var(--md-sys-color-on-primary-container)]",
+                      "data-[state=checked]:border-[var(--md-sys-color-primary)] data-[state=checked]:bg-[var(--md-sys-color-primary-container)] data-[state=checked]:text-[var(--md-sys-color-on-primary-container)]",
                     )}
                   >
                     <span className="flex min-w-0 flex-col gap-1">
@@ -1068,10 +1073,9 @@ export default function HashPage() {
                             : t("fixedOutput")}
                       </span>
                     </span>
-                  </TabsTrigger>
+                  </SegmentedControlItem>
                 ))}
-              </TabsList>
-            </Tabs>
+            </SegmentedControl>
 
             {!showAllResults && isCurrentAlgorithmConfigurable() && (
               <div className="space-y-2">

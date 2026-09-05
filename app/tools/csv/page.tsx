@@ -64,7 +64,7 @@ export default function CsvToolsPage() {
           <div>
             <Label>{t("delimiter")}</Label>
             <Select value={delimiter} onValueChange={setDelimiter}>
-              <SelectTrigger className="mt-2 min-h-11"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-2 min-h-11" aria-label={t("delimiter")}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="auto">{t("autoDetect")}</SelectItem>
                 <SelectItem value=",">{t("comma")}</SelectItem>

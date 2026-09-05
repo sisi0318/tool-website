@@ -187,6 +187,8 @@ const M3Slider = React.forwardRef<
       step = 1,
       disabled,
       onValueChange,
+      'aria-label': ariaLabel,
+      'aria-labelledby': ariaLabelledBy,
       ...props
     },
     ref
@@ -268,6 +270,8 @@ const M3Slider = React.forwardRef<
           {(localValue ?? [min]).map((val, index) => (
             <SliderPrimitive.Thumb
               key={index}
+              aria-label={ariaLabel}
+              aria-labelledby={ariaLabelledBy}
               className={cn(m3SliderThumbVariants({ size }), 'relative')}
             >
               {showValueIndicator && (

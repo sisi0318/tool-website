@@ -271,7 +271,7 @@ export default function BaseConverterPage() {
                   label={t("inputBase")}
                 />
                 <Select value={inputBase.toString()} onValueChange={(value) => setInputBase(Number(value))}>
-                  <SelectTrigger className="h-10 min-w-36 flex-1 sm:max-w-48">
+                  <SelectTrigger className="h-10 min-w-36 flex-1 sm:max-w-48" aria-label={t("inputBase")}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { JsonTreeView } from "@/components/json-tree-view"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -646,30 +647,31 @@ export default function ProtobufTool() {
           </TabsList>
         </div>
 
-        <Tabs
-          defaultValue="schemaless"
-          className="w-full"
-          onValueChange={(value) => setSchemaMode(value as "schemaless" | "schema")}
-        >
+        <div className="w-full">
           <div className="mb-6">
-            <TabsList className="grid h-12 w-full grid-cols-2 rounded-lg bg-[var(--md-sys-color-surface-container)] p-1">
-              <TabsTrigger 
-                value="schemaless" 
-                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3"
+            <SegmentedControl
+              defaultValue="schemaless"
+              onValueChange={(value) => setSchemaMode(value as "schemaless" | "schema")}
+              aria-label={t("parseModeLabel")}
+              className="grid h-12 w-full grid-cols-2 rounded-lg bg-[var(--md-sys-color-surface-container)] p-1"
+            >
+              <SegmentedControlItem
+                value="schemaless"
+                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=checked]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3"
               >
                 <Zap className="h-4 w-4" />
                 <span className="truncate text-sm sm:hidden">{t("schemalessShort")}</span>
                 <span className="hidden text-sm sm:inline">{t("schemalessMode")}</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="schema" 
-                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3"
+              </SegmentedControlItem>
+              <SegmentedControlItem
+                value="schema"
+                className="flex min-w-0 items-center justify-center gap-1 px-1 data-[state=checked]:bg-[var(--md-sys-color-surface-container-lowest)] sm:gap-2 sm:px-3"
               >
                 <Shield className="h-4 w-4" />
                 <span className="text-sm sm:hidden">Schema</span>
                 <span className="hidden text-sm sm:inline">{t("schemaMode")}</span>
-              </TabsTrigger>
-            </TabsList>
+              </SegmentedControlItem>
+            </SegmentedControl>
           </div>
 
           {schemaMode === "schema" && (
@@ -800,7 +802,7 @@ export default function ProtobufTool() {
               </CardContent>
             </Card>
           )}
-        </Tabs>
+        </div>
 
         <TabsContent value="decode" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -928,6 +928,7 @@ END:VEVENT`
                   </Label>
                   <Slider
                     id="qr-size"
+                    aria-label={t("qrSize")}
                     min={100}
                     max={500}
                     step={10}
@@ -950,6 +951,7 @@ END:VEVENT`
                       />
                       <Input
                         type="text"
+                        aria-label={t("foregroundColor")}
                         value={fgColor}
                         onChange={(e) => dispatchAppearance({ field: "fgColor", value: e.target.value })}
                         className="flex-1 h-10"
@@ -968,6 +970,7 @@ END:VEVENT`
                       />
                       <Input
                         type="text"
+                        aria-label={t("backgroundColor")}
                         value={bgColor}
                         onChange={(e) => dispatchAppearance({ field: "bgColor", value: e.target.value })}
                         className="flex-1 h-10"
@@ -1012,6 +1015,7 @@ END:VEVENT`
                         </Label>
                         <Slider
                           id="logo-size"
+                          aria-label={t("logoSize")}
                           min={10}
                           max={30}
                           step={1}
@@ -1102,6 +1106,7 @@ END:VEVENT`
                       style={{ backgroundColor: bgColor }}
                     >
                       <QRCodeSVG
+                        title={t("preview")}
                         value={qrValue || " "}
                         size={size}
                         bgColor={bgColor}
@@ -1157,6 +1162,7 @@ END:VEVENT`
                 <div className="relative">
                   <Textarea 
                     value={qrValue} 
+                    aria-label={t("encodedContent")}
                     readOnly 
                     rows={4} 
                     className="bg-[var(--md-sys-color-surface-container-low)] pr-10 text-sm"
@@ -1166,6 +1172,7 @@ END:VEVENT`
                     size="sm"
                     className="absolute right-2 top-2"
                     onClick={copyQrValue}
+                    aria-label={copied.qrvalue ? t("copied") : t("copy")}
                   >
                     {copied.qrvalue ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>

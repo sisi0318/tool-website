@@ -968,7 +968,7 @@ export default function ToolsPage() {
                     <div className="text-sm text-[var(--md-sys-color-on-surface-variant)] flex items-center mt-0.5">
                       <span>{result.toolName}</span>
                       {result.featureDescription && (
-                        <span className="ml-2 text-xs opacity-70 truncate">
+                        <span className="ml-2 text-xs truncate">
                           - {result.featureDescription}
                         </span>
                       )}
@@ -1195,7 +1195,7 @@ export default function ToolsPage() {
               }`}
             >
               {t("categories.all")}
-              <span className="text-xs opacity-70">{toolDefinitions.length}</span>
+              <span className="text-xs">{toolDefinitions.length}</span>
             </button>
             {toolsByCategory.map((category) => (
               <button
@@ -1211,7 +1211,7 @@ export default function ToolsPage() {
               >
                 <span className={`h-2 w-2 rounded-full ${category.dot}`} />
                 {t(`categories.${category.id}`)}
-                <span className="text-xs opacity-70">{category.tools.length}</span>
+                <span className="text-xs">{category.tools.length}</span>
               </button>
             ))}
           </div>

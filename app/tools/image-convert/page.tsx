@@ -206,7 +206,7 @@ export default function ImageConvertPage() {
               <div>
                 <Label>{t("outputFormat")}</Label>
                 <Select value={format} onValueChange={(value) => setFormat(value as ImageOutputFormat)}>
-                  <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-2" aria-label={t("outputFormat")}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="webp">WebP</SelectItem><SelectItem value="jpeg">JPEG</SelectItem><SelectItem value="png">PNG</SelectItem><SelectItem value="avif">AVIF</SelectItem><SelectItem value="gif">{t("gifSingleFrame")}</SelectItem>
                   </SelectContent>

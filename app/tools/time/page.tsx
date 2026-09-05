@@ -762,6 +762,7 @@ export default function TimePage() {
                           variant="ghost"
                           size="sm"
                           disabled={!currentTime}
+                          aria-label={`${t("copyTime")} (${t("unixTimestampSeconds")})`}
                           onClick={() => {
                             if (currentTime) copyToClipboard(Math.floor(currentTime.getTime() / 1000).toString(), "timestamp-sec")
                           }}
@@ -781,6 +782,7 @@ export default function TimePage() {
                           variant="ghost"
                           size="sm"
                           disabled={!currentTime}
+                          aria-label={`${t("copyTime")} (${t("timestampMilliseconds")})`}
                           onClick={() => {
                             if (currentTime) copyToClipboard(currentTime.getTime().toString(), "timestamp-ms")
                           }}

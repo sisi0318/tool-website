@@ -254,6 +254,7 @@ export default function UUIDPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => copyToClipboard(generatedUUIDs[0], "0")}
+                        aria-label={copied["0"] ? t("copied") : t("copy")}
                         className="ml-2 flex-shrink-0"
                       >
                         {copied["0"] ? (
@@ -287,6 +288,7 @@ export default function UUIDPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => copyToClipboard(uuid, index.toString())}
+                            aria-label={copied[index.toString()] ? t("copied") : t("copy")}
                             className="ml-2 flex-shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                           >
                             {copied[index.toString()] ? (

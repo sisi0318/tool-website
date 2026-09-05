@@ -87,14 +87,14 @@ export default function HexBinaryPage() {
             <div>
               <Label>{t("inputEncoding")}</Label>
               <Select value={encoding} onValueChange={(value) => setEncoding(value as BinaryEncoding)}>
-                <SelectTrigger className="mt-2 min-h-11"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-2 min-h-11" aria-label={t("inputEncoding")}><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="text">{t("text")}</SelectItem><SelectItem value="hex">Hex</SelectItem><SelectItem value="base64">Base64</SelectItem></SelectContent>
               </Select>
             </div>
             <div>
               <Label>{t("rowWidth")}</Label>
               <Select value={width} onValueChange={setWidth} disabled={operation !== "hexdump"}>
-                <SelectTrigger className="mt-2 min-h-11"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-2 min-h-11" aria-label={t("rowWidth")}><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="8">8</SelectItem><SelectItem value="16">16</SelectItem><SelectItem value="32">32</SelectItem></SelectContent>
               </Select>
             </div>

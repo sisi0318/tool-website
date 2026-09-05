@@ -348,7 +348,7 @@ export default function EncodingPage() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={pasteInput}>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={pasteInput} aria-label={t("paste")}>
                           <ClipboardPaste className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>

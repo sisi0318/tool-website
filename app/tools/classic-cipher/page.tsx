@@ -3,7 +3,7 @@
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
 
 import { useState, useRef, useEffect } from "react"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
@@ -707,19 +707,22 @@ export default function ClassicCipherPage() {
       {/* 经典密码转换 */}
           {/* 密码算法选择 */}
           <div className="mb-6">
-            <Tabs value={algorithm} onValueChange={setAlgorithm} className="w-full">
-              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-[var(--md-sys-color-surface-container)] p-1 sm:grid-cols-4 lg:grid-cols-8">
+            <SegmentedControl
+              value={algorithm}
+              onValueChange={setAlgorithm}
+              aria-label={t("algorithm")}
+              className="grid h-auto w-full grid-cols-2 gap-1 bg-[var(--md-sys-color-surface-container)] p-1 sm:grid-cols-4 lg:grid-cols-8"
+            >
               {classicAlgorithms.map((algo) => (
-                  <TabsTrigger
-                    key={algo.id}
-                    value={algo.id}
-                    className="min-w-0 whitespace-nowrap px-2 py-1.5 text-xs data-[state=active]:bg-[var(--md-sys-color-surface-container-lowest)] data-[state=active]:shadow-sm"
-                  >
+                <SegmentedControlItem
+                  key={algo.id}
+                  value={algo.id}
+                  className="min-w-0 whitespace-nowrap px-2 py-1.5 text-xs data-[state=checked]:bg-[var(--md-sys-color-surface-container-lowest)] data-[state=checked]:shadow-sm"
+                >
                   {t(`algorithms.${algo.id}`)}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+                </SegmentedControlItem>
+              ))}
+            </SegmentedControl>
 
             {/* 密码说明折叠区域 */}
             <div className="mt-4">

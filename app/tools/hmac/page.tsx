@@ -17,7 +17,7 @@ import {
   Zap,
 } from "lucide-react"
 
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -310,19 +310,22 @@ export default function HmacPage() {
 
       <section className="mb-6" aria-labelledby="hmac-algorithm-label">
         <Label id="hmac-algorithm-label" className="mb-2 block">{t("algorithm")}</Label>
-        <Tabs value={algorithm} onValueChange={setAlgorithm}>
-          <TabsList className="grid h-auto w-full grid-cols-3 gap-1 bg-[var(--md-sys-color-surface-container)] p-1 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11">
-            {HMAC_ALGORITHMS.map((item) => (
-              <TabsTrigger
-                key={item.id}
-                value={item.id}
-                className="min-w-0 whitespace-nowrap px-1.5 py-2 text-xs"
-              >
-                {item.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <SegmentedControl
+          value={algorithm}
+          onValueChange={setAlgorithm}
+          aria-labelledby="hmac-algorithm-label"
+          className="grid h-auto w-full grid-cols-3 gap-1 bg-[var(--md-sys-color-surface-container)] p-1 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11"
+        >
+          {HMAC_ALGORITHMS.map((item) => (
+            <SegmentedControlItem
+              key={item.id}
+              value={item.id}
+              className="min-w-0 whitespace-nowrap px-1.5 py-2 text-xs"
+            >
+              {item.name}
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
         {selectedAlgorithm.legacy && (
           <div className="mt-3 flex items-start gap-2 rounded-xl bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />

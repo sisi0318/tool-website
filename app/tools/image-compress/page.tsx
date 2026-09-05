@@ -613,6 +613,7 @@ export default function ImageCompressPage() {
                   <span className="text-sm font-medium text-[var(--md-sys-color-primary)]">{quality}%</span>
                 </div>
                 <M3Slider
+                  aria-label={t("quality")}
                   value={[quality]}
                   onValueChange={(values) => setQuality(values[0])}
                   min={10}
@@ -628,7 +629,7 @@ export default function ImageCompressPage() {
               <div className="space-y-2">
                 <Label className="text-[var(--md-sys-color-on-surface)]">{t("outputFormat")}</Label>
                 <Select value={outputFormat} onValueChange={setOutputFormat}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("outputFormat")}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

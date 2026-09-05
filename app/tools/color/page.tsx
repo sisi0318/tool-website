@@ -713,7 +713,7 @@ export default function ColorPickerPage() {
                       className="w-full h-32 rounded-2xl shadow-lg border-4 border-[var(--md-sys-color-surface)] transition-all duration-300"
                       style={{ backgroundColor: color }}
                     />
-                    <div className="absolute top-2 right-2 bg-[var(--md-sys-color-surface)]/90 rounded-lg px-2 py-1 text-xs font-mono">
+                    <div className="absolute top-2 right-2 bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] rounded-lg px-2 py-1 text-xs font-mono">
                       {color.toUpperCase()}
                     </div>
                   </div>
@@ -755,6 +755,7 @@ export default function ColorPickerPage() {
                             : "border-[var(--md-sys-color-outline-variant)]"
                             }`}
                           style={{ backgroundColor: paletteColor }}
+                          aria-label={paletteColor}
                           onClick={() => handleSwatchClick(paletteColor)}
                         />
                       </TooltipTrigger>
@@ -789,6 +790,7 @@ export default function ColorPickerPage() {
                               : "border-[var(--md-sys-color-outline-variant)]"
                               }`}
                             style={{ backgroundColor: recentColor }}
+                            aria-label={recentColor}
                             onClick={() => handleSwatchClick(recentColor)}
                           />
                         </TooltipTrigger>
@@ -836,7 +838,7 @@ export default function ColorPickerPage() {
                       />
                       <div className="absolute right-0 top-0 h-full flex items-center space-x-1 pr-2">
                         {format.value && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleClear(index)}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleClear(index)} aria-label={t("clearValue")}>
                             <X className="h-3 w-3" />
                           </Button>
                         )}
@@ -849,6 +851,7 @@ export default function ColorPickerPage() {
                                 className="h-6 w-6"
                                 onClick={() => handleCopy(index)}
                                 disabled={!format.value}
+                                aria-label={format.copied ? t("copied") : t("copy")}
                               >
                                 {format.copied ? <Check className="h-3 w-3 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-3 w-3" />}
                               </Button>
