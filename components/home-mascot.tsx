@@ -10,7 +10,7 @@ export function HomeMascot({ alt, name, description }: HomeMascotProps) {
   return (
     <figure className="relative mx-auto w-full max-w-[35rem] lg:mx-0 lg:justify-self-end">
       <Image
-        src="/mascot.svg?v=4"
+        src="/mascot.svg?v=5"
         alt={alt}
         width={560}
         height={560}

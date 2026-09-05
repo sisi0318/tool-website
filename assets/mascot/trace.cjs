@@ -5,6 +5,7 @@ const zlib = require('node:zlib')
 const sharp = require('sharp')
 const vtracer = require('../../node_modules/.cache/mascot-vector/node_modules/@visioncortex/vtracer')
 const settings = require('./vector-settings.json')
+const { applySitePalette } = require('./site-palette.cjs')
 
 async function main() {
   const source = path.join(__dirname, process.argv[2] || 'reference-v4.png')
@@ -113,7 +114,8 @@ async function main() {
   svg = svg.replace(/<svg\b[^>]*>/,
     `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="560" viewBox="${-padding} ${-padding} ${info.width + padding * 2} ${info.height + padding * 2}" role="img" aria-labelledby="mascot-title mascot-description">\n` +
     '<title id="mascot-title">小栈 · 工具站小助手</title>\n' +
-    '<desc id="mascot-description">原创工具站小助手小栈：白色蓬松短发、芯片发夹和薄荷青连帽外套，抱着终端平板并举起触控笔，以深蓝手绘线稿和清爽平涂绘制。</desc>')
+    '<desc id="mascot-description">原创工具站小助手小栈：奶油白蓬松短发、芯片发夹和抹茶绿连帽外套，抱着终端平板并举起触控笔，以深森林绿手绘线稿和平涂绘制。</desc>')
+  svg = applySitePalette(svg)
   if (/<image\b|data:image|base64|<script\b/i.test(svg)) throw new Error('Expected a self-contained path-only SVG')
   fs.writeFileSync(path.join(__dirname, '../../public/mascot.svg'), svg)
   console.log(JSON.stringify({
