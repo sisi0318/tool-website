@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 import { ProtobufInspector } from "./protobuf-inspector"
 import { inspectProtobuf } from "@/lib/protobuf-tools"
 import { hexToBytes } from "@/lib/binary"
+vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 
 vi.mock("@/hooks/use-translations", () => ({ useTranslations: () => (key: string) => key }))
 

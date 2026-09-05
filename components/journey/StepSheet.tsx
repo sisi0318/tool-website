@@ -7,7 +7,7 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { withDefaultConfig } from "@/lib/canvas/node-factory"
 import { getMainInputPort, getOutputPorts } from "@/lib/journey/engine"
 import type { JourneyNode } from "@/lib/journey/types"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,9 +27,10 @@ interface StepSheetProps {
   running: boolean
   onRerun: (config: Record<string, unknown>, outputPort: string) => void
   onDelete: () => void
+  creating?: boolean
 }
 
-export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete }: StepSheetProps) {
+export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete, creating = false }: StepSheetProps) {
   const t = useTranslations("journey")
   const via = node?.via ?? null
   const [draft, setDraft] = useState<Record<string, unknown>>({})
@@ -150,6 +151,7 @@ export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete
               </span>
             )}
           </DialogTitle>
+          <DialogDescription>{t(creating ? "configureNewStep" : "configureExistingStep")}</DialogDescription>
         </DialogHeader>
         <div className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
           {fields.length === 0 && ports.length <= 1 && (
@@ -180,7 +182,7 @@ export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete
           )}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
+          {!creating && <Button
             variant="outline"
             onClick={onDelete}
             disabled={running}
@@ -188,14 +190,14 @@ export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete
           >
             <Trash2 className="h-4 w-4" />
             {t("deleteStep")}
-          </Button>
+          </Button>}
           <Button
             onClick={() => onRerun(draft, outputPort || (ports[0]?.id ?? ""))}
             disabled={running || !definition}
             className="rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
           >
             {running && <LoaderCircle className="h-4 w-4 animate-spin" />}
-            {t("rerunPath")}
+            {t(creating ? "runNewStep" : "rerunPath")}
           </Button>
         </div>
       </DialogContent>

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { UtilityWorkbench } from "./utility-workbench"
+vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 
 vi.mock("@/hooks/use-translations", () => ({
   useTranslations: () => (key: string) => ({

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 
 /**
  * 独立工具页(/tools/<id>)把操作类型写回 URL,链接可以直接指向某个模式(如 ?op=decode);
@@ -221,12 +222,15 @@ export function UtilityWorkbench({
         </Card>
 
         <Card className="min-w-0 rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
-          <CardHeader className="flex-row items-center justify-between space-y-0 p-4 sm:p-6">
+          <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-4 sm:p-6">
             <CardTitle>{outputLabel ?? t("output")}</CardTitle>
+            <div className="ml-auto flex flex-wrap gap-2">
+            <SendToMenu value={output} source={title} disabled={!output || running} />
             <Button type="button" variant="outline" size="sm" onClick={copyOutput} disabled={!output} className="min-h-10 gap-2">
               {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
               {copied ? t("copied") : t("copy")}
             </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
             {copyError && (

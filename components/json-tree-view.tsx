@@ -7,6 +7,7 @@ import { useTranslations } from "@/hooks/use-translations"
 import { cn } from "@/lib/utils"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { Check, ChevronDown, ChevronRight, Copy } from "lucide-react"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 
 type JsonPrimitive = string | number | boolean | null
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
@@ -119,6 +120,7 @@ function JsonTreeNode({
               </span>
             </div>
           </div>
+          <SendToMenu value={value} source={path} compact />
           <Button
             type="button"
             variant="ghost"
@@ -160,7 +162,8 @@ function JsonTreeNode({
           <Badge variant="secondary" className="rounded-full px-2 py-0 font-mono text-[11px]">
             {getNodeSummary(value, t)}
           </Badge>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <SendToMenu value={value} source={path} compact />
             <Button
               type="button"
               variant="ghost"

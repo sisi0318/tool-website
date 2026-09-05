@@ -69,6 +69,10 @@ settings: {
   storageTheme: "Light/dark theme",
 },
 journey: {
+  transferExpired: "The transferred data expired or belongs to another tab. Send it again from the original tool.",
+  configureNewStep: "Review this step's settings and output, then run it on the current data.",
+  configureExistingStep: "Update the settings, then rerun this step and its descendant branches.",
+  runNewStep: "Run this step",
   title: "Data Journey",
   description: "Paste anything, see what it is, explore step by step — your trail becomes a shareable, reusable flow.",
   inputTitle: "Start with some data",
@@ -339,6 +343,12 @@ tools: {
   subnetTools: { name: "IP / CIDR Calculator" },
   certificateTools: { name: "Certificate & Key Inspector" },
   hexBinaryTools: { name: "Hex / Binary Viewer" },
+},
+toolTransfer: {
+  continue: "Continue", journey: "Continue in Data Journey", chooseTool: "Choose the next tool…",
+  tooLarge: "The data is too large. Transfer up to a 64 MB file or 8M text characters.", invalidValue: "This result cannot be transferred. Convert it to text, JSON or a file first.", failed: "Could not transfer the data. Try again.",
+  received: "Tool output received", draftConflict: "There is an unsaved journey draft. Starting a new journey replaces that draft with the incoming data. You can return to the current journey to continue or save it first.",
+  startNew: "Start a new journey with this data", restoreDraft: "Return to the current journey",
 },
 hash: {
   title: "Hash Calculator",

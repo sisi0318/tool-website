@@ -29,6 +29,15 @@ function renderSheet(node: JourneyNode, onRerun = vi.fn()) {
 }
 
 describe("StepSheet", () => {
+  it("configures a new step without running or offering deletion", () => {
+    registerHashAdapter()
+    const run = vi.fn()
+    render(<StepSheet open creating node={hashNode({})} running={false} onOpenChange={() => {}} onRerun={run} onDelete={() => {}} />)
+    expect(run).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: "deleteStep" })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "runNewStep" }))
+    expect(run).toHaveBeenCalledTimes(1)
+  })
   beforeEach(() => {
     clearRegistry()
     registerHashAdapter()

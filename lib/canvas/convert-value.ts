@@ -30,6 +30,7 @@ const FALSY = new Set(["false", "0", "no", "n", "off", ""])
 
 function toStringValue(value: unknown, from: DataType): string {
   if (typeof value === "string") return value
+  if (value === null && from === "json") return "null"
   if (value === null || value === undefined) return ""
   if (from === "json" || typeof value === "object") {
     try {

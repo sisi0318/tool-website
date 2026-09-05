@@ -6,7 +6,7 @@ export function inferDataType(value: unknown): DataType {
   if (typeof value === "number") return "number"
   if (typeof value === "boolean") return "boolean"
   if (typeof Blob !== "undefined" && value instanceof Blob) return "bytes"
-  if (value !== null && typeof value === "object") return "json"
+  if (value === null || typeof value === "object") return "json"
   return "string"
 }
 

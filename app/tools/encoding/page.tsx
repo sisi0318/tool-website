@@ -34,6 +34,7 @@ import {
   type EncodingType,
 } from "@/lib/encoding-tools"
 import { useTranslations } from "@/hooks/use-translations"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 
 const COMMON_ENCODING_TYPES: EncodingType[] = ["base64", "url", "hex", "unicode", "html"]
 
@@ -507,6 +508,7 @@ export default function EncodingPage() {
               placeholder={direction === "encode" ? t("encodedResultPlaceholder") : t("decodedResultPlaceholder")}
               className="min-h-[220px] flex-grow resize-y border-[var(--md-sys-color-outline-variant)] bg-transparent font-mono text-sm sm:min-h-[260px]"
             />
+            <div className="mt-3 flex"><SendToMenu value={output} source={selectedDefinition.name} disabled={!output.length} /></div>
 
             <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
               <Button

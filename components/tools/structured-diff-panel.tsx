@@ -10,6 +10,7 @@ import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { downloadBlob } from "@/lib/object-url"
 import { cn } from "@/lib/utils"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { compareStructuredText, StructuredDiffError, type StructuredDiffResult, type StructuredFormat, type StructuredValue } from "@/lib/structured-diff"
 
 const PAGE_SIZE = 50
@@ -103,6 +104,7 @@ export function StructuredDiffPanel({ left, right, onLeftChange, onRightChange, 
     {left.length + right.length >= 100_000 && <p className="text-sm text-md-on-surface-variant">{t("manualHelp")}</p>}
     {error && <div role="alert" className="break-words rounded-xl bg-md-error-container p-4 text-sm text-md-on-error-container">{error}</div>}
     {result ? <section aria-label={t("result")} className="space-y-3">
+      <SendToMenu value={result} source={t("result")} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="status" className="text-sm font-medium">{result.equal ? t("equal") : `${result.changes.length} ${t("changes")} · ${t("added")} ${result.added} · ${t("removed")} ${result.removed} · ${t("changed")} ${result.changed}`}</div>
         <div className="flex flex-wrap items-center gap-2"><span role="status" className="text-xs text-md-primary">{copyStatus}</span><Button variant="outline" size="sm" onClick={() => void copy(report)}><Copy />{t("copyReport")}</Button><Button variant="outline" size="sm" onClick={() => downloadBlob(new Blob([report], { type: "application/json" }), "structured-diff.json")}><Download />{t("downloadReport")}</Button></div>

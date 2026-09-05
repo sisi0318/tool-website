@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { DeviceFingerprint, FingerprintSignal } from "@/lib/device-fingerprint"
 import { DeviceFingerprintPanel } from "./device-fingerprint-panel"
+vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 
 const readySignal = (digest: string, note = "Ready"): FingerprintSignal => ({
   status: "ready",

@@ -64,6 +64,7 @@ describe("tree", () => {
     expect(inferDataType(42)).toBe("number")
     expect(inferDataType(true)).toBe("boolean")
     expect(inferDataType({ a: 1 })).toBe("json")
+    expect(inferDataType(null)).toBe("json")
     expect(inferDataType(new File(["x"], "x.bin"))).toBe("bytes")
   })
 
@@ -139,6 +140,18 @@ describe("engine", () => {
     const result = await applyStep("aGVsbG8=", BASE64_DECODE)
     expect(result.value).toBe("hello")
     expect(result.valueType).toBe("string")
+  })
+
+  it("uses the same port conversions as canvas for transferred JSON and scalar values", async () => {
+    registerNode({ type: "echo-value", category: "text", label: "Echo", icon: (() => null) as never,
+      config: [{ id: "input", name: "Input", dataType: "string", hasInput: true }], outputs: [{ id: "output", name: "Output", dataType: "string" }],
+      execute: async (inputs) => ({ output: inputs.input }),
+    })
+    const step = { tool: "echo-value", config: {}, outputPort: "output" }
+    expect((await applyStep({ id: 1 }, step)).value).toBe('{"id":1}')
+    expect((await applyStep(null, step)).value).toBe("null")
+    expect((await applyStep(false, step)).value).toBe("false")
+    await expect(applyStep(new File(["x"], "x.bin"), step)).rejects.toThrow(/二进制/)
   })
 
   it("fills declared defaults into a sparse step config before executing", async () => {

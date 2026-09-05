@@ -8,7 +8,9 @@ import { registerAllAdapters } from "@/lib/adapters"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { withDefaultConfig } from "@/lib/canvas/node-factory"
 import type { NodeDefinition } from "@/lib/canvas/types"
-import { applyStep, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
+import { applyStep, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
+import { isTypeCompatible } from "@/lib/canvas/validation"
+import { toolTransferIdFromHash, toolTransfers, type ToolTransfer } from "@/lib/tool-transfer"
 import {
   decodeSharedPath,
   deleteDraft,
@@ -53,6 +55,7 @@ import { StepSheet } from "@/components/journey/StepSheet"
 import { SuggestionChips } from "@/components/journey/SuggestionChips"
 import { ToolPickerSheet } from "@/components/journey/ToolPickerSheet"
 import { ValueCard } from "@/components/journey/ValueCard"
+import { TransferIntake } from "@/components/journey/TransferIntake"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
@@ -107,6 +110,8 @@ export default function JourneyPage() {
   const [stepSheetOpen, setStepSheetOpen] = useState(false)
   const [branchesOpen, setBranchesOpen] = useState(false)
   const [toolPickerOpen, setToolPickerOpen] = useState(false)
+  const [incomingTransfer, setIncomingTransfer] = useState<ToolTransfer | null>(null)
+  const [pendingStep, setPendingStep] = useState<JourneyStep | null>(null)
   const bootedRef = useRef(false)
   // 自动保存失败只提示一次,避免每次编辑都弹。
   const autosaveWarnedRef = useRef(false)
@@ -159,6 +164,8 @@ export default function JourneyPage() {
     }
     // Never auto-run: the user reviews the steps and starts explicitly.
     setPendingSharedPath(shared)
+    setIncomingTransfer(null)
+    setPendingStep(null)
     setPendingReview(review.steps)
     setDraftBehindImport(current ?? loadDraft())
     setJourney(null)
@@ -169,11 +176,51 @@ export default function JourneyPage() {
     return true
   }
 
+  const startTransfer = (transfer: ToolTransfer) => {
+    setPendingSharedPath(null)
+    setPendingReview(null)
+    setDraftBehindImport(null)
+    setIncomingTransfer(null)
+    setDialog(null)
+    setBranchesOpen(false)
+    setToolPickerOpen(false)
+    setJourney(createJourney(t("namePlaceholder"), transfer.value, transfer.source || t("trailInput")))
+    const definition = transfer.targetTool ? getNodeDefinition(transfer.targetTool) : undefined
+    const input = definition ? getMainInputPort(definition) : null
+    const canUseTool = definition && input && isTypeCompatible(transfer.valueType, input.dataType)
+    setPendingStep(canUseTool ? { tool: definition.type, config: withDefaultConfig(definition.type, {}), outputPort: resolveOutputPort(definition) } : null)
+    setStepSheetOpen(Boolean(canUseTool))
+  }
+
+  const receiveTransfer = (id: string, current: Journey | null) => {
+    const transfer = toolTransfers.take(id)
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`)
+    if (!transfer) {
+      toast({ title: t("transferExpired"), variant: "destructive" })
+      if (!current) setJourney(loadDraft())
+      return
+    }
+    const prior = current ?? loadDraft()
+    if (prior && !isJourneySaved(prior)) {
+      setIncomingTransfer(transfer)
+      setDraftBehindImport(prior)
+      setPendingSharedPath(null)
+      setPendingReview(null)
+      setStepSheetOpen(false)
+      setPendingStep(null)
+      setJourney(null)
+      return
+    }
+    startTransfer(transfer)
+  }
+
   // Mount: import a shared path from the URL hash, otherwise restore the local draft.
   useEffect(() => {
     if (bootedRef.current) return
     bootedRef.current = true
     const hash = window.location.hash
+    const transferId = toolTransferIdFromHash(hash)
+    if (transferId) { receiveTransfer(transferId, null); return }
     const shared = hash.includes("j=") ? decodeSharedPath(hash) : null
     if (shared) {
       // Only drop the hash once it decoded, so a failed import stays retryable/bookmarkable.
@@ -192,12 +239,15 @@ export default function JourneyPage() {
     const handleHashChange = () => {
       if (running) return
       const hash = window.location.hash
+      const transferId = toolTransferIdFromHash(hash)
+      if (transferId) { receiveTransfer(transferId, journey ?? draftBehindImport); return }
       if (!hash.includes("j=")) return
       const shared = decodeSharedPath(hash)
       if (!shared) return
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
       importSharedPath(shared, journey)
     }
+    if (toolTransferIdFromHash(window.location.hash)) handleHashChange()
     window.addEventListener("hashchange", handleHashChange)
     return () => window.removeEventListener("hashchange", handleHashChange)
   })
@@ -232,12 +282,13 @@ export default function JourneyPage() {
     if (running) return
     setPendingSharedPath(null)
     setPendingReview(null)
+    setIncomingTransfer(null)
     setJourney(draftBehindImport)
     setDraftBehindImport(null)
   }
 
   const applyTool = async (tool: string, config: Record<string, unknown>, outputPort: string) => {
-    if (!journey || running) return
+    if (!journey || running) return false
     const parentId = journey.activeId
     const parentValue = journey.nodes[parentId]?.value
     // 建议与工具选择器给的配置只含它们关心的字段;落成完整配置,步骤面板与分享才有据可依
@@ -250,12 +301,14 @@ export default function JourneyPage() {
           ? appendNode(prev, parentId, step, result.value, toolLabel(tool)).journey
           : prev,
       )
+      return true
     } catch (error) {
       toast({
         title: t("stepFailed"),
         description: error instanceof Error ? error.message : t("unknownError"),
         variant: "destructive",
       })
+      return false
     } finally {
       setRunning(false)
     }
@@ -263,7 +316,8 @@ export default function JourneyPage() {
 
   const handlePickTool = (definition: NodeDefinition) => {
     setToolPickerOpen(false)
-    void applyTool(definition.type, {}, resolveOutputPort(definition))
+    setPendingStep({ tool: definition.type, config: withDefaultConfig(definition.type, {}), outputPort: resolveOutputPort(definition) })
+    setStepSheetOpen(true)
   }
 
   const selectNode = (nodeId: string) => {
@@ -273,7 +327,7 @@ export default function JourneyPage() {
   const rerunFromRoot = async () => {
     if (!journey || running) return
     const root = journey.nodes[journey.rootId]
-    if (!root || root.valueMissing || root.value === null || root.value === undefined) {
+    if (!root || root.valueMissing || root.value === undefined) {
       toast({ title: t("stepFailed"), description: t("valueMissingDescription"), variant: "destructive" })
       return
     }
@@ -429,9 +483,15 @@ export default function JourneyPage() {
     setBranchesOpen(false)
     setToolPickerOpen(false)
     setPendingSharedPath(null)
+    setIncomingTransfer(null)
+    setPendingStep(null)
     setJourney(null)
     // 清掉草稿,避免下次挂载把刚被放弃的旅程复活
     deleteDraft()
+  }
+
+  if (incomingTransfer) {
+    return <TransferIntake transfer={incomingTransfer} onStart={() => startTransfer(incomingTransfer)} onRestore={handleRestoreDraft} />
   }
 
   if (!journey || !active) {
@@ -497,7 +557,7 @@ export default function JourneyPage() {
         journey={journey}
         onSelect={selectNode}
         onOpenActiveStep={() => {
-          if (active.via) setStepSheetOpen(true)
+          if (active.via) { setPendingStep(null); setStepSheetOpen(true) }
         }}
         onOpenBranches={() => setBranchesOpen(true)}
       />
@@ -505,7 +565,7 @@ export default function JourneyPage() {
       <ValueCard
         node={active}
         running={running}
-        onOpenStepSheet={() => setStepSheetOpen(true)}
+        onOpenStepSheet={() => { setPendingStep(null); setStepSheetOpen(true) }}
         onRerunFromRoot={() => void rerunFromRoot()}
       />
 
@@ -526,11 +586,15 @@ export default function JourneyPage() {
         onPick={handlePickTool}
       />
       <StepSheet
-        open={stepSheetOpen && Boolean(active.via)}
-        onOpenChange={setStepSheetOpen}
-        node={active.via ? active : null}
+        open={stepSheetOpen && Boolean(pendingStep || active.via)}
+        onOpenChange={(open) => { setStepSheetOpen(open); if (!open) setPendingStep(null) }}
+        node={pendingStep ? { ...active, via: pendingStep } : active.via ? active : null}
+        creating={Boolean(pendingStep)}
         running={running}
-        onRerun={(config, outputPort) => void rerunActiveStep(config, outputPort)}
+        onRerun={(config, outputPort) => {
+          if (!pendingStep) { void rerunActiveStep(config, outputPort); return }
+          void applyTool(pendingStep.tool, config, outputPort).then((success) => { if (success) { setPendingStep(null); setStepSheetOpen(false) } })
+        }}
         onDelete={deleteActiveStep}
       />
       <BranchDrawer

@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { StructuredDiffPanel } from "./structured-diff-panel"
+vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 
 vi.mock("@/hooks/use-translations", () => {
   const translate = (key: string) => key

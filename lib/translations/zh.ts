@@ -71,6 +71,10 @@ settings: {
   storageTheme: "深浅色主题",
 },
 journey: {
+  transferExpired: "传入的数据已过期或不在当前标签页中，请从原工具重新发送。",
+  configureNewStep: "确认本步参数和输出，点击运行后应用到当前数据。",
+  configureExistingStep: "修改参数后重新运行此步及其后续分支。",
+  runNewStep: "运行此步",
   title: "数据旅程",
   description: "粘贴任意数据，识别它是什么，一步步探索；走过的路自动成为可分享、可复用的流程。",
   inputTitle: "从一份数据开始",
@@ -341,6 +345,12 @@ tools: {
   subnetTools: { name: "IP / CIDR 计算器" },
   certificateTools: { name: "证书与密钥查看" },
   hexBinaryTools: { name: "Hex / 二进制查看" },
+},
+toolTransfer: {
+  continue: "继续处理", journey: "在数据旅程中继续", chooseTool: "选择下一步工具…",
+  tooLarge: "数据过大，最多传递 64 MB 文件或 8M 字符文本。", invalidValue: "此结果无法传递，请先转为文本、JSON 或文件。", failed: "未能传递数据，请重试。",
+  received: "接收到工具输出", draftConflict: "当前有尚未保存的旅程草稿。开始新旅程会用传入数据替换草稿；也可以返回原旅程继续处理或先保存。",
+  startNew: "用传入数据开始新旅程", restoreDraft: "返回原旅程",
 },
 hash: {
   title: "哈希计算器",

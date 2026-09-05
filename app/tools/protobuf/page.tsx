@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { JsonTreeView } from "@/components/json-tree-view"
 import { ProtobufInspector } from "@/components/tools/protobuf-inspector"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
@@ -61,6 +62,10 @@ export default function ProtobufTool() {
     if (mode !== "decode" || !rawOutputData) return rawOutputData
     try { return JSON.stringify(JSON.parse(rawOutputData), null, indentSize) } catch { return "" }
   }, [rawOutputData, mode, indentSize])
+  const encodedBytes = useMemo(() => {
+    if (mode !== "encode" || !rawOutputData) return undefined
+    try { return parseProtobufInput(rawOutputData, "hex") } catch { return undefined }
+  }, [rawOutputData, mode])
   const [root, setRoot] = useState<Protobuf.Root | null>(null)
   const [messageTypes, setMessageTypes] = useState<string[]>([])
   const [selectedMessageType, setSelectedMessageType] = useState<string>("")
@@ -728,6 +733,7 @@ export default function ProtobufTool() {
                     {t("jsonOutput")}
                   </CardTitle>
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
+                    <SendToMenu value={mode === "decode" && outputData ? JSON.parse(outputData) : null} source="Protobuf JSON" disabled={!outputData} />
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
                       {copied.main ? (
                         <Check className="mr-2 h-4 w-4 text-[var(--md-sys-color-primary)]" />
@@ -859,6 +865,7 @@ export default function ProtobufTool() {
                     {t("protobufOutput")}
                   </CardTitle>
                   <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto">
+                    <SendToMenu value={encodedBytes} source="Protobuf" filename="encoded-protobuf.bin" disabled={!encodedBytes} />
                     <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => copyToClipboard(outputData)} disabled={!outputData}>
                       {copied.main ? (
                         <Check className="mr-2 h-4 w-4 text-[var(--md-sys-color-primary)]" />

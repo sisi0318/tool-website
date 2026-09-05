@@ -9,6 +9,7 @@ import { copyTextToClipboard } from "@/lib/clipboard"
 import { bytesToHex } from "@/lib/binary"
 import { downloadBlob } from "@/lib/object-url"
 import { cn } from "@/lib/utils"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { applyProtobufInterpretations, protobufFieldsToObject, protobufInterpretationOptions, type ProtobufField, type ProtobufInspection, type ProtobufInterpretation, type ProtobufInterpretations, type ProtobufObject } from "@/lib/protobuf-tools"
 
 const FIELD_PAGE_SIZE = 50
@@ -109,6 +110,7 @@ export function ProtobufInspector({ inspection, readOnly = false, onValueChange 
             <Button variant="outline" size="sm" onClick={() => void copy(false)}><Copy />{t("copyField")}</Button>
             <Button variant="outline" size="sm" onClick={() => void copy(true)}><Copy />{t("copyPayload")}</Button>
             <Button variant="outline" size="sm" onClick={() => downloadBlob(new Blob([inspection.bytes.slice(selected.dataOffset, selected.payloadEnd)]), `protobuf-field-${selectedRow.path}.bin`)}><Download />{t("downloadPayload")}</Button>
+            <SendToMenu value={inspection.bytes.subarray(selected.dataOffset, selected.payloadEnd)} source={`Protobuf ${selectedRow.path}`} filename={`protobuf-field-${selectedRow.path}.bin`} />
             <span role="status" className="text-sm text-md-primary">{copyStatus}</span>
           </div>
           <p className="break-all font-mono text-sm text-md-on-surface-variant">{preview(selected.value)}</p>
