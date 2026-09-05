@@ -65,7 +65,9 @@ export default function TimePage() {
   const [autoRefresh, setAutoRefresh] = useState(true)
 
   // State variables
-  const [currentTime, setCurrentTime] = useState(new Date())
+  // 页面在构建时预渲染,服务端的"现在"和浏览器的"现在"必然不同;初始为 null,
+  // 挂载后才写入真实时间,否则水合时文本对不上(React #418)
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const [timeFormat, setTimeFormat] = useState<string>("12hour")
   const [dateFormat, setDateFormat] = useState<string>("full")
   const [showSeconds, setShowSeconds] = useState<boolean>(true)
@@ -228,7 +230,8 @@ export default function TimePage() {
 
   // Format time based on settings
   const formatTime = useCallback(
-    (date: Date, tzId?: string) => {
+    (date: Date | null, tzId?: string) => {
+      if (!date) return "--:--:--"
       try {
         const options: Intl.DateTimeFormatOptions = {
           hour: "numeric",
@@ -253,7 +256,8 @@ export default function TimePage() {
 
   // Format date based on settings
   const formatDate = useCallback(
-    (date: Date, tzId?: string) => {
+    (date: Date | null, tzId?: string) => {
+      if (!date) return "\u00a0"
       try {
         let options: Intl.DateTimeFormatOptions = {}
 
@@ -344,6 +348,7 @@ export default function TimePage() {
 
   // Copy current time to clipboard
   const copyCurrentTime = () => {
+    if (!currentTime) return
     const formattedTime = `${formatDate(currentTime)} ${formatTime(currentTime)}`
     copyToClipboard(formattedTime, "current")
   }
@@ -752,11 +757,14 @@ export default function TimePage() {
                     <CardContent className="p-4">
                       <div className="text-sm text-[var(--md-sys-color-on-surface-variant)] mb-1">{t("unixTimestampSeconds")}</div>
                       <div className="text-lg font-mono text-[var(--md-sys-color-on-surface)] flex items-center justify-between">
-                        <span>{Math.floor(currentTime.getTime() / 1000)}</span>
+                        <span>{currentTime ? Math.floor(currentTime.getTime() / 1000) : "-"}</span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => copyToClipboard(Math.floor(currentTime.getTime() / 1000).toString(), "timestamp-sec")}
+                          disabled={!currentTime}
+                          onClick={() => {
+                            if (currentTime) copyToClipboard(Math.floor(currentTime.getTime() / 1000).toString(), "timestamp-sec")
+                          }}
                           className="p-1 h-6 w-6"
                         >
                           {copied["timestamp-sec"] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
@@ -768,11 +776,14 @@ export default function TimePage() {
                     <CardContent className="p-4">
                       <div className="text-sm text-[var(--md-sys-color-on-surface-variant)] mb-1">{t("timestampMilliseconds")}</div>
                       <div className="text-lg font-mono text-[var(--md-sys-color-on-surface)] flex items-center justify-between">
-                        <span>{currentTime.getTime()}</span>
+                        <span>{currentTime ? currentTime.getTime() : "-"}</span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => copyToClipboard(currentTime.getTime().toString(), "timestamp-ms")}
+                          disabled={!currentTime}
+                          onClick={() => {
+                            if (currentTime) copyToClipboard(currentTime.getTime().toString(), "timestamp-ms")
+                          }}
                           className="p-1 h-6 w-6"
                         >
                           {copied["timestamp-ms"] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
