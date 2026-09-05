@@ -187,6 +187,69 @@ export function decodeProtobuf(bytes: Uint8Array): ProtobufObject {
   return inspectProtobuf(bytes).value
 }
 
+export type ProtobufInterpretation = "auto" | "uint64" | "int64" | "sint64" | "uint32" | "int32" | "sint32" | "float" | "double" | "sfixed32" | "sfixed64" | "text" | "bytes" | "message" | "packedUint" | "packedSint" | "packedFixed32" | "packedFloat" | "packedFixed64" | "packedDouble"
+export type ProtobufInterpretations = Readonly<Record<number, ProtobufInterpretation>>
+
+export function protobufInterpretationOptions(field: ProtobufField): ProtobufInterpretation[] {
+  if (field.wireType === 0) return ["auto", "uint64", "int64", "sint64", "uint32", "int32", "sint32"]
+  if (field.wireType === 1) return ["auto", "sfixed64", "double"]
+  if (field.wireType === 5) return ["auto", "sfixed32", "float"]
+  if (field.wireType === 3) return ["auto"]
+  return ["auto", "bytes", ...(field.text !== undefined ? ["text" as const] : []), ...(field.children || field.dataOffset === field.payloadEnd ? ["message" as const] : []), "packedUint", "packedSint", "packedFixed32", "packedFloat", "packedFixed64", "packedDouble"]
+}
+
+const zigzag = (value: bigint) => (value >> BigInt(1)) ^ -(value & BigInt(1))
+const finiteFloat = (value: number): number | string => Number.isFinite(value) ? value : String(value)
+
+export function interpretProtobufField(bytes: Uint8Array, field: ProtobufField, interpretation: ProtobufInterpretation): ProtobufValue {
+  if (!protobufInterpretationOptions(field).includes(interpretation)) throw new ProtobufError("invalidField", field.offset)
+  if (interpretation === "auto") return field.value
+  if (interpretation === "bytes") return bytesToBase64(bytes.subarray(field.dataOffset, field.payloadEnd))
+  if (interpretation === "text") return field.text!
+  if (interpretation === "message") return protobufFieldsToObject(field.children ?? [])
+  const cursor = { pos: field.dataOffset, end: field.payloadEnd }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  if (field.wireType === 0) {
+    const value = readVarint(bytes, cursor)
+    if (interpretation === "uint32") return Number(BigInt.asUintN(32, value))
+    if (interpretation === "int32") return Number(BigInt.asIntN(32, value))
+    if (interpretation === "sint32") return protobufInteger(zigzag(BigInt.asUintN(32, value)))
+    return protobufInteger(interpretation === "int64" ? BigInt.asIntN(64, value) : interpretation === "sint64" ? zigzag(value) : value)
+  }
+  if (interpretation === "float") return finiteFloat(view.getFloat32(cursor.pos, true))
+  if (interpretation === "double") return finiteFloat(view.getFloat64(cursor.pos, true))
+  if (interpretation === "sfixed32") return view.getInt32(cursor.pos, true)
+  if (interpretation === "sfixed64") return protobufInteger(view.getBigInt64(cursor.pos, true))
+  const values: ProtobufValue[] = []
+  while (cursor.pos < cursor.end) {
+    if (values.length >= MAX_FIELDS) throw new ProtobufError("limit", cursor.pos)
+    if (interpretation === "packedUint" || interpretation === "packedSint") {
+      const value = readVarint(bytes, cursor)
+      values.push(protobufInteger(interpretation === "packedSint" ? zigzag(value) : value))
+    } else {
+      const size = interpretation === "packedFixed64" || interpretation === "packedDouble" ? 8 : 4
+      if (cursor.end - cursor.pos < size) throw new ProtobufError("truncated", cursor.pos)
+      values.push(interpretation === "packedDouble" ? finiteFloat(view.getFloat64(cursor.pos, true))
+        : interpretation === "packedFloat" ? finiteFloat(view.getFloat32(cursor.pos, true))
+          : interpretation === "packedFixed64" ? protobufInteger(view.getBigUint64(cursor.pos, true)) : view.getUint32(cursor.pos, true))
+      cursor.pos += size
+    }
+  }
+  return values
+}
+
+/** Choices are per wire occurrence, identified by its absolute tag offset. */
+export function applyProtobufInterpretations(inspection: ProtobufInspection, choices: ProtobufInterpretations): ProtobufField[] {
+  const resolve = (fields: ProtobufField[]): ProtobufField[] => fields.map((field) => {
+    const interpretation = choices[field.offset] ?? "auto"
+    if (!protobufInterpretationOptions(field).includes(interpretation)) throw new ProtobufError("invalidField", field.offset)
+    const nested = interpretation === "message" || (interpretation === "auto" && (field.kind === "message" || field.kind === "group"))
+    const children = nested && field.children ? resolve(field.children) : field.children
+    return { ...field, children, value: nested ? protobufFieldsToObject(children ?? []) : interpretProtobufField(inspection.bytes, field, interpretation) }
+  })
+  return resolve(inspection.fields)
+}
+
 function assertSafeJson(value: unknown, depth = 0): void {
   if (depth > MAX_DEPTH) throw new ProtobufError("limit")
   if (typeof value === "number" && (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)))) {

@@ -4,10 +4,11 @@ import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
 
 import type React from "react"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { JsonTreeView } from "@/components/json-tree-view"
+import { ProtobufInspector } from "@/components/tools/protobuf-inspector"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
@@ -19,7 +20,7 @@ import { bytesToHex } from "@/lib/binary"
 import { downloadBlob } from "@/lib/object-url"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
 import type * as Protobuf from "protobufjs"
-import { decodeProtobuf, decodeProtobufWithSchema, detectProtobufInput, encodeProtobuf, encodeProtobufWithSchema, loadProtobuf, parseProtobufInput, ProtobufError } from "@/lib/protobuf-tools"
+import { inspectProtobuf, decodeProtobufWithSchema, encodeProtobuf, encodeProtobufWithSchema, loadProtobuf, parseProtobufInput, ProtobufError, type ProtobufInspection } from "@/lib/protobuf-tools"
 
 function collectMessageTypes(pb: typeof Protobuf, namespace: Protobuf.NamespaceBase): string[] {
   const messageTypes: string[] = []
@@ -45,7 +46,9 @@ export default function ProtobufTool() {
   const [protoInputMode, setProtoInputMode] = useState<"text" | "file">("text")
   const [inputMode, setInputMode] = useState<"text" | "file">("text")
   const [inputData, setInputData] = useState("")
-  const [outputData, setOutputData] = useState("")
+  const [rawOutputData, setOutputData] = useState("")
+  const [inspection, setInspection] = useState<{ data: ProtobufInspection; revision: number } | null>(null)
+  const [inputEncoding, setInputEncoding] = useState<"auto" | "hex" | "base64">("auto")
   const [jsonInput, setJsonInput] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [protoFile, setProtoFile] = useState<File | null>(null)
@@ -54,6 +57,10 @@ export default function ProtobufTool() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [indentSize, setIndentSize] = useState(4)
+  const outputData = useMemo(() => {
+    if (mode !== "decode" || !rawOutputData) return rawOutputData
+    try { return JSON.stringify(JSON.parse(rawOutputData), null, indentSize) } catch { return "" }
+  }, [rawOutputData, mode, indentSize])
   const [root, setRoot] = useState<Protobuf.Root | null>(null)
   const [messageTypes, setMessageTypes] = useState<string[]>([])
   const [selectedMessageType, setSelectedMessageType] = useState<string>("")
@@ -90,8 +97,6 @@ export default function ProtobufTool() {
     },
     [t],
   )
-
-  const detectInputFormat = detectProtobufInput
 
   // Handle file upload
   const handleFileChange = useCallback(
@@ -292,7 +297,8 @@ export default function ProtobufTool() {
     try {
       if (mode === "decode") {
         // Convert input to buffer
-        const buffer = parseProtobufInput(inputData)
+        const buffer = parseProtobufInput(inputData, inputMode === "file" ? "hex" : inputEncoding)
+        const inspected = inspectProtobuf(buffer)
 
         let decoded
         if (schemaMode === "schema" && root && selectedMessageType) {
@@ -301,12 +307,13 @@ export default function ProtobufTool() {
           decoded = decodeProtobufWithSchema(buffer, Message)
         } else {
           // Parse without schema
-          decoded = decodeProtobuf(buffer)
+          decoded = inspected.value
         }
 
         // Format the output
-        const result = JSON.stringify(decoded, null, indentSize)
+        const result = JSON.stringify(decoded)
         setOutputData(result)
+        setInspection({ data: inspected, revision: requestId })
       } else {
         // Encode JSON to Protobuf
         let encoded
@@ -321,8 +328,8 @@ export default function ProtobufTool() {
       }
     } catch (err) {
       if (requestId !== processingRequestRef.current) return
-      console.error("Protobuf processing error:", err)
       setOutputData("")
+      setInspection(null)
       setError(err instanceof ProtobufError
         ? t(`errors.${err.code}`).replace("{offset}", String(err.offset))
         : t(mode === "decode" ? "parseError" : "encodeError"))
@@ -331,12 +338,13 @@ export default function ProtobufTool() {
     }
   }, [
     inputData,
+    inputMode,
+    inputEncoding,
     jsonInput,
     mode,
     schemaMode,
     root,
     selectedMessageType,
-    indentSize,
     t,
   ])
 
@@ -347,6 +355,7 @@ export default function ProtobufTool() {
     setInputData("")
     setJsonInput("")
     setOutputData("")
+    setInspection(null)
     setFile(null)
     setError(null)
     if (fileInputRef.current) {
@@ -358,6 +367,8 @@ export default function ProtobufTool() {
   useEffect(() => {
     processingRequestRef.current += 1
     setIsProcessing(false)
+    setInspection(null)
+    setOutputData("")
     const source = mode === "decode" ? inputData : jsonInput
     if (!source) {
       setOutputData("")
@@ -604,6 +615,12 @@ export default function ProtobufTool() {
 
                   <TabsContent value="text" className="space-y-4">
                     <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm">
+                        {t("inputEncoding")}
+                        <select aria-label={t("inputEncoding")} value={inputEncoding} onChange={(event) => setInputEncoding(event.target.value as typeof inputEncoding)} className="h-9 rounded-lg border border-md-outline bg-md-surface px-2 text-md-on-surface">
+                          <option value="auto">{t("autoEncoding")}</option><option value="hex">Hex</option><option value="base64">Base64</option>
+                        </select>
+                      </label>
                       <Label htmlFor="input-data">{t("input")}</Label>
                       <Textarea
                         id="input-data"
@@ -765,6 +782,7 @@ export default function ProtobufTool() {
               </CardContent>
             </Card>
           </div>
+          {inspection && <ProtobufInspector key={inspection.revision} inspection={inspection.data} readOnly={schemaMode === "schema"} onValueChange={(value) => setOutputData(JSON.stringify(value))} />}
         </TabsContent>
 
         <TabsContent value="encode" className="space-y-6">
