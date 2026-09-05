@@ -23,6 +23,8 @@ public/workbox-*.js
 public/workbox-*.js.map
 public/worker-*.js
 public/fallback-*.js
+public/pdfjs/
+tmp/pdfs/
 # Playwright
 test-results/
 playwright-report/

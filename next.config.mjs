@@ -75,11 +75,16 @@ const withPWA = withPWAInit({
     document: '/~offline',
   },
   // 1.1MB 的社交卡片图只在分享时用到,不该进预缓存。
-  publicExcludes: ['!og.jpg'],
+  publicExcludes: ['!og.jpg', '!pdfjs/**/*'],
   // 保留框架自带的静态资源缓存规则,只是把下面这条排在前面。
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
     runtimeCaching: [
+      {
+        urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/pdfjs/'),
+        handler: 'CacheFirst',
+        options: { cacheName: 'pdf-viewer-assets', expiration: { maxEntries: 256, maxAgeSeconds: 31536000 } },
+      },
       {
         // 默认规则会把同源 /api/* 与所有跨域 GET 用 NetworkFirst 落盘,
         // 于是 IP 归属地、RDAP 注册人信息等会被写进 CacheStorage,
