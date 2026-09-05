@@ -75,7 +75,7 @@ const withPWA = withPWAInit({
     document: '/~offline',
   },
   // 1.1MB 的社交卡片图只在分享时用到,不该进预缓存。
-  publicExcludes: ['!og.png'],
+  publicExcludes: ['!og.jpg'],
   // 保留框架自带的静态资源缓存规则,只是把下面这条排在前面。
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
