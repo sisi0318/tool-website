@@ -28,6 +28,7 @@ import { registerImageCoordinatesAdapter } from "./image-coordinates"
 import { registerTextStatsAdapter } from "./text-stats"
 import { registerUnicodeAdapter } from "./unicode"
 import { registerTextLinesAdapter } from "./text-lines"
+import { registerUrlAdapter } from "./url"
 import { registerCaseConverterAdapter } from "./case-converter"
 import { registerRegexAdapter } from "./regex"
 import { registerDiffAdapter } from "./diff"
@@ -129,6 +130,7 @@ export function registerAllAdapters(): void {
   safeRegister("text-stats", registerTextStatsAdapter)
   safeRegister("unicode", registerUnicodeAdapter)
   safeRegister("text-lines", registerTextLinesAdapter)
+  safeRegister("url", registerUrlAdapter)
   safeRegister("case-converter", registerCaseConverterAdapter)
   safeRegister("regex", registerRegexAdapter)
   safeRegister("diff", registerDiffAdapter)

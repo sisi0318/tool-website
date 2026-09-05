@@ -33,6 +33,7 @@ import {
   KeyRound,
   Layers,
   ListFilter,
+  Link2,
   Lock,
   LockKeyhole,
   Network,
@@ -65,6 +66,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  url: { icon: Link2, load: dynamic(() => import("./url/page"), { ssr: false }) },
   "text-lines": { icon: ListFilter, load: dynamic(() => import("./text-lines/page"), { ssr: false }) },
   unicode: { icon: CaseSensitive, load: dynamic(() => import("./unicode/page"), { ssr: false }) },
   "base-converter": {

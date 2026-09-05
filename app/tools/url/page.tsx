@@ -1,0 +1,64 @@
+"use client"
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy, Download, Link2, Play, Plus, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SendToMenu } from "@/components/tools/send-to-menu"
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
+import { useTranslations } from "@/hooks/use-translations"
+import { useObjectUrl } from "@/hooks/use-object-url"
+import { copyTextToClipboard } from "@/lib/clipboard"
+import { buildUrl, inspectUrl, UrlToolError, URL_PROTOCOLS, URL_TOOL_LIMITS, type UrlParameter, type UrlParts } from "@/lib/url-tools"
+
+const SAMPLE = "https://例子.测试:8443/a%2Fb/%E4%B8%AD?tag=one&tag=two&q=hello+world&flag&empty=&symbol=%2B#part%202"
+export default function UrlPage() {
+  const t = useTranslations("urlTools")
+  const params = useToolRuntimeParams()
+  const booted = useRef(false)
+  const [input, setInput] = useState("")
+  const [base, setBase] = useState("")
+  const [plusAsSpace, setPlusAsSpace] = useState(true)
+  const [preserveEncoding, setPreserveEncoding] = useState(true)
+  const [spaceEncoding, setSpaceEncoding] = useState<"percent" | "plus">("percent")
+  const [parts, setParts] = useState<UrlParts | null>(null)
+  const [error, setError] = useState("")
+  const [copyStatus, setCopyStatus] = useState("")
+  const [page, setPage] = useState(0)
+  useEffect(() => { if (booted.current) return; booted.current = true; const value = params?.input ?? new URLSearchParams(window.location.search).get("input"); if (value && value.length <= 4096) setInput(value) }, [params])
+  const reset = () => { setParts(null); setError(""); setPage(0); setCopyStatus("") }
+  const parsed = useMemo(() => {
+    if (!parts) return { url: "", report: null, error: "" }
+    try { const url = buildUrl(parts, { preserveEncoding, spaceEncoding }); return { url, report: inspectUrl(url, { plusAsSpace: spaceEncoding === "plus" || plusAsSpace }), error: "" } }
+    catch (cause) { return { url: "", report: null, error: cause instanceof UrlToolError ? cause.code : "invalidUrl" } }
+  }, [parts, preserveEncoding, spaceEncoding, plusAsSpace])
+  const reportFile = useMemo(() => parsed.report ? new File([JSON.stringify(parsed.report, null, 2)], "url-report.json", { type: "application/json" }) : null, [parsed.report])
+  const reportUrl = useObjectUrl(reportFile)
+  const pages = Math.max(1, Math.ceil((parts?.parameters.length ?? 0) / 50))
+  const run = () => { try { const result = inspectUrl(input, { base, plusAsSpace }); setParts(result.parts); setError(""); setPage(0); setCopyStatus("") } catch (cause) { setParts(null); setError(cause instanceof UrlToolError ? t("errors." + cause.code) : t("errors.invalidUrl")) } }
+  const update = (patch: Partial<UrlParts>) => { setCopyStatus(""); setParts((current) => current ? { ...current, ...patch } : null) }
+  const updateParameter = (id: number, patch: Partial<UrlParameter>) => { if (parts) update({ parameters: parts.parameters.map((parameter) => parameter.id === id ? { ...parameter, ...patch } : parameter) }) }
+  const move = (index: number, delta: number) => { if (!parts) return; const parameters = [...parts.parameters]; [parameters[index], parameters[index + delta]] = [parameters[index + delta], parameters[index]]; update({ parameters }); setPage(Math.floor((index + delta) / 50)) }
+  const field = (key: "hostname" | "port" | "pathname" | "fragment" | "username" | "password") => <div className="min-w-0 space-y-2"><Label htmlFor={`url-${key}`}>{t(key)}</Label><Input id={`url-${key}`} value={parts?.[key] ?? ""} onChange={(event) => update({ [key]: event.target.value })} className="font-mono text-sm" /></div>
+  const toggle = (id: string, value: boolean, onChange: (value: boolean) => void) => <div className="flex items-center justify-between gap-3 rounded-xl bg-md-surface-container-low px-3 py-2"><Label htmlFor={`url-${id}`}>{t(id)}</Label><Switch id={`url-${id}`} checked={value} onCheckedChange={onChange} /></div>
+  return <div className="mx-auto max-w-6xl space-y-5 px-1 pb-8 sm:px-3">
+    <div className="flex items-center gap-3"><Link2 className="h-7 w-7 shrink-0 text-md-primary" /><div><h1 className="text-2xl font-semibold">{t("title")}</h1><p className="mt-1 text-sm text-md-on-surface-variant">{t("description")}</p></div></div>
+    <div className="space-y-4 rounded-2xl border border-md-outline-variant p-4"><div className="space-y-2"><Label htmlFor="url-input">{t("input")}</Label><Textarea id="url-input" value={input} onChange={(event) => { reset(); setInput(event.target.value) }} placeholder={SAMPLE} className="min-h-24 break-all font-mono text-sm" spellCheck={false} /></div><div className="grid items-end gap-3 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="url-base">{t("base")}</Label><Input id="url-base" value={base} onChange={(event) => { reset(); setBase(event.target.value) }} placeholder="https://example.com/" className="font-mono text-sm" /></div>{toggle("plusAsSpace", plusAsSpace, (value) => { reset(); setPlusAsSpace(value) })}</div><div className="flex flex-wrap gap-2"><Button disabled={!input.trim()} onClick={run}><Play />{t("parse")}</Button><Button variant="outline" onClick={() => { reset(); setInput(SAMPLE); setBase("") }}>{t("sample")}</Button><Button variant="ghost" onClick={() => { reset(); setInput("") }}><Trash2 />{t("clear")}</Button></div></div>
+    {(error || parsed.error) && <p role="alert" className="rounded-xl bg-md-error-container p-3 text-sm text-md-on-error-container">{error || t("errors." + parsed.error)}</p>}
+    {parts && <>
+      <section className="space-y-4 rounded-2xl border border-md-outline-variant p-4"><h2 className="font-semibold">{t("components")}</h2><div className="grid gap-3 sm:grid-cols-[9rem_minmax(0,1fr)_6rem]"><div className="space-y-2"><Label>{t("protocol")}</Label><Select value={parts.protocol} onValueChange={(protocol) => update({ protocol })}><SelectTrigger aria-label={t("protocol")}><SelectValue /></SelectTrigger><SelectContent>{URL_PROTOCOLS.map((protocol) => <SelectItem value={protocol} key={protocol}>{protocol}</SelectItem>)}</SelectContent></Select></div>{field("hostname")}{field("port")}</div><div className="grid gap-3 sm:grid-cols-2">{field("pathname")}{field("fragment")}</div><details><summary className="cursor-pointer text-sm text-md-on-surface-variant">{t("advanced")}</summary><div className="mt-3 grid gap-3 sm:grid-cols-2">{field("username")}{field("password")}{toggle("queryPresent", parts.queryPresent, (queryPresent) => update({ queryPresent }))}{toggle("fragmentPresent", parts.fragmentPresent, (fragmentPresent) => update({ fragmentPresent }))}</div></details><p className="text-xs leading-relaxed text-md-on-surface-variant">{t("componentHelp")}</p></section>
+      <section className="space-y-4 rounded-2xl border border-md-outline-variant p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{t("parameters")} · {parts.parameters.length}</h2><Button variant="outline" size="sm" disabled={parts.parameters.length >= URL_TOOL_LIMITS.parameters} onClick={() => { const id = parts.parameters.reduce((largest, parameter) => Math.max(largest, parameter.id), -1) + 1; update({ parameters: [...parts.parameters, { id, name: "", value: "", hasEquals: true, enabled: true }] }); setPage(Math.floor(parts.parameters.length / 50)) }}><Plus />{t("addParameter")}</Button></div><p className="text-xs leading-relaxed text-md-on-surface-variant">{t("parameterHelp")}</p>
+        {parts.parameters.slice(page * 50, (page + 1) * 50).map((parameter, offset) => { const index = page * 50 + offset; return <div className="grid gap-3 rounded-xl bg-md-surface-container-low p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" key={parameter.id}><div className="min-w-0 space-y-2"><Label htmlFor={`url-name-${parameter.id}`}>{t("name")} {index + 1}</Label><Input id={`url-name-${parameter.id}`} value={parameter.name} onChange={(event) => updateParameter(parameter.id, { name: event.target.value })} className="font-mono text-sm" /></div><div className="min-w-0 space-y-2"><Label htmlFor={`url-value-${parameter.id}`}>{t("value")} {index + 1}</Label><Input id={`url-value-${parameter.id}`} value={parameter.value} onChange={(event) => updateParameter(parameter.id, { value: event.target.value, hasEquals: true })} className="font-mono text-sm" /></div><div className="flex flex-wrap items-end gap-1"><label className="flex h-9 items-center gap-1.5 px-1 text-xs"><input type="checkbox" aria-label={`${t("enabled")} ${index + 1}`} checked={parameter.enabled} onChange={(event) => updateParameter(parameter.id, { enabled: event.target.checked })} />{t("enabled")}</label><label className="flex h-9 items-center gap-1.5 px-1 text-xs"><input type="checkbox" aria-label={`${t("hasEquals")} ${index + 1}`} checked={parameter.hasEquals} onChange={(event) => updateParameter(parameter.id, { hasEquals: event.target.checked, value: event.target.checked ? parameter.value : "" })} />=</label><Button variant="ghost" size="icon" aria-label={`${t("moveUp")} ${index + 1}`} disabled={index === 0} onClick={() => move(index, -1)}><ArrowUp /></Button><Button variant="ghost" size="icon" aria-label={`${t("moveDown")} ${index + 1}`} disabled={index + 1 === parts.parameters.length} onClick={() => move(index, 1)}><ArrowDown /></Button><Button variant="ghost" size="icon" aria-label={`${t("remove")} ${index + 1}`} onClick={() => { update({ parameters: parts.parameters.filter((item) => item.id !== parameter.id) }); setPage(Math.min(page, Math.max(0, Math.ceil((parts.parameters.length - 1) / 50) - 1))) }}><Trash2 /></Button></div></div> })}
+        <div className="flex flex-wrap items-center justify-between gap-3">{toggle("preserveEncoding", preserveEncoding, setPreserveEncoding)}<div className="flex items-center gap-2 text-xs"><Label>{t("spaceEncoding")}</Label><Select value={spaceEncoding} onValueChange={(value) => setSpaceEncoding(value as "percent" | "plus")}><SelectTrigger aria-label={t("spaceEncoding")} className="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="percent">%20</SelectItem><SelectItem value="plus">+</SelectItem></SelectContent></Select></div><div className="flex items-center gap-2 text-xs"><Button variant="ghost" size="icon" aria-label={t("previousPage")} disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft /></Button><span>{page + 1} / {pages}</span><Button variant="ghost" size="icon" aria-label={t("nextPage")} disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}><ChevronRight /></Button></div></div>
+      </section>
+      <section className="space-y-3 rounded-2xl bg-md-surface-container-low p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{t("output")}</h2><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={!parsed.url} onClick={async () => setCopyStatus(await copyTextToClipboard(parsed.url) ? t("copied") : t("copyFailed"))}><Copy />{t("copy")}</Button><SendToMenu value={parsed.url} source={t("title")} disabled={!parsed.url} />{reportUrl && reportFile && <Button variant="outline" size="sm" asChild><a href={reportUrl} download={reportFile.name}><Download />{t("downloadReport")}</a></Button>}</div></div><Textarea aria-label={t("output")} readOnly value={parsed.url} className="min-h-24 font-mono text-sm" /><span role="status" className="text-xs text-md-primary">{copyStatus}</span>
+        {parsed.report && <details><summary className="cursor-pointer text-sm">{t("decodedView")}</summary><dl className="mt-3 space-y-2 text-xs">{[[t("origin"), parsed.report.origin], [t("unicodeHost"), parsed.report.unicodeHostname], [t("decodedPath"), parsed.report.decodedPath], [t("decodedFragment"), parsed.report.decodedFragment]].map(([label, value]) => <div key={label} className="grid min-w-0 gap-1 sm:grid-cols-[9rem_minmax(0,1fr)]"><dt className="text-md-on-surface-variant">{label}</dt><dd className="break-all font-mono">{value || "—"}</dd></div>)}</dl></details>}
+        {!!parsed.report?.issues.length && <div role="alert" className="rounded-xl bg-md-error-container p-3 text-xs text-md-on-error-container"><p>{t("decodeWarning")}</p><ul className="mt-2 space-y-1">{parsed.report.issues.slice(0, 20).map((issue, index) => <li key={index}>{t(issue.field)}{issue.parameter ? ` · ${t("parameter")} ${issue.parameter}` : ""}</li>)}</ul></div>}
+      </section>
+    </>}
+  </div>
+}

@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "url", translationKey: "urlTools", category: "network",
+    seo: { title: "URL 解析与参数编辑", description: "本地解析和重新组装 URL，保留重复查询参数、顺序和原始编码，编辑主机端口路径并查看百分号解码、IDN 域名及片段。" },
+    features: [["URL 解析", "URL components, IDN, IPv6 and relative references"], ["查询参数", "Retain duplicate parameters, flags and query order"], ["URL 编辑 / 解码", "Edit and rebuild query strings without losing raw encodings"]],
+  },
+  {
     id: "text-lines", translationKey: "textLinesTools", category: "text",
     seo: { title: "文本行处理", description: "浏览器本地文本行去重、自然与精确数值排序、空白清理、添加前后缀、列提取及文本集合并集交集差集。" },
     features: [["去重 / 排序", "Deduplicate, natural and exact numeric sorting"], ["空白 / 前后缀", "Trim lines, remove blanks, add prefix and suffix"], ["列提取", "Extract and reorder delimited columns"], ["集合操作", "Union, intersection, difference and symmetric difference"]],
