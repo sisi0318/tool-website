@@ -19,6 +19,7 @@ import {
   type NodeTypes,
 } from "@xyflow/react"
 import { useCanvasStore } from "@/lib/canvas/store"
+import { useShallow } from "zustand/react/shallow"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import {
   validateConnection,
@@ -67,6 +68,8 @@ function getEventClientPosition(event: MouseEvent | TouchEvent) {
 
 export function Canvas() {
   const t = useTranslations("canvas")
+  // 只订阅画布真正用到的切片。整个 store 解构会让每次节点输出、日志、进度更新
+  // 都重渲染整张画布(含 flowNodes / flowEdges 的重新映射)。
   const {
     nodes: storeNodes,
     edges: storeEdges,
@@ -82,7 +85,24 @@ export function Canvas() {
     selectNodes,
     undo,
     redo,
-  } = useCanvasStore()
+  } = useCanvasStore(
+    useShallow((s) => ({
+      nodes: s.nodes,
+      edges: s.edges,
+      addNode: s.addNode,
+      addSubgraph: s.addSubgraph,
+      addEdge: s.addEdge,
+      updateNodePosition: s.updateNodePosition,
+      updateNodePositions: s.updateNodePositions,
+      removeNodes: s.removeNodes,
+      removeEdge: s.removeEdge,
+      selectedNodeIds: s.selectedNodeIds,
+      nodeRunning: s.nodeRunning,
+      selectNodes: s.selectNodes,
+      undo: s.undo,
+      redo: s.redo,
+    })),
+  )
   const { screenToFlowPosition, fitView, getNodes } = useReactFlow()
   const reactFlowInstance = useReactFlow()
 
@@ -157,7 +177,8 @@ export function Canvas() {
     () =>
       storeNodes.map((node) => {
         const definition = getNodeDefinition(node.type)
-        const isBasic = ["string", "number", "json", "file", "boolean"].includes(node.type)
+        // 用注册表的类别判断,新增基础节点不必再来这里补名单
+        const isBasic = definition?.category === "basic"
         return {
           id: node.id,
           type: isBasic ? "base" : "tool",
