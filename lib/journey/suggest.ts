@@ -38,7 +38,7 @@ const CURATED: Partial<Record<DetectedDataType, CuratedEntry[]>> = {
   xml: [{ tool: "xml", label: "Format XML", score: 90 }],
   timestamp: [{ tool: "time", label: "Convert timestamp", score: 90 }],
   pem: [{ tool: "certificate", label: "Inspect certificate", score: 100 }],
-  csv: [{ tool: "csv", label: "Parse CSV", score: 90 }],
+  csv: [{ tool: "tabular", label: "Query CSV rows", config: { format: "csv" }, outputPort: "rows", score: 95 }, { tool: "csv", label: "Parse CSV", score: 90 }],
   uuid: [],
   gzip: [
     {
@@ -133,6 +133,9 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
   if (valueType === "bytes") {
     const mime = typeof Blob !== "undefined" && value instanceof Blob ? value.type : ""
     const filename = typeof File !== "undefined" && value instanceof File ? value.name : ""
+    if (/\.(csv|tsv|jsonl|ndjson)$/i.test(filename) || ["text/csv", "text/tab-separated-values", "application/x-ndjson"].includes(mime)) {
+      pushEntry({ tool: "tabular-file", label: "Query CSV / JSONL file", config: { format: /\.(jsonl|ndjson)$/i.test(filename) || mime === "application/x-ndjson" ? "jsonl" : "csv" }, outputPort: "rows", score: 110 })
+    }
     if (mime === "application/zip" || /\.(zip|jar|apk|docx|xlsx|pptx)$/i.test(filename)) {
       pushEntry({ tool: "zip-directory", label: "Browse ZIP directory", outputPort: "entries", score: 110 })
     }
@@ -142,6 +145,10 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
     const curated = mime.startsWith("image/") ? BYTES_CURATED : GENERIC_BYTES
     curated.forEach((entry) => pushEntry(entry))
   } else if (typeof value === "string" && value.trim().length > 0) {
+    const sampleLines = value.slice(0, 8192).trim().split(/\r?\n/)
+    if (sampleLines.length >= 2 && sampleLines.slice(0, 2).every((line) => { try { const row: unknown = JSON.parse(line); return row !== null && typeof row === "object" && !Array.isArray(row) } catch { return false } })) {
+      pushEntry({ tool: "tabular", label: "Query JSONL logs", config: { format: "jsonl" }, outputPort: "rows", score: 2000 })
+    }
     const detection = detectData(value)
     // 按识别置信度加权:同一识别矩阵内保持相对分,不同识别按 confidence 排先后
     const ranked = [...detection.matches].sort((a, b) => b.confidence - a.confidence)

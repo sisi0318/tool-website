@@ -164,11 +164,13 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     translationKey: "csvTools",
     category: "developer",
     seo: {
-      title: "CSV 工具",
-      description: "在线 CSV/TSV 处理工具，支持与 JSON 互转、自定义分隔符与表格预览。",
+      title: "CSV / JSONL 日志工具",
+      description: "浏览器本地 CSV、TSV、JSONL 日志处理，支持筛选、排序、分组计数、错误行定位、结果导出及 JSON 互转。",
     },
     features: [
       ["CSV / TSV", "Delimited table data"],
+      ["JSONL / NDJSON", "逐行 JSON 日志"],
+      ["筛选 / 分组", "Filter, sort, select columns and count groups"],
       ["CSV / JSON", "Convert CSV and JSON"],
       ["分隔符", "Comma, tab and custom delimiter"],
     ],

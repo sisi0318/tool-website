@@ -1,18 +1,41 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 import { Table2 } from "lucide-react"
 
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
+import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { useTranslations } from "@/hooks/use-translations"
 import { processCsv, type CsvOperation, type CsvResult } from "@/lib/csv-tools"
 
 const SAMPLE = "name,language,stars\nTool Website,TypeScript,5\nCyberChef,JavaScript,5"
 
+const TabularPanel = dynamic(() => import("@/components/tools/tabular-panel"), { ssr: false })
+
 export default function CsvToolsPage() {
+  const t = useTranslations("tabular")
+  const params = useToolRuntimeParams()
+  const [mode, setMode] = useState("logs")
+  const booted = useRef(false)
+  useEffect(() => {
+    if (booted.current) return
+    booted.current = true
+    const query = new URLSearchParams(window.location.search)
+    if (params?.op || params?.input || query.has("op") || query.has("input")) setMode("convert")
+  }, [params])
+  return <>
+    <div className="mx-auto mb-4 max-w-6xl px-1 sm:px-3"><SegmentedControl aria-label={t("mode")} value={mode} onValueChange={setMode}><SegmentedControlItem value="logs">{t("logsMode")}</SegmentedControlItem><SegmentedControlItem value="convert">{t("convertMode")}</SegmentedControlItem></SegmentedControl></div>
+    <div hidden={mode !== "logs"}><TabularPanel /></div>
+    <div hidden={mode !== "convert"}><CsvConvertPage /></div>
+  </>
+}
+
+function CsvConvertPage() {
   const t = useTranslations("csvTools")
   const [input, setInput] = useState("")
   const [output, setOutput] = useState("")

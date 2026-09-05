@@ -55,6 +55,7 @@ import { registerCompressionAdapter } from "./compression"
 import { registerFileCompressionAdapters } from "./file-compression"
 import { registerXmlAdapter } from "./xml"
 import { registerCsvAdapter } from "./csv"
+import { registerTabularAdapters } from "./tabular"
 import { registerMarkdownAdapter } from "./markdown"
 import { registerSqlAdapter } from "./sql"
 import { registerJsonSchemaAdapter } from "./json-schema"
@@ -107,6 +108,7 @@ export function registerAllAdapters(): void {
   safeRegister("file-compression", registerFileCompressionAdapters)
   safeRegister("xml", registerXmlAdapter)
   safeRegister("csv", registerCsvAdapter)
+  safeRegister("tabular", registerTabularAdapters)
   safeRegister("json-schema", registerJsonSchemaAdapter)
   safeRegister("hex-binary", registerHexBinaryAdapter)
 
