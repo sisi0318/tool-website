@@ -214,6 +214,20 @@ ocrTools: {
   error_options: "识别参数无效，请检查旋转设置。", error_unsupported: "浏览器不支持本地识别所需的功能，请使用较新的浏览器。", error_model: "模型加载失败，请检查网络后重试。首次加载可能需要一些时间。", error_engine: "识别失败，请重试或裁剪图片后识别。",
   error_cancelled: "已取消识别。", error_timeout: "识别超时，请裁剪图片后重试。", error_outputLimit: "识别出的文字行数过多，请将图片分成几张后识别。",
 },
+imageRedact: {
+  title: "图片隐私打码", description: "自动标出截图中的联系方式，手动画框补充，确认后导出已覆盖像素的图片。所有识别和图片处理都在浏览器本地完成。",
+  upload: "选择图片", sample: "加载示例", clear: "清空", limits: "可拖入或粘贴 PNG / JPEG / WebP；最大 20 MB、2000 万像素。", firstFrame: "仅处理第一帧",
+  kind_phone: "手机号 / 国际号码", kind_email: "邮箱", kind_identity: "中国大陆身份证号", detect: "检测敏感内容",
+  detectHint: "检测依赖 OCR 和号码格式，可能漏检或误判。自动选区覆盖命中内容所在整行，请核对并补充姓名、头像、地址等区域。再次检测会替换自动选区，保留手动选区。",
+  phase_prepare: "正在读取图片…", phase_detect: "正在检测…", phase_render: "正在生成图片…", cancel: "取消", cancelled: "已取消，现有选区仍保留。",
+  detected: "找到 {count} 个候选区域，请逐项核对后生成图片。", noneDetected: "没有找到符合所选格式的内容，不代表图片没有隐私信息。请对照原图手动画框。",
+  error: "图片处理失败，请检查图片或重试。", errorTimeout: "处理超时，请裁剪或缩小图片后重试。", regionLimit: "最多支持 2000 个选区，请先移除多余选区。",
+  review: "核对原图与选区", zoom: "缩放", drawHint: "在图片上拖动即可画框。红色区域表示已选中；此处用于核对，生成结果后再下载。也可添加选区后用下方坐标微调。",
+  sourcePreview: "原图与打码候选区域", manual: "添加手动选区", regions: "已选择区域", selectAll: "全选", selectNone: "全不选", undo: "撤销", empty: "先检测内容，或在左侧图片上手动画框。",
+  selectRegion: "选择区域", deleteRegion: "删除区域", manualRegion: "手动选区", coordinates: "微调坐标（原图像素）", x: "左侧 X", y: "顶部 Y", width: "宽度", height: "高度",
+  color: "覆盖颜色", black: "黑色", white: "白色", format: "导出格式", exportHint: "导出会用不透明纯色覆盖所有已选区域，并重新编码图片，不保留源文件的 EXIF 等元数据。未选中的区域保持可见；PNG 保留区域外的透明度，JPEG 铺白底。",
+  apply: "确认选区并生成图片", result: "打码后的图片", download: "下载图片", resultPreview: "已将选区覆盖为纯色的图片", resultHint: "请核对整张结果图后再分享。改动选区、颜色或格式后，需要重新生成。下载仅包含合成后的图片。",
+},
 imageBatch: {
   title: "图片批量处理", description: "一次导入多张图片，批量识别文字，或压缩、缩放和转换格式。逐张处理、逐项查看结果，文件全程留在浏览器里。",
   add: "添加图片", samples: "试试三张示例", dropHint: "支持多选、拖放或粘贴图片", clear: "清空队列", limits: "支持 PNG / JPEG / WebP，最多 30 张、合计 120 MB；单张最多 20 MB / 2000 万像素。输出合计最多 120 MB。动态图片仅处理首帧。",
@@ -263,6 +277,7 @@ imageVectorTools: {
   error_cancelled: "已取消转换。", error_timeout: "处理超时，请降低分辨率或精度后重试。", error_unsupported: "当前浏览器不支持所需的本地图像处理能力，请使用较新的浏览器。", error_engine: "描摹失败，请重试或降低精度设置。",
 },
 tools: {
+  imageRedact: { name: "图片隐私打码", description: "检测号码与邮箱，手动补充选区并覆盖像素" },
   imageBatch: { name: "图片批处理", description: "批量 OCR、压缩、缩放、格式转换与 ZIP 下载" },
   ocr: { name: "OCR 文字识别", description: "本地识别图片与 PDF，导出可搜索扫描件" },
   imageToSvg: { name: "图片转 SVG", description: "本地图片矢量化、像素保真与平滑描摹" },

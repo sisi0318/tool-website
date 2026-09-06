@@ -212,6 +212,20 @@ ocrTools: {
   error_options: "Invalid recognition options. Check the rotation setting.", error_unsupported: "This browser lacks required local recognition features. Try a newer browser.", error_model: "Unable to load the models. Check your connection and retry. The first load can take some time.", error_engine: "Recognition failed. Retry or crop the image into smaller sections.",
   error_cancelled: "Recognition cancelled.", error_timeout: "Recognition timed out. Crop the image and retry.", error_outputLimit: "Too many text lines. Split the image and recognize smaller sections.",
 },
+imageRedact: {
+  title: "Image redaction", description: "Find contact details in screenshots, draw additional regions and confirm before exporting a redacted image. Recognition and image processing happen locally in your browser.",
+  upload: "Choose image", sample: "Load sample", clear: "Clear", limits: "Drop or paste PNG / JPEG / WebP; up to 20 MB and 20 megapixels.", firstFrame: "First frame only",
+  kind_phone: "Chinese mobile / international phone", kind_email: "Email", kind_identity: "Mainland China ID", detect: "Detect sensitive text",
+  detectHint: "Detection uses OCR and number patterns and may miss or misidentify content. Automatic regions cover the entire matching line. Review and add names, faces or addresses manually. Detecting again replaces automatic regions and keeps manual ones.",
+  phase_prepare: "Reading image…", phase_detect: "Detecting…", phase_render: "Generating image…", cancel: "Cancel", cancelled: "Cancelled. Existing regions are kept.",
+  detected: "Found {count} candidate regions. Review them before generating the image.", noneDetected: "No text matched the selected patterns. The image may still contain private information. Review the original and draw regions manually.",
+  error: "Image processing failed. Check the image or try again.", errorTimeout: "Processing timed out. Crop or resize the image and try again.", regionLimit: "Up to 2,000 regions are supported. Remove unused regions first.",
+  review: "Review image and regions", zoom: "Zoom", drawHint: "Drag on the image to draw a region. Red areas are selected for redaction; generate the result before downloading. You can also add a region and adjust its pixel coordinates below.",
+  sourcePreview: "Original image and redaction candidates", manual: "Add manual region", regions: "Selected regions", selectAll: "Select all", selectNone: "Deselect all", undo: "Undo", empty: "Detect text or draw a region on the image.",
+  selectRegion: "Select region", deleteRegion: "Delete region", manualRegion: "Manual region", coordinates: "Adjust coordinates (source pixels)", x: "Left X", y: "Top Y", width: "Width", height: "Height",
+  color: "Cover color", black: "Black", white: "White", format: "Export format", exportHint: "Exports overwrite selected pixels with an opaque color and re-encode the image without source EXIF or other metadata. Unselected regions stay visible. PNG keeps transparency outside regions; JPEG uses a white background.",
+  apply: "Confirm regions and generate", result: "Redacted image", download: "Download image", resultPreview: "Image with selected regions replaced by a solid color", resultHint: "Review the entire result before sharing. After changing regions, color or format, generate it again. The download contains only the flattened image.",
+},
 imageBatch: {
   title: "Batch image processing", description: "Add multiple images to recognize text, or compress, resize and convert formats. Process one file at a time and review each result, entirely in your browser.",
   add: "Add images", samples: "Try three samples", dropHint: "Select, drop or paste multiple images", clear: "Clear queue", limits: "PNG / JPEG / WebP. Up to 30 files / 120 MB total, 20 MB / 20 megapixels per file. Results are capped at 120 MB in total. Animated images use the first frame only.",
@@ -261,6 +275,7 @@ imageVectorTools: {
   error_cancelled: "Conversion cancelled.", error_timeout: "Processing timed out. Lower the resolution or precision and try again.", error_unsupported: "This browser does not support the required local image features. Try a newer browser.", error_engine: "Tracing failed. Try again or lower the precision.",
 },
 tools: {
+  imageRedact: { name: "Image redaction", description: "Detect phone numbers and emails, review regions and overwrite pixels" },
   imageBatch: { name: "Batch images", description: "Batch OCR, compression, resizing, conversion and ZIP download" },
   ocr: { name: "OCR Image to Text", description: "Local image and PDF OCR with searchable scan export" },
   imageToSvg: { name: "Image to SVG", description: "Local image vectorization with faithful pixels or smooth contours" },

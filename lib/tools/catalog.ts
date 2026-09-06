@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "image-redact", translationKey: "imageRedact", category: "image",
+    seo: { title: "图片隐私打码", description: "本地检测截图中的手机号、邮箱和身份证号码，手动画框与微调选区，确认后以纯色覆盖像素，导出 PNG 或 JPEG 图片。" },
+    features: [["隐私检测 / 打码", "Find phone numbers, emails and Chinese identity numbers with local OCR"], ["手动画框 / 选区确认", "Review, adjust and select regions before opaque pixel redaction"], ["安全图片导出", "Flatten selected masks into PNG or JPEG without source metadata"]],
+  },
+  {
     id: "image-batch", translationKey: "imageBatch", category: "image",
     seo: { title: "图片批量处理", description: "本地批量 OCR、压缩图片、调整尺寸与转换 JPEG / PNG / WebP，支持逐项进度、取消后继续、失败重试、文本校对和 ZIP 下载。" },
     features: [["批量 OCR", "Recognize multiple images with one local model session"], ["批量压缩 / 转换", "Resize and convert PNG JPEG WebP images in a bounded queue"], ["队列 / ZIP 打包", "Retry failed files, retain completed work and export unique filenames"]],
