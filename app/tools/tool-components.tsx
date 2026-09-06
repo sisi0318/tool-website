@@ -29,6 +29,7 @@ import {
   History,
   Image,
   ImageDown,
+  Images,
   Key,
   KeyRound,
   Layers,
@@ -68,6 +69,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  "image-batch": { icon: Images, load: dynamic(() => import("./image-batch/page"), { ssr: false }) },
   ocr: { icon: ScanText, load: dynamic(() => import("./ocr/page"), { ssr: false }) },
   "image-to-svg": { icon: PenTool, load: dynamic(() => import("./image-to-svg/page"), { ssr: false }) },
   pdf: { icon: FileText, load: dynamic(() => import("./pdf/page"), { ssr: false }) },

@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "image-batch", translationKey: "imageBatch", category: "image",
+    seo: { title: "图片批量处理", description: "本地批量 OCR、压缩图片、调整尺寸与转换 JPEG / PNG / WebP，支持逐项进度、取消后继续、失败重试、文本校对和 ZIP 下载。" },
+    features: [["批量 OCR", "Recognize multiple images with one local model session"], ["批量压缩 / 转换", "Resize and convert PNG JPEG WebP images in a bounded queue"], ["队列 / ZIP 打包", "Retry failed files, retain completed work and export unique filenames"]],
+  },
+  {
     id: "ocr", translationKey: "ocr", category: "image",
     seo: { title: "OCR 图片与 PDF 文字识别", description: "浏览器本地使用 PaddleOCR 识别中英文、小字、长截图和 PDF 扫描件，支持逐行核对、TXT / JSON 导出和可搜索 PDF。" },
     features: [["OCR 文字识别", "Chinese and English image to text with PaddleOCR"], ["截图 / 小字 / 长图", "Local screenshot recognition with overlapping crops"], ["识别框 / 文本导出", "Review confidence, edit text, export TXT and JSON"], ["PDF OCR / 可搜索扫描件", "Recognize selected PDF pages, correct lines and export searchable PDFs"]],

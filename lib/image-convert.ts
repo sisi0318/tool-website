@@ -50,7 +50,8 @@ async function canvasToBlob(
 ): Promise<Blob> {
   if (typeof OffscreenCanvas !== "undefined") {
     const canvas = new OffscreenCanvas(width, height)
-    const context = canvas.getContext("2d")
+    // Encoding reads pixels back. Prefer a CPU-backed canvas to reduce GPU readbacks.
+    const context = canvas.getContext("2d", { willReadFrequently: true })
     if (!context) throw new Error("CANVAS_UNAVAILABLE")
     if (mimeType === "image/jpeg") {
       context.fillStyle = "#ffffff"
@@ -66,7 +67,7 @@ async function canvasToBlob(
   const canvas = document.createElement("canvas")
   canvas.width = width
   canvas.height = height
-  const context = canvas.getContext("2d")
+  const context = canvas.getContext("2d", { willReadFrequently: true })
   if (!context) throw new Error("CANVAS_UNAVAILABLE")
   if (mimeType === "image/jpeg") {
     context.fillStyle = "#ffffff"

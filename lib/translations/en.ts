@@ -194,7 +194,7 @@ home: {
   buildWorkflow: "Build a workflow",
 },
 ocrTools: {
-  imageMode: "Image OCR", pdfMode: "PDF OCR",
+  imageMode: "Image OCR", pdfMode: "PDF OCR", batchMode: "Batch processing",
   title: "OCR Image to Text", description: "Turn Chinese and English in images into editable text. Retain small details, process long screenshots in sections, and review each line against the image.",
   local: "Recognized locally · Images stay in your browser", chooseFile: "Choose image", fileHint: "Drop an image, or paste a screenshot on this page", clear: "Clear image",
   sample: "Try a sample", sample_document: "Chinese & English", sample_small: "Small text", sample_dark: "Dark background", sample_long: "Long screenshot",
@@ -211,6 +211,17 @@ ocrTools: {
   error_fileLimit: "Choose a non-empty image no larger than 20 MB.", error_imageLimit: "The image exceeds 20 megapixels or 32768 pixels per side. Crop it first.", error_format: "Choose a PNG, JPEG or WebP image.", error_decode: "Unable to read this image. The file may be damaged.",
   error_options: "Invalid recognition options. Check the rotation setting.", error_unsupported: "This browser lacks required local recognition features. Try a newer browser.", error_model: "Unable to load the models. Check your connection and retry. The first load can take some time.", error_engine: "Recognition failed. Retry or crop the image into smaller sections.",
   error_cancelled: "Recognition cancelled.", error_timeout: "Recognition timed out. Crop the image and retry.", error_outputLimit: "Too many text lines. Split the image and recognize smaller sections.",
+},
+imageBatch: {
+  title: "Batch image processing", description: "Add multiple images to recognize text, or compress, resize and convert formats. Process one file at a time and review each result, entirely in your browser.",
+  add: "Add images", samples: "Try three samples", dropHint: "Select, drop or paste multiple images", clear: "Clear queue", limits: "PNG / JPEG / WebP. Up to 30 files / 120 MB total, 20 MB / 20 megapixels per file. Results are capped at 120 MB in total. Animated images use the first frame only.",
+  skipped: "Some files exceeded the limits and were skipped: 20 MB per file, 30 files / 120 MB per queue.", ocrMode: "Batch OCR", imageMode: "Compress & convert", format: "Output format", quality: "Quality (10–100)", width: "Maximum width (px)", height: "Maximum height (px)", keepSize: "Original size",
+  imageHint: "Resize proportionally without enlarging. JPEG uses a white background; PNG / WebP retain transparency. PNG encoding is lossless and ignores quality. Re-encoding can produce a larger file.",
+  optionsHint: "Changing settings clears existing results so all files can be processed with the new settings.", run: "Process pending files", retry: "Retry failed files", rerun: "Process all again", cancel: "Cancel", cancelled: "Cancelled. Completed results are retained; continue processing the pending files when ready.",
+  phase_run: "Processing", phase_zip: "Packing completed results", phase_sample: "Preparing samples", progress: "Batch progress", queue: "Queue", status_ready: "Pending", status_running: "Processing", status_done: "Done", status_error: "Failed", remove: "Remove",
+  preview: "Result preview", previewEmpty: "Select a file in the queue to preview its completed result.", textHint: "Edit text directly. TXT uses the reviewed text; JSON also retains original boxes, confidence and reviewed text.", smaller: "Size reduced by", larger: "Size increased by",
+  export: "Export completed results", zipHint: "ZIP includes completed files and a manifest for the full queue. Failed and pending items keep their status; duplicate names receive a suffix. OCR text and JSON are stored in text / data folders.", pack: "Create ZIP", downloadZip: "Download ZIP", copyAll: "Copy all text",
+  error_fileLimit: "The file is empty or exceeds 20 MB.", error_queueLimit: "The queue exceeds 30 files or 120 MB. Process fewer files at a time.", error_options: "Check quality (10–100) and dimensions (1–32768, or blank to retain the original size).", error_outputLimit: "Results exceed 64 MB per file or 120 MB in total. Resize images or reduce the queue.", error_unsupported: "This browser does not support the selected operation. Try another format or a newer browser.", error_convert: "Processing failed. Check that the file is complete and retry.", error_cancelled: "Cancelled.", error_timeout: "This image took too long to process. Reduce its dimensions and retry.",
 },
 pdfOcr: {
   title: "PDF OCR · Scanned documents", description: "Recognize Chinese and English on selected PDF pages in your browser. Review each line, extract the text, or create a PDF with searchable, selectable text. Files stay on your device.",
@@ -250,6 +261,7 @@ imageVectorTools: {
   error_cancelled: "Conversion cancelled.", error_timeout: "Processing timed out. Lower the resolution or precision and try again.", error_unsupported: "This browser does not support the required local image features. Try a newer browser.", error_engine: "Tracing failed. Try again or lower the precision.",
 },
 tools: {
+  imageBatch: { name: "Batch images", description: "Batch OCR, compression, resizing, conversion and ZIP download" },
   ocr: { name: "OCR Image to Text", description: "Local image and PDF OCR with searchable scan export" },
   imageToSvg: { name: "Image to SVG", description: "Local image vectorization with faithful pixels or smooth contours" },
   pageTitle: "Tool Collection",
