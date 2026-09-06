@@ -214,6 +214,16 @@ ocrTools: {
   error_options: "识别参数无效，请检查旋转设置。", error_unsupported: "浏览器不支持本地识别所需的功能，请使用较新的浏览器。", error_model: "模型加载失败，请检查网络后重试。首次加载可能需要一些时间。", error_engine: "识别失败，请重试或裁剪图片后识别。",
   error_cancelled: "已取消识别。", error_timeout: "识别超时，请裁剪图片后重试。", error_outputLimit: "识别出的文字行数过多，请将图片分成几张后识别。",
 },
+harTools: {
+  title: "HAR 网络日志分析", description: "导入浏览器导出的 HAR 文件，查看请求瀑布图，定位慢请求、失败与重复请求，并检查单条请求详情。",
+  upload: "选择 HAR 文件", sample: "加载网络日志示例", clear: "清空", cancel: "取消并清空", limits: "支持拖入 UTF-8 HAR / JSON，最大 64 MB、20000 条请求、2000 个页面。", localHint: "文件只在浏览器本地解析，不发送请求，也不加载日志中的资源。",
+  phase_load: "正在读取并分析日志…", phase_export: "正在生成筛选摘要…", error_fileLimit: "文件为空或超过 64 MB，请重新导出较小范围的日志。", error_format: "无法读取 UTF-8 HAR：需要包含 log.entries 数组的 JSON 文件。", error_entryLimit: "日志超过 20000 条请求或 2000 个页面，请分段导出。", error_cancelled: "操作已取消，请重新导入文件。", error_timeout: "处理超时，请导入较小文件。", error_unsupported: "浏览器不支持后台解析，请使用较新的浏览器。", error_engine: "日志处理失败，请重新导入文件。", skipped: "跳过了 {count} 条缺少有效方法、URL 或 URL 过长的记录，其余请求已保留。",
+  search: "搜索请求", searchHint: "URL、方法、状态码或 MIME 类型", host: "主机", allHosts: "全部主机", noHost: "无主机", page: "页面", allPages: "全部页面", noPage: "未分组", method: "方法", allMethods: "全部方法", slowThreshold: "慢请求阈值（ms）", sort: "排序", start: "开始时间", duration: "总耗时", transfer: "传输大小", status: "状态码", ascending: "升序 ↑", descending: "降序 ↓",
+  filter_all: "全部", filter_slow: "慢请求", filter_failed: "失败请求", filter_repeated: "重复出现", reveal: "显示完整 URL、敏感头部与正文", privacyHint: "默认隐藏 URL 查询参数值、账号密码、凭证头部和正文。导出摘要遵循此开关，但始终不包含请求头、Cookie 或正文；URL 路径仍保留。",
+  contentLoad: "DOMContentLoaded：", pageLoad: "页面 load：", summary: "筛选结果概览", filtering: "正在筛选…", requests: "请求数", median: "耗时中位数", p95: "耗时 P95", transferKnown: "已知传输总量", summaryHint: "耗时统计使用 {timed} 条已记录数据；{unknown} 条请求传输大小未知。— 表示未知，0 表示已记录为零。", span: "记录时间跨度：", repeats: "重复组 {groups} 个，额外出现 {extra} 次。", duplicateHint: "重复按文件内相同方法与完整 URL 判断，不比较请求体，可能是轮询或重试。概览中的重复组仅统计当前筛选结果，重复不代表请求一定多余。",
+  timing_blocked: "排队", timing_dns: "DNS", timing_connect: "连接", timing_send: "发送", timing_wait: "等待响应", timing_receive: "接收", timing_ssl: "TLS（含于连接）", unknown: "未知", notRecorded: "未记录", startOffset: "相对开始时间", index: "#", request: "请求", waterfall: "瀑布图", viewRequest: "查看请求", empty: "没有符合筛选条件的请求。", pagination: "第 {page} / {pages} 页，共 {count} 条；每页最多 100 条。", previous: "上一页", next: "下一页",
+  exportCsv: "导出筛选结果 CSV", exportJson: "导出筛选结果 JSON", download: "下载", detail: "请求详情", close: "关闭详情", bodySize: "响应正文传输字节", contentSize: "解压后内容大小", timingHint: "分段时间为 HAR 记录值，TLS 已包含在连接时间内，不重复累加；-1 或缺失值显示为未知。等待响应不等同于服务器处理时间。", timingMismatch: "这条记录的分段合计与总耗时不同，可能有缺失阶段。", loadingDetail: "正在读取详情…", connection: "连接", requestHeaders: "请求头", responseHeaders: "响应头", query: "查询参数", pairsTruncated: "头部或参数超过 300 项，或字段过长，已截断显示。", requestBody: "请求正文", responseBody: "响应正文", bodyHidden: "正文已隐藏，启用上方“显示完整 URL、敏感头部与正文”后查看。", bodyCount: "显示 {shown} / {total} 个字符；最多显示 64000 字符。base64 等编码保持原样，不执行内容。",
+},
 imageDiff: {
   title: "图片对比", description: "滑动对照、透明叠加或高亮两张图片的像素差异，适合校对设计稿与网页截图。图片全程在浏览器本地处理。",
   a: "图片 A · 基准", b: "图片 B · 对照", uploadA: "选择图片 A", uploadB: "选择图片 B", choose: "选择图片", previewA: "图片 A 预览", previewB: "图片 B 预览", dropHint: "选择图片，或拖放 / 粘贴到此区域", sample: "加载对比示例", swap: "交换 A / B", clear: "清空", cancel: "取消",
@@ -298,6 +308,7 @@ imageVectorTools: {
   error_cancelled: "已取消转换。", error_timeout: "处理超时，请降低分辨率或精度后重试。", error_unsupported: "当前浏览器不支持所需的本地图像处理能力，请使用较新的浏览器。", error_engine: "描摹失败，请重试或降低精度设置。",
 },
 tools: {
+  harTools: { name: "HAR 网络日志分析", description: "查看瀑布图，筛选慢请求、失败与重复请求" },
   imageDiff: { name: "图片对比", description: "滑动与叠加对照两张图片，高亮像素差异" },
   imageTable: { name: "截图表格识别", description: "恢复并校对表格行列，导出 CSV 或 Excel" },
   imageRedact: { name: "图片隐私打码", description: "检测号码与邮箱，手动补充选区并覆盖像素" },

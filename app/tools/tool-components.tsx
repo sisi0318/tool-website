@@ -70,6 +70,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  har: { icon: Network, load: dynamic(() => import("./har/page"), { ssr: false }) },
   "image-diff": { icon: GitCompareArrows, load: dynamic(() => import("./image-diff/page"), { ssr: false }) },
   "image-table": { icon: Table2, load: dynamic(() => import("./image-table/page"), { ssr: false }) },
   "image-redact": { icon: Shield, load: dynamic(() => import("./image-redact/page"), { ssr: false }) },

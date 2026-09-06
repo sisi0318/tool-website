@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "har", translationKey: "harTools", category: "network",
+    seo: { title: "HAR 网络日志分析", description: "本地读取浏览器 HAR 网络日志，筛选慢请求、失败请求与重复请求，查看请求瀑布图、耗时与头部正文，并导出 CSV / JSON 摘要。" },
+    features: [["HAR / 请求瀑布图", "Local HTTP Archive viewer with per-phase timings and page filters"], ["慢请求 / 失败 / 重复", "Latency percentiles, HTTP errors, network failures and repeated URLs"], ["请求详情 / 摘要导出", "Review headers and bounded body text, export filtered reports with URL masking"]],
+  },
+  {
     id: "image-diff", translationKey: "imageDiff", category: "image",
     seo: { title: "图片对比与差异高亮", description: "在本地滑动对照或透明叠加两张图片，按像素高亮差异，支持不同尺寸、居中对齐、位置偏移、阈值调节与 PNG / JSON 导出。" },
     features: [["图片滑动 / 叠加对比", "Wipe slider and opacity overlay for design and screenshot comparison"], ["像素差异高亮", "Threshold, transparency-aware comparison and changed-pixel bounds"], ["尺寸 / 位置对齐", "Original-size top-left or centered alignment with pixel offsets"]],
