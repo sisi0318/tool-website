@@ -212,6 +212,18 @@ ocrTools: {
   error_options: "Invalid recognition options. Check the rotation setting.", error_unsupported: "This browser lacks required local recognition features. Try a newer browser.", error_model: "Unable to load the models. Check your connection and retry. The first load can take some time.", error_engine: "Recognition failed. Retry or crop the image into smaller sections.",
   error_cancelled: "Recognition cancelled.", error_timeout: "Recognition timed out. Crop the image and retry.", error_outputLimit: "Too many text lines. Split the image and recognize smaller sections.",
 },
+imageTable: {
+  title: "Image to table", description: "Turn a table screenshot into editable rows and columns, check against the original, then export CSV or Excel. Recognition and export run locally in your browser.",
+  upload: "Choose image", sample: "Load table example", clear: "Clear", recognize: "Recognize table", cancel: "Cancel", limits: "Drop or paste PNG / JPEG / WebP, up to 20 MB and 20 million pixels. Up to 200 rows, 40 columns and 2,000 cells.",
+  phase_prepare: "Reading image and grid lines…", phase_recognize: "Recognizing table text…", phase_export: "Exporting…", error: "Processing failed. Check the image and try again.", limitError: "Table limit: 200 rows, 40 columns, 2,000 cells, 32,767 characters per cell and 2 million characters total. Crop or split the table.",
+  rulesFound: "Rows and columns follow the visible grid lines. Check text and blank cells.", inferred: "Rows and columns were inferred from text positions. Borderless tables and merged cells may need boundary adjustments.", rebuilt: "Original OCR text has been reassigned using the current boundaries.",
+  structure: "Original and table structure", zoom: "Zoom", preview: "Original table image", boundaries: "Draggable row and column boundaries", xEdges: "Column boundaries X (comma separated)", yEdges: "Row boundaries Y (comma separated)",
+  gridHint: "Drag blue lines or edit coordinates in original image pixels. The first and last values are the outer edges. Add or remove coordinates to change rows or columns. Applying boundaries reassigns original OCR text and replaces cell edits. Crop tilted images or multiple tables first; review merged cells manually.",
+  gridError: "Use increasing coordinates inside the image, at least 2 pixels apart and at least two per axis, within the row and column limits.", rebuild: "Apply boundaries and reassign text", resetGrid: "Restore current table boundaries", changed: "Boundaries changed. Apply or restore them before editing or exporting.",
+  review: "Review cells", reviewHint: "Focus a cell to highlight its area in the original image, then edit the text. Orange marks low confidence or text crossing a boundary; editing clears the mark. Merged cells and original formatting are not reconstructed. Recognizing again replaces the current table.", reviewCount: "{count} cells need closer review.", outside: "{count} text lines outside the table are excluded from export.", row: "Row number", cell: "Cell", needsReview: "Review needed: low confidence or text crossing a boundary",
+  numbers: "Excel: convert plain numbers to numeric cells", safeCsv: "CSV: prevent formulas from running", exportHint: "Excel preserves text, leading zeros, long identifiers and line breaks by default. Numeric conversion only accepts plain numbers without leading zeros and with at most 15 digits. CSV protection prefixes a quote to text starting with =, +, - or @. Excel may still convert identifiers when opening CSV; use Excel export for exact text preservation.",
+  xlsx: "Generate Excel", csv: "Generate CSV", download: "Download",
+},
 imageRedact: {
   title: "Image redaction", description: "Find contact details in screenshots, draw additional regions and confirm before exporting a redacted image. Recognition and image processing happen locally in your browser.",
   upload: "Choose image", sample: "Load sample", clear: "Clear", limits: "Drop or paste PNG / JPEG / WebP; up to 20 MB and 20 megapixels.", firstFrame: "First frame only",
@@ -275,6 +287,7 @@ imageVectorTools: {
   error_cancelled: "Conversion cancelled.", error_timeout: "Processing timed out. Lower the resolution or precision and try again.", error_unsupported: "This browser does not support the required local image features. Try a newer browser.", error_engine: "Tracing failed. Try again or lower the precision.",
 },
 tools: {
+  imageTable: { name: "Image to table", description: "Recover and review table rows and columns, export CSV or Excel" },
   imageRedact: { name: "Image redaction", description: "Detect phone numbers and emails, review regions and overwrite pixels" },
   imageBatch: { name: "Batch images", description: "Batch OCR, compression, resizing, conversion and ZIP download" },
   ocr: { name: "OCR Image to Text", description: "Local image and PDF OCR with searchable scan export" },

@@ -70,6 +70,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  "image-table": { icon: Table2, load: dynamic(() => import("./image-table/page"), { ssr: false }) },
   "image-redact": { icon: Shield, load: dynamic(() => import("./image-redact/page"), { ssr: false }) },
   "image-batch": { icon: Images, load: dynamic(() => import("./image-batch/page"), { ssr: false }) },
   ocr: { icon: ScanText, load: dynamic(() => import("./ocr/page"), { ssr: false }) },

@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "image-table", translationKey: "imageTable", category: "image",
+    seo: { title: "截图表格识别", description: "本地将表格截图识别为可编辑行列，支持网格线检测、分隔线调整、原图校对与 CSV / Excel 导出，保留编号、空白与多行文字。" },
+    features: [["截图转表格 / Excel", "Local OCR to editable rows and columns, CSV and XLSX export"], ["网格线 / 行列校正", "Detect table borders, infer text alignment and adjust boundaries"], ["单元格校对", "Review uncertain text, preserve identifiers, blank cells and multiline content"]],
+  },
+  {
     id: "image-redact", translationKey: "imageRedact", category: "image",
     seo: { title: "图片隐私打码", description: "本地检测截图中的手机号、邮箱和身份证号码，手动画框与微调选区，确认后以纯色覆盖像素，导出 PNG 或 JPEG 图片。" },
     features: [["隐私检测 / 打码", "Find phone numbers, emails and Chinese identity numbers with local OCR"], ["手动画框 / 选区确认", "Review, adjust and select regions before opaque pixel redaction"], ["安全图片导出", "Flatten selected masks into PNG or JPEG without source metadata"]],
