@@ -126,6 +126,18 @@ describe("tree", () => {
 })
 
 describe("engine", () => {
+  it("allows OCR model initialization beyond the ordinary step deadline and still bounds execution", async () => {
+    vi.useFakeTimers()
+    try {
+      let signal!: AbortSignal
+      registerNode({ type: "model-init-test", category: "image", label: "Model initialization", executionTimeoutMs: 300_000, icon: (() => null) as never, config: [{ id: "input", name: "In", dataType: "string", hasInput: true }], outputs: [{ id: "out", name: "Out", dataType: "string" }], execute: async (_input, _config, context) => { signal = context!.signal; return new Promise(() => {}) } })
+      const result = applyStep("data", { tool: "model-init-test", config: { executionTimeoutMs: Infinity }, outputPort: "out" }).catch((error: Error) => error)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(signal.aborted).toBe(false)
+      await vi.advanceTimersByTimeAsync(240_000)
+      expect(signal.aborted).toBe(true); expect(await result).toBeInstanceOf(Error)
+    } finally { vi.useRealTimers() }
+  })
   it("resolves the first hasInput field as the main port", () => {
     const encoding = getNodeDefinition("encoding")!
     expect(getMainInputPort(encoding)?.id).toBe("input")

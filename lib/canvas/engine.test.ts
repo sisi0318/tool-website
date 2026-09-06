@@ -1,6 +1,16 @@
 import { describe, it, expect } from "vitest"
-import { createBypassOutputs, topologicalSort } from "./engine"
+import { createBypassOutputs, getExecutionTimeout, topologicalSort } from "./engine"
 import type { NodeInstance, Edge, NodeDefinition } from "./types"
+
+describe("adapter timeout policy", () => {
+  it("retains defaults, allows model initialization, and caps adapter overrides", () => {
+    const definition = {} as NodeDefinition
+    expect(getExecutionTimeout(definition, 30_000)).toBe(30_000)
+    expect(getExecutionTimeout({ ...definition, executionTimeoutMs: 300_000 }, 60_000)).toBe(300_000)
+    expect(getExecutionTimeout({ ...definition, executionTimeoutMs: 900_000 }, 60_000)).toBe(300_000)
+    for (const executionTimeoutMs of [NaN, Infinity, -1, 0]) expect(getExecutionTimeout({ ...definition, executionTimeoutMs }, 60_000)).toBe(60_000)
+  })
+})
 
 describe("topologicalSort", () => {
   it("无依赖的节点按原顺序返回", () => {

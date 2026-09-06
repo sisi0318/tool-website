@@ -2,6 +2,7 @@ import type { ConfigField, DerivedOutput, NodeDefinition } from "../canvas/types
 import { getNodeDefinition } from "../canvas/registry"
 import { withDefaultConfig } from "../canvas/node-factory"
 import { convertPortValue } from "../canvas/convert-value"
+import { getExecutionTimeout } from "../canvas/engine"
 import { getChildren, inferDataType } from "./tree"
 import type {
   ApplyStepResult,
@@ -64,7 +65,7 @@ export async function applyStep(value: unknown, step: JourneyStep): Promise<Appl
   const inputs: Record<string, unknown> = { [mainPort.id]: convertPortValue(value, inferDataType(value), mainPort.dataType) }
   // 分享链接、旧存档和建议创建的步骤都可能只带部分配置,执行前补齐声明的默认值
   const controller = new AbortController()
-  const outputs = await withTimeout(definition.execute(inputs, withDefaultConfig(step.tool, step.config), { signal: controller.signal }), STEP_TIMEOUT_MS, () => controller.abort())
+  const outputs = await withTimeout(definition.execute(inputs, withDefaultConfig(step.tool, step.config), { signal: controller.signal }), getExecutionTimeout(definition, STEP_TIMEOUT_MS), () => controller.abort())
 
   const portId = resolveOutputPort(definition, step.outputPort)
   const nextValue = portId in outputs ? outputs[portId] : outputs[Object.keys(outputs)[0] ?? ""]

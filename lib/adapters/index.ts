@@ -18,6 +18,7 @@ import { registerProtobufAdapter } from "./protobuf"
 import { registerJceAdapter } from "./jce"
 import { registerImageToBase64Adapter } from "./image-to-base64"
 import { registerImageToSvgAdapter } from "./image-to-svg"
+import { registerOcrAdapter } from "./ocr"
 import { registerExifViewerAdapter } from "./exif-viewer"
 import { registerImageCompressAdapter } from "./image-compress"
 import { registerImageConvertAdapter } from "./image-convert"
@@ -123,6 +124,7 @@ export function registerAllAdapters(): void {
   // Image (8)
   safeRegister("image-to-base64", registerImageToBase64Adapter)
   safeRegister("image-to-svg", registerImageToSvgAdapter)
+  safeRegister("ocr", registerOcrAdapter)
   safeRegister("exif-viewer", registerExifViewerAdapter)
   safeRegister("image-compress", registerImageCompressAdapter)
   safeRegister("image-convert", registerImageConvertAdapter)

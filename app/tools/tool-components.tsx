@@ -44,6 +44,7 @@ import {
   Regex,
   ScanQrCode,
   ScanSearch,
+  ScanText,
   ShieldCheck,
   Smartphone,
   Table2,
@@ -67,6 +68,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  ocr: { icon: ScanText, load: dynamic(() => import("./ocr/page"), { ssr: false }) },
   "image-to-svg": { icon: PenTool, load: dynamic(() => import("./image-to-svg/page"), { ssr: false }) },
   pdf: { icon: FileText, load: dynamic(() => import("./pdf/page"), { ssr: false }) },
   sqlite: { icon: Database, load: dynamic(() => import("./sqlite/page"), { ssr: false }) },

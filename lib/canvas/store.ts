@@ -8,7 +8,7 @@ import type {
   ExecutionStepProgress,
 } from "./types"
 import { getNodeDefinition } from "./registry"
-import { createBypassOutputs, topologicalSort } from "./engine"
+import { createBypassOutputs, getExecutionTimeout, topologicalSort } from "./engine"
 import { convertPortValue, resolveInputPortType, resolveOutputPortType } from "./convert-value"
 import { validateConnectionStructure } from "./validation"
 import { decodeWorkflowData, encodeWorkflowData } from "./workflow"
@@ -70,7 +70,7 @@ async function runNodeExecute(
   inputs: Record<string, unknown>,
   config: Record<string, unknown>,
   runToken: number,
-  ms = NODE_EXECUTION_TIMEOUT_MS,
+  ms = getExecutionTimeout(definition, NODE_EXECUTION_TIMEOUT_MS),
 ): Promise<Record<string, unknown>> {
   const controller = new AbortController()
   activeRunControllers.set(runToken, controller)

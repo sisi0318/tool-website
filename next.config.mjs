@@ -56,6 +56,10 @@ const nextConfig = {
         ],
       },
       {
+        source: '/ocr/v1/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
         // API 返回的都是即时数据,不能被中间缓存留存。
         source: '/api/(.*)',
         headers: [{ key: 'Cache-Control', value: 'no-store' }],
@@ -75,11 +79,16 @@ const withPWA = withPWAInit({
     document: '/~offline',
   },
   // 1.1MB 的社交卡片图只在分享时用到,不该进预缓存。
-  publicExcludes: ['!og.jpg', '!pdfjs/**/*', '!vtracer/**/*'],
+  publicExcludes: ['!og.jpg', '!pdfjs/**/*', '!vtracer/**/*', '!ocr/**/*'],
   // 保留框架自带的静态资源缓存规则,只是把下面这条排在前面。
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
     runtimeCaching: [
+      {
+        urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/ocr/'),
+        handler: 'CacheFirst',
+        options: { cacheName: 'ocr-public-models', expiration: { maxEntries: 16, maxAgeSeconds: 31536000 } },
+      },
       {
         urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/vtracer/'),
         handler: 'CacheFirst',

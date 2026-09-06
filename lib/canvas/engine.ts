@@ -1,5 +1,10 @@
 import type { NodeInstance, Edge, NodeDefinition } from "./types"
 
+export function getExecutionTimeout(definition: NodeDefinition, fallback: number): number {
+  const requested = definition.executionTimeoutMs
+  return typeof requested === "number" && Number.isFinite(requested) && requested >= 1 ? Math.min(300_000, Math.round(requested)) : fallback
+}
+
 export function topologicalSort(
   nodes: NodeInstance[],
   edges: Edge[]

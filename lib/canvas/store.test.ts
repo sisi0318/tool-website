@@ -1040,6 +1040,24 @@ describe("整图执行的收敛与合流", () => {
 })
 
 describe("取消与并发执行", () => {
+  it("模型节点可以等待超过默认时限，仍能在自己的上限终止", async () => {
+    vi.useFakeTimers()
+    try {
+      const harness = await createTestHarness(), { useCanvasStore } = harness
+      let signal!: AbortSignal
+      const started = deferred<void>()
+      registerDefinition(harness, "model-init", async (_inputs, _config, context) => { signal = context!.signal; started.resolve(); return new Promise(() => {}) })
+      harness.registry.registerNode({ ...harness.registry.getNodeDefinition("model-init")!, executionTimeoutMs: 300_000 })
+      useCanvasStore.setState({ nodes: [node("a", "model-init")], edges: [], nodeOutputs: {}, nodeErrors: {}, nodeRunning: {} })
+      const run = useCanvasStore.getState().executeAll()
+      await started.promise
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(signal.aborted).toBe(false); expect(useCanvasStore.getState().nodeRunning.a).toBe(true)
+      await vi.advanceTimersByTimeAsync(240_000)
+      await run
+      expect(signal.aborted).toBe(true); expect(useCanvasStore.getState().nodeRunning.a).toBeFalsy()
+    } finally { vi.clearAllTimers(); vi.useRealTimers() }
+  })
   it("把 AbortSignal 交给 execute，停止时真的中止而不只是丢结果", async () => {
     const harness = await createTestHarness()
     const { useCanvasStore } = harness

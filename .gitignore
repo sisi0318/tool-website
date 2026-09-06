@@ -25,6 +25,7 @@ public/worker-*.js
 public/fallback-*.js
 public/pdfjs/
 public/vtracer/
+public/ocr/
 tmp/pdfs/
 # Playwright
 test-results/

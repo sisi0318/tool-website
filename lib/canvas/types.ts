@@ -53,6 +53,8 @@ export interface NodeDefinition {
   label: string
   description?: string
   executionMode?: "automatic" | "manual"
+  /** Internal adapter timeout override, capped at five minutes; never read from user config. */
+  executionTimeoutMs?: number
   /**
    * 执行时会发出网络请求。此类节点不允许出现在导入的分享路径里,
    * 避免打开链接即向外部发起请求(或把粘贴的数据带出去)。

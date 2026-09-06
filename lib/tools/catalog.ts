@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "ocr", translationKey: "ocr", category: "image",
+    seo: { title: "OCR 图片文字识别", description: "浏览器本地 OCR，使用 PaddleOCR 识别中英文、小字和长截图，支持识别框、置信度核对、编辑、复制与 TXT / JSON 导出。" },
+    features: [["OCR 文字识别", "Chinese and English image to text with PaddleOCR"], ["截图 / 小字 / 长图", "Local screenshot recognition with overlapping crops"], ["识别框 / 文本导出", "Review confidence, edit text, export TXT and JSON"]],
+  },
+  {
     id: "image-to-svg", translationKey: "imageToSvg", category: "image",
     seo: { title: "图片转 SVG", description: "浏览器本地将 PNG、JPEG、WebP 描摹成真实 SVG 路径，支持像素保真、平滑轮廓、黑白处理、精度调节与原图叠加对比。" },
     features: [["图片矢量化", "PNG JPEG WebP to SVG paths, processed locally"], ["像素保真 / 平滑描摹", "Faithful pixel contours or smooth vector curves"], ["精度与原图对比", "Color precision, tracing resolution and overlay comparison"]],
