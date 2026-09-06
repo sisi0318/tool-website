@@ -8,8 +8,11 @@ interface Core {
 interface Cv { matFromImageData(source: ImageData): { delete(): void } }
 interface Runtime { PaddleOCRCore: new (options: Record<string, unknown>) => Core; normalizeOcrPipelineConfig(config: unknown): unknown }
 const scope = self as unknown as { location: Location; onmessage: ((event: MessageEvent<OcrRequest>) => void) | null; postMessage(message: OcrResponse): void }
+// The owning session terminates the worker to release ONNX/OpenCV resources.
+// Keep the initialized model between sequential pages and batch images.
+let core: Core | undefined
 scope.onmessage = async ({ data }) => {
-  let bitmap: ImageBitmap | undefined, core: Core | undefined
+  let bitmap: ImageBitmap | undefined
   const progress = (value: OcrProgress) => scope.postMessage({ type: "progress", progress: value })
   try {
     const started = performance.now(), options = ocrOptions(data.options)
@@ -30,6 +33,7 @@ scope.onmessage = async ({ data }) => {
     previewCanvas.getContext("2d")!.drawImage(source, 0, 0, previewCanvas.width, previewCanvas.height)
     const preview = await previewCanvas.convertToBlob({ type: "image/png" })
     previewCanvas.width = previewCanvas.height = 1
+    if (!core) {
     progress({ stage: "runtime" })
     const root = new URL(`${OCR_ROOT}/`, scope.location.origin).href
     try {
@@ -62,7 +66,8 @@ scope.onmessage = async ({ data }) => {
         sourceToMat(cv: Cv, image: ImageData) { const mat = cv.matFromImageData(image); return { width: image.width, height: image.height, mat, dispose() { mat.delete() } } },
       })
       await core.initialize()
-    } catch { throw new OcrError("model") }
+    } catch { await core?.dispose().catch(() => {}); core = undefined; throw new OcrError("model") }
+    }
     const tiles = ocrTiles(width, height), lines: Array<Omit<OcrLine, "id">> = []
     for (const [index, tile] of tiles.entries()) {
       progress({ stage: "recognizing", completed: index, total: tiles.length })
@@ -80,5 +85,5 @@ scope.onmessage = async ({ data }) => {
     const ordered = orderOcrLines(lines)
     scope.postMessage({ type: "done", result: { text: ordered.map(line => line.text).join("\n"), lines: ordered, preview, info: { width, height, rotation: options.rotation, tiles: tiles.length, elapsedMs: Math.round(performance.now() - started), animated: header.animated } } })
   } catch (error) { scope.postMessage({ type: "error", code: error instanceof OcrError ? error.code : "engine" }) }
-  finally { bitmap?.close(); await core?.dispose().catch(() => {}) }
+  finally { bitmap?.close() }
 }

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { recognizeImage } from "./ocr-worker-client"
+import { createOcrSession, recognizeImage } from "./ocr-worker-client"
 import { OCR_LIMITS, type OcrResponse } from "./ocr-shared"
 class FakeWorker {
   onmessage: ((event: MessageEvent<OcrResponse>) => void) | null = null
@@ -12,6 +12,23 @@ const file = new File(["image"], "sample.png")
 const done: OcrResponse = { type: "done", result: { text: "hello", lines: [], preview: new Blob(), info: { width: 10, height: 10, rotation: 0, tiles: 1, elapsedMs: 1, animated: false } } }
 afterEach(() => vi.useRealTimers())
 describe("OCR worker lifecycle", () => {
+  it("reuses the initialized worker for sequential pages and rejects overlapping work", async () => {
+    const worker = new FakeWorker(), factory = vi.fn(() => worker as unknown as Worker), session = createOcrSession(factory)
+    const first = session.recognize(file)
+    await expect(session.recognize(file)).rejects.toMatchObject({ code: "engine" })
+    worker.reply(done); await first
+    expect(worker.terminate).not.toHaveBeenCalled()
+    const second = session.recognize(file); worker.reply(done); await second
+    expect(factory).toHaveBeenCalledOnce(); expect(worker.postMessage).toHaveBeenCalledTimes(2)
+    session.dispose(); expect(worker.terminate).toHaveBeenCalledOnce()
+    await expect(session.recognize(file)).rejects.toMatchObject({ code: "cancelled" })
+  })
+  it("disposing a reusable session stops an active page and prevents stale results", async () => {
+    const worker = new FakeWorker(), session = createOcrSession(() => worker as unknown as Worker)
+    const pending = session.recognize(file), rejected = expect(pending).rejects.toMatchObject({ code: "cancelled" })
+    session.dispose(); await rejected
+    expect(worker.terminate).toHaveBeenCalledOnce()
+  })
   it("passes progress and returns text while releasing the model worker", async () => {
     const worker = new FakeWorker(), onProgress = vi.fn(), pending = recognizeImage(file, {}, { onProgress }, () => worker as unknown as Worker)
     worker.reply({ type: "progress", progress: { stage: "models", completed: 500, total: 1000 } }); worker.reply(done)

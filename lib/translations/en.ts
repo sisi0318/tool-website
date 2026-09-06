@@ -194,6 +194,7 @@ home: {
   buildWorkflow: "Build a workflow",
 },
 ocrTools: {
+  imageMode: "Image OCR", pdfMode: "PDF OCR",
   title: "OCR Image to Text", description: "Turn Chinese and English in images into editable text. Retain small details, process long screenshots in sections, and review each line against the image.",
   local: "Recognized locally · Images stay in your browser", chooseFile: "Choose image", fileHint: "Drop an image, or paste a screenshot on this page", clear: "Clear image",
   sample: "Try a sample", sample_document: "Chinese & English", sample_small: "Small text", sample_dark: "Dark background", sample_long: "Long screenshot",
@@ -210,6 +211,16 @@ ocrTools: {
   error_fileLimit: "Choose a non-empty image no larger than 20 MB.", error_imageLimit: "The image exceeds 20 megapixels or 32768 pixels per side. Crop it first.", error_format: "Choose a PNG, JPEG or WebP image.", error_decode: "Unable to read this image. The file may be damaged.",
   error_options: "Invalid recognition options. Check the rotation setting.", error_unsupported: "This browser lacks required local recognition features. Try a newer browser.", error_model: "Unable to load the models. Check your connection and retry. The first load can take some time.", error_engine: "Recognition failed. Retry or crop the image into smaller sections.",
   error_cancelled: "Recognition cancelled.", error_timeout: "Recognition timed out. Crop the image and retry.", error_outputLimit: "Too many text lines. Split the image and recognize smaller sections.",
+},
+pdfOcr: {
+  title: "PDF OCR · Scanned documents", description: "Recognize Chinese and English on selected PDF pages in your browser. Review each line, extract the text, or create a PDF with searchable, selectable text. Files stay on your device.",
+  choose: "Choose PDF", sample: "Try a two-page scan", limits: "Up to 64 MB / 500 source pages, 30 pages per run. Rendered pages are capped at 8 megapixels each and 120 megapixels in total; larger pages are scaled down.",
+  selection: "Pages to recognize", selectionHint: "Leave blank for all pages. Ranges, reverse order and reordering are supported, e.g. 3,1-2.", resolution: "OCR resolution", recognize: "Recognize selected pages",
+  exportHint: "The new PDF contains static images of the selected pages plus OCR text, preserving their current appearance. Fillable fields, digital signatures, links and bookmarks are not retained in the new file.",
+  stage_reading: "Reading PDF", stage_rendering: "Rendering page", stage_recognizing: "Recognizing page text", stage_writing: "Creating searchable PDF",
+  sourcePage: "Source page {page}", reviewHint: "Correct the lines below; every export uses your reviewed text. Confidence is a model score, not an accuracy guarantee. Check amounts and similar-looking characters against the scan.",
+  noText: "No text was recognized on this page. Its image will still be included in the exported PDF.", allText: "Text from all pages", generate: "Create searchable PDF", download: "Download searchable PDF", ready: "PDF ready. You can search, select and copy its recognized text.",
+  error_pageLimit: "Recognize up to 30 pages per run. Enter a page range to process a larger file in batches.", error_imageLimit: "Page dimensions or total pixel count exceed the limit. Lower the resolution or select fewer pages.", error_outputLimit: "Page images or recognized text exceed the output limit. Reduce the resolution or select fewer pages.",
 },
 imageVectorTools: {
   title: "Image to SVG",
@@ -239,7 +250,7 @@ imageVectorTools: {
   error_cancelled: "Conversion cancelled.", error_timeout: "Processing timed out. Lower the resolution or precision and try again.", error_unsupported: "This browser does not support the required local image features. Try a newer browser.", error_engine: "Tracing failed. Try again or lower the precision.",
 },
 tools: {
-  ocr: { name: "OCR Image to Text", description: "Recognize Chinese, English, small text and long screenshots locally" },
+  ocr: { name: "OCR Image to Text", description: "Local image and PDF OCR with searchable scan export" },
   imageToSvg: { name: "Image to SVG", description: "Local image vectorization with faithful pixels or smooth contours" },
   pageTitle: "Tool Collection",
   eyebrow: "Your ready-to-use workbench",
@@ -3275,7 +3286,8 @@ xmlTools: {
 },
 pdfTools: {
   "title": "PDF Page Tools",
-  "description": "Merge, split, reorder and rotate PDFs locally, or create PDFs from images and add page numbers.",
+  "description": "Merge, split, reorder and rotate PDFs locally, create PDFs from images, add page numbers and recognize scanned documents.",
+  "ocrMode": "Scanned PDF OCR",
   "pagesMode": "PDF pages",
   "imagesMode": "Images to PDF",
   "addPdfs": "Add PDF files",

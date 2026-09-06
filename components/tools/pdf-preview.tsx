@@ -5,14 +5,7 @@ import { Loader2, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist"
 import { useTranslations } from "@/hooks/use-translations"
-
-let modulePromise: Promise<typeof import("pdfjs-dist")> | undefined
-function loadPdfJs() {
-  return modulePromise ??= import("pdfjs-dist").then((pdfjs) => {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).href
-    return pdfjs
-  }).catch((cause) => { modulePromise = undefined; throw cause })
-}
+import { loadPdfJs, pdfJsOptions } from "@/lib/pdfjs-runtime"
 export default function PdfPreview({ file, page = 0, rotation = 0 }: { file: File | null; page?: number; rotation?: number }) {
   const t = useTranslations("pdfTools")
   const canvas = useRef<HTMLCanvasElement | null>(null)
@@ -30,8 +23,7 @@ export default function PdfPreview({ file, page = 0, rotation = 0 }: { file: Fil
       const [pdfjs, buffer] = await Promise.all([loadPdfJs(), file.arrayBuffer()])
       if (cancelled) return
       worker = pdfjs.PDFWorker.create({ name: "local-pdf-preview" })
-      const assets = new URL(`/pdfjs/${pdfjs.version}/`, window.location.origin).href
-      task = pdfjs.getDocument({ data: new Uint8Array(buffer), worker, cMapUrl: assets + "cmaps/", cMapPacked: true, standardFontDataUrl: assets + "standard_fonts/", wasmUrl: assets + "wasm/", enableXfa: false, maxImageSize: 20_000_000, canvasMaxAreaInBytes: 32 * 1024 * 1024, useSystemFonts: true })
+      task = pdfjs.getDocument({ data: new Uint8Array(buffer), worker, ...pdfJsOptions(pdfjs) })
       const document = await task.promise
       if (!cancelled) setLoaded({ file, document, worker })
     })().catch(() => { if (!cancelled) { setError(t("previewFailed")); setBusy(false) } }).finally(() => clearTimeout(timeout))

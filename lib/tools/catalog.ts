@@ -29,8 +29,8 @@ export interface ToolCatalogEntry {
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "ocr", translationKey: "ocr", category: "image",
-    seo: { title: "OCR 图片文字识别", description: "浏览器本地 OCR，使用 PaddleOCR 识别中英文、小字和长截图，支持识别框、置信度核对、编辑、复制与 TXT / JSON 导出。" },
-    features: [["OCR 文字识别", "Chinese and English image to text with PaddleOCR"], ["截图 / 小字 / 长图", "Local screenshot recognition with overlapping crops"], ["识别框 / 文本导出", "Review confidence, edit text, export TXT and JSON"]],
+    seo: { title: "OCR 图片与 PDF 文字识别", description: "浏览器本地使用 PaddleOCR 识别中英文、小字、长截图和 PDF 扫描件，支持逐行核对、TXT / JSON 导出和可搜索 PDF。" },
+    features: [["OCR 文字识别", "Chinese and English image to text with PaddleOCR"], ["截图 / 小字 / 长图", "Local screenshot recognition with overlapping crops"], ["识别框 / 文本导出", "Review confidence, edit text, export TXT and JSON"], ["PDF OCR / 可搜索扫描件", "Recognize selected PDF pages, correct lines and export searchable PDFs"]],
   },
   {
     id: "image-to-svg", translationKey: "imageToSvg", category: "image",
@@ -39,8 +39,8 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   },
   {
     id: "pdf", translationKey: "pdfTools", category: "developer",
-    seo: { title: "PDF 页面工具", description: "浏览器本地合并、拆分、选择、重排、旋转 PDF 页面并添加页码，支持 PNG/JPEG 图片转 PDF、逐页预览和批量下载。" },
-    features: [["PDF 合并 / 拆分", "Merge documents or split selected pages into groups"], ["PDF 重排 / 旋转", "Reorder, select and rotate pages with preview"], ["图片转 PDF", "PNG/JPEG and EXIF orientation"], ["PDF 页码", "Page numbers aligned to rotated and cropped pages"]],
+    seo: { title: "PDF 页面工具", description: "浏览器本地合并、拆分、选择、重排、旋转 PDF 页面并添加页码，支持图片转 PDF、扫描件 OCR 和可搜索 PDF 导出。" },
+    features: [["PDF 合并 / 拆分", "Merge documents or split selected pages into groups"], ["PDF 重排 / 旋转", "Reorder, select and rotate pages with preview"], ["图片转 PDF", "PNG/JPEG and EXIF orientation"], ["PDF 页码", "Page numbers aligned to rotated and cropped pages"], ["扫描件 OCR", "PDF text recognition and searchable document export"]],
   },
   {
     id: "sqlite", translationKey: "sqliteTools", category: "developer",

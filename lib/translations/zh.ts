@@ -196,6 +196,7 @@ home: {
   buildWorkflow: "开始搭建工作流",
 },
 ocrTools: {
+  imageMode: "图片识别", pdfMode: "PDF OCR",
   title: "OCR 图片文字识别", description: "把图片里的中英文变成可编辑文本。保留小字细节，分段处理长截图，识别后可对照原图逐行核对。",
   local: "浏览器本地识别 · 图片不上传", chooseFile: "选择图片", fileHint: "拖入图片，或在此页面粘贴截图", clear: "清除图片",
   sample: "试试示例", sample_document: "中英混排", sample_small: "小字截图", sample_dark: "深色背景", sample_long: "长截图",
@@ -212,6 +213,16 @@ ocrTools: {
   error_fileLimit: "图片不能为空且不能超过 20 MB。", error_imageLimit: "图片超过 2000 万像素或边长 32768 像素，请先裁剪。", error_format: "请选择 PNG、JPEG 或 WebP 图片。", error_decode: "无法读取图片，文件可能损坏。",
   error_options: "识别参数无效，请检查旋转设置。", error_unsupported: "浏览器不支持本地识别所需的功能，请使用较新的浏览器。", error_model: "模型加载失败，请检查网络后重试。首次加载可能需要一些时间。", error_engine: "识别失败，请重试或裁剪图片后识别。",
   error_cancelled: "已取消识别。", error_timeout: "识别超时，请裁剪图片后重试。", error_outputLimit: "识别出的文字行数过多，请将图片分成几张后识别。",
+},
+pdfOcr: {
+  title: "PDF OCR · 扫描件文字识别", description: "选择 PDF 页面，在浏览器里识别中英文。逐行核对后，可提取全文，或生成能够搜索和复制文字的 PDF。文件在本地处理。",
+  choose: "选择 PDF", sample: "试试两页扫描件", limits: "文件最多 64 MB、500 页，每次识别最多 30 页。单页最多 800 万像素，累计最多 1.2 亿像素；大页面会按上限缩小。",
+  selection: "识别页码", selectionHint: "留空识别全部；支持范围、倒序和重排，如 3,1-2。", resolution: "识别分辨率", recognize: "识别所选页面",
+  exportHint: "导出的 PDF 由所选页的静态图像和识别文字层组成，保留当前页面外观；可填写表单、数字签名、链接和书签不随新文件保留。",
+  stage_reading: "读取 PDF", stage_rendering: "渲染扫描页面", stage_recognizing: "识别页面文字", stage_writing: "生成可搜索 PDF",
+  sourcePage: "原第 {page} 页", reviewHint: "在下方直接改正识别文字，所有导出都会使用校对后的内容。置信度是模型评分，不等于正确率；金额、相似字符请对照原图。",
+  noText: "本页没有识别到文字，导出时仍会保留页面图像。", allText: "全部页面文本", generate: "生成可搜索 PDF", download: "下载可搜索 PDF", ready: "PDF 已生成，可以搜索、选中和复制识别文字。",
+  error_pageLimit: "每次最多识别 30 页，请填写页码范围分批处理。", error_imageLimit: "页面尺寸或累计像素过大，请降低分辨率或减少页数。", error_outputLimit: "页面图像或文字结果过大，请减少页数或降低分辨率后重试。",
 },
 imageVectorTools: {
   title: "图片转 SVG",
@@ -241,7 +252,7 @@ imageVectorTools: {
   error_cancelled: "已取消转换。", error_timeout: "处理超时，请降低分辨率或精度后重试。", error_unsupported: "当前浏览器不支持所需的本地图像处理能力，请使用较新的浏览器。", error_engine: "描摹失败，请重试或降低精度设置。",
 },
 tools: {
-  ocr: { name: "OCR 文字识别", description: "本地识别图片中英文、小字与长截图" },
+  ocr: { name: "OCR 文字识别", description: "本地识别图片与 PDF，导出可搜索扫描件" },
   imageToSvg: { name: "图片转 SVG", description: "本地图片矢量化、像素保真与平滑描摹" },
   pageTitle: "工具集",
   eyebrow: "随取随用的工作台",
@@ -3276,7 +3287,8 @@ xmlTools: {
 },
 pdfTools: {
   "title": "PDF 页面工具",
-  "description": "本地合并、拆分、重排和旋转 PDF，也可将图片生成 PDF 并添加页码。",
+  "description": "本地合并、拆分、重排和旋转 PDF，图片转 PDF、添加页码，以及扫描件 OCR。",
+  "ocrMode": "扫描件 OCR",
   "pagesMode": "PDF 页面",
   "imagesMode": "图片转 PDF",
   "addPdfs": "添加 PDF 文件",

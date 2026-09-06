@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import OcrPage from "./page"
+import ImageOcrPanel from "./image-ocr-panel"
 import { recognizeImage } from "@/lib/ocr-worker-client"
 import type { OcrResult } from "@/lib/ocr-shared"
 
@@ -19,11 +19,11 @@ function file(name: string) {
 }
 const result: OcrResult = { text: "old result", lines: [], info: { width: 16, height: 16, rotation: 0, tiles: 1, elapsedMs: 1, animated: false }, preview: new Blob() }
 afterEach(() => vi.clearAllMocks())
-describe("OCR page stale-result guard", () => {
+describe("Image OCR stale-result guard", () => {
   it("aborts an old job and ignores its late result when another image replaces it", async () => {
     let finish!: (result: OcrResult) => void
     vi.mocked(recognizeImage).mockImplementation(() => new Promise(resolve => { finish = resolve }))
-    render(<OcrPage />)
+    render(<ImageOcrPanel />)
     fireEvent.change(screen.getByLabelText("chooseFile", { selector: "input" }), { target: { files: [file("first.png")] } })
     await waitFor(() => expect(screen.getByRole("button", { name: "recognize" })).toBeEnabled())
     fireEvent.click(screen.getByRole("button", { name: "recognize" }))
@@ -36,7 +36,7 @@ describe("OCR page stale-result guard", () => {
   })
   it("clears a result when recognition options change", async () => {
     vi.mocked(recognizeImage).mockResolvedValue(result)
-    render(<OcrPage />)
+    render(<ImageOcrPanel />)
     fireEvent.change(screen.getByLabelText("chooseFile", { selector: "input" }), { target: { files: [file("first.png")] } })
     await waitFor(() => expect(screen.getByRole("button", { name: "recognize" })).toBeEnabled())
     fireEvent.click(screen.getByRole("button", { name: "recognize" }))
