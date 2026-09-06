@@ -6,6 +6,7 @@ export interface CsvOptions {
   delimiter?: string
   header?: boolean
   skipEmptyLines?: boolean
+  dynamicTyping?: boolean
 }
 
 export interface CsvResult {
@@ -90,7 +91,7 @@ export function processCsv(input: string, operation: CsvOperation, options: CsvO
     header: options.header !== false,
     delimiter,
     skipEmptyLines: options.skipEmptyLines !== false ? "greedy" : false,
-    dynamicTyping: true,
+    dynamicTyping: options.dynamicTyping !== false,
   })
   const errors = parsed.errors.map((error) => `Row ${error.row ?? "?"}: ${error.message}`)
   const data = parsed.data as Array<Record<string, unknown> | unknown[]>

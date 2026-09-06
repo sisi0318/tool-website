@@ -20,6 +20,8 @@ export const csvAdapter: ToolAdapter = {
     ], hasInput: true },
     { id: "delimiter", name: "Delimiter", dataType: "string", defaultValue: "", hasInput: true },
     { id: "header", name: "First row is header", dataType: "boolean", defaultValue: true, hasInput: true },
+    { id: "dynamicTyping", name: "Parse numbers and booleans", dataType: "boolean", defaultValue: true },
+    { id: "strict", name: "Stop on CSV parsing errors", dataType: "boolean", defaultValue: false },
   ],
   outputs: [
     { id: "output", name: "Output", dataType: "string" },
@@ -35,8 +37,10 @@ export const csvAdapter: ToolAdapter = {
       {
         delimiter: String(inputs.delimiter ?? config.delimiter ?? ""),
         header: (inputs.header ?? config.header ?? true) !== false,
+        dynamicTyping: config.dynamicTyping !== false,
       }
     )
+    if (config.strict === true && result.errors.length) throw new Error(result.errors.slice(0, 3).join("; "))
     return { output: result.output, rows: result.rows, columns: result.columns }
   },
 }
@@ -44,4 +48,3 @@ export const csvAdapter: ToolAdapter = {
 export function registerCsvAdapter(): void {
   registerNode(csvAdapter)
 }
-

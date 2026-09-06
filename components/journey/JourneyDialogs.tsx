@@ -217,25 +217,29 @@ export function ReplayDialog({
   running,
   onRun,
   isCurrentSaved,
+  fileInput = false,
 }: DialogBaseProps & {
   stepCount: number
   running: boolean
-  onRun: (text: string) => void
+  onRun: (value: unknown) => void
   isCurrentSaved: () => boolean
+  fileInput?: boolean
 }) {
   const t = useTranslations("journey")
   const [text, setText] = useState("")
+  const [file, setFile] = useState<File | null>(null)
   const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     if (!open) {
       setText("")
+      setFile(null)
       setConfirming(false)
     }
   }, [open])
 
   const handleRun = () => {
-    if (isCurrentSaved()) onRun(text)
+    if (isCurrentSaved()) onRun(fileInput ? file : text)
     else setConfirming(true)
   }
 
@@ -254,19 +258,19 @@ export function ReplayDialog({
             confirmLabel={t("replaceAndRun")}
             running={running}
             onCancel={() => setConfirming(false)}
-            onConfirm={() => onRun(text)}
+            onConfirm={() => onRun(fileInput ? file : text)}
           />
         ) : (
           <>
-            <Textarea
+            {fileInput ? <label className="space-y-2 text-sm"><span className="block">{t("uploadFile")}</span><input type="file" aria-label={t("uploadFile")} disabled={running} className="block max-w-full text-sm" onChange={event => setFile(event.target.files?.[0] ?? null)} /></label> : <Textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder={t("replayPlaceholder")}
               aria-label={t("replayTitle")}
               rows={5}
               className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
-            />
-            <Button onClick={handleRun} disabled={!text.trim() || running || stepCount === 0} className={PRIMARY_BUTTON}>
+            />}
+            <Button onClick={handleRun} disabled={(fileInput ? !file : !text.trim()) || running || stepCount === 0} className={PRIMARY_BUTTON}>
               {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               {t("replayRun")}
             </Button>

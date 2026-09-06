@@ -34,6 +34,7 @@ interface InputStageProps {
   draftBehindImport?: boolean
   /** Drops the imported path and restores the local draft instead. */
   onRestoreDraft?: () => void
+  onOpenTemplates?: () => void
 }
 
 export function InputStage({
@@ -43,8 +44,10 @@ export function InputStage({
   onStart,
   draftBehindImport = false,
   onRestoreDraft,
+  onOpenTemplates,
 }: InputStageProps) {
   const t = useTranslations("journey")
+  const wt = useTranslations("workflowTemplates")
   const [text, setText] = useState("")
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -90,6 +93,8 @@ export function InputStage({
         <p className="mt-2 text-center text-sm leading-relaxed text-[var(--md-sys-color-on-surface-variant)]">
           {t("description")}
         </p>
+
+        {onOpenTemplates && <div className="mt-4 text-center"><Button variant="outline" className="rounded-full" disabled={starting} onClick={onOpenTemplates}>{wt("title")}</Button></div>}
 
         {pendingSteps !== null && (
           <div className="mt-4 rounded-2xl bg-[var(--md-sys-color-tertiary-container)] p-3 text-sm leading-relaxed text-[var(--md-sys-color-on-tertiary-container)]">

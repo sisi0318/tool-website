@@ -70,6 +70,16 @@ settings: {
   storageLocale: "界面语言",
   storageTheme: "深浅色主题",
 },
+workflowTemplates: {
+  title: "流程模板", description: "选择一套常用流程，检查步骤与输入，再一次运行。每一步都会保留结果，后续可以修改参数、保存路径或转到画布。", use: "使用模板", steps: "步", imageInput: "图片输入", textInput: "文本输入", pickerHint: "模板使用本地工具，不会自动运行。开始前可恢复原草稿；文件本体不会写入旅程存档，重新打开或转入画布时需重新选择文件。",
+  change: "更换模板", back: "返回自由探索", restore: "退出模板并恢复原草稿", inputText: "模板输入文本", imagePreview: "模板输入图片", dropImage: "选择、拖入或粘贴一张图片", chooseImage: "选择输入图片", chooseText: "导入 UTF-8 文本文件", sample: "加载模板示例", run: "运行模板", reading: "正在读取输入…", progress: "正在运行第 {current} / {total} 步", cancel: "取消运行", cancelled: "已取消，输入和已完成步骤的结果已保留。", resultHint: "完成后点击步骤轨迹可核对每一步，最后一步提供文件下载。修改某一步的参数后，可重新计算后续步骤。", draftHint: "开始运行会用模板结果替换当前草稿；现在仍可点击上方按钮恢复原草稿。", imageLimit: "图片未载入。请选择 PNG / JPEG / WebP，最大 20 MB、2000 万像素；动态图片只处理首帧。", textLimit: "文本未载入。请选择不超过 4 MB 的 UTF-8 文件，且文本不超过 {count} 个字符。",
+  "scan-text_title": "图片 OCR 整理", "scan-text_description": "从扫描图片中提取中英文，清理行首尾空白和空行，生成可下载的 TXT。", "scan-text_hint": "PNG / JPEG / WebP，最大 20 MB、2000 万像素。保留重复行和原有顺序；请核对 OCR 文字后再使用。", "scan-text_step1": "识别图片文字", "scan-text_step2": "清理空白与空行", "scan-text_step3": "生成 recognized-text.txt",
+  "web-image_title": "网页图片与 Data URL", "web-image_description": "把图片按比例缩小到 1600 像素以内，转换 WebP，再生成可嵌入网页的 Data URL。", "web-image_hint": "最大 20 MB、2000 万像素；WebP 质量 82。第一步可下载 WebP 图片，最后一步下载 Data URL 文本。", "web-image_step1": "缩放并转换为 WebP", "web-image_step2": "生成图片 Data URL", "web-image_step3": "生成 image-data-url.txt",
+  "clean-list_title": "名单清理与去重", "clean-list_description": "统一 Unicode 组合字符，清理首尾空白、空行，再按原有顺序去重。", "clean-list_hint": "最多 20000 字符。使用 NFC 规范化，去重区分大小写，不做排序；可在结果中调整各步配置。", "clean-list_step1": "NFC 字符规范化", "clean-list_step2": "清理空白与空行", "clean-list_step3": "保留首次出现的行", "clean-list_step4": "生成 clean-list.txt",
+  "csv-json_title": "CSV 整理为 JSON", "csv-json_description": "把首行为表头的 CSV 转成 JSON 记录，格式化缩进，再下载 JSON 文件。", "csv-json_hint": "最多 100 万字符，文件最多 4 MB。自动识别分隔符，单元格按文本保留，编号中的前导零不会被转成数值。", "csv-json_step1": "CSV 转 JSON 记录", "csv-json_step2": "格式化为两空格缩进", "csv-json_step3": "生成 records.json",
+  "base64-json_title": "Base64 解码并整理 JSON", "base64-json_description": "解码 Base64 中的 UTF-8 JSON，检查格式并生成易读的 JSON 文件。", "base64-json_hint": "输入需为编码后的 JSON，最多 100 万字符。格式有误时停止，并保留此前已解码的文本供检查。", "base64-json_step1": "Base64 解码", "base64-json_step2": "解析并格式化 JSON", "base64-json_step3": "生成 decoded.json",
+  "json-yaml_title": "JSON 配置转 YAML", "json-yaml_description": "把 JSON 对象转成 YAML 配置，保留结构并生成配置文件。", "json-yaml_hint": "最多 100 万字符，文件最多 4 MB。JSON 中需要精确保留的长编号应使用字符串。", "json-yaml_step1": "JSON 转 YAML", "json-yaml_step2": "生成 config.yaml",
+},
 journey: {
   transferExpired: "传入的数据已过期或不在当前标签页中，请从原工具重新发送。",
   configureNewStep: "确认本步参数和输出，点击运行后应用到当前数据。",

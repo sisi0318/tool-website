@@ -125,6 +125,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: V
             <button
               type="button"
               onClick={handleCopy}
+              disabled={running}
               aria-label={t("copy")}
               title={t("copy")}
               className={ICON_BUTTON}
@@ -136,6 +137,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: V
             <button
               type="button"
               onClick={handleDownload}
+              disabled={running}
               aria-label={t("download")}
               title={t("download")}
               className={ICON_BUTTON}
@@ -147,6 +149,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: V
             <button
               type="button"
               onClick={onOpenStepSheet}
+              disabled={running}
               aria-label={t("stepConfigTitle")}
               title={t("stepConfigTitle")}
               className={ICON_BUTTON}

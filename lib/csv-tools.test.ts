@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest"
 import { processCsv } from "./csv-tools"
 
 describe("CSV tools", () => {
+  it("can preserve identifiers, literal booleans and blank cells as text", () => {
+    expect(JSON.parse(processCsv('id,flag,empty\n00123,true,\n12345678901234567890,false,', "to-json", { dynamicTyping: false }).output)).toEqual([{ id: "00123", flag: "true", empty: "" }, { id: "12345678901234567890", flag: "false", empty: "" }])
+  })
   it("detects delimiter and converts CSV to JSON", () => {
     const result = processCsv("name;age\nAda;36\nLinus;54", "to-json")
     expect(result.delimiter).toBe(";")

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { FilePlus2, FolderOpen, Repeat2, Save, Share2, Workflow } from "lucide-react"
+import { FilePlus2, FolderOpen, LayoutTemplate, Repeat2, Save, Share2, Workflow } from "lucide-react"
 
 import { registerAllAdapters } from "@/lib/adapters"
 import { getNodeDefinition } from "@/lib/canvas/registry"
@@ -25,6 +25,7 @@ import {
   type SharedStepReview,
 } from "@/lib/journey/serialize"
 import { exportPathToCanvas } from "@/lib/journey/to-canvas"
+import { getJourneyTemplate, journeyTemplatePath, templateIdFromHash, validateTemplateImage, type JourneyTemplate } from "@/lib/journey/templates"
 import {
   appendNode,
   createJourney,
@@ -56,7 +57,10 @@ import { SuggestionChips } from "@/components/journey/SuggestionChips"
 import { ToolPickerSheet } from "@/components/journey/ToolPickerSheet"
 import { ValueCard } from "@/components/journey/ValueCard"
 import { TransferIntake } from "@/components/journey/TransferIntake"
+import { TemplatePicker } from "@/components/journey/TemplatePicker"
+import { TemplateStage, type TemplateRunProgress } from "@/components/journey/TemplateStage"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -97,6 +101,7 @@ type DialogKind = "share" | "open" | "replay" | "confirmNew" | "confirmOverwrite
 
 export default function JourneyPage() {
   const t = useTranslations("journey")
+  const wt = useTranslations("workflowTemplates")
   const { toast } = useToast()
   const router = useRouter()
 
@@ -112,11 +117,16 @@ export default function JourneyPage() {
   const [toolPickerOpen, setToolPickerOpen] = useState(false)
   const [incomingTransfer, setIncomingTransfer] = useState<ToolTransfer | null>(null)
   const [pendingStep, setPendingStep] = useState<JourneyStep | null>(null)
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
+  const [pendingTemplate, setPendingTemplate] = useState<JourneyTemplate | null>(null)
+  const [runProgress, setRunProgress] = useState<TemplateRunProgress | null>(null)
+  const runController = useRef<AbortController | null>(null), runVersion = useRef(0)
   const bootedRef = useRef(false)
   // 自动保存失败只提示一次,避免每次编辑都弹。
   const autosaveWarnedRef = useRef(false)
 
   const active = journey ? journey.nodes[journey.activeId] ?? journey.nodes[journey.rootId] : null
+  useEffect(() => () => { runVersion.current++; runController.current?.abort() }, [])
 
   const notifyReplayFailure = (result: ReplayResult) => {
     if (result.ok) return
@@ -131,15 +141,20 @@ export default function JourneyPage() {
   }
 
   const runSharedPath = async (value: unknown, shared: SharedJourneyPath) => {
+    const ticket = ++runVersion.current, controller = new AbortController()
+    runController.current = controller
     setRunning(true)
     try {
-      const result = await replaySteps(value, shared.steps)
+      const result = await replaySteps(value, shared.steps, { signal: controller.signal, onStep: (index, total, step) => { if (ticket === runVersion.current) setRunProgress({ current: index + 1, total, tool: step.tool }) } })
+      if (ticket !== runVersion.current) return
       setJourney(
         buildJourneyFromOutcomes(shared.name || t("namePlaceholder"), value, t("trailInput"), result.outcomes),
       )
-      notifyReplayFailure(result)
+      setPendingTemplate(null)
+      if (controller.signal.aborted) toast({ title: wt("cancelled") })
+      else notifyReplayFailure(result)
     } finally {
-      setRunning(false)
+      if (ticket === runVersion.current) { setRunning(false); setRunProgress(null); runController.current = null }
     }
   }
 
@@ -164,6 +179,7 @@ export default function JourneyPage() {
     }
     // Never auto-run: the user reviews the steps and starts explicitly.
     setPendingSharedPath(shared)
+    setPendingTemplate(null)
     setIncomingTransfer(null)
     setPendingStep(null)
     setPendingReview(review.steps)
@@ -176,7 +192,14 @@ export default function JourneyPage() {
     return true
   }
 
+  const chooseTemplate = (template: JourneyTemplate, current: Journey | null = journey ?? draftBehindImport) => {
+    if (running) return
+    if (importSharedPath(journeyTemplatePath(template, wt(`${template.id}_title`)), current)) setPendingTemplate(template)
+    setTemplatePickerOpen(false)
+  }
+
   const startTransfer = (transfer: ToolTransfer) => {
+    setPendingTemplate(null)
     setPendingSharedPath(null)
     setPendingReview(null)
     setDraftBehindImport(null)
@@ -219,6 +242,8 @@ export default function JourneyPage() {
     if (bootedRef.current) return
     bootedRef.current = true
     const hash = window.location.hash
+    const templateId = templateIdFromHash(hash)
+    if (templateId) { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`); chooseTemplate(getJourneyTemplate(templateId)!, null); return }
     const transferId = toolTransferIdFromHash(hash)
     if (transferId) { receiveTransfer(transferId, null); return }
     const shared = hash.includes("j=") ? decodeSharedPath(hash) : null
@@ -239,6 +264,8 @@ export default function JourneyPage() {
     const handleHashChange = () => {
       if (running) return
       const hash = window.location.hash
+      const templateId = templateIdFromHash(hash)
+      if (templateId) { window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`); chooseTemplate(getJourneyTemplate(templateId)!); return }
       const transferId = toolTransferIdFromHash(hash)
       if (transferId) { receiveTransfer(transferId, journey ?? draftBehindImport); return }
       if (!hash.includes("j=")) return
@@ -282,6 +309,7 @@ export default function JourneyPage() {
     if (running) return
     setPendingSharedPath(null)
     setPendingReview(null)
+    setPendingTemplate(null)
     setIncomingTransfer(null)
     setJourney(draftBehindImport)
     setDraftBehindImport(null)
@@ -462,19 +490,19 @@ export default function JourneyPage() {
     router.push("/canvas")
   }
 
-  const handleReplayRun = async (text: string) => {
+  const handleReplayRun = async (value: unknown) => {
     if (!journey || running) return
     const steps = getPathSteps(journey, journey.activeId)
     const name = journey.name
+    const ticket = ++runVersion.current
     setRunning(true)
     try {
-      const result = await replaySteps(text, steps)
+      if (value instanceof File && ["ocr", "image-convert"].includes(steps[0]?.tool)) await validateTemplateImage(value)
+      if (ticket !== runVersion.current) return
       setDialog(null)
-      setJourney(buildJourneyFromOutcomes(name, text, t("trailInput"), result.outcomes))
-      notifyReplayFailure(result)
-    } finally {
-      setRunning(false)
-    }
+      await runSharedPath(value, { v: 1, name, steps })
+    } catch (error) { if (ticket === runVersion.current) toast({ title: t("stepFailed"), description: error instanceof Error ? error.message : t("unknownError"), variant: "destructive" }) }
+    finally { if (ticket === runVersion.current) setRunning(false) }
   }
 
   const handleNewJourney = () => {
@@ -483,6 +511,7 @@ export default function JourneyPage() {
     setBranchesOpen(false)
     setToolPickerOpen(false)
     setPendingSharedPath(null)
+    setPendingTemplate(null)
     setIncomingTransfer(null)
     setPendingStep(null)
     setJourney(null)
@@ -496,18 +525,23 @@ export default function JourneyPage() {
 
   if (!journey || !active) {
     return (
-      <InputStage
+      <>
+      {pendingTemplate ? <TemplateStage key={pendingTemplate.id} template={pendingTemplate} starting={running} progress={runProgress} hasDraft={draftBehindImport !== null} onStart={handleStart} onCancel={() => runController.current?.abort()} onExit={handleRestoreDraft} onOpenTemplates={() => setTemplatePickerOpen(true)} /> : <InputStage
         pendingSteps={pendingReview}
         pendingText={pendingSharedPath?.rootText}
         starting={running}
         onStart={handleStart}
         draftBehindImport={draftBehindImport !== null}
         onRestoreDraft={handleRestoreDraft}
-      />
+        onOpenTemplates={() => setTemplatePickerOpen(true)}
+      />}
+      <TemplatePicker open={templatePickerOpen} onOpenChange={setTemplatePickerOpen} onChoose={chooseTemplate} />
+      </>
     )
   }
 
   const headerActions: Array<{ key: string; label: string; icon: typeof Repeat2; onClick: () => void }> = [
+    { key: "templates", label: wt("title"), icon: LayoutTemplate, onClick: () => setTemplatePickerOpen(true) },
     { key: "replay", label: t("replayTitle"), icon: Repeat2, onClick: () => setDialog("replay") },
     { key: "share", label: t("shareJourney"), icon: Share2, onClick: () => setDialog("share") },
     { key: "canvas", label: t("openInCanvas"), icon: Workflow, onClick: handleOpenInCanvas },
@@ -529,6 +563,7 @@ export default function JourneyPage() {
       <header className="flex flex-wrap items-center gap-1">
         <Input
           value={journey.name}
+          disabled={running}
           onChange={(event) => setJourney((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
           aria-label={t("journeyName")}
           placeholder={t("namePlaceholder")}
@@ -542,6 +577,7 @@ export default function JourneyPage() {
                 key={action.key}
                 type="button"
                 onClick={action.onClick}
+                disabled={running}
                 aria-label={action.label}
                 title={action.label}
                 className={ICON_BUTTON}
@@ -552,6 +588,9 @@ export default function JourneyPage() {
           })}
         </div>
       </header>
+
+      {running && runProgress && <div role="status" className="flex flex-wrap items-center gap-3 rounded-2xl bg-md-primary-container p-3 text-sm text-md-on-primary-container"><span>{wt("progress").replace("{current}", String(runProgress.current)).replace("{total}", String(runProgress.total))} · {toolLabel(runProgress.tool)}</span><Button variant="outline" size="sm" onClick={() => runController.current?.abort()}>{wt("cancel")}</Button></div>}
+      <TemplatePicker open={templatePickerOpen} onOpenChange={setTemplatePickerOpen} onChoose={chooseTemplate} />
 
       <JourneyTrail
         journey={journey}
@@ -619,7 +658,8 @@ export default function JourneyPage() {
         onOpenChange={(open) => setDialog(open ? "replay" : null)}
         stepCount={getPathSteps(journey, journey.activeId).length}
         running={running}
-        onRun={(text) => void handleReplayRun(text)}
+        fileInput={journey.nodes[journey.rootId]?.valueType === "bytes"}
+        onRun={(value) => void handleReplayRun(value)}
         isCurrentSaved={() => isJourneySaved(journey)}
       />
       <ConfirmOverwriteDialog
