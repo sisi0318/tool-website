@@ -212,6 +212,15 @@ ocrTools: {
   error_options: "Invalid recognition options. Check the rotation setting.", error_unsupported: "This browser lacks required local recognition features. Try a newer browser.", error_model: "Unable to load the models. Check your connection and retry. The first load can take some time.", error_engine: "Recognition failed. Retry or crop the image into smaller sections.",
   error_cancelled: "Recognition cancelled.", error_timeout: "Recognition timed out. Crop the image and retry.", error_outputLimit: "Too many text lines. Split the image and recognize smaller sections.",
 },
+imageDiff: {
+  title: "Image comparison", description: "Compare two images with a wipe slider, opacity overlay or highlighted pixel differences. Useful for design reviews and webpage screenshots, processed locally in your browser.",
+  a: "Image A · Reference", b: "Image B · Comparison", uploadA: "Choose image A", uploadB: "Choose image B", choose: "Choose image", previewA: "Image A preview", previewB: "Image B preview", dropHint: "Choose, drop or paste an image here", sample: "Load comparison example", swap: "Swap A / B", clear: "Clear", cancel: "Cancel",
+  limits: "PNG / JPEG / WebP, up to 20 MB and 20 million pixels each. The aligned canvas supports 20 million pixels and a 32,768-pixel side. Animated images use the first frame.", alignment: "Alignment", topLeft: "Top left", center: "Center", offsetX: "B horizontal offset (px)", offsetY: "B vertical offset (px)", threshold: "Color difference threshold", compare: "Compare images",
+  optionsHint: "Compare original pixels without resizing. Positive offsets move B right / down; swapping clears offsets. Threshold 0–255: higher values ignore more subtle color changes. Alpha changes count; hidden RGB in fully transparent pixels does not. Areas covered by only one image always count as different. Compare again after changing options.",
+  stage_prepare: "Reading image…", stage_readingA: "Reading image A…", stage_readingB: "Reading image B…", stage_comparing: "Comparing pixels…", stage_encoding: "Generating difference image…", imageLimit: "An image or the aligned canvas exceeds 20 million pixels or a 32,768-pixel side. Resize images or reduce offsets.", optionsError: "Use an integer threshold from 0 to 255 and integer offsets from -32,768 to 32,768.", timeout: "Comparison timed out. Resize the images and try again.", error: "Comparison failed. Check the images and try again.",
+  result: "Comparison result", changed: "Changed pixels", compared: "Compared pixels", onlyA: "Covered only by A", onlyB: "Covered only by B", wipe: "Wipe slider", overlay: "Opacity overlay", difference: "Highlight differences", zoom: "Zoom", position: "Divider position", opacity: "B opacity", comparisonPreview: "Image comparison preview",
+  wipeHint: "A appears on the left and B on the right. Drag across the image or move the slider.", overlayHint: "A is the base layer. Adjust B opacity to compare position and content.", diffHint: "Red marks differences; the pale grayscale image provides context. PNG exports the full-resolution difference image.", identical: "No differences at the current threshold.", bounds: "Difference bounds (comparison canvas pixels):", download: "Download difference PNG", report: "Download statistics JSON",
+},
 imageTable: {
   title: "Image to table", description: "Turn a table screenshot into editable rows and columns, check against the original, then export CSV or Excel. Recognition and export run locally in your browser.",
   upload: "Choose image", sample: "Load table example", clear: "Clear", recognize: "Recognize table", cancel: "Cancel", limits: "Drop or paste PNG / JPEG / WebP, up to 20 MB and 20 million pixels. Up to 200 rows, 40 columns and 2,000 cells.",
@@ -287,6 +296,7 @@ imageVectorTools: {
   error_cancelled: "Conversion cancelled.", error_timeout: "Processing timed out. Lower the resolution or precision and try again.", error_unsupported: "This browser does not support the required local image features. Try a newer browser.", error_engine: "Tracing failed. Try again or lower the precision.",
 },
 tools: {
+  imageDiff: { name: "Image comparison", description: "Wipe and overlay two images, highlight pixel differences" },
   imageTable: { name: "Image to table", description: "Recover and review table rows and columns, export CSV or Excel" },
   imageRedact: { name: "Image redaction", description: "Detect phone numbers and emails, review regions and overwrite pixels" },
   imageBatch: { name: "Batch images", description: "Batch OCR, compression, resizing, conversion and ZIP download" },

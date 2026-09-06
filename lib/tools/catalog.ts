@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "image-diff", translationKey: "imageDiff", category: "image",
+    seo: { title: "图片对比与差异高亮", description: "在本地滑动对照或透明叠加两张图片，按像素高亮差异，支持不同尺寸、居中对齐、位置偏移、阈值调节与 PNG / JSON 导出。" },
+    features: [["图片滑动 / 叠加对比", "Wipe slider and opacity overlay for design and screenshot comparison"], ["像素差异高亮", "Threshold, transparency-aware comparison and changed-pixel bounds"], ["尺寸 / 位置对齐", "Original-size top-left or centered alignment with pixel offsets"]],
+  },
+  {
     id: "image-table", translationKey: "imageTable", category: "image",
     seo: { title: "截图表格识别", description: "本地将表格截图识别为可编辑行列，支持网格线检测、分隔线调整、原图校对与 CSV / Excel 导出，保留编号、空白与多行文字。" },
     features: [["截图转表格 / Excel", "Local OCR to editable rows and columns, CSV and XLSX export"], ["网格线 / 行列校正", "Detect table borders, infer text alignment and adjust boundaries"], ["单元格校对", "Review uncertain text, preserve identifiers, blank cells and multiline content"]],

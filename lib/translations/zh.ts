@@ -214,6 +214,15 @@ ocrTools: {
   error_options: "识别参数无效，请检查旋转设置。", error_unsupported: "浏览器不支持本地识别所需的功能，请使用较新的浏览器。", error_model: "模型加载失败，请检查网络后重试。首次加载可能需要一些时间。", error_engine: "识别失败，请重试或裁剪图片后识别。",
   error_cancelled: "已取消识别。", error_timeout: "识别超时，请裁剪图片后重试。", error_outputLimit: "识别出的文字行数过多，请将图片分成几张后识别。",
 },
+imageDiff: {
+  title: "图片对比", description: "滑动对照、透明叠加或高亮两张图片的像素差异，适合校对设计稿与网页截图。图片全程在浏览器本地处理。",
+  a: "图片 A · 基准", b: "图片 B · 对照", uploadA: "选择图片 A", uploadB: "选择图片 B", choose: "选择图片", previewA: "图片 A 预览", previewB: "图片 B 预览", dropHint: "选择图片，或拖放 / 粘贴到此区域", sample: "加载对比示例", swap: "交换 A / B", clear: "清空", cancel: "取消",
+  limits: "支持 PNG / JPEG / WebP，每张最大 20 MB、2000 万像素。对齐后的画布最多 2000 万像素、边长 32768；动态图片仅处理第一帧。", alignment: "对齐方式", topLeft: "左上角对齐", center: "居中对齐", offsetX: "B 水平偏移（px）", offsetY: "B 垂直偏移（px）", threshold: "忽略色差阈值", compare: "开始对比",
+  optionsHint: "按原始像素尺寸比较，不缩放图片。偏移为正时，B 向右 / 向下移动；交换图片会清零偏移。阈值 0–255，越高越容易忽略轻微色差。透明度变化也计入差异，全透明像素的隐藏颜色不计；只有一张图覆盖的区域始终算差异。修改参数后需重新对比。",
+  stage_prepare: "正在读取图片…", stage_readingA: "正在读取图片 A…", stage_readingB: "正在读取图片 B…", stage_comparing: "正在比较像素…", stage_encoding: "正在生成差异图片…", imageLimit: "图片或对齐后的画布超过 2000 万像素 / 边长 32768，请缩小图片或减少偏移。", optionsError: "阈值需为 0–255 整数，偏移需为 -32768 至 32768 的整数。", timeout: "图片对比超时，请缩小图片后重试。", error: "图片对比失败，请检查图片或重试。",
+  result: "对比结果", changed: "差异像素", compared: "参与比较的像素", onlyA: "仅 A 覆盖", onlyB: "仅 B 覆盖", wipe: "滑动对照", overlay: "透明叠加", difference: "差异高亮", zoom: "缩放", position: "分隔位置", opacity: "B 不透明度", comparisonPreview: "图片对比预览",
+  wipeHint: "左侧显示 A，右侧显示 B；拖动图片或使用滑块移动分隔线。", overlayHint: "A 位于底层，调节 B 的不透明度查看位置与内容变化。", diffHint: "红色是差异区域，浅灰原图仅作位置参考。PNG 导出使用完整分辨率的差异高亮图。", identical: "当前阈值下未发现差异。", bounds: "差异范围（对比画布像素）：", download: "下载差异 PNG", report: "下载统计 JSON",
+},
 imageTable: {
   title: "截图表格识别", description: "把表格截图恢复成可编辑的行列，对照原图校正，再导出 CSV 或 Excel。识别与导出都在浏览器本地完成。",
   upload: "选择图片", sample: "加载表格示例", clear: "清空", recognize: "识别表格", cancel: "取消", limits: "支持拖入、粘贴 PNG / JPEG / WebP，最大 20 MB、2000 万像素；表格最多 200 行、40 列、2000 个单元格。",
@@ -289,6 +298,7 @@ imageVectorTools: {
   error_cancelled: "已取消转换。", error_timeout: "处理超时，请降低分辨率或精度后重试。", error_unsupported: "当前浏览器不支持所需的本地图像处理能力，请使用较新的浏览器。", error_engine: "描摹失败，请重试或降低精度设置。",
 },
 tools: {
+  imageDiff: { name: "图片对比", description: "滑动与叠加对照两张图片，高亮像素差异" },
   imageTable: { name: "截图表格识别", description: "恢复并校对表格行列，导出 CSV 或 Excel" },
   imageRedact: { name: "图片隐私打码", description: "检测号码与邮箱，手动补充选区并覆盖像素" },
   imageBatch: { name: "图片批处理", description: "批量 OCR、压缩、缩放、格式转换与 ZIP 下载" },
