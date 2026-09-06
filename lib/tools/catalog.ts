@@ -28,6 +28,11 @@ export interface ToolCatalogEntry {
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
+    id: "image-to-svg", translationKey: "imageToSvg", category: "image",
+    seo: { title: "图片转 SVG", description: "浏览器本地将 PNG、JPEG、WebP 描摹成真实 SVG 路径，支持像素保真、平滑轮廓、黑白处理、精度调节与原图叠加对比。" },
+    features: [["图片矢量化", "PNG JPEG WebP to SVG paths, processed locally"], ["像素保真 / 平滑描摹", "Faithful pixel contours or smooth vector curves"], ["精度与原图对比", "Color precision, tracing resolution and overlay comparison"]],
+  },
+  {
     id: "pdf", translationKey: "pdfTools", category: "developer",
     seo: { title: "PDF 页面工具", description: "浏览器本地合并、拆分、选择、重排、旋转 PDF 页面并添加页码，支持 PNG/JPEG 图片转 PDF、逐页预览和批量下载。" },
     features: [["PDF 合并 / 拆分", "Merge documents or split selected pages into groups"], ["PDF 重排 / 旋转", "Reorder, select and rotate pages with preview"], ["图片转 PDF", "PNG/JPEG and EXIF orientation"], ["PDF 页码", "Page numbers aligned to rotated and cropped pages"]],

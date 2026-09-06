@@ -6,8 +6,8 @@
     "node": ">=22.13.0 <25"
   },
   "scripts": {
-    "prebuild": "node scripts/copy-pdf-assets.mjs",
-    "predev": "node scripts/copy-pdf-assets.mjs",
+    "prebuild": "node scripts/copy-pdf-assets.mjs && node scripts/copy-vtracer-assets.mjs",
+    "predev": "node scripts/copy-pdf-assets.mjs && node scripts/copy-vtracer-assets.mjs",
     "build": "next build",
     "dev": "next dev",
     "e2e": "playwright test",
@@ -39,6 +39,7 @@
     "@radix-ui/react-toast": "1.2.4",
     "@radix-ui/react-tooltip": "1.1.6",
     "@sqlite.org/sqlite-wasm": "3.53.0-build1",
+    "@visioncortex/vtracer": "1.0.0-alpha.4",
     "@xyflow/react": "^12.10.2",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",

@@ -75,11 +75,16 @@ const withPWA = withPWAInit({
     document: '/~offline',
   },
   // 1.1MB 的社交卡片图只在分享时用到,不该进预缓存。
-  publicExcludes: ['!og.jpg', '!pdfjs/**/*'],
+  publicExcludes: ['!og.jpg', '!pdfjs/**/*', '!vtracer/**/*'],
   // 保留框架自带的静态资源缓存规则,只是把下面这条排在前面。
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
     runtimeCaching: [
+      {
+        urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/vtracer/'),
+        handler: 'CacheFirst',
+        options: { cacheName: 'image-vectorizer-assets', expiration: { maxEntries: 6, maxAgeSeconds: 31536000 } },
+      },
       {
         urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/pdfjs/'),
         handler: 'CacheFirst',

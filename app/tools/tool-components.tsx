@@ -39,6 +39,7 @@ import {
   Network,
   PanelTop,
   PenLine,
+  PenTool,
   QrCode,
   Regex,
   ScanQrCode,
@@ -66,6 +67,7 @@ export interface ToolComponentEntry {
 }
 
 export const TOOL_COMPONENTS: Record<string, ToolComponentEntry> = {
+  "image-to-svg": { icon: PenTool, load: dynamic(() => import("./image-to-svg/page"), { ssr: false }) },
   pdf: { icon: FileText, load: dynamic(() => import("./pdf/page"), { ssr: false }) },
   sqlite: { icon: Database, load: dynamic(() => import("./sqlite/page"), { ssr: false }) },
   "binary-codec": { icon: Binary, load: dynamic(() => import("./binary-codec/page"), { ssr: false }) },
