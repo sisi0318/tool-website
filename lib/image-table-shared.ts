@@ -65,9 +65,14 @@ export function populateTable(lines: OcrLine[], grid: TableGrid): TableData {
     const review = items.some(line => { const b = lineBounds(line.poly); return line.score < 0.9 || b.left < grid.x[c] - 2 || b.right > grid.x[c + 1] + 2 || b.top < grid.y[r] - 2 || b.bottom > grid.y[r + 1] + 2 })
     if (review) uncertain++
     // OCR lines in the same physical row are separated with spaces; wrapped rows stay multiline.
-    const ordered = [...items].sort((a, b) => lineBounds(a.poly).top - lineBounds(b.poly).top || lineBounds(a.poly).left - lineBounds(b.poly).left)
-    let text = "", previous: ReturnType<typeof lineBounds> | undefined
-    for (const line of ordered) { const b = lineBounds(line.poly), sameRow = previous && Math.min(previous.bottom, b.bottom) - Math.max(previous.top, b.top) > Math.min(previous.bottom - previous.top, b.bottom - b.top) / 2; text += (text ? sameRow ? " " : "\n" : "") + line.text; previous = b }
+    const visualRows: Array<{ top: number; bottom: number; lines: OcrLine[] }> = []
+    for (const line of [...items].sort((a, b) => lineBounds(a.poly).top - lineBounds(b.poly).top)) {
+      const b = lineBounds(line.poly)
+      const row = visualRows.find(row => Math.min(row.bottom, b.bottom) - Math.max(row.top, b.top) > Math.min(row.bottom - row.top, b.bottom - b.top) / 2)
+      if (row) row.lines.push(line)
+      else visualRows.push({ top: b.top, bottom: b.bottom, lines: [line] })
+    }
+    const text = visualRows.map(row => row.lines.sort((a, b) => lineBounds(a.poly).left - lineBounds(b.poly).left).map(line => line.text).join(" ")).join("\n")
     return { text, review }
   }))
   validateTableCells(cells.map(row => row.map(cell => cell.text)))

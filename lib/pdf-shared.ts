@@ -1,6 +1,6 @@
 export const PDF_LIMITS = { inputBytes: 64 * 1024 * 1024, outputBytes: 64 * 1024 * 1024, files: 20, pages: 500, outputs: 100, imagePixels: 20_000_000 } as const
 export class PdfToolError extends Error {
-  constructor(public code: "inputLimit" | "outputLimit" | "pageLimit" | "invalidPdf" | "encrypted" | "invalidSelection" | "invalidRotation" | "invalidOptions" | "formStructure" | "flattenRequired" | "signatureConsent" | "numberDoesNotFit" | "invalidImage" | "imageLimit" | "cancelled" | "timeout" | "workerFailed", public detail = "") { super([code, detail].filter(Boolean).join(": ")); this.name = "PdfToolError" }
+  constructor(public code: "inputLimit" | "outputLimit" | "pageLimit" | "invalidPdf" | "encrypted" | "invalidSelection" | "invalidRotation" | "invalidOptions" | "formStructure" | "flattenRequired" | "signatureConsent" | "numberDoesNotFit" | "invalidImage" | "imageLimit" | "sourceImageLimit" | "unsupportedInline" | "unsupportedContent" | "contentLimit" | "cancelled" | "timeout" | "workerFailed", public detail = "") { super([code, detail].filter(Boolean).join(": ")); this.name = "PdfToolError" }
 }
 export interface PdfSource { name: string; bytes: Uint8Array }
 export interface PdfPageInfo { page: number; width: number; height: number; rotation: number; userUnit: number }

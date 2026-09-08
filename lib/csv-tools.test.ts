@@ -26,6 +26,20 @@ describe("CSV tools", () => {
     expect(result.output).toContain("Ada,true")
   })
 
+  it("preserves fields first appearing in later JSON objects in encounter order", () => {
+    const result = processCsv('[{"name":"Ada"},{"name":"Bob","role":"admin"},{"id":"001","role":"user"}]', "from-json")
+    expect(result.columns).toEqual(["name", "role", "id"])
+    expect(result.output).toBe("name,role,id\r\nAda,,\r\nBob,admin,\r\n,user,001")
+    expect(JSON.parse(processCsv(result.output, "to-json", { dynamicTyping: false }).output)).toEqual([
+      { name: "Ada", role: "", id: "" }, { name: "Bob", role: "admin", id: "" }, { name: "", role: "user", id: "001" },
+    ])
+    expect(processCsv('[{}, {"later":"value"}]', "from-json", { header: false }).output).toBe("\r\nvalue")
+  })
+
+  it("rejects mixed JSON row shapes instead of dropping object fields", () => {
+    expect(() => processCsv('[{"name":"Ada"},["Bob"]]', "from-json")).toThrow("all be objects or all be arrays")
+  })
+
   it("converts delimited input to TSV", () => {
     expect(processCsv("a,b\n1,2", "to-tsv").output).toContain("a\tb")
   })

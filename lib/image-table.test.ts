@@ -24,6 +24,16 @@ describe("table structure and text preservation", () => {
     const grid = inferTableGrid(lines, 250, 140, { x: [], y: [] })
     expect(populateTable(lines, grid).cells.map(row => row.map(cell => cell.text))).toEqual([["Name", "Count"], ["键盘", "12"], ["空白", ""]])
   })
+  it("reads words left to right despite small baseline differences, keeping wrapped rows", () => {
+    for (const offset of [1, 6]) {
+      const data = populateTable([
+        line("RIGHT", 430, 80 - offset, 130, 40), line("LEFT", 60, 80, 100, 40),
+        line("SECOND", 60, 140, 140, 40), line("ROW", 430, 140 - offset, 90, 40),
+      ], { x: [20, 780], y: [40, 200] })
+      expect(data.cells[0][0].text).toBe("LEFT RIGHT\nSECOND ROW")
+      expect(tableCsv(data.cells.map(row => row.map(cell => cell.text)))).toContain('"LEFT RIGHT\nSECOND ROW"')
+    }
+  })
   it("quotes CSV cells, keeps Unicode and line breaks, and guards formula prefixes", () => {
     expect(tableCsv([["中文,\"引号\"", "a\nb", ""], ["00123", "  =1+1", "@SUM(1)"]])).toBe('\ufeff"中文,""引号""","a\nb",""\r\n"00123","\'  =1+1","\'@SUM(1)"\r\n')
     expect(tableCsv([["=1+1"]], false)).toBe('\ufeff"=1+1"\r\n')

@@ -1,6 +1,6 @@
 import { PDF_LIMITS, PdfToolError, type PdfComposeOptions, type PdfComposition, type PdfImageOptions, type PdfInfo, type PdfProgress, type PdfProgressCallback, type PdfSource } from "./pdf-shared"
 
-export type PdfTaskRequest = { type: "sample" } | { type: "inspect"; sources: PdfSource[] } | { type: "compose"; sources: PdfSource[]; options: PdfComposeOptions } | { type: "images"; sources: PdfSource[]; options: PdfImageOptions }
+export type PdfTaskRequest = { type: "sample" } | { type: "inspect"; sources: PdfSource[] } | { type: "ocr-preflight"; sources: PdfSource[]; selection: string } | { type: "compose"; sources: PdfSource[]; options: PdfComposeOptions } | { type: "images"; sources: PdfSource[]; options: PdfImageOptions }
 export type PdfTaskResponse = { type: "progress"; progress: PdfProgress } | { type: "done"; value: unknown } | { type: "error"; error: { code: PdfToolError["code"]; detail: string } }
 export interface PdfTaskContext { signal?: AbortSignal; onProgress?: PdfProgressCallback }
 export interface PdfFileResult extends Omit<PdfComposition, "files"> { files: Array<{ file: File; pages: number }>; download: File }
@@ -34,6 +34,7 @@ async function sourcesFromFiles(files: File[], context: PdfTaskContext): Promise
   return sources
 }
 export async function inspectPdfFiles(files: File[], context: PdfTaskContext = {}): Promise<PdfInfo[]> { return runPdfWorker({ type: "inspect", sources: await sourcesFromFiles(files, context) }, context) }
+export async function preflightPdfOcrFile(file: File, selection: string, context: PdfTaskContext = {}): Promise<void> { return runPdfWorker({ type: "ocr-preflight", sources: await sourcesFromFiles([file], context), selection }, context) }
 export async function samplePdfFile(context: PdfTaskContext = {}): Promise<{ file: File; info: PdfInfo }> {
   const result = await runPdfWorker<{ name: string; bytes: Uint8Array<ArrayBuffer>; info: PdfInfo }>({ type: "sample" }, context)
   return { file: new File([result.bytes], result.name, { type: "application/pdf" }), info: result.info }

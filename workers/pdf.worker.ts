@@ -1,6 +1,7 @@
 import { composePdfs, createPdfSample, imagesToPdf, inspectPdfs } from "../lib/pdf-tools"
 import { PdfToolError, type PdfComposition } from "../lib/pdf-shared"
 import type { PdfTaskRequest, PdfTaskResponse } from "../lib/pdf-worker-client"
+import { preflightPdfOcr } from "../lib/pdf-ocr-preflight"
 
 const scope = self as unknown as { onmessage: ((event: MessageEvent<PdfTaskRequest>) => void) | null; postMessage: (response: PdfTaskResponse, transfer?: Transferable[]) => void }
 scope.onmessage = async ({ data }) => {
@@ -10,7 +11,11 @@ scope.onmessage = async ({ data }) => {
       const bytes = await createPdfSample(), name = "sample.pdf", [info] = await inspectPdfs([{ name, bytes }])
       scope.postMessage({ type: "done", value: { name, bytes, info } }, [bytes.buffer as ArrayBuffer])
     } else if (data.type === "inspect") scope.postMessage({ type: "done", value: await inspectPdfs(data.sources, progress) })
-    else {
+    else if (data.type === "ocr-preflight") {
+      if (data.sources.length !== 1) throw new PdfToolError("inputLimit")
+      await preflightPdfOcr(data.sources[0], data.selection)
+      scope.postMessage({ type: "done", value: undefined })
+    } else {
       const result: PdfComposition = data.type === "images" ? await imagesToPdf(data.sources, data.options, progress) : await composePdfs(data.sources, data.options, progress)
       scope.postMessage({ type: "done", value: result }, result.files.map((file) => file.bytes.buffer as ArrayBuffer))
     }

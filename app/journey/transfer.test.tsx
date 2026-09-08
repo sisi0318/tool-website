@@ -8,9 +8,9 @@ import { loadDraft, saveDraft } from "@/lib/journey/serialize"
 import { toolTransfers, toolTransferUrl } from "@/lib/tool-transfer"
 import type { JourneyNode } from "@/lib/journey/types"
 
-const calls = vi.hoisted(() => ({ execute: vi.fn(async (inputs: Record<string, unknown>) => ({ output: inputs.input })), toast: vi.fn() }))
+const calls = vi.hoisted(() => ({ execute: vi.fn(async (inputs: Record<string, unknown>) => ({ output: inputs.input })), toast: vi.fn(), navigate: vi.fn() }))
 vi.mock("@/lib/adapters", () => ({ registerAllAdapters: () => undefined }))
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: calls.navigate }) }))
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: calls.toast }) }))
 vi.mock("@/hooks/use-translations", () => { const t = (key: string) => key; return { useTranslations: () => t } })
 vi.mock("@/components/journey/BranchDrawer", () => ({ BranchDrawer: () => null }))
@@ -29,11 +29,36 @@ beforeEach(() => {
   clearRegistry()
   calls.execute.mockClear()
   calls.toast.mockClear()
+  calls.navigate.mockClear()
   registerNode({ type: "test-effect", label: "Test effect", category: "dev", network: true, icon: (() => null) as never, config: [{ id: "input", name: "Input", dataType: "string", hasInput: true }], outputs: [{ id: "output", name: "Output", dataType: "string" }], execute: calls.execute })
 })
 afterEach(() => { toolTransfers.clear(); window.history.replaceState(null, "", "/") })
 
 describe("journey tool transfer intake", () => {
+  it("requires replacement confirmation for an existing canvas and preserves it on cancel", () => {
+    saveDraft(createJourney("Journey", "replacement", "Input"))
+    const original = JSON.stringify({ nodes: [{ id: "original", type: "string", position: { x: 0, y: 0 }, config: { value: "keep me" } }], edges: [] })
+    localStorage.setItem("canvas-state", original)
+    render(<JourneyPage />)
+    fireEvent.click(screen.getByRole("button", { name: "openInCanvas" }))
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("canvasReplaceDescription")
+    expect(calls.navigate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "cancel" }))
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    expect(localStorage.getItem("canvas-state")).toBe(original)
+    fireEvent.click(screen.getByRole("button", { name: "openInCanvas" }))
+    fireEvent.click(screen.getByRole("button", { name: "canvasReplaceConfirm" }))
+    expect(calls.navigate).toHaveBeenCalledWith("/canvas")
+    expect(JSON.parse(localStorage.getItem("canvas-state")!).nodes[0].config.value).toBe("replacement")
+  })
+  it("opens an empty canvas immediately", () => {
+    saveDraft(createJourney("Journey", "replacement", "Input"))
+    localStorage.setItem("canvas-state", JSON.stringify({ nodes: [], edges: [] }))
+    render(<JourneyPage />)
+    fireEvent.click(screen.getByRole("button", { name: "openInCanvas" }))
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    expect(calls.navigate).toHaveBeenCalledWith("/canvas")
+  })
   it("loads JSON, removes the handle from the URL, and waits for explicit execution", async () => {
     const id = toolTransfers.put({ name: "Ada" }, "Source", "test-effect")
     window.history.replaceState(null, "", toolTransferUrl(id))

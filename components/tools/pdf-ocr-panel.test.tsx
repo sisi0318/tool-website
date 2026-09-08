@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import PdfOcrPanel from "./pdf-ocr-panel"
 import type { PdfOcrPage } from "@/lib/pdf-ocr-shared"
+import { PdfToolError } from "@/lib/pdf-shared"
 
 const mocks = vi.hoisted(() => ({ sample: vi.fn(), inspect: vi.fn(), recognize: vi.fn(), export: vi.fn() }))
 vi.mock("@/lib/pdf-ocr-client", () => ({ sampleOcrPdf: mocks.sample, recognizePdf: mocks.recognize, exportSearchablePdf: mocks.export }))
@@ -21,6 +22,14 @@ beforeEach(() => {
 })
 async function load() { fireEvent.click(screen.getByRole("button", { name: "sample" })); await waitFor(() => expect(screen.getByRole("button", { name: "recognize" })).toBeEnabled()) }
 describe("PDF OCR review", () => {
+  it("explains an oversized source scan and offers no export", async () => {
+    mocks.recognize.mockRejectedValue(new PdfToolError("sourceImageLimit"))
+    render(<PdfOcrPanel />); await load()
+    fireEvent.click(screen.getByRole("button", { name: "recognize" }))
+    expect(await screen.findByRole("alert")).toHaveTextContent("error_sourceImageLimit")
+    expect(screen.queryByRole("button", { name: "generate" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "download" })).not.toBeInTheDocument()
+  })
   it("exports corrected text and invalidates stale downloads after editing", async () => {
     render(<PdfOcrPanel />); await load()
     fireEvent.change(screen.getByRole("textbox", { name: "selection" }), { target: { value: "2,1" } })

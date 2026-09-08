@@ -37,7 +37,7 @@ export default function PdfOcrPanel({ isActive = true, headingLevel = "h2" }: { 
   const resetResult = () => { setPages([]); setOutput(null); setIndex(0); setLineIndex(null); setError("") }
   useEffect(() => () => { version.current++; active.current?.abort() }, [])
   useEffect(() => { if (!isActive) { version.current++; active.current?.abort(); active.current = null; setBusy(false); setProgress(null) } }, [isActive])
-  const errorText = (cause: unknown) => cause instanceof OcrError ? ot(`error_${cause.code}`) : cause instanceof PdfToolError ? ["pageLimit", "imageLimit", "outputLimit"].includes(cause.code) ? t(`error_${cause.code}`) : pt(`errors.${cause.code}`) : pt("errors.invalidPdf")
+  const errorText = (cause: unknown) => cause instanceof OcrError ? ot(`error_${cause.code}`) : cause instanceof PdfToolError ? ["pageLimit", "imageLimit", "sourceImageLimit", "unsupportedInline", "unsupportedContent", "contentLimit", "outputLimit"].includes(cause.code) ? t(`error_${cause.code}`) : pt(`errors.${cause.code}`) : pt("errors.invalidPdf")
   const task = async <T,>(work: (signal: AbortSignal, update: (value: PdfOcrProgress) => void) => Promise<T>, commit: (value: T) => void) => {
     cancel(); const job = version.current, controller = new AbortController(); active.current = controller; setBusy(true); setError("")
     try { const result = await work(controller.signal, value => { if (job === version.current) setProgress(value) }); if (job === version.current) commit(result) }

@@ -58,6 +58,7 @@ import { ToolPickerSheet } from "@/components/journey/ToolPickerSheet"
 import { ValueCard } from "@/components/journey/ValueCard"
 import { TransferIntake } from "@/components/journey/TransferIntake"
 import { TemplatePicker } from "@/components/journey/TemplatePicker"
+import { ConfirmDialog } from "@/components/canvas/workflow/ConfirmDialog"
 import { TemplateStage, type TemplateRunProgress } from "@/components/journey/TemplateStage"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -112,6 +113,7 @@ export default function JourneyPage() {
   const [draftBehindImport, setDraftBehindImport] = useState<Journey | null>(null)
   const [running, setRunning] = useState(false)
   const [dialog, setDialog] = useState<DialogKind | null>(null)
+  const [canvasConflict, setCanvasConflict] = useState<string | null>(null)
   const [stepSheetOpen, setStepSheetOpen] = useState(false)
   const [branchesOpen, setBranchesOpen] = useState(false)
   const [toolPickerOpen, setToolPickerOpen] = useState(false)
@@ -476,9 +478,11 @@ export default function JourneyPage() {
     setJourney(loaded)
   }
 
-  const handleOpenInCanvas = () => {
+  const handleOpenInCanvas = (overwriteSnapshot?: string) => {
     if (!journey) return
-    const { ok, skipped } = exportPathToCanvas(getPath(journey, journey.activeId))
+    const { ok, skipped, conflict } = exportPathToCanvas(getPath(journey, journey.activeId), overwriteSnapshot)
+    if (conflict !== undefined) { setCanvasConflict(conflict); return }
+    setCanvasConflict(null)
     if (skipped.length > 0) {
       toast({ title: t("canvasSkippedTools").replace("{tools}", skipped.join(", ")) })
     }
@@ -544,7 +548,7 @@ export default function JourneyPage() {
     { key: "templates", label: wt("title"), icon: LayoutTemplate, onClick: () => setTemplatePickerOpen(true) },
     { key: "replay", label: t("replayTitle"), icon: Repeat2, onClick: () => setDialog("replay") },
     { key: "share", label: t("shareJourney"), icon: Share2, onClick: () => setDialog("share") },
-    { key: "canvas", label: t("openInCanvas"), icon: Workflow, onClick: handleOpenInCanvas },
+    { key: "canvas", label: t("openInCanvas"), icon: Workflow, onClick: () => handleOpenInCanvas() },
     { key: "save", label: t("saveJourney"), icon: Save, onClick: handleSave },
     { key: "open", label: t("loadJourneyTitle"), icon: FolderOpen, onClick: () => setDialog("open") },
     {
@@ -673,6 +677,13 @@ export default function JourneyPage() {
         onOpenChange={(open) => setDialog(open ? "confirmNew" : null)}
         onConfirm={handleNewJourney}
       />
+      {canvasConflict !== null && <ConfirmDialog
+        title={t("canvasReplaceTitle")}
+        message={t("canvasReplaceDescription")}
+        confirmLabel={t("canvasReplaceConfirm")}
+        onCancel={() => setCanvasConflict(null)}
+        onConfirm={() => handleOpenInCanvas(canvasConflict)}
+      />}
     </div>
   )
 }

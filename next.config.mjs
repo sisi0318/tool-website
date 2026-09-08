@@ -100,12 +100,10 @@ const withPWA = withPWAInit({
         options: { cacheName: 'pdf-viewer-assets', expiration: { maxEntries: 256, maxAgeSeconds: 31536000 } },
       },
       {
-        // 默认规则会把同源 /api/* 与所有跨域 GET 用 NetworkFirst 落盘,
-        // 于是 IP 归属地、RDAP 注册人信息等会被写进 CacheStorage,
-        // 还会绕过工具页自己的缓存开关。这类响应一律不缓存。
+        // Dynamic RDAP hosts cannot be enumerated. Do not persist arbitrary
+        // cross-origin responses; explicit same-origin asset rules stay above.
         urlPattern: ({ url, sameOrigin }) =>
-          (sameOrigin && url.pathname.startsWith('/api/')) ||
-          /^https:\/\/(api-ipv4\.ip\.sb|open\.er-api\.com|web-proxy\.apifox\.cn|data\.iana\.org)/.test(url.href),
+          !sameOrigin || url.pathname.startsWith('/api/'),
         handler: 'NetworkOnly',
       },
     ],

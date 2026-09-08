@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { clearAppCaches, readAppCacheUsage, type AppCacheUsage } from "@/lib/storage/cache-storage"
 import {
   STORAGE_ENTRIES,
   clearAppStorage,
@@ -44,31 +45,34 @@ export function SettingsContent() {
   const t = useTranslations("settings")
   const { toast } = useToast()
   const [usage, setUsage] = useState<StorageGroupUsage[] | null>(null)
-  const [pending, setPending] = useState<StorageGroupId | "all" | null>(null)
+  const [pending, setPending] = useState<StorageGroupId | "all" | "cache" | null>(null)
+  const [cacheUsage, setCacheUsage] = useState<AppCacheUsage[]>([]), [cacheError, setCacheError] = useState(false), [clearing, setClearing] = useState(false)
 
   // localStorage 只在浏览器里有，首帧留空避免 hydration 不一致
-  const refresh = useCallback(() => setUsage(readStorageUsage()), [])
+  const refresh = useCallback(async () => {
+    setUsage(readStorageUsage())
+    try { setCacheUsage(await readAppCacheUsage()); setCacheError(false) } catch { setCacheError(true) }
+  }, [])
 
   useEffect(() => {
-    refresh()
+    void refresh()
   }, [refresh])
 
   const totalBytes = (usage ?? []).reduce((sum, item) => sum + item.bytes, 0)
 
-  const handleClear = () => {
-    if (!pending) return
-    const removed = clearAppStorage(pending === "all" ? undefined : [pending])
-    setPending(null)
-    refresh()
-    toast(
-      removed > 0
-        ? { title: t("cleared").replace("{count}", String(removed)) }
-        : { title: t("clearFailed"), variant: "destructive" },
-    )
+  const handleClear = async () => {
+    if (!pending || clearing) return
+    setClearing(true)
+    const removed = pending === "cache" ? 0 : clearAppStorage(pending === "all" ? undefined : [pending])
+    try {
+      const cacheCount = pending === "all" || pending === "cache" ? await clearAppCaches() : pending === "tools" ? await clearAppCaches(true) : 0
+      toast(removed + cacheCount > 0 ? { title: t("cleared").replace("{count}", String(removed + cacheCount)) } : { title: t("clearFailed"), variant: "destructive" })
+    } catch { toast({ title: t("cacheClearFailed"), variant: "destructive" }) }
+    finally { setPending(null); setClearing(false); await refresh() }
   }
 
   const pendingGroupLabel =
-    pending && pending !== "all" ? t(GROUP_LABEL_KEYS[pending]) : ""
+    pending === "cache" ? t("cacheTitle") : pending && pending !== "all" ? t(GROUP_LABEL_KEYS[pending]) : ""
 
   return (
     <div className="min-h-screen bg-[var(--md-sys-color-surface)]">
@@ -82,7 +86,7 @@ export function SettingsContent() {
           {t("description")}
         </p>
 
-        {usage !== null && usage.length === 0 ? (
+        {usage !== null && usage.length === 0 && cacheUsage.length === 0 && !cacheError ? (
           <p className="mt-8 rounded-2xl bg-[var(--md-sys-color-surface-container-low)] p-6 text-center text-sm text-[var(--md-sys-color-on-surface-variant)]">
             {t("empty")}
           </p>
@@ -138,9 +142,12 @@ export function SettingsContent() {
               ))}
             </ul>
 
+            {(cacheUsage.length > 0 || cacheError) && <section className="mt-4 space-y-3 rounded-2xl border border-md-outline-variant bg-md-surface-container-lowest p-5"><h2 className="font-semibold">{t("cacheTitle")}</h2><p className="text-sm text-md-on-surface-variant">{t("cacheHint")}</p>{cacheError && <p role="alert" className="text-sm text-md-error">{t("cacheReadFailed")}</p>}<ul className="space-y-2 text-sm">{cacheUsage.map(cache => <li key={cache.name} className="flex flex-wrap justify-between gap-2"><span>{t(cache.queryData ? "queryCache" : cache.name === "ocr-public-models" ? "ocrCache" : cache.name === "pdf-viewer-assets" ? "pdfCache" : cache.name === "image-vectorizer-assets" ? "vectorCache" : "siteCache")}</span><span className="text-md-on-surface-variant">{t("keysCount").replace("{count}", String(cache.entries))}</span></li>)}</ul><Button variant="outline" disabled={clearing} onClick={() => setPending("cache")}>{t("clearCaches")}</Button></section>}
+
             <Button
               variant="outline"
               onClick={() => setPending("all")}
+              disabled={clearing}
               className="mt-6 rounded-full border-[var(--md-sys-color-error)] text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/40"
             >
               <Trash2 className="h-4 w-4" />
@@ -150,24 +157,25 @@ export function SettingsContent() {
         )}
       </div>
 
-      <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+      <Dialog open={pending !== null} onOpenChange={(open) => !open && !clearing && setPending(null)}>
         <DialogContent className="max-w-md rounded-3xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
           <DialogHeader>
             <DialogTitle className="text-[var(--md-sys-color-on-surface)]">
               {t("confirmTitle")}
             </DialogTitle>
             <DialogDescription className="text-[var(--md-sys-color-on-surface-variant)]">
-              {pending === "all"
+              {pending === "cache" ? t("cacheConfirm") : pending === "all"
                 ? t("confirmAll")
                 : t("confirmGroup").replace("{group}", pendingGroupLabel)}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setPending(null)} className="rounded-full">
+            <Button variant="ghost" disabled={clearing} onClick={() => setPending(null)} className="rounded-full">
               {t("cancel")}
             </Button>
             <Button
-              onClick={handleClear}
+              onClick={() => void handleClear()}
+              disabled={clearing}
               className="rounded-full bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] hover:bg-[var(--md-sys-color-error)]/90"
             >
               {t("confirm")}

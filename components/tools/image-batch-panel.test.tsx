@@ -9,6 +9,20 @@ vi.mock("@/hooks/use-object-url", () => ({ useObjectUrl: () => null }))
 vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 beforeEach(() => vi.clearAllMocks())
 describe("batch queue UI", () => {
+  it("connects each mode tab to its labelled options panel", async () => {
+    render(<ImageBatchPanel />)
+    const ocr = screen.getByRole("tab", { name: "ocrMode" }), images = screen.getByRole("tab", { name: "imageMode" })
+    for (const tab of [ocr, images]) {
+      const panel = document.getElementById(tab.getAttribute("aria-controls")!)
+      expect(panel).toHaveAttribute("role", "tabpanel")
+      expect(panel).toHaveAttribute("aria-labelledby", tab.id)
+    }
+    expect(screen.getByRole("tabpanel", { name: "ocrMode" })).toContainElement(screen.getByLabelText("rotation"))
+    fireEvent.mouseDown(images, { button: 0, ctrlKey: false })
+    await waitFor(() => expect(images).toHaveAttribute("aria-selected", "true"))
+    expect(screen.getByRole("tabpanel", { name: "imageMode" })).toContainElement(screen.getByLabelText("format"))
+    expect(screen.queryByRole("tabpanel", { name: "ocrMode" })).not.toBeInTheDocument()
+  })
   it("retains completed files on cancel and resumes only the remaining files", async () => {
     let release: () => void = () => {}, signal: AbortSignal | undefined
     mocks.run.mockImplementation(async (jobs: BatchImageJob[], _options, context) => {

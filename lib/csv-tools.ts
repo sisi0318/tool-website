@@ -74,12 +74,14 @@ export function processCsv(input: string, operation: CsvOperation, options: CsvO
     const parsed = JSON.parse(input)
     const rows = Array.isArray(parsed) ? parsed : [parsed]
     if (!rows.every((row) => row && typeof row === "object")) throw new Error("JSON must contain an object or array of objects")
-    const output = Papa.unparse(rows, { delimiter: options.delimiter || ",", header: options.header !== false })
-    const first = rows[0] as Record<string, unknown> | undefined
+    const arrayRows = rows.length > 0 && Array.isArray(rows[0])
+    if (rows.some(row => Array.isArray(row) !== arrayRows)) throw new Error("JSON rows must all be objects or all be arrays")
+    const columns = arrayRows ? [] : [...new Set(rows.flatMap(row => Object.keys(row)))]
+    const output = Papa.unparse(rows, { delimiter: options.delimiter || ",", header: options.header !== false, ...(!arrayRows && columns.length ? { columns } : {}) })
     return {
       output,
       rows: rows.length,
-      columns: first && !Array.isArray(first) ? Object.keys(first) : [],
+      columns,
       delimiter: options.delimiter || ",",
       preview: rows.slice(0, 20),
       errors: [],

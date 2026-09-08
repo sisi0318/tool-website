@@ -741,7 +741,7 @@ describe("Adapter Execute Functions", () => {
         }
 
         getContext() {
-          return { drawImage: vi.fn() }
+          return { drawImage: vi.fn(), fillRect: vi.fn(), fillStyle: "" }
         }
 
         async convertToBlob(options: BlobPropertyBag) {
@@ -785,8 +785,12 @@ describe("Adapter Execute Functions", () => {
     it("image-editor: uses config.file fallback", async () => {
       const def = getNodeDefinition("image-editor")!
       const mockFile = new File(["fake-data"], "test.jpg", { type: "image/jpeg" })
+      const edited = new File(["edited"], "test-edited.png", { type: "image/png" })
+      const edit = vi.spyOn(await import("../image-adjust"), "adjustImageFile").mockResolvedValueOnce(edited)
       const result = await def.execute({}, { file: mockFile })
-      expect(result.file).toBeDefined()
+      expect(result.file).toBe(edited)
+      expect(edit).toHaveBeenCalledWith(mockFile, { brightness: 100, contrast: 100, saturation: 100, grayscale: false }, undefined)
+      edit.mockRestore()
     })
 
     it("meme-splitter: slices the image into a zip", async () => {

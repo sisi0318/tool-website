@@ -7,6 +7,7 @@ export const imageEditorAdapter: ToolAdapter = {
   type: "image-editor",
   category: "image",
   label: "Image Editor",
+  description: "Adjust brightness, contrast, saturation and grayscale; export PNG (20 MB / 20 MP input, first frame)",
   icon: Crop,
   config: [
     {
@@ -55,13 +56,19 @@ export const imageEditorAdapter: ToolAdapter = {
   outputs: [
     { id: "file", name: "File", dataType: "bytes" },
   ],
-  async execute(inputs, config) {
+  async execute(inputs, config, context) {
     const file = asFile(inputs.file ?? config.file)
     if (!file) {
       throw new Error("No file provided")
     }
 
-    return { file }
+    const { adjustImageFile } = await import("../image-adjust")
+    return { file: await adjustImageFile(file, {
+      brightness: Number(inputs.brightness ?? config.brightness ?? 100),
+      contrast: Number(inputs.contrast ?? config.contrast ?? 100),
+      saturation: Number(inputs.saturation ?? config.saturation ?? 100),
+      grayscale: (inputs.grayscale ?? config.grayscale ?? false) as boolean,
+    }, context?.signal) }
   },
 }
 

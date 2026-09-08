@@ -4,6 +4,7 @@ import { createOcrSession } from "./ocr-worker-client"
 import { OCR_LIMITS, OcrError, type OcrOptions } from "./ocr-shared"
 import { PDF_LIMITS, PdfToolError, parsePdfSelection } from "./pdf-shared"
 import { PDF_OCR_LIMITS, type PdfOcrPage, type PdfOcrProgress } from "./pdf-ocr-shared"
+import { preflightPdfOcrFile } from "./pdf-worker-client"
 
 export async function recognizePdf(file: File, options: { selection: string; dpi: number; rotation: OcrOptions["rotation"] }, context: { signal?: AbortSignal; onProgress?: (value: PdfOcrProgress) => void } = {}): Promise<PdfOcrPage[]> {
   if (context.signal?.aborted) throw new PdfToolError("cancelled")
@@ -17,10 +18,14 @@ export async function recognizePdf(file: File, options: { selection: string; dpi
   const check = () => { if (timedOut) throw new PdfToolError("timeout"); if (context.signal?.aborted) throw new PdfToolError("cancelled") }
   context.signal?.addEventListener("abort", stop, { once: true })
   try {
-    deadline(); context.onProgress?.({ stage: "reading", completed: 0, total: 0 })
+    context.onProgress?.({ stage: "reading", completed: 0, total: 0 })
+    await preflightPdfOcrFile(file, options.selection, { signal: context.signal }); check()
+    deadline()
     const [pdfjs, buffer] = await Promise.all([loadPdfJs(), file.arrayBuffer()]); check()
     worker = pdfjs.PDFWorker.create({ name: "local-pdf-ocr" })
-    task = pdfjs.getDocument({ data: new Uint8Array(buffer), worker, ...pdfJsOptions(pdfjs) })
+    // Metadata preflight prevents dropped image XObjects. Also ask PDF.js to
+    // propagate parsing errors instead of deliberately ignoring them.
+    task = pdfjs.getDocument({ data: new Uint8Array(buffer), worker, ...pdfJsOptions(pdfjs), stopAtErrors: true })
     // Reject password-protected inputs promptly instead of leaving a password request open.
     task.onPassword = () => { encrypted = true; void task?.destroy().catch(() => {}) }
     const pdf = await task.promise; check(); clearTimeout(timer)
@@ -56,6 +61,7 @@ export async function recognizePdf(file: File, options: { selection: string; dpi
     check()
     if (encrypted) throw new PdfToolError("encrypted")
     if (error instanceof PdfToolError || error instanceof OcrError) throw error
+    if (error instanceof Error && /Image exceeded maximum allowed size/.test(error.message)) throw new PdfToolError("sourceImageLimit")
     throw new PdfToolError("invalidPdf")
   } finally { clearTimeout(timer); context.signal?.removeEventListener("abort", stop); stop(); canvas.width = canvas.height = 1 }
 }

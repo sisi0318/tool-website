@@ -1,7 +1,7 @@
 import type { Edge, NodeInstance } from "../canvas/types"
 import { getNodeDefinition } from "../canvas/registry"
-import { encodeWorkflowData } from "../canvas/workflow"
-import { writeLocalStorage } from "../safe-storage"
+import { decodeWorkflowData, encodeWorkflowData } from "../canvas/workflow"
+import { readLocalStorage, writeLocalStorage } from "../safe-storage"
 import { getMainInputPort, resolveOutputPort } from "./engine"
 import { sanitizeConfig } from "./serialize"
 import type { JourneyNode } from "./types"
@@ -107,9 +107,19 @@ export function pathToWorkflow(path: JourneyNode[]): CanvasWorkflow & { skipped:
 }
 
 /** 写入画布持久化槽位;随后由页面跳转 /canvas,canvas 挂载时自动加载 */
-export function exportPathToCanvas(path: JourneyNode[]): { ok: boolean; skipped: string[] } {
+export function exportPathToCanvas(path: JourneyNode[], overwriteSnapshot?: string): { ok: boolean; skipped: string[]; conflict?: string } {
   const { nodes, edges, skipped } = pathToWorkflow(path)
   if (nodes.length === 0) return { ok: false, skipped }
+  const existing = readLocalStorage("canvas-state")
+  if (existing !== null && existing !== overwriteSnapshot) {
+    let empty = false
+    try {
+      const raw = JSON.parse(existing)
+      const workflow = decodeWorkflowData(raw)
+      empty = workflow !== null && Array.isArray(raw.nodes) && raw.nodes.length === 0 && Array.isArray(raw.edges) && raw.edges.length === 0
+    } catch { /* Unreadable drafts also require an explicit replacement. */ }
+    if (!empty) return { ok: false, skipped, conflict: existing }
+  }
   const ok = writeLocalStorage("canvas-state", encodeWorkflowData({ nodes, edges }))
   return { ok, skipped }
 }

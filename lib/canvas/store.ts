@@ -23,6 +23,7 @@ let executionRevision = 0
 let stepExecutionRevision = -1
 let stepExecutionIndex = 0
 const nodeExecTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const graphWorkTimers = new Set<ReturnType<typeof setTimeout>>()
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 const SAVE_DEBOUNCE_MS = 300
 const AUTO_EXEC_DEBOUNCE_MS = 350
@@ -106,6 +107,13 @@ function clearNodeExecutionTimer(nodeId: string) {
 function clearAllNodeExecutionTimers() {
   for (const timer of nodeExecTimers.values()) clearTimeout(timer)
   nodeExecTimers.clear()
+  for (const timer of graphWorkTimers) clearTimeout(timer)
+  graphWorkTimers.clear()
+}
+
+function scheduleGraphWork(callback: () => void, delay: number): void {
+  const timer = setTimeout(() => { graphWorkTimers.delete(timer); callback() }, delay)
+  graphWorkTimers.add(timer)
 }
 
 /**
@@ -114,13 +122,11 @@ function clearAllNodeExecutionTimers() {
  * 画布组件卸载时必须显式调用。
  */
 export function stopPendingCanvasWork(): void {
-  clearAllNodeExecutionTimers()
+  useCanvasStore.getState().stopExecution()
   if (saveTimer) {
     clearTimeout(saveTimer)
     saveTimer = null
   }
-  // 让在飞的执行结果被丢弃,不再写回已卸载页面的 store。
-  invalidateExecutionPlan()
 }
 
 function resetConfigHistoryGroup() {
@@ -192,6 +198,7 @@ function markCyclicNodes(candidates: NodeInstance[], sorted: NodeInstance[]): vo
 function markBlockedByUpstream(node: NodeInstance): void {
   useCanvasStore.setState((s) => ({
     nodeErrors: { ...s.nodeErrors, [node.id]: UPSTREAM_ERROR },
+    nodeRunning: { ...s.nodeRunning, [node.id]: false },
     nodeOutputs: Object.fromEntries(
       Object.entries(s.nodeOutputs).filter(([id]) => id !== node.id),
     ),
@@ -212,7 +219,7 @@ function markBlockedByUpstream(node: NodeInstance): void {
 
 const MAX_GRAPH_RUN_ATTEMPTS = 5
 
-let activeGraphRun: { promise: Promise<void>; includeManual: boolean } | null = null
+let activeGraphRun: { promise: Promise<void>; includeManual: boolean; authorizedManualNodes: Set<string> } | null = null
 
 /**
  * @param attempt 返回 true 表示这一轮完整跑完,未被更新的图取代
@@ -293,6 +300,7 @@ async function runGraphInWaves(
     }
 
     await mapWithConcurrency(runnable, MAX_PARALLEL_NODES, async (id) => {
+      if (executionRevision !== planRevision) return
       await runNode(id)
     })
     if (executionRevision !== planRevision) return false
@@ -495,7 +503,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })
     debouncedSave(() => get().saveToLocalStorage())
     if (!snapshot.preserveExecutionState && get().autoRun) {
-      setTimeout(() => {
+      scheduleGraphWork(() => {
         if (get().autoRun) get().executeAll(false)
       }, 0)
     }
@@ -540,7 +548,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })
     debouncedSave(() => get().saveToLocalStorage())
     if (!snapshot.preserveExecutionState && get().autoRun) {
-      setTimeout(() => {
+      scheduleGraphWork(() => {
         if (get().autoRun) get().executeAll(false)
       }, 0)
     }
@@ -610,7 +618,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })
     debouncedSave(() => get().saveToLocalStorage())
     if (get().autoRun) {
-      setTimeout(() => {
+      scheduleGraphWork(() => {
         if (get().autoRun) get().executeAll(false)
       }, 0)
     }
@@ -651,7 +659,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })
     if (get().autoRun) {
       for (const targetId of affectedTargets) {
-        setTimeout(() => {
+        scheduleGraphWork(() => {
           if (get().autoRun) {
             get().executeNode(targetId, undefined, true, false)
           }
@@ -717,7 +725,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     if (get().autoRun) {
       for (const targetId of affectedTargets) {
-        setTimeout(() => {
+        scheduleGraphWork(() => {
           if (get().autoRun) get().executeNode(targetId, undefined, true, false)
         }, 0)
       }
@@ -849,7 +857,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     debouncedSave(() => get().saveToLocalStorage())
 
     if (get().autoRun) {
-      setTimeout(() => {
+      scheduleGraphWork(() => {
         if (get().autoRun) get().executeAll(false)
       }, 0)
     }
@@ -877,7 +885,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }
     })
     if (get().autoRun) {
-      setTimeout(() => {
+      scheduleGraphWork(() => {
         if (get().autoRun) {
           get().executeNode(edge.target, undefined, true, false)
         }
@@ -899,7 +907,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }
     })
     if (removedEdge && get().autoRun) {
-      setTimeout(() => {
+      scheduleGraphWork(() => {
         if (get().autoRun) {
           get().executeNode(removedEdge.target, undefined, true, false)
         }
@@ -992,6 +1000,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     activeNodeRunTokens.set(nodeId, runToken)
 
     const incomingEdges = state.edges.filter((e) => e.target === nodeId)
+    // Every execution entry point (including single-step and automatic cascade)
+    // must respect upstream failure before an adapter can use its defaults.
+    if (incomingEdges.some((edge) => state.nodeErrors[edge.source])) {
+      markBlockedByUpstream(node)
+      return
+    }
     const inputs: Record<string, unknown> = {}
 
     // 跨类型连线在边上显式转换。此前是原样透传,由各适配器自己 String()/Number(),
@@ -1162,6 +1176,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       if (includeManual && !activeGraphRun.includeManual) {
         // 用户显式点了"全部运行",意图比后台自动执行更宽,让当前轮次带着新意图重跑
         activeGraphRun.includeManual = true
+        activeGraphRun.authorizedManualNodes = new Set(get().nodes.filter(isManualNode).map((node) => node.id))
         invalidateExecutionPlan()
       }
       await activeGraphRun.promise
@@ -1169,7 +1184,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
 
     executionStopRequested = false
-    const run = { includeManual, promise: Promise.resolve() }
+    const run = { includeManual, promise: Promise.resolve(), authorizedManualNodes: new Set(get().nodes.filter(isManualNode).map((node) => node.id)) }
+    const startedManualNodes = new Set<string>()
     run.promise = runUntilStable(async (planRevision) => {
       const state = get()
       stepExecutionRevision = -1
@@ -1184,10 +1200,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         sorted,
         state.edges,
         planRevision,
-        (node, dependsOnSkipped) =>
-          !run.includeManual && (isManualNode(node) || dependsOnSkipped),
+        (node, dependsOnSkipped) => dependsOnSkipped || (
+          isManualNode(node) && (!run.includeManual || !run.authorizedManualNodes.has(node.id) || startedManualNodes.has(node.id))
+        ),
         // 不递归执行下游:分层调度已经保证汇聚分支的上游都已就绪
-        (nodeId) => get().executeNode(nodeId, undefined, false, run.includeManual),
+        (nodeId) => {
+          // A graph revision may retry pure calculations, but one user action
+          // must never issue the same manual request twice.
+          if (isManualNode(get().nodes.find((node) => node.id === nodeId))) startedManualNodes.add(nodeId)
+          return get().executeNode(nodeId, undefined, false, run.includeManual)
+        },
       )
     }, () => get().autoRun && !executionStopRequested)
 
@@ -1364,7 +1386,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           stepProgress: emptyStepProgress(),
         }))
         if (get().autoRun) {
-          setTimeout(() => {
+          scheduleGraphWork(() => {
             if (get().autoRun) get().executeAll(false)
           }, 0)
         }
@@ -1392,7 +1414,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }))
     debouncedSave(() => get().saveToLocalStorage())
     if (get().autoRun) {
-      setTimeout(() => {
+      scheduleGraphWork(() => {
         if (get().autoRun) get().executeAll(false)
       }, 0)
     }

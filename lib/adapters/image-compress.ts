@@ -51,7 +51,7 @@ export const imageCompressAdapter: ToolAdapter = {
       dataType: "string",
       defaultValue: "original",
       options: [
-        { label: "Original", value: "original" },
+        { label: "Original (PNG fallback; first frame)", value: "original" },
         { label: "JPEG", value: "jpeg" },
         { label: "WebP", value: "webp" },
         { label: "PNG", value: "png" },
@@ -81,18 +81,21 @@ export const imageCompressAdapter: ToolAdapter = {
     try {
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
       const ctx = canvas.getContext("2d")!
-      // 有透明通道的源图必须保留 alpha,否则转 JPEG 后透明区域会变黑。
+      mimeType = format === "original" ? preservedMimeType(file.type) : `image/${format}`
+      if (mimeType === "image/jpeg") { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height) }
       ctx.drawImage(bitmap, 0, 0)
 
-      mimeType = format === "original" ? preservedMimeType(file.type) : `image/${format}`
       blob = await canvas.convertToBlob({ type: mimeType, quality })
       dimensions = `${canvas.width}x${canvas.height}`
     } finally {
       // 出错路径下也要释放,否则大图会一直占着解码后的位图内存。
       bitmap.close()
     }
-    const ext = mimeType.split("/")[1]
-    const outFile = new File([blob], file.name.replace(/\.[^.]+$/, `.${ext}`), { type: mimeType })
+    const requestedMimeType = mimeType
+    mimeType = blob.type || "image/png"
+    const ext = mimeType === "image/jpeg" ? "jpg" : mimeType.split("/")[1]
+    const base = file.name.replace(/\.[^.]+$/, "") || "image"
+    const outFile = new File([blob], `${base}.${ext}`, { type: mimeType })
 
     return {
       file: outFile,
@@ -102,6 +105,9 @@ export const imageCompressAdapter: ToolAdapter = {
         ratio: `${((1 - outFile.size / originalSize) * 100).toFixed(1)}%`,
         dimensions,
         format: mimeType,
+        requestedFormat: requestedMimeType,
+        formatFallback: requestedMimeType !== mimeType,
+        frames: "first",
       },
     }
   },

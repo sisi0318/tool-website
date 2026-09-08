@@ -37,6 +37,11 @@ import {
   buildRequestUrl,
   encodeUrlEncodedBody,
   parseCurlCommand,
+  quoteShellArgument,
+  validateHttpMethod,
+  curlRequestStart,
+  curlTextBody,
+  curlTextField,
 } from "@/lib/http-request-tools"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { FILE_SIZE_LIMITS, isFileWithinLimit } from "@/lib/file-limits"
@@ -97,6 +102,7 @@ async function proxyRequest(
 ) {
   const proxyUrl = "https://web-proxy.apifox.cn/api/v1/request"
 
+  method = validateHttpMethod(method)
   const finalUrl = buildRequestUrl(url, params)
   const targetUrl = new URL(finalUrl)
 
@@ -133,7 +139,7 @@ async function proxyRequest(
   } else if (bodyType === "urlencoded") {
     requestHeaders["Content-Type"] = "application/x-www-form-urlencoded"
   } else {
-    requestHeaders["Content-Type"] = headers["Content-Type"] || "text/plain"
+    requestHeaders["Content-Type"] = Object.entries(headers).find(([name]) => name.toLowerCase() === "content-type")?.[1] || "text/plain"
   }
 
   const requestOptions: RequestInit = {
@@ -193,10 +199,6 @@ function formatJsonResponse(text: string): string {
   } catch (e) {
     return text
   }
-}
-
-function quoteShellArgument(value: string): string {
-  return `'${value.replaceAll("'", `'\"'\"'`)}'`
 }
 
 function getHttpErrorMessage(error: unknown, translate: (key: string) => string): string {
@@ -278,6 +280,7 @@ export default function HTTPTester() {
 
   const binaryInputRef = useRef<HTMLInputElement>(null)
   const abortController = useRef<AbortController | null>(null)
+  const queryRowsCurrent = useRef(true)
   const copyResetTimerRef = useRef<number | null>(null)
 
   // 环境变量处理
@@ -325,6 +328,8 @@ export default function HTTPTester() {
 
   // 从历史记录加载请求
   const loadFromHistory = useCallback((historyItem: RequestHistory) => {
+    queryRowsCurrent.current = historyItem.params.some(param => Boolean(param.name))
+    if (debouncedAutoParseRef.current) window.clearTimeout(debouncedAutoParseRef.current)
     setMethod(historyItem.method)
     setUrl(historyItem.url)
     setRequestParams(historyItem.params)
@@ -395,7 +400,7 @@ export default function HTTPTester() {
       method,
       url,
       headers: customHeaders,
-      params: requestParams,
+      params: queryRowsCurrent.current ? requestParams : [],
       body,
       bodyType,
       formDataParams,
@@ -413,6 +418,8 @@ export default function HTTPTester() {
 
   // 从模板加载请求
   const loadFromTemplate = useCallback((template: RequestTemplate) => {
+    queryRowsCurrent.current = template.params.some(param => Boolean(param.name))
+    if (debouncedAutoParseRef.current) window.clearTimeout(debouncedAutoParseRef.current)
     setMethod(template.method)
     setUrl(template.url)
     setRequestParams(template.params)
@@ -430,10 +437,9 @@ export default function HTTPTester() {
 
   // 生成 cURL 命令
   const generateCurl = useCallback(() => {
-    const processedUrl = replaceEnvironmentVariables(url)
-    const finalUrl = buildRequestUrl(processedUrl, requestParams)
+    const finalUrl = buildRequestUrl(url, queryRowsCurrent.current ? requestParams : [], { transform: replaceEnvironmentVariables, replaceQuery: queryRowsCurrent.current })
 
-    let curlCommand = `curl -X ${method} ${quoteShellArgument(finalUrl)}`
+    let curlCommand = curlRequestStart(method, finalUrl)
 
     // 添加自定义头部
     customHeaders.forEach(header => {
@@ -442,22 +448,25 @@ export default function HTTPTester() {
         curlCommand += ` \\\n  -H ${quoteShellArgument(`${header.name}: ${processedValue}`)}`
       }
     })
+    if ((bodyType === "raw" || bodyType === "urlencoded") && !customHeaders.some(header => header.enabled && header.name.trim().toLowerCase() === "content-type")) {
+      curlCommand += ` \\\n  -H ${quoteShellArgument(`Content-Type: ${bodyType === "urlencoded" ? "application/x-www-form-urlencoded" : "text/plain"}`)}`
+    }
 
     // 添加请求体
-    if (body && bodyType === "raw") {
+    if (bodyType === "raw") {
       const processedBody = replaceEnvironmentVariables(body)
-      curlCommand += ` \\\n  -d ${quoteShellArgument(processedBody)}`
+      curlCommand += ` \\\n  ${curlTextBody(processedBody)}`
     } else if (bodyType === "form-data") {
       formDataParams.forEach((param) => {
         if (!param.enabled || !param.name) return
         const value = param.type === "File" && param.file
           ? `${param.name}=@${param.file.name}`
           : `${param.name}=${replaceEnvironmentVariables(param.value)}`
-        curlCommand += ` \\\n  -F ${quoteShellArgument(value)}`
+        curlCommand += ` \\\n  ${param.type === "File" && param.file ? `-F ${quoteShellArgument(value)}` : curlTextField(param.name, replaceEnvironmentVariables(param.value))}`
       })
     } else if (bodyType === "urlencoded") {
       const encodedBody = encodeUrlEncodedBody(formDataParams, replaceEnvironmentVariables)
-      if (encodedBody) curlCommand += ` \\\n  -d ${quoteShellArgument(encodedBody)}`
+      if (encodedBody) curlCommand += ` \\\n  ${curlTextBody(encodedBody)}`
     }
 
     return curlCommand
@@ -469,9 +478,11 @@ export default function HTTPTester() {
       const parsed = parseCurlCommand(curlCommand)
       buildRequestUrl(parsed.url)
 
+      if (debouncedAutoParseRef.current) window.clearTimeout(debouncedAutoParseRef.current)
       setMethod(parsed.method)
       setUrl(parsed.url)
-      setRequestParams([{ id: crypto.randomUUID(), name: "", value: "", type: "String", enabled: true }])
+      queryRowsCurrent.current = true
+      setRequestParams([...new URL(parsed.url).searchParams].map(([name, value]) => ({ id: crypto.randomUUID(), name, value, type: "String", enabled: true })))
       setCustomHeaders(parsed.headers.map((header) => ({
         id: crypto.randomUUID(),
         name: header.name,
@@ -480,11 +491,8 @@ export default function HTTPTester() {
         enabled: true,
       })))
       setBody(parsed.body)
-      if (parsed.body) {
-        setBodyType('raw')
-      } else {
-        setBodyType("none")
-      }
+      setBodyType(parsed.bodyType)
+      setFormDataParams((parsed.formData ?? []).map(param => ({ ...param, id: crypto.randomUUID(), type: "String", enabled: true })))
 
       toast({
         title: t("curlImportSuccess"),
@@ -511,26 +519,19 @@ export default function HTTPTester() {
     }
   }, [t, toast])
 
+  const applyRequestParams = (params: RequestParam[]) => {
+    if (debouncedAutoParseRef.current) window.clearTimeout(debouncedAutoParseRef.current)
+    queryRowsCurrent.current = true
+    setRequestParams(params)
+    try { setUrl(buildRequestUrl(url, params, { replaceQuery: true })) } catch { /* Invalid endpoints are reported on send. */ }
+  }
+
   const addParam = () => {
-    setRequestParams([
-      ...requestParams,
-      {
-        id: nextParamId.current.toString(),
-        name: "",
-        value: "",
-        type: "String",
-        enabled: true,
-      },
-    ])
-    nextParamId.current += 1
+    applyRequestParams([...requestParams, { id: String(nextParamId.current++), name: "", value: "", type: "String", enabled: true }])
   }
-
-  const removeParam = (id: string) => {
-    setRequestParams(requestParams.filter((param) => param.id !== id))
-  }
-
+  const removeParam = (id: string) => applyRequestParams(requestParams.filter(param => param.id !== id))
   const updateParam = (id: string, field: keyof RequestParam, value: string | boolean) => {
-    setRequestParams(requestParams.map((param) => (param.id === id ? { ...param, [field]: value } : param)))
+    applyRequestParams(requestParams.map(param => param.id === id ? { ...param, [field]: value } : param))
   }
 
   const addHeader = () => {
@@ -621,7 +622,7 @@ export default function HTTPTester() {
 
     try {
       // 处理环境变量
-      const processedUrl = replaceEnvironmentVariables(url)
+      const processedUrl = buildRequestUrl(url, queryRowsCurrent.current ? requestParams : [], { transform: replaceEnvironmentVariables, replaceQuery: queryRowsCurrent.current })
 
       // Convert custom headers array to headers object
       const headersObj: Record<string, string> = {}
@@ -659,7 +660,7 @@ export default function HTTPTester() {
         processedUrl,
         method,
         headersObj,
-        requestParams,
+        [],
         requestBody,
         bodyType,
         controller.signal,
@@ -727,7 +728,7 @@ export default function HTTPTester() {
         method,
         url: processedUrl,
         headers: headersObj,
-        params: requestParams,
+        params: queryRowsCurrent.current ? requestParams : [],
         body: typeof requestBody === 'string' ? requestBody : body,
         bodyType,
         formDataParams,
@@ -761,7 +762,7 @@ export default function HTTPTester() {
         method,
         url,
         headers: {},
-        params: requestParams,
+        params: queryRowsCurrent.current ? requestParams : [],
         body,
         bodyType,
         formDataParams,
@@ -805,52 +806,6 @@ export default function HTTPTester() {
     })
   }
 
-  // Flag to track if URL was manually changed
-  const [manualUrlChange, setManualUrlChange] = useState(false)
-
-  // Update URL when params change (仅在参数表格修改时更新)
-  useEffect(() => {
-    // Prevent the initial render from triggering this effect
-    if (requestParams.length === 1 && !requestParams[0].name && !requestParams[0].value) {
-      return
-    }
-
-    // Skip updating URL if it was manually changed
-    if (manualUrlChange) {
-      setManualUrlChange(false)
-      return
-    }
-
-    // 只有当参数表格有实际内容时才自动更新URL
-    const hasActiveParams = requestParams.some(param => param.enabled && param.name)
-    if (!hasActiveParams) {
-      return
-    }
-
-    try {
-      // Get the base URL (everything before the first ?)
-      const baseUrl = url.includes("?") ? url.split("?")[0] : url
-
-      // Get all enabled parameters with names
-      const queryParams = requestParams
-        .filter((param) => param.enabled && param.name)
-        .map((param) => `${encodeURIComponent(param.name)}=${encodeURIComponent(param.value || "")}`)
-        .join("&")
-
-      // Construct the new URL
-      const newUrl = queryParams ? `${baseUrl}?${queryParams}` : baseUrl
-
-      // Only update if the URL has actually changed to prevent loops
-      if (newUrl !== url) {
-        setUrl(newUrl)
-      }
-    } catch (error) {
-      console.error("Error updating URL:", error)
-    }
-  // 只为避免重复 setState 才读 url（见上方注释）；把它加进依赖正好造成那里所防的循环
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestParams, manualUrlChange])
-
   // 延迟自动解析，避免输入时的干扰
   const debouncedAutoParseRef = useRef<number | undefined>(undefined)
   const autoParseStatusTimerRef = useRef<number | undefined>(undefined)
@@ -879,7 +834,7 @@ export default function HTTPTester() {
   // Handle URL change
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value
-    setManualUrlChange(true)
+    queryRowsCurrent.current = false
     setUrl(newUrl)
 
     // 清除之前的延迟解析
@@ -890,8 +845,8 @@ export default function HTTPTester() {
     // 清除状态提示
     setAutoParseStatus(null)
 
-    // 如果URL包含查询参数，显示等待状态
-    if (newUrl.includes("?")) {
+    // Also sync an empty query so old rows cannot leak into a newly typed URL.
+    if (newUrl) {
       setAutoParseStatus({ kind: "waiting" })
 
       // 延迟1秒后自动解析，避免输入时的干扰
@@ -930,10 +885,11 @@ export default function HTTPTester() {
   const autoParseUrlParametersDebounced = useCallback((inputUrl: string) => {
     try {
       const parsedParams = readUrlParameters(inputUrl)
+      queryRowsCurrent.current = true
+      setRequestParams(parsedParams)
       if (parsedParams.length === 0) {
         setAutoParseStatus({ kind: "current" })
       } else {
-        setRequestParams(parsedParams)
         setAutoParseStatus({ kind: "synced", count: parsedParams.length })
       }
     } catch (error) {
@@ -946,6 +902,9 @@ export default function HTTPTester() {
   const parseUrlParameters = () => {
     try {
       const parsedParams = readUrlParameters(url)
+      if (debouncedAutoParseRef.current) window.clearTimeout(debouncedAutoParseRef.current)
+      queryRowsCurrent.current = true
+      setRequestParams(parsedParams)
       if (parsedParams.length === 0) {
         toast({
           title: t("notice"),
@@ -954,8 +913,6 @@ export default function HTTPTester() {
         return
       }
 
-      setManualUrlChange(true)
-      setRequestParams(parsedParams)
       toast({
         title: t("parametersParsed"),
         description: `${t("syncedParameters")}: ${parsedParams.length}`,
