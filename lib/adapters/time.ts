@@ -1,18 +1,13 @@
 import { Clock3 } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
+import { parseTimestamp } from "../timestamp-tools"
 
-/**
- * 10 位按秒解释、13 位按毫秒:这是 Unix 时间戳最常见的两种写法。
- * 阈值 1e11 毫秒约为 1973-03,晚于此的毫秒戳一定大于该值,而秒级时间戳
- * 要到公元 5138 年才会越过它。
- */
-const SECONDS_THRESHOLD = 1e11
-
-function fromEpoch(value: number): Date {
-  const date = new Date(Math.abs(value) < SECONDS_THRESHOLD ? value * 1000 : value)
-  if (Number.isNaN(date.getTime())) throw new Error(`Invalid timestamp: ${value}`)
-  return date
+/** 单位按位数识别(10 位秒、13 位毫秒、16 位微秒、19 位纳秒),与时间工具页共用 */
+function fromEpoch(value: number | string): Date {
+  const result = parseTimestamp(String(value))
+  if (!result.ok) throw new Error(`Invalid timestamp: ${value}`)
+  return result.date
 }
 
 /** 空输入表示"此刻";其余按时间戳或可解析的日期字符串处理。 */
@@ -26,7 +21,7 @@ export function parseTimeInput(raw: unknown): Date {
 
   const text = String(raw).trim()
   if (text === "") return new Date()
-  if (/^-?\d+$/.test(text)) return fromEpoch(Number(text))
+  if (/^-?\d+$/.test(text)) return fromEpoch(text)
 
   const parsed = new Date(text)
   if (Number.isNaN(parsed.getTime())) throw new Error(`Unrecognized time value: ${text}`)

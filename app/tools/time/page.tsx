@@ -3,8 +3,16 @@
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
 import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useTranslations } from "@/hooks/use-translations"
+import { useI18n } from "@/components/i18n-provider"
+import {
+  formatRelativeTime,
+  formatTimestamp,
+  parseTimestamp,
+  TIMESTAMP_UNITS,
+  type TimestampUnitChoice,
+} from "@/lib/timestamp-tools"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +24,27 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { useToolActivity } from "@/components/tool-activity"
+
+/** 转换结果的一项：标签、等宽值和复制按钮 */
+function CopyableValue({ label, value, copied, copyLabel, onCopy }: {
+  label: string
+  value: string
+  copied: boolean
+  copyLabel: string
+  onCopy: () => void
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{label}</div>
+      <div className="flex items-center gap-1">
+        <div className="min-w-0 break-all font-mono text-lg">{value}</div>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onCopy} aria-label={`${copyLabel} ${label}`}>
+          {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 // Interface for the props
 // Time zone configuration
@@ -89,12 +118,19 @@ export default function TimePage() {
   const [timerDuration, setTimerDuration] = useState(300) // 5 minutes in seconds
   const [timerCompleted, setTimerCompleted] = useState(false)
   const [timestamp, setTimestamp] = useState<string>("")
-  const [timestampUnit, setTimestampUnit] = useState<string>("seconds")
-  const [timestampResult, setTimestampResult] = useState<{ local: string; utc: string } | null>(null)
+  const [timestampUnit, setTimestampUnit] = useState<TimestampUnitChoice>("auto")
   const [dateInput, setDateInput] = useState<string>("")
   const [dateResult, setDateResult] = useState<{ seconds: number; milliseconds: number } | null>(null)
+  const [dateError, setDateError] = useState(false)
   const [utcInput, setUtcInput] = useState<string>("")
   const [utcResult, setUtcResult] = useState<{ local: string; timestamp: number } | null>(null)
+  const [utcError, setUtcError] = useState(false)
+  const { locale } = useI18n()
+  // 时间戳随输入即时换算；单位默认按位数自动识别
+  const timestampParse = useMemo(
+    () => (timestamp.trim() ? parseTimestamp(timestamp, timestampUnit) : null),
+    [timestamp, timestampUnit],
+  )
 
   // Refs for timers
   const clockInterval = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -472,9 +508,10 @@ export default function TimePage() {
         seconds: timestampSec,
         milliseconds: timestampMs,
       })
-    } catch (error) {
-      console.error("Error converting date:", error)
+      setDateError(false)
+    } catch {
       setDateResult(null)
+      setDateError(true)
     }
   }
 
@@ -507,9 +544,10 @@ export default function TimePage() {
         local: localTime,
         timestamp: timestamp,
       })
-    } catch (error) {
-      console.error("Error converting UTC time:", error)
+      setUtcError(false)
+    } catch {
       setUtcResult(null)
+      setUtcError(true)
     }
   }
 
@@ -534,41 +572,18 @@ export default function TimePage() {
     setUtcInput(now.toISOString().replace(".000Z", "Z"))
   }, [])
 
-  // 时间戳转换为日期
-  const convertTimestampToDate = () => {
-    if (!timestamp) return
-
-    try {
-      // 将输入转换为数字
-      const timestampNum = Number(timestamp)
-      if (isNaN(timestampNum)) {
-        throw new Error("Invalid timestamp")
-      }
-
-      // 根据单位转换为毫秒
-      const timestampMs = timestampUnit === "seconds" ? timestampNum * 1000 : timestampNum
-
-      // 创建日期对象
-      const date = new Date(timestampMs)
-
-      // 检查日期是否有效
-      if (isNaN(date.getTime())) {
-        throw new Error("Invalid date")
-      }
-
-      // 格式化日期
-      const localFormatted = date.toLocaleString()
-      const utcFormatted = date.toUTCString()
-
-      setTimestampResult({
-        local: localFormatted,
-        utc: utcFormatted,
-      })
-    } catch (error) {
-      console.error("Error converting timestamp:", error)
-      setTimestampResult(null)
-    }
+  // 填入此刻的时间戳（自动识别时按秒）
+  const fillCurrentTimestamp = () => {
+    setTimestamp(formatTimestamp(Date.now(), timestampUnit === "auto" ? "seconds" : timestampUnit))
   }
+
+  const timestampStatus = !timestampParse
+    ? ""
+    : !timestampParse.ok
+      ? t(timestampParse.error === "outOfRange" ? "timestampOutOfRange" : "invalidTimestamp")
+      : timestampUnit === "auto"
+        ? t("detectedUnit").replace("{unit}", t(timestampParse.unit))
+        : ""
 
   return (
     <div className="container mx-auto px-4 py-4 max-w-6xl">
@@ -1167,47 +1182,61 @@ export default function TimePage() {
                 {/* Timestamp to Date */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">{t("timestampToDate")}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="timestamp">{t("enterTimestamp")}</Label>
-                      <div className="flex space-x-2">
-                        <Input
-                          id="timestamp"
-                          type="number"
-                          placeholder="1743914460"
-                          value={timestamp}
-                          onChange={(e) => setTimestamp(e.target.value)}
-                        />
-                        <Select value={timestampUnit} onValueChange={setTimestampUnit}>
-                          <SelectTrigger className="w-[120px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="seconds">{t("seconds")}</SelectItem>
-                            <SelectItem value="milliseconds">{t("milliseconds")}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex items-end">
-                      <Button onClick={convertTimestampToDate} className="w-full">
-                        {t("convert")}
+                  <div className="space-y-2">
+                    <Label htmlFor="timestamp">{t("enterTimestamp")}</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <Input
+                        id="timestamp"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder="1743914460"
+                        value={timestamp}
+                        onChange={(e) => setTimestamp(e.target.value)}
+                        aria-invalid={timestampParse && !timestampParse.ok ? true : undefined}
+                        aria-describedby="timestamp-status"
+                        className="min-w-0 flex-1 basis-48 font-mono"
+                      />
+                      <Select value={timestampUnit} onValueChange={(value) => setTimestampUnit(value as TimestampUnitChoice)}>
+                        <SelectTrigger className="w-[132px]" aria-label={t("timestampUnit")}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">{t("unitAuto")}</SelectItem>
+                          {TIMESTAMP_UNITS.map((unit) => (
+                            <SelectItem key={unit} value={unit}>{t(unit)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="outline" onClick={fillCurrentTimestamp}>
+                        {t("now")}
                       </Button>
                     </div>
+                    <p
+                      id="timestamp-status"
+                      className={`min-h-5 text-sm ${timestampParse && !timestampParse.ok ? "text-[var(--md-sys-color-error)]" : "text-[var(--md-sys-color-on-surface-variant)]"}`}
+                    >
+                      {timestampStatus}
+                    </p>
                   </div>
 
-                  {timestampResult && (
-                    <div className="p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("localTime")}</div>
-                          <div className="text-lg font-mono">{timestampResult.local}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">UTC</div>
-                          <div className="text-lg font-mono">{timestampResult.utc}</div>
-                        </div>
-                      </div>
+                  {timestampParse?.ok && (
+                    <div className="grid grid-cols-1 gap-4 rounded-lg bg-[var(--md-sys-color-surface-container-low)] p-4 md:grid-cols-2">
+                      {[
+                        { key: "ts-local", label: t("localTime"), value: timestampParse.date.toLocaleString(locale) },
+                        { key: "ts-utc", label: "UTC", value: timestampParse.date.toUTCString() },
+                        { key: "ts-iso", label: "ISO 8601", value: timestampParse.date.toISOString() },
+                        { key: "ts-relative", label: t("relativeTime"), value: formatRelativeTime(timestampParse.date, currentTime ?? new Date(), locale) },
+                      ].map((item) => (
+                        <CopyableValue
+                          key={item.key}
+                          label={item.label}
+                          value={item.value}
+                          copied={Boolean(copied[item.key])}
+                          copyLabel={t("copy")}
+                          onCopy={() => copyToClipboard(item.value, item.key)}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1223,8 +1252,14 @@ export default function TimePage() {
                         type="text"
                         placeholder={t("datePlaceholder")}
                         value={dateInput}
-                        onChange={(e) => setDateInput(e.target.value)}
+                        onChange={(e) => { setDateInput(e.target.value); setDateError(false) }}
+                        onKeyDown={(e) => { if (e.key === "Enter") convertDateToTimestamp() }}
+                        aria-invalid={dateError || undefined}
+                        aria-describedby={dateError ? "date-input-error" : undefined}
                       />
+                      {dateError && (
+                        <p id="date-input-error" className="text-sm text-[var(--md-sys-color-error)]">{t("invalidDate")}</p>
+                      )}
                     </div>
                     <div className="flex items-end">
                       <Button onClick={convertDateToTimestamp} className="w-full">
@@ -1234,17 +1269,9 @@ export default function TimePage() {
                   </div>
 
                   {dateResult && (
-                    <div className="p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("secondsTimestamp")}</div>
-                          <div className="text-lg font-mono">{dateResult.seconds}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("millisecondsTimestamp")}</div>
-                          <div className="text-lg font-mono">{dateResult.milliseconds}</div>
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 gap-4 rounded-lg bg-[var(--md-sys-color-surface-container-low)] p-4 md:grid-cols-2">
+                      <CopyableValue label={t("secondsTimestamp")} value={String(dateResult.seconds)} copied={Boolean(copied["date-sec"])} copyLabel={t("copy")} onCopy={() => copyToClipboard(String(dateResult.seconds), "date-sec")} />
+                      <CopyableValue label={t("millisecondsTimestamp")} value={String(dateResult.milliseconds)} copied={Boolean(copied["date-ms"])} copyLabel={t("copy")} onCopy={() => copyToClipboard(String(dateResult.milliseconds), "date-ms")} />
                     </div>
                   )}
                 </div>
@@ -1260,9 +1287,16 @@ export default function TimePage() {
                         type="text"
                         placeholder={t("utcPlaceholder")}
                         value={utcInput}
-                        onChange={(e) => setUtcInput(e.target.value)}
+                        onChange={(e) => { setUtcInput(e.target.value); setUtcError(false) }}
+                        onKeyDown={(e) => { if (e.key === "Enter") convertUtcToLocal() }}
+                        aria-invalid={utcError || undefined}
+                        aria-describedby={utcError ? "utc-input-error" : undefined}
                       />
-                      <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("utcTimeNote")}</div>
+                      {utcError ? (
+                        <p id="utc-input-error" className="text-sm text-[var(--md-sys-color-error)]">{t("invalidDate")}</p>
+                      ) : (
+                        <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("utcTimeNote")}</div>
+                      )}
                     </div>
                     <div className="flex items-end">
                       <Button onClick={convertUtcToLocal} className="w-full">
@@ -1272,17 +1306,9 @@ export default function TimePage() {
                   </div>
 
                   {utcResult && (
-                    <div className="p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("localTime")}</div>
-                          <div className="text-lg font-mono">{utcResult.local}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("secondsTimestamp")}</div>
-                          <div className="text-lg font-mono">{utcResult.timestamp}</div>
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 gap-4 rounded-lg bg-[var(--md-sys-color-surface-container-low)] p-4 md:grid-cols-2">
+                      <CopyableValue label={t("localTime")} value={utcResult.local} copied={Boolean(copied["utc-local"])} copyLabel={t("copy")} onCopy={() => copyToClipboard(utcResult.local, "utc-local")} />
+                      <CopyableValue label={t("secondsTimestamp")} value={String(utcResult.timestamp)} copied={Boolean(copied["utc-sec"])} copyLabel={t("copy")} onCopy={() => copyToClipboard(String(utcResult.timestamp), "utc-sec")} />
                     </div>
                   )}
                 </div>
