@@ -40,6 +40,26 @@ export interface UseSwipeResult {
 }
 
 /**
+ * 起点落在这些元素里时不跟踪滑动:在输入框里拖选文字、拖滑块、在画布或预览上画框,
+ * 都是工具本身的操作,不该顺带切走整个标签。
+ */
+const SWIPE_IGNORE_SELECTOR =
+  'input, textarea, select, [contenteditable="true"], [role="slider"], canvas, svg, video, [data-no-swipe]';
+
+function ignoresSwipeFrom(target: EventTarget | null, container: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (target.closest(SWIPE_IGNORE_SELECTOR)) return true;
+  for (let element: Element | null = target; element && element !== container; element = element.parentElement) {
+    const style = window.getComputedStyle(element);
+    // 自己处理触摸的区域(touch-action: none 等,比如打码、表格校对的画布)
+    if (style.touchAction && !['auto', 'manipulation'].includes(style.touchAction)) return true;
+    // 可以横向滚动的表格、代码块:横向手势属于它们
+    if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && element.scrollWidth > element.clientWidth) return true;
+  }
+  return false;
+}
+
+/**
  * Hook for detecting horizontal swipe gestures
  * 
  * @param config - Swipe configuration options
@@ -82,7 +102,7 @@ export function useSwipe(config: SwipeConfig = {}): UseSwipeResult {
     const touch = e.touches[0];
     startX.current = touch.clientX;
     startY.current = touch.clientY;
-    isTracking.current = true;
+    isTracking.current = !ignoresSwipeFrom(e.target, e.currentTarget);
     setIsSwiping(false);
     setSwipeDirection(null);
     setSwipeOffset(0);
@@ -117,9 +137,10 @@ export function useSwipe(config: SwipeConfig = {}): UseSwipeResult {
 
     const touch = e.changedTouches[0];
     const deltaX = touch.clientX - startX.current;
+    const deltaY = touch.clientY - startY.current;
 
-    // Check if swipe distance exceeds threshold
-    if (Math.abs(deltaX) >= threshold) {
+    // 距离够、且明显是横向手势才算:斜着往下滚动页面时不切标签
+    if (Math.abs(deltaX) >= threshold && Math.abs(deltaX) > 2 * Math.abs(deltaY)) {
       if (deltaX > 0) {
         onSwipeRight?.();
       } else {
