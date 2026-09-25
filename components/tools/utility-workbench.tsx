@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { SendToMenu } from "@/components/tools/send-to-menu"
+import { useUndoToast } from "@/hooks/use-undo-toast"
 
 /**
  * 独立工具页(/tools/<id>)把操作类型写回 URL,链接可以直接指向某个模式(如 ?op=decode);
@@ -172,6 +173,15 @@ export function UtilityWorkbench({
     void runRef.current()
   }, [input])
 
+  // 清空和载入示例会整段覆盖输入，覆盖前留一份，提示里可以撤销
+  const tc = useTranslations("common")
+  const showUndo = useUndoToast()
+  const replaceInput = (replace: () => void, messageKey: "inputCleared" | "inputReplacedBySample") => {
+    const previous = input
+    replace()
+    if (previous.trim()) showUndo(tc(messageKey), () => onInputChange(previous))
+  }
+
   const handleShortcut = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey)) return
     event.preventDefault()
@@ -296,11 +306,11 @@ export function UtilityWorkbench({
                 <kbd aria-hidden="true" className="ml-1 hidden rounded border border-current/30 px-1 text-[10px] font-medium opacity-70 sm:inline">Ctrl ↵</kbd>
               </Button>
               {onSample && (
-                <Button type="button" variant="outline" onClick={() => { runAfterSampleRef.current = true; onSample() }} className="min-h-11 w-full gap-2 sm:w-auto">
+                <Button type="button" variant="outline" onClick={() => replaceInput(() => { runAfterSampleRef.current = true; onSample() }, "inputReplacedBySample")} className="min-h-11 w-full gap-2 sm:w-auto">
                   <Sparkles className="h-4 w-4" />{t("sample")}
                 </Button>
               )}
-              <Button type="button" variant="ghost" onClick={onClear} className={`min-h-11 w-full gap-2 sm:w-auto ${onSample ? "" : "col-span-2"}`}>
+              <Button type="button" variant="ghost" onClick={() => replaceInput(onClear, "inputCleared")} className={`min-h-11 w-full gap-2 sm:w-auto ${onSample ? "" : "col-span-2"}`}>
                 <RotateCcw className="h-4 w-4" />{t("clear")}
               </Button>
             </div>

@@ -9,7 +9,7 @@ import { JsonTreeView } from "@/components/json-tree-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
-import { Clipboard, Download, Upload, AlertCircle, Check, ChevronDown, ChevronUp, Trash2, Settings, Palette, FileText, Zap, RefreshCw, Copy, Code } from "lucide-react"
+import { Clipboard, Download, Upload, AlertCircle, Check, ChevronDown, ChevronUp, Trash2, Settings, Palette, FileText, Zap, RefreshCw, Copy, Code, Undo2, Redo2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -19,9 +19,11 @@ import yaml from "js-yaml"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { escapeJsonText, sortJsonKeys, tryRepairCommonJson, unescapeJsonText } from "@/lib/json-text-tools"
 import { downloadBlob } from "@/lib/object-url"
+import { useTextHistory } from "@/hooks/use-text-history"
 
 export default function JsonTool() {
   const t = useTranslations("json")
+  const tc = useTranslations("common")
   const params = useToolRuntimeParams()
   
   // 基础状态
@@ -30,10 +32,14 @@ export default function JsonTool() {
   const [realTimeValidation, setRealTimeValidation] = useState(true)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   
-  const [jsonText, setJsonText] = useState<string>(
+  // 格式化、转换、清空、导入都会整段替换编辑框，经 replaceText 留快照，可以撤销、重做
+  const history = useTextHistory(
     '{\n  "person": {\n    "name": "张三",\n    "age": 30,\n    "isStudent": false,\n    "hobbies": ["编程", "阅读", "旅行"],\n    "address": {\n      "city": "北京",\n      "zipCode": "100000"\n    }\n  },\n  "company": "示例公司",\n  "department": null\n}',
   )
-  const [originalJson, setOriginalJson] = useState<string>("")
+  const jsonText = history.text
+  const replaceText = history.replace
+  // 折叠时记下原文和折叠结果；编辑框内容还等于折叠结果才算折叠状态，改过就不会被“展开”覆盖
+  const [collapsedFrom, setCollapsedFrom] = useState<{ original: string; collapsed: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [errorPosition, setErrorPosition] = useState<{ line: number; column: number } | null>(null)
   const [repairSuggestion, setRepairSuggestion] = useState<string | null>(null)
@@ -43,7 +49,7 @@ export default function JsonTool() {
   const [useTab, setUseTab] = useState(false)
   const [sortKeys, setSortKeys] = useState(false)
   const [wordWrap, setWordWrap] = useState(true)
-  const [collapsed, setCollapsed] = useState(false)
+  const collapsed = collapsedFrom !== null && jsonText === collapsedFrom.collapsed
 
   useEffect(() => {
     if (!realTimeValidation) {
@@ -103,7 +109,7 @@ export default function JsonTool() {
     try {
       const parsed = JSON.parse(jsonText)
       const formatted = JSON.stringify(sortKeys ? sortJsonKeys(parsed) : parsed, null, useTab ? "\t" : indentSize)
-      setJsonText(formatted)
+      replaceText(formatted)
       setError(null)
       setErrorPosition(null)
       setRepairSuggestion(null)
@@ -141,7 +147,7 @@ export default function JsonTool() {
   const compressJson = () => {
     try {
       const parsed = JSON.parse(jsonText)
-      setJsonText(JSON.stringify(parsed))
+      replaceText(JSON.stringify(parsed))
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -165,12 +171,10 @@ export default function JsonTool() {
   // 折叠/展开JSON
   const toggleCollapse = () => {
     try {
-      if (collapsed) {
-        // 如果当前是折叠状态，则展开为原始JSON
-        setJsonText(originalJson)
+      if (collapsedFrom && collapsed) {
+        // 当前是折叠结果，恢复折叠前的原文
+        replaceText(collapsedFrom.original)
       } else {
-        // 如果当前是展开状态，则折叠并保存原始JSON
-        setOriginalJson(jsonText)
         const parsed = JSON.parse(jsonText)
 
         // 创建一个只有顶层键的对象
@@ -186,9 +190,10 @@ export default function JsonTool() {
           }
         })
 
-        setJsonText(JSON.stringify(collapsedObj, null, useTab ? "\t" : indentSize))
+        const collapsedText = JSON.stringify(collapsedObj, null, useTab ? "\t" : indentSize)
+        if (collapsedText !== jsonText) setCollapsedFrom({ original: jsonText, collapsed: collapsedText })
+        replaceText(collapsedText)
       }
-      setCollapsed(!collapsed)
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
@@ -201,7 +206,7 @@ export default function JsonTool() {
     try {
       const parsed = JSON.parse(jsonText)
       const yamlText = yaml.dump(parsed, { indent: indentSize })
-      setJsonText(yamlText)
+      replaceText(yamlText)
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -220,7 +225,7 @@ export default function JsonTool() {
         null,
         useTab ? "\t" : indentSize,
       )
-      setJsonText(formatted)
+      replaceText(formatted)
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -233,7 +238,7 @@ export default function JsonTool() {
   // 转义JSON
   const escapeJson = () => {
     try {
-      setJsonText(escapeJsonText(jsonText))
+      replaceText(escapeJsonText(jsonText))
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -246,7 +251,7 @@ export default function JsonTool() {
   // 去转义JSON
   const unescapeJson = () => {
     try {
-      setJsonText(unescapeJsonText(jsonText))
+      replaceText(unescapeJsonText(jsonText))
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -262,7 +267,7 @@ export default function JsonTool() {
       const result = jsonText.replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
         return String.fromCharCode(Number.parseInt(match.replace(/\\u/g, ""), 16))
       })
-      setJsonText(result)
+      replaceText(result)
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -286,7 +291,7 @@ export default function JsonTool() {
         const low = 0xdc00 + (offset & 0x3ff)
         return `\\u${high.toString(16)}\\u${low.toString(16)}`
       })
-      setJsonText(result)
+      replaceText(result)
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -298,7 +303,7 @@ export default function JsonTool() {
 
   // 清空
   const clearJson = () => {
-    setJsonText("")
+    replaceText("")
     setError(null)
     setErrorPosition(null)
     setRepairSuggestion(null)
@@ -343,7 +348,7 @@ export default function JsonTool() {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
-      setJsonText(content)
+      replaceText(content)
       try {
         // 尝试解析以验证是否为有效的JSON
         JSON.parse(content)
@@ -385,7 +390,7 @@ export default function JsonTool() {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
-      setJsonText(content)
+      replaceText(content)
       try {
         // 尝试解析以验证是否为有效的JSON
         JSON.parse(content)
@@ -576,7 +581,7 @@ export default function JsonTool() {
                   size="sm"
                   variant="secondary"
                   onClick={() => {
-                    setJsonText(repairSuggestion)
+                    replaceText(repairSuggestion)
                     setRepairSuggestion(null)
                     setError(null)
                     setErrorPosition(null)
@@ -614,6 +619,14 @@ export default function JsonTool() {
                     {t("autoFormat")}
                   </Badge>
                 )}
+                <span className="ml-auto flex gap-1">
+                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={history.undo} disabled={!history.canUndo} aria-label={tc("undo")} title={`${tc("undo")} (Ctrl+Z)`}>
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={history.redo} disabled={!history.canRedo} aria-label={tc("redo")} title={`${tc("redo")} (Ctrl+Shift+Z)`}>
+                    <Redo2 className="h-4 w-4" />
+                  </Button>
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -622,9 +635,10 @@ export default function JsonTool() {
                 className="h-[62vh] min-h-96 max-h-[48rem] w-full resize-none border-0 bg-[var(--md-sys-color-surface-container-low)] p-4 font-mono text-sm leading-relaxed text-[var(--md-sys-color-on-surface)] outline-none transition-colors focus:bg-[var(--md-sys-color-surface-container-lowest)]"
                 value={jsonText}
                 onChange={(e) => {
-                  setJsonText(e.target.value)
+                  history.setText(e.target.value)
                   setRepairSuggestion(null)
                 }}
+                onKeyDown={history.onKeyDown}
                 onBlur={() => {
                   if (autoFormat && jsonText.trim()) formatJson()
                 }}

@@ -1,9 +1,11 @@
-import React from "react"
+import React, { type ReactElement } from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { UtilityWorkbench } from "./utility-workbench"
 vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
+const toast = vi.fn()
+vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
 
 vi.mock("@/hooks/use-translations", () => ({
   useTranslations: () => (key: string) => ({
@@ -186,5 +188,42 @@ describe("UtilityWorkbench run flow", () => {
   it("hides the operation picker when there is only one operation", () => {
     render(<Harness operations={[{ value: "upper", label: "Upper" }]} />)
     expect(screen.queryByText("Operation")).not.toBeInTheDocument()
+  })
+})
+
+describe("UtilityWorkbench replacing input", () => {
+  afterEach(() => { toast.mockClear() })
+
+  it("lets a cleared input be restored from the toast", () => {
+    render(<Harness />)
+    const [input] = screen.getAllByRole("textbox")
+    fireEvent.change(input, { target: { value: "keep me" } })
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }))
+    expect(input).toHaveValue("")
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "inputCleared" }))
+
+    const action = toast.mock.calls.at(-1)![0].action as ReactElement<{ onClick: () => void }>
+    act(() => { action.props.onClick() })
+    expect(input).toHaveValue("keep me")
+  })
+
+  it("lets the input replaced by the sample be restored", () => {
+    render(<Harness />)
+    const [input] = screen.getAllByRole("textbox")
+    fireEvent.change(input, { target: { value: "mine" } })
+    fireEvent.click(screen.getByRole("button", { name: "Sample" }))
+    expect(input).toHaveValue("sample")
+
+    const action = toast.mock.calls.at(-1)![0].action as ReactElement<{ onClick: () => void }>
+    expect(toast.mock.calls.at(-1)![0].title).toBe("inputReplacedBySample")
+    act(() => { action.props.onClick() })
+    expect(input).toHaveValue("mine")
+  })
+
+  it("stays quiet when there was nothing to lose", () => {
+    render(<Harness />)
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }))
+    fireEvent.click(screen.getByRole("button", { name: "Sample" }))
+    expect(toast).not.toHaveBeenCalled()
   })
 })

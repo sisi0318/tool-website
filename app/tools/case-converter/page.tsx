@@ -2,11 +2,12 @@
 
 import { copyTextToClipboard } from "@/lib/clipboard"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { useUndoToast } from "@/hooks/use-undo-toast"
 import { 
   Copy, Trash2, ArrowRightLeft, Type, FileText,
   CaseSensitive, CaseUpper, CaseLower
@@ -51,8 +52,9 @@ const CASE_OPTIONS: CaseOption[] = [
 export default function CaseConverterPage() {
   const { toast } = useToast()
   const t = useTranslations("caseConverter")
+  const tc = useTranslations("common")
+  const showUndo = useUndoToast()
   const [inputText, setInputText] = useState("")
-  const [outputText, setOutputText] = useState("")
   const [selectedCase, setSelectedCase] = useState<CaseType>("uppercase")
 
   // 转换函数
@@ -126,19 +128,8 @@ export default function CaseConverterPage() {
     }
   }, [])
 
-  // 处理转换
-  const handleConvert = useCallback((caseType: CaseType) => {
-    setSelectedCase(caseType)
-    const result = convertCase(inputText, caseType)
-    setOutputText(result)
-  }, [inputText, convertCase])
-
-  // 输入变化时自动转换
-  const handleInputChange = useCallback((value: string) => {
-    setInputText(value)
-    const result = convertCase(value, selectedCase)
-    setOutputText(result)
-  }, [selectedCase, convertCase])
+  // 结果总是由输入和所选格式算出，输入一变就自动转换
+  const outputText = useMemo(() => convertCase(inputText, selectedCase), [convertCase, inputText, selectedCase])
 
   // 复制结果
   const copyToClipboard = useCallback(async () => {
@@ -151,24 +142,16 @@ export default function CaseConverterPage() {
     }
   }, [outputText, t, toast])
 
-  // 清空
-  const clearAll = useCallback(() => {
-    setInputText("")
-    setOutputText("")
-  }, [])
-
-  const loadExample = useCallback(() => {
-    const example = "helloWorld API response_example"
-    setInputText(example)
-    setOutputText(convertCase(example, selectedCase))
-  }, [convertCase, selectedCase])
-
-  // 交换输入输出
-  const swapText = useCallback(() => {
-    setInputText(outputText)
-    const result = convertCase(outputText, selectedCase)
-    setOutputText(result)
-  }, [outputText, selectedCase, convertCase])
+  // 清空、示例、交换都会整段覆盖输入，覆盖前留一份，提示里可以撤销
+  const replaceInput = (value: string, messageKey: "inputCleared" | "inputReplacedBySample" | "inputReplacedByResult") => {
+    const previous = inputText
+    setInputText(value)
+    if (previous.trim() && previous !== value) showUndo(tc(messageKey), () => setInputText(previous))
+  }
+  const clearAll = () => replaceInput("", "inputCleared")
+  const loadExample = () => replaceInput("helloWorld API response_example", "inputReplacedBySample")
+  // 结果移到输入框，接着按其它格式再转
+  const swapText = () => replaceInput(outputText, "inputReplacedByResult")
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-4 sm:py-6">
@@ -194,7 +177,7 @@ export default function CaseConverterPage() {
           <CardContent>
             <SegmentedControl
               value={selectedCase}
-              onValueChange={(value) => handleConvert(value as CaseType)}
+              onValueChange={(value) => setSelectedCase(value as CaseType)}
               aria-label={t("conversionType")}
               className="flex h-auto flex-wrap gap-2 rounded-none bg-transparent p-0"
             >
@@ -241,7 +224,7 @@ export default function CaseConverterPage() {
                 aria-label={t("inputText")}
                 placeholder={t("inputPlaceholder")}
                 value={inputText}
-                onChange={(e) => handleInputChange(e.target.value)}
+                onChange={(e) => setInputText(e.target.value)}
                 className="min-h-[200px] resize-none"
               />
               <div className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">

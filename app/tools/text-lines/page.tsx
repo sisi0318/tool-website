@@ -13,10 +13,13 @@ import { useTranslations } from "@/hooks/use-translations"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { processTextLines, SET_LINE_OPERATIONS, TextLineError, type TextLineOperation, type TextLineOptions, type TextLineResult } from "@/lib/text-line-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
+import { useUndoToast } from "@/hooks/use-undo-toast"
 
 const OPERATIONS: TextLineOperation[] = ["dedupe", "clean", "sort", "affix", "columns", ...SET_LINE_OPERATIONS]
 export default function TextLinesPage() {
   const t = useTranslations("textLinesTools")
+  const tc = useTranslations("common")
+  const showUndo = useUndoToast()
   const [input, setInput] = useToolDraft("text-lines")
   const [operation, setOperation] = useState<TextLineOperation>("dedupe")
   const [options, setOptions] = useState<TextLineOptions>({ trim: false, removeEmpty: true, ignoreCase: false, sortMode: "lexical", descending: false, prefix: "", suffix: "", delimiter: "\\t", outputDelimiter: "\\t", columns: "1", missingColumn: "empty", newline: "lf", trailingNewline: false, other: "" })
@@ -36,6 +39,13 @@ export default function TextLinesPage() {
     try { setResult(processTextLines(input, { ...options, operation, delimiter: options.delimiter === "\\t" ? "\t" : options.delimiter, outputDelimiter: options.outputDelimiter === "\\t" ? "\t" : options.outputDelimiter })); setError(""); setPage(0) }
     catch (cause) { setResult(null); setError(cause instanceof TextLineError ? t("errors." + cause.code) + (cause.line ? ` · ${t("sourceLine")} ${cause.line}` : "") : t("failed")) }
   }
+  // 结果覆盖输入之前留一份，提示里可以撤销
+  const moveResultToInput = (output: string) => {
+    const previous = input
+    reset()
+    setInput(output)
+    if (previous.trim() && previous !== output) showUndo(tc("inputReplacedByResult"), () => { reset(); setInput(previous) })
+  }
   const sample = () => {
     reset()
     if (operation === "columns") { setInput("id\tname\tstatus\n001\tAda\t500\n002\tLinus\t200"); setOptions((current) => ({ ...current, delimiter: "\\t", whitespaceDelimiter: false, columns: "2,1", outputDelimiter: "," })) }
@@ -51,7 +61,7 @@ export default function TextLinesPage() {
     <div className="grid items-end gap-3 sm:grid-cols-2">{choice("newline", [["lf", "LF"], ["crlf", "CRLF"]])}{toggle("trailingNewline")}</div><p className="text-xs text-md-on-surface-variant">{t("limits")}</p>
   </div>} result={result ? <div className="space-y-4">
     <div role="status" className="text-sm text-md-on-surface-variant">{t("summary").replace("{input}", String(result.inputLines + result.otherLines)).replace("{output}", String(result.lines.length)).replace("{empty}", String(result.emptyRemoved)).replace("{duplicates}", String(result.duplicatesRemoved))}</div>
-    <div className="flex flex-wrap gap-2">{url && file && <Button size="sm" variant="outline" asChild><a href={url} download={file.name}><Download />{t("download")}</a></Button>}<Button size="sm" variant="outline" onClick={() => { const output = result.output; reset(); setInput(output) }}><ArrowUpLeft />{t("useResult")}</Button></div>
+    <div className="flex flex-wrap gap-2">{url && file && <Button size="sm" variant="outline" asChild><a href={url} download={file.name}><Download />{t("download")}</a></Button>}<Button size="sm" variant="outline" onClick={() => moveResultToInput(result.output)}><ArrowUpLeft />{t("useResult")}</Button></div>
     <div className="max-h-[32rem] overflow-auto rounded-xl border border-md-outline-variant bg-md-surface-container-low p-3 font-mono text-xs leading-6">{result.lines.slice(page * 100, (page + 1) * 100).map((line, index) => <div key={index} className="flex gap-3"><span className="w-12 shrink-0 select-none text-right text-md-on-surface-variant">{page * 100 + index + 1}</span><span className="min-w-0 whitespace-pre-wrap break-all">{line ? line.slice(0, 1000) + (line.length > 1000 ? "…" : "") : <span className="text-md-on-surface-variant">{t("emptyLine")}</span>}</span></div>)}{!result.lines.length && <p className="py-6 text-center text-md-on-surface-variant">{t("emptyResult")}</p>}</div>
     <div className="flex items-center justify-end gap-2 text-xs"><Button variant="ghost" size="icon" aria-label={t("previousPage")} disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft /></Button><span>{page + 1} / {pages}</span><Button variant="ghost" size="icon" aria-label={t("nextPage")} disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}><ChevronRight /></Button></div><p className="text-xs leading-relaxed text-md-on-surface-variant">{t("previewHelp")}</p>
   </div> : undefined} />

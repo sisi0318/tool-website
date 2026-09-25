@@ -8,6 +8,7 @@ import { memo, useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
+import { UNDO_TOAST_MS, useUndoToast } from "@/hooks/use-undo-toast"
 import {
   Plus,
   X,
@@ -231,6 +232,10 @@ export default function ToolsPage() {
   const searchResultsRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const tabContentRef = useRef<HTMLDivElement>(null)
+  // 刚关闭的标签：内容继续隐藏挂载，撤销提示过去后再卸载，撤销时输入和结果都还在
+  const [closingTabs, setClosingTabs] = useState<ToolTabType[]>([])
+  const closeTimersRef = useRef(new Map<string, number>())
+  const showUndo = useUndoToast()
 
 
   // 工具定义 - 使用useMemo避免重复创建
@@ -486,11 +491,48 @@ export default function ToolsPage() {
     [tabs],
   )
 
+  // 撤销关闭：插回原位置；这期间同一工具已重新打开的，直接切过去
+  const latestTabsRef = useRef({ tabs, activeTab })
+  latestTabsRef.current = { tabs, activeTab }
+  const restoreClosedTab = useCallback(
+    (closed: ToolTabType, index: number, wasActive: boolean) => {
+      const { tabs: currentTabs, activeTab: currentActive } = latestTabsRef.current
+      const reopened = currentTabs.find((tab) => tab.toolId === closed.toolId)
+      const nextTabs = reopened ? currentTabs : [...currentTabs.slice(0, index), closed, ...currentTabs.slice(index)]
+      const nextActive = reopened ? reopened.id : wasActive || !currentActive ? closed.id : currentActive
+      if (!reopened) {
+        window.clearTimeout(closeTimersRef.current.get(closed.id))
+        closeTimersRef.current.delete(closed.id)
+        setClosingTabs((current) => current.filter((tab) => tab.id !== closed.id))
+        setTabs(nextTabs)
+      }
+      setActiveTab(nextActive)
+      saveTabsToLocalStorage(nextTabs, nextActive)
+      updateUrl(nextTabs, nextActive)
+    },
+    [saveTabsToLocalStorage, updateUrl],
+  )
+
+  useEffect(() => {
+    const timers = closeTimersRef.current
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [])
+
   // 关闭标签页 - 用于M3Tabs组件
   const handleTabClose = useCallback(
     (id: string) => {
       const tabIndex = tabs.findIndex((tab) => tab.id === id)
       if (tabIndex === -1) return
+
+      const closed = tabs[tabIndex]
+      setClosingTabs((current) => [...current.filter((tab) => tab.id !== id), closed])
+      window.clearTimeout(closeTimersRef.current.get(id))
+      closeTimersRef.current.set(id, window.setTimeout(() => {
+        closeTimersRef.current.delete(id)
+        setClosingTabs((current) => current.filter((tab) => tab.id !== id))
+      }, UNDO_TOAST_MS + 2000))
+      const name = toolDefinitions.find((tool) => tool.id === closed.toolId)?.title ?? closed.title
+      showUndo(t("tabClosed").replace("{name}", name), () => restoreClosedTab(closed, tabIndex, id === activeTab))
 
       const newTabs = tabs.filter((tab) => tab.id !== id)
       setTabs(newTabs)
@@ -509,9 +551,8 @@ export default function ToolsPage() {
 
       saveTabsToLocalStorage(newTabs, newActiveTab)
       updateUrl(newTabs, newActiveTab)
-
     },
-    [tabs, activeTab, saveTabsToLocalStorage, updateUrl],
+    [tabs, activeTab, saveTabsToLocalStorage, updateUrl, toolDefinitions, showUndo, t, restoreClosedTab],
   )
 
   // 处理搜索
@@ -1140,28 +1181,6 @@ export default function ToolsPage() {
                 </div>
               </div>
             </div>
-
-            {/* Tab content container with swipe gesture support on mobile */}
-            <div
-              ref={tabContentRef}
-              className="mt-3 sm:mt-4"
-              {...(isCompact ? swipeHandlers : {})}
-              style={isCompact && isSwiping ? {
-                transform: `translateX(${swipeOffset * 0.3}px)`,
-                transition: 'none',
-              } : undefined}
-            >
-              {tabs.map((tab) => (
-                <ToolActivityProvider key={tab.id} active={activeTab === tab.id}>
-                  <div
-                    className={activeTab === tab.id ? "block" : "hidden"}
-                    aria-hidden={activeTab !== tab.id}
-                  >
-                    {tab.component}
-                  </div>
-                </ToolActivityProvider>
-              ))}
-            </div>
           </div>
         </div>
       ) : (
@@ -1292,6 +1311,29 @@ export default function ToolsPage() {
           )}
         </div>
       )}
+
+      {/* 各标签的内容。放在上面的条件分支之外：关掉最后一个标签、回到首页时，
+          刚关闭的内容仍隐藏挂载着，撤销后原样回来 */}
+      <div
+        ref={tabContentRef}
+        className={tabs.length > 0 ? "mt-3 sm:mt-4" : "hidden"}
+        {...(isCompact ? swipeHandlers : {})}
+        style={isCompact && isSwiping ? {
+          transform: `translateX(${swipeOffset * 0.3}px)`,
+          transition: 'none',
+        } : undefined}
+      >
+        {[...tabs, ...closingTabs].map((tab) => (
+          <ToolActivityProvider key={tab.id} active={activeTab === tab.id}>
+            <div
+              className={activeTab === tab.id ? "block" : "hidden"}
+              aria-hidden={activeTab !== tab.id}
+            >
+              {tab.component}
+            </div>
+          </ToolActivityProvider>
+        ))}
+      </div>
 
       {/* Mobile Bottom Sheet for Tool Options */}
       <M3BottomSheet
