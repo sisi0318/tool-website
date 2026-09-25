@@ -18,7 +18,7 @@ import { recognizePdf, exportSearchablePdf, sampleOcrPdf } from "@/lib/pdf-ocr-c
 import { PDF_OCR_LIMITS, pdfOcrJson, pdfOcrText, type PdfOcrPage, type PdfOcrProgress } from "@/lib/pdf-ocr-shared"
 
 const frame = "rounded-2xl border border-md-outline-variant bg-md-surface-container-lowest p-4 sm:p-5"
-export default function PdfOcrPanel({ isActive = true, headingLevel = "h2" }: { isActive?: boolean; headingLevel?: "h1" | "h2" }) {
+export default function PdfOcrPanel({ isActive = true, headingLevel = "h2", onBusyChange }: { isActive?: boolean; headingLevel?: "h1" | "h2"; onBusyChange?: (busy: boolean) => void }) {
   const Heading = headingLevel
   const t = useTranslations("pdfOcr"), pt = useTranslations("pdfTools"), ot = useTranslations("ocrTools"), { toast } = useToast(), id = useId()
   const [file, setFile] = useState<File | null>(null), [info, setInfo] = useState<PdfInfo | null>(null)
@@ -36,7 +36,8 @@ export default function PdfOcrPanel({ isActive = true, headingLevel = "h2" }: { 
   const cancel = () => { version.current++; active.current?.abort(); active.current = null; setBusy(false); setProgress(null) }
   const resetResult = () => { setPages([]); setOutput(null); setIndex(0); setLineIndex(null); setError("") }
   useEffect(() => () => { version.current++; active.current?.abort() }, [])
-  useEffect(() => { if (!isActive) { version.current++; active.current?.abort(); active.current = null; setBusy(false); setProgress(null) } }, [isActive])
+  // 切到别的子标签不再中断识别：长 PDF 识别到一半随手切一下，已完成的页会全部作废
+  useEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
   const errorText = (cause: unknown) => cause instanceof OcrError ? ot(`error_${cause.code}`) : cause instanceof PdfToolError ? ["pageLimit", "imageLimit", "sourceImageLimit", "unsupportedInline", "unsupportedContent", "contentLimit", "outputLimit"].includes(cause.code) ? t(`error_${cause.code}`) : pt(`errors.${cause.code}`) : pt("errors.invalidPdf")
   const task = async <T,>(work: (signal: AbortSignal, update: (value: PdfOcrProgress) => void) => Promise<T>, commit: (value: T) => void) => {
     cancel(); const job = version.current, controller = new AbortController(); active.current = controller; setBusy(true); setError("")

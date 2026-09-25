@@ -27,6 +27,7 @@ common: {
   notFoundBrowseTools: "浏览全部工具",
   journey: "数据旅程",
   settings: "设置",
+  runningInBackground: "正在处理",
 },
 settings: {
   cacheTitle: "离线资源与查询缓存", cacheHint: "查询缓存和网站、模型资源独立存放。清除后，再次访问或识别时会重新下载所需资源。", clearCaches: "清除缓存", cacheConfirm: "清除本站的查询缓存、模型及网站离线资源。偏好和工作区数据会保留，离线功能需要重新下载资源。", cacheReadFailed: "无法读取缓存信息，请检查浏览器存储权限。", cacheClearFailed: "缓存清理未完成，部分偏好数据可能已清除，请检查浏览器权限后重试。", queryCache: "旧查询数据", ocrCache: "OCR 模型", pdfCache: "PDF 渲染资源", vectorCache: "图片矢量化资源", siteCache: "网站离线资源",

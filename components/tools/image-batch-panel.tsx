@@ -24,7 +24,7 @@ function DownloadFile({ file }: { file: File }) {
   const url = useObjectUrl(file)
   return url ? <Button asChild variant="outline" size="sm"><a href={url} download={file.name}><Download />{file.name.split(".").pop()?.toUpperCase()}</a></Button> : null
 }
-export default function ImageBatchPanel({ isActive = true, headingLevel = "h1" }: { isActive?: boolean; headingLevel?: "h1" | "h2" }) {
+export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: { headingLevel?: "h1" | "h2"; onBusyChange?: (busy: boolean) => void }) {
   const t = useTranslations("imageBatch"), ot = useTranslations("ocrTools"), { toast } = useToast(), id = useId(), Heading = headingLevel
   const [jobs, setJobs] = useState<BatchImageJob[]>([]), [options, setOptions] = useState<ImageBatchOptions>(DEFAULT_BATCH_OPTIONS)
   const [selectedId, setSelectedId] = useState(""), [phase, setPhase] = useState<"run" | "zip" | "sample" | null>(null)
@@ -39,7 +39,8 @@ export default function ImageBatchPanel({ isActive = true, headingLevel = "h1" }
   const describe = (code: string) => { const [scope, key] = code.split(":"); return scope === "ocr" ? ot(`error_${key}`) : t(`error_${key || "convert"}`) }
   const cancel = () => { version.current++; active.current?.abort(); active.current = null; setPhase(null); setProgress(null); updateJobs(list => list.map(job => job.status === "running" ? { ...job, status: "ready" } : job)) }
   useEffect(() => () => { version.current++; active.current?.abort() }, [])
-  useEffect(() => { if (!isActive) { version.current++; active.current?.abort(); active.current = null; setPhase(null); setProgress(null); const next = current.current.map(job => job.status === "running" ? { ...job, status: "ready" as const } : job); current.current = next; setJobs(next) } }, [isActive])
+  // 切到别的子标签不再中断队列，由页面在标签上提示仍在处理
+  useEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
   const add = (files: File[]) => {
     setArchive(null); setNotice("")
     const used = new Set(current.current.map(job => job.base.toLowerCase())), next: BatchImageJob[] = []

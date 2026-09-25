@@ -16,7 +16,7 @@ import { createOcrSample, type OcrSample } from "@/lib/ocr-samples"
 
 const frame = "rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]"
 const muted = "text-[var(--md-sys-color-on-surface-variant)]"
-export default function ImageOcrPanel({ isActive = true }: { isActive?: boolean }) {
+export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: boolean) => void }) {
   const t = useTranslations("ocrTools"), { toast } = useToast()
   const [file, setFile] = useState<File | null>(null), [validated, setValidated] = useState<File | null>(null)
   const [options, setOptions] = useState<OcrOptions>(DEFAULT_OCR_OPTIONS), [result, setResult] = useState<OcrResult | null>(null)
@@ -39,7 +39,8 @@ export default function ImageOcrPanel({ isActive = true }: { isActive?: boolean 
   }
   const choose = (next: File | null) => { invalidate(); setSampleLoading(false); replaceFile(next) }
   useEffect(() => () => { version.current++; active.current?.abort() }, [])
-  useEffect(() => { if (!isActive) { version.current++; active.current?.abort(); active.current = null; setProgress(null); setSampleLoading(false) } }, [isActive])
+  // 切到别的子标签不再中断识别，由页面在标签上提示仍在处理
+  useEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
   useEffect(() => {
     if (!file) return
     let current = true

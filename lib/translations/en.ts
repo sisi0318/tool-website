@@ -25,6 +25,7 @@ common: {
   notFoundBrowseTools: "Browse all tools",
   journey: "Journey",
   settings: "Settings",
+  runningInBackground: "In progress",
 },
 settings: {
   cacheTitle: "Offline resources and query caches", cacheHint: "Query data, website resources and models use separate caches. Visiting tools again will download any cleared resources as needed.", clearCaches: "Clear caches", cacheConfirm: "Clear this site's query, model and website caches. Preferences and workspace data stay saved; offline resources will need downloading again.", cacheReadFailed: "Cache information could not be read. Check browser storage permissions.", cacheClearFailed: "Cache clearing did not finish. Some preferences may already be cleared; check browser permissions and retry.", queryCache: "Legacy query data", ocrCache: "OCR models", pdfCache: "PDF rendering resources", vectorCache: "Image vectorizer resources", siteCache: "Website offline resources",

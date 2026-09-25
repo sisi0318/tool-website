@@ -47,17 +47,19 @@ describe("PDF OCR review", () => {
     expect(screen.getByRole("button", { name: "recognize" })).toBeDisabled()
     expect(screen.queryByRole("textbox", { name: "allText" })).not.toBeInTheDocument()
   })
-  it("cancels on hide and discards a completion from the old run", async () => {
+  it("keeps recognizing while its tab is hidden and reports that it is busy", async () => {
     let resolve: (value: PdfOcrPage[]) => void = () => {}
     mocks.recognize.mockImplementation(() => new Promise<PdfOcrPage[]>(done => { resolve = done }))
-    const view = render(<PdfOcrPanel />); await load()
+    const onBusyChange = vi.fn()
+    const view = render(<PdfOcrPanel onBusyChange={onBusyChange} />); await load()
     fireEvent.click(screen.getByRole("button", { name: "recognize" }))
     const signal = mocks.recognize.mock.calls[0][2].signal as AbortSignal
-    view.rerender(<PdfOcrPanel isActive={false} />)
-    expect(signal.aborted).toBe(true)
+    view.rerender(<PdfOcrPanel isActive={false} onBusyChange={onBusyChange} />)
+    expect(signal.aborted).toBe(false)
+    expect(onBusyChange).toHaveBeenLastCalledWith(true)
     await act(async () => resolve([page]))
-    view.rerender(<PdfOcrPanel isActive />)
-    expect(screen.queryByRole("textbox", { name: "allText" })).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "recognize" })).toBeEnabled()
+    expect(onBusyChange).toHaveBeenLastCalledWith(false)
+    view.rerender(<PdfOcrPanel isActive onBusyChange={onBusyChange} />)
+    expect(screen.getByRole("textbox", { name: "allText" })).toHaveValue("校对前")
   })
 })
