@@ -2,6 +2,8 @@
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
 import { takeInputFiles } from "@/lib/file-input"
+import { locationFromMessage, type TextLocation } from "@/lib/text-location"
+import { ErrorLocation } from "@/components/tools/error-location"
 
 import type React from "react"
 
@@ -39,6 +41,8 @@ function collectMessageTypes(pb: typeof Protobuf, namespace: Protobuf.NamespaceB
   return messageTypes
 }
 
+const PROTO_CONTENT_ID = "proto-content"
+
 export default function ProtobufTool() {
   const t = useTranslations("protobuf")
   
@@ -57,6 +61,8 @@ export default function ProtobufTool() {
   const [protoContent, setProtoContent] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // .proto 解析失败时 protobufjs 给出的原因和行号；只在当前显示的正是这条错误时附上
+  const [protoError, setProtoError] = useState<{ message: string; detail: string; location: TextLocation | null } | null>(null)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [indentSize, setIndentSize] = useState(4)
   const outputData = useMemo(() => {
@@ -97,8 +103,10 @@ export default function ProtobufTool() {
         setError(null)
       } catch (err) {
         if (requestId !== protoParseRequestRef.current) return
-        console.error("Proto parsing error:", err)
+        // 以前原因只进了控制台，页面上看不到是哪一行出了问题
+        const raw = err instanceof Error ? err.message : ""
         setError(t("protoParseError"))
+        setProtoError({ message: t("protoParseError"), detail: raw.split("\n")[0], location: locationFromMessage(raw) })
       }
     },
     [t],
@@ -498,9 +506,9 @@ export default function ProtobufTool() {
 
                   <TabsContent value="text" className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="proto-content">{t("protoContent")}</Label>
+                      <Label htmlFor={PROTO_CONTENT_ID}>{t("protoContent")}</Label>
                       <Textarea
-                        id="proto-content"
+                        id={PROTO_CONTENT_ID}
                         placeholder={t("protoContentPlaceholder")}
                         className="font-mono h-[200px]"
                         value={protoContent}
@@ -701,6 +709,12 @@ export default function ProtobufTool() {
                 {error && (
                   <div role="alert" className="mt-3 rounded-xl border border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
                     {error}
+                    {protoError?.message === error && (
+                      <div className="mt-1 space-y-1 text-xs">
+                        {protoError.detail && <p className="break-words font-mono">{protoError.detail}</p>}
+                        {protoError.location && <ErrorLocation location={protoError.location} targetId={PROTO_CONTENT_ID} />}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -823,7 +837,15 @@ export default function ProtobufTool() {
 
                   {error && (
                     <div role="alert" className="rounded-xl border border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] p-3">
-                      <div className="text-sm text-[var(--md-sys-color-on-error-container)]">{error}</div>
+                      <div className="text-sm text-[var(--md-sys-color-on-error-container)]">
+                        {error}
+                        {protoError?.message === error && (
+                      <div className="mt-1 space-y-1 text-xs">
+                        {protoError.detail && <p className="break-words font-mono">{protoError.detail}</p>}
+                        {protoError.location && <ErrorLocation location={protoError.location} targetId={PROTO_CONTENT_ID} />}
+                      </div>
+                    )}
+                      </div>
                     </div>
                   )}
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { inspectCryptoMaterial } from "./certificate-tools"
+import { LocatedError } from "./text-location"
 
 describe("certificate and key inspector", () => {
   it("summarizes a public JWK", async () => {
@@ -35,5 +36,13 @@ describe("certificate and key inspector", () => {
     await expect(
       inspectCryptoMaterial("-----BEGIN PRIVATE KEY-----\nAQ:ID\n-----END PRIVATE KEY-----"),
     ).rejects.toThrow("Invalid Base64")
+  })
+})
+
+describe("JWK input errors", () => {
+  it("reports the JSON error position in the original input", async () => {
+    const error = await inspectCryptoMaterial("\n\n{ \"kty\": }").catch((cause: unknown) => cause)
+    expect(error).toBeInstanceOf(LocatedError)
+    expect((error as LocatedError).location).toEqual({ line: 3, column: 10 })
   })
 })

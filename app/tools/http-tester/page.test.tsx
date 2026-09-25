@@ -50,3 +50,20 @@ describe("HTTP request query editor", () => {
   })
 })
 
+describe("cURL import errors", () => {
+  it("explains which option could not be imported", async () => {
+    render(<HTTPTester />)
+    fireEvent.click(screen.getByRole("button", { name: /importCurl/ }))
+    fireEvent.change(await screen.findByPlaceholderText(/curl -X POST/), { target: { value: "curl -x http://proxy:8080 https://example.com" } })
+    fireEvent.click(screen.getByRole("button", { name: "import" }))
+    expect(mocks.toast).toHaveBeenLastCalledWith(expect.objectContaining({ title: "curlParseFailed", description: "curlErrors.UNSUPPORTED_CURL_OPTION" }))
+  })
+
+  it("names an unclosed quote", async () => {
+    render(<HTTPTester />)
+    fireEvent.click(screen.getByRole("button", { name: /importCurl/ }))
+    fireEvent.change(await screen.findByPlaceholderText(/curl -X POST/), { target: { value: "curl 'https://example.com" } })
+    fireEvent.click(screen.getByRole("button", { name: "import" }))
+    expect(mocks.toast).toHaveBeenLastCalledWith(expect.objectContaining({ description: "curlErrors.UNCLOSED_QUOTE" }))
+  })
+})

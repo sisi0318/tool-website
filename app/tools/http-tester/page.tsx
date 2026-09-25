@@ -209,6 +209,30 @@ function getHttpErrorMessage(error: unknown, translate: (key: string) => string)
   return translate("unknownError")
 }
 
+const CURL_ERROR_CODES = [
+  "UNSUPPORTED_HTTP_METHOD",
+  "UNCLOSED_QUOTE",
+  "INVALID_CURL_COMMAND",
+  "INVALID_CURL_HEADER",
+  "MISSING_OPTION_VALUE",
+  "UNSUPPORTED_CURL_FILE_INPUT",
+  "INVALID_CURL_FORM",
+  "MULTIPLE_CURL_URLS",
+  "UNSUPPORTED_CURL_OPTION",
+  "MISSING_URL",
+  "CONFLICTING_CURL_BODY",
+]
+
+/** cURL 解析器抛的是错误码（如 "UNSUPPORTED_CURL_OPTION: -x"），换成具体原因；以前一律是“请检查格式” */
+function getCurlErrorMessage(error: unknown, translate: (key: string) => string): string {
+  if (error instanceof HttpRequestUrlError) return getHttpErrorMessage(error, translate)
+  const raw = error instanceof Error ? error.message : ""
+  const separator = raw.indexOf(":")
+  const code = separator === -1 ? raw : raw.slice(0, separator)
+  if (!CURL_ERROR_CODES.includes(code)) return translate("curlParseFailedDescription")
+  return translate(`curlErrors.${code}`).replace("{option}", separator === -1 ? "" : raw.slice(separator + 1).trim())
+}
+
 // Function to get status color
 function getStatusColor(status: number): string {
   if (status >= 200 && status < 300) {
@@ -501,7 +525,7 @@ export default function HTTPTester() {
     } catch (error) {
       toast({
         title: t("curlParseFailed"),
-        description: t("curlParseFailedDescription"),
+        description: getCurlErrorMessage(error, t),
         variant: "destructive"
       })
     }

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { takeInputFiles } from "@/lib/file-input"
 import { FileUp, ShieldCheck } from "lucide-react"
 
-import { UtilityWorkbench } from "@/components/tools/utility-workbench"
+import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/components/tools/utility-workbench"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
 import { inspectCryptoMaterial } from "@/lib/certificate-tools"
@@ -21,7 +21,7 @@ export default function CertificatePage() {
   const t = useTranslations("certificateTools")
   const [input, setInput] = useState("")
   const [output, setOutput] = useState("")
-  const [error, setError] = useState("")
+  const [error, setError] = useState<string | WorkbenchError>("")
   const [running, setRunning] = useState(false)
 
   const run = async () => {
@@ -29,9 +29,9 @@ export default function CertificatePage() {
     try {
       setOutput(JSON.stringify(await inspectCryptoMaterial(input), null, 2))
       setError("")
-    } catch {
+    } catch (cause) {
       setOutput("")
-      setError(t("failed"))
+      setError(workbenchError(t("failed"), cause))
     } finally {
       setRunning(false)
     }

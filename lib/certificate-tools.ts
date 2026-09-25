@@ -1,4 +1,5 @@
 import { base64ToBytes, bytesToHex } from "./compression"
+import { parseJsonLocated } from "./text-location"
 
 export interface CryptoMaterialInspection {
   kind: string
@@ -177,8 +178,8 @@ export async function inspectCryptoMaterial(input: string): Promise<CryptoMateri
   if (!trimmed) throw new Error("Certificate, PEM, or JWK input is required")
 
   if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    let parsed: unknown
-    try { parsed = JSON.parse(trimmed) } catch (cause) { throw new Error(cause instanceof Error ? cause.message : "Invalid JSON") }
+    // 解析原文而不是 trim 后的文本，出错行列才能对上输入框
+    const parsed = parseJsonLocated(input)
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("JWK input must be a JSON object")
     const object = parsed as Record<string, unknown>
     const keys = Array.isArray(object.keys) ? object.keys : [object]

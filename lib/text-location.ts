@@ -1,7 +1,7 @@
-/** 文本里的位置，行列都从 1 开始；列按 UTF-16 码元计，和 textarea 的选区一致 */
+/** 文本里的位置，行列都从 1 开始；列按 UTF-16 码元计，和 textarea 的选区一致。只知道行号时不给列 */
 export interface TextLocation {
   line: number
-  column: number
+  column?: number
 }
 
 /** 带出错位置的错误。lib 能算出位置时抛它，页面据此显示“第几行第几列”并能定位过去 */
@@ -28,18 +28,20 @@ export function offsetOf(text: string, { line, column }: TextLocation): number {
     offset = next + 1
   }
   const lineEnd = text.indexOf("\n", offset)
-  return Math.min(lineEnd === -1 ? text.length : lineEnd, offset + Math.max(0, column - 1))
+  return Math.min(lineEnd === -1 ? text.length : lineEnd, offset + Math.max(0, (column ?? 1) - 1))
 }
 
 /**
  * 从常见的报错文字里取位置："line 3 column 5"、"line 3, col 5"、"(3:5)"、
- * "at position 42"（按原文换算成行列）。认不出时返回 null。
+ * "at position 42"（按原文换算成行列），以及只有行号的 "(line 3)"（protobufjs）。认不出时返回 null。
  */
 export function locationFromMessage(message: string, text?: string): TextLocation | null {
   const lineColumn = /line\s*(\d+)\s*,?\s*col(?:umn)?\s*(\d+)/i.exec(message) ?? /\((\d+):(\d+)\)/.exec(message)
   if (lineColumn) return { line: Number(lineColumn[1]), column: Number(lineColumn[2]) }
   const position = /position\s+(\d+)/i.exec(message)
   if (position && text !== undefined) return locationAt(text, Number(position[1]))
+  const lineOnly = /\bline\s+(\d+)\)/i.exec(message)
+  if (lineOnly) return { line: Number(lineOnly[1]) }
   return null
 }
 

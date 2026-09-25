@@ -15,7 +15,7 @@ export function revealTextLocation(field: HTMLTextAreaElement | HTMLInputElement
   }
 }
 
-/** “第 X 行，第 Y 列”加一个“定位”按钮，点了跳到 targetId 输入框里的出错处 */
+/** “第 X 行，第 Y 列”（只知道行号时是“第 X 行”）加一个“定位”按钮，点了跳到 targetId 输入框里的出错处 */
 export function ErrorLocation({ location, targetId }: { location: TextLocation; targetId: string }) {
   const t = useTranslations("common")
   const reveal = () => {
@@ -24,7 +24,11 @@ export function ErrorLocation({ location, targetId }: { location: TextLocation; 
   }
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      <span>{t("errorAt").replace("{line}", String(location.line)).replace("{column}", String(location.column))}</span>
+      <span>
+        {location.column === undefined
+          ? t("errorAtLine").replace("{line}", String(location.line))
+          : t("errorAt").replace("{line}", String(location.line)).replace("{column}", String(location.column))}
+      </span>
       <button
         type="button"
         onClick={reveal}

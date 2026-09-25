@@ -17,6 +17,8 @@ describe("text locations", () => {
     expect(locationFromMessage("Parse error at token: ) at line 2 column 9")).toEqual({ line: 2, column: 9 })
     expect(locationFromMessage("Unexpected token (4:12)")).toEqual({ line: 4, column: 12 })
     expect(locationFromMessage("Unexpected token } in JSON at position 5", "{\n\"a\"}")).toEqual({ line: 2, column: 4 })
+    expect(locationFromMessage("illegal token 'x' (demo.proto, line 7)")).toEqual({ line: 7 })
+    expect(offsetOf("ab\ncd", { line: 2 })).toBe(3)
     expect(locationFromMessage("something went wrong")).toBeNull()
   })
 })

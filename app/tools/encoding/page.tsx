@@ -28,15 +28,34 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   ENCODING_DEFINITIONS,
+  EncodingError,
   findEncodingType,
   transformEncoding,
   type EncodingDirection,
   type EncodingType,
 } from "@/lib/encoding-tools"
+import { locationAt, type TextLocation } from "@/lib/text-location"
+import { ErrorLocation } from "@/components/tools/error-location"
 import { useTranslations } from "@/hooks/use-translations"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 
 const COMMON_ENCODING_TYPES: EncodingType[] = ["base64", "url", "hex", "unicode", "html"]
+const ENCODING_INPUT_ID = "encoding-input"
+
+interface EncodingPageError {
+  message: string
+  location?: TextLocation | null
+}
+
+/** 出错的行或字符在输入里的位置：多行模式有行号，报错带非法字符时再找到它所在的列 */
+function encodingErrorLocation(error: EncodingError, value: string): TextLocation | null {
+  if (error.line) {
+    const column = error.character ? value.split("\n")[error.line - 1]?.indexOf(error.character) ?? -1 : -1
+    return column >= 0 ? { line: error.line, column: column + 1 } : { line: error.line }
+  }
+  const offset = error.character ? value.indexOf(error.character) : -1
+  return offset >= 0 ? locationAt(value, offset) : null
+}
 
 export default function EncodingPage() {
   const params = useToolRuntimeParams()
@@ -45,7 +64,7 @@ export default function EncodingPage() {
   const [direction, setDirection] = useState<EncodingDirection>("encode")
   const [input, setInput] = useState("")
   const [output, setOutput] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<EncodingPageError | null>(null)
   const [autoMode, setAutoMode] = useState(true)
   const [autoSwitch, setAutoSwitch] = useState(true)
   const [multiline, setMultiline] = useState(false)
@@ -76,7 +95,14 @@ export default function EncodingPage() {
       return result
     } catch (transformError) {
       setOutput("")
-      setError(transformError instanceof Error ? `${selectedDefinition.name}: ${t("invalidInput")}` : t("error"))
+      // 以前一律显示“输入格式无效”；现在说出原因，并能定位到出错的行或字符
+      const name = ENCODING_DEFINITIONS.find((definition) => definition.id === nextType)?.name ?? selectedDefinition.name
+      setError(transformError instanceof EncodingError
+        ? {
+            message: `${name}: ${t(`errors.${transformError.code}`).replace("{character}", transformError.character ?? "")}`,
+            location: encodingErrorLocation(transformError, value),
+          }
+        : { message: transformError instanceof Error ? `${name}: ${t("invalidInput")}` : t("error") })
       return ""
     }
   }
@@ -138,7 +164,7 @@ export default function EncodingPage() {
       const text = await navigator.clipboard.readText()
       handleInputChange(text)
     } catch {
-      setError(t("clipboardReadError"))
+      setError({ message: t("clipboardReadError") })
     }
   }
 
@@ -153,7 +179,7 @@ export default function EncodingPage() {
         setCopied((current) => ({ ...current, [key]: false }))
       }, 2000)
     } catch {
-      setError(t("clipboardWriteError"))
+      setError({ message: t("clipboardWriteError") })
     }
   }
 
@@ -382,6 +408,7 @@ export default function EncodingPage() {
             </div>
 
             <Textarea
+              id={ENCODING_INPUT_ID}
               value={input}
               onChange={(event) => handleInputChange(event.target.value)}
               aria-label={direction === "encode" ? t("encodeInput") : t("decodeInput")}
@@ -390,9 +417,10 @@ export default function EncodingPage() {
             />
 
             {error && (
-              <p role="alert" className="mt-2 text-xs text-[var(--md-sys-color-error)]">
-                {error}
-              </p>
+              <div role="alert" className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--md-sys-color-error)]">
+                <span>{error.message}</span>
+                {error.location && <ErrorLocation location={error.location} targetId={ENCODING_INPUT_ID} />}
+              </div>
             )}
 
             <div className="mt-3 grid grid-cols-3 gap-2 sm:hidden">

@@ -22,6 +22,41 @@ export const ENCODING_TYPE_IDS = [
 export type EncodingType = (typeof ENCODING_TYPE_IDS)[number]
 export type EncodingDirection = "encode" | "decode"
 
+export type EncodingErrorCode =
+  | "invalid"
+  | "invalidCharacter"
+  | "base64Chars"
+  | "base64Length"
+  | "hexPairs"
+  | "codePointRange"
+  | "base85Range"
+  | "base85Zero"
+  | "base85Tail"
+  | "octalEscape"
+  | "binaryGroups"
+  | "octalGroups"
+  | "byteRange"
+  | "quotedPrintable"
+  | "notAscii"
+  | "asciiRange"
+
+/**
+ * 解码失败的原因。message 保留原来的中文说明（画布、数据旅程直接显示它）；
+ * 页面按 code 显示本地化文案，并用 character / line 定位到出错处。
+ */
+export class EncodingError extends Error {
+  constructor(
+    message: string,
+    readonly code: EncodingErrorCode,
+    readonly character?: string,
+    /** 多行模式下出错的行，从 1 开始 */
+    readonly line?: number,
+  ) {
+    super(message)
+    this.name = "EncodingError"
+  }
+}
+
 export interface EncodingDefinition {
   id: EncodingType
   name: string
@@ -261,10 +296,10 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 function base64ToBytes(value: string): Uint8Array {
   const normalized = value.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/")
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) throw new Error("Base64 包含无效字符")
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) throw new EncodingError("Base64 包含无效字符", "base64Chars")
 
   const withoutPadding = normalized.replace(/=+$/, "")
-  if (withoutPadding.length % 4 === 1) throw new Error("Base64 长度无效")
+  if (withoutPadding.length % 4 === 1) throw new EncodingError("Base64 长度无效", "base64Length")
 
   const padded = withoutPadding.padEnd(Math.ceil(withoutPadding.length / 4) * 4, "=")
   const binary = atob(padded)
@@ -274,7 +309,7 @@ function base64ToBytes(value: string): Uint8Array {
 function parseHexBytes(value: string): Uint8Array {
   const normalized = value.replace(/0x/gi, "").replace(/[\s:_-]+/g, "")
   if (!normalized || normalized.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(normalized)) {
-    throw new Error("请输入完整的两位十六进制字节")
+    throw new EncodingError("请输入完整的两位十六进制字节", "hexPairs")
   }
   return Uint8Array.from(normalized.match(/.{2}/g) ?? [], (byte) => Number.parseInt(byte, 16))
 }
@@ -295,7 +330,7 @@ function decodeUnicode(value: string): string {
   return value
     .replace(/\\u\{([0-9a-f]{1,6})\}/gi, (_, hex: string) => {
       const codePoint = Number.parseInt(hex, 16)
-      if (codePoint > 0x10ffff) throw new Error("Unicode 码点超出范围")
+      if (codePoint > 0x10ffff) throw new EncodingError("Unicode 码点超出范围", "codePointRange")
       return String.fromCodePoint(codePoint)
     })
     .replace(/\\u([0-9a-f]{4})/gi, (_, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)))
@@ -328,7 +363,7 @@ function decodeBase32(value: string): Uint8Array {
 
   for (const character of normalized) {
     const index = BASE32_ALPHABET.indexOf(character)
-    if (index === -1) throw new Error(`Base32 包含无效字符：${character}`)
+    if (index === -1) throw new EncodingError(`Base32 包含无效字符：${character}`, "invalidCharacter", character)
     buffer = (buffer << 5) | index
     bits += 5
     if (bits >= 8) {
@@ -365,7 +400,7 @@ function decodeBase58(value: string): Uint8Array {
   let numericValue = BigInt(0)
   for (const character of normalized) {
     const index = BASE58_ALPHABET.indexOf(character)
-    if (index === -1) throw new Error(`Base58 包含无效字符：${character}`)
+    if (index === -1) throw new EncodingError(`Base58 包含无效字符：${character}`, "invalidCharacter", character)
     numericValue = numericValue * BigInt(58) + BigInt(index)
   }
 
@@ -418,10 +453,10 @@ function decodeBase85(value: string): Uint8Array {
     let numericValue = 0
     for (const character of characters) {
       const digit = character.charCodeAt(0) - 33
-      if (digit < 0 || digit >= 85) throw new Error(`Base85 包含无效字符：${character}`)
+      if (digit < 0 || digit >= 85) throw new EncodingError(`Base85 包含无效字符：${character}`, "invalidCharacter", character)
       numericValue = numericValue * 85 + digit
     }
-    if (numericValue > 0xffffffff) throw new Error("Base85 分组超出 32 位范围")
+    if (numericValue > 0xffffffff) throw new EncodingError("Base85 分组超出 32 位范围", "base85Range")
     for (let index = 3; index >= 4 - outputLength; index -= 1) {
       output.push(Math.floor(numericValue / 256 ** index) % 256)
     }
@@ -429,7 +464,7 @@ function decodeBase85(value: string): Uint8Array {
 
   for (const character of normalized) {
     if (character === "z") {
-      if (group.length > 0) throw new Error("Base85 的 z 只能单独表示零分组")
+      if (group.length > 0) throw new EncodingError("Base85 的 z 只能单独表示零分组", "base85Zero")
       output.push(0, 0, 0, 0)
       continue
     }
@@ -441,7 +476,7 @@ function decodeBase85(value: string): Uint8Array {
     }
   }
 
-  if (group.length === 1) throw new Error("Base85 末尾分组长度无效")
+  if (group.length === 1) throw new EncodingError("Base85 末尾分组长度无效", "base85Tail")
   if (group.length > 1) {
     const outputLength = group.length - 1
     while (group.length < 5) group.push("u")
@@ -458,10 +493,10 @@ function parseRadixBytes(value: string, radix: 2 | 8): Uint8Array {
   if (radix === 8 && trimmed.includes("\\")) {
     const matches = [...trimmed.matchAll(/\\([0-7]{1,3})/g)]
     const remainder = trimmed.replace(/\\[0-7]{1,3}/g, "").replace(/\s+/g, "")
-    if (!matches.length || remainder) throw new Error("八进制转义格式无效")
+    if (!matches.length || remainder) throw new EncodingError("八进制转义格式无效", "octalEscape")
     return Uint8Array.from(matches, (match) => {
       const byte = Number.parseInt(match[1], 8)
-      if (byte > 255) throw new Error("八进制字节超出范围")
+      if (byte > 255) throw new EncodingError("八进制字节超出范围", "byteRange")
       return byte
     })
   }
@@ -470,12 +505,12 @@ function parseRadixBytes(value: string, radix: 2 | 8): Uint8Array {
   const width = radix === 2 ? 8 : 3
   const pattern = radix === 2 ? /^[01]+$/ : /^[0-7]+$/
   if (!pattern.test(compact) || compact.length % width !== 0) {
-    throw new Error(radix === 2 ? "二进制必须按 8 位字节分组" : "八进制必须按 3 位字节分组")
+    throw radix === 2 ? new EncodingError("二进制必须按 8 位字节分组", "binaryGroups") : new EncodingError("八进制必须按 3 位字节分组", "octalGroups")
   }
 
   return Uint8Array.from(compact.match(new RegExp(`.{${width}}`, "g")) ?? [], (item) => {
     const byte = Number.parseInt(item, radix)
-    if (byte > 255) throw new Error("字节超出范围")
+    if (byte > 255) throw new EncodingError("字节超出范围", "byteRange")
     return byte
   })
 }
@@ -528,7 +563,7 @@ function decodeQuotedPrintable(value: string): string {
   for (let index = 0; index < normalized.length;) {
     if (normalized[index] === "=") {
       const hex = normalized.slice(index + 1, index + 3)
-      if (!/^[0-9a-f]{2}$/i.test(hex)) throw new Error("Quoted-Printable 转义无效")
+      if (!/^[0-9a-f]{2}$/i.test(hex)) throw new EncodingError("Quoted-Printable 转义无效", "quotedPrintable")
       bytes.push(Number.parseInt(hex, 16))
       index += 3
       continue
@@ -564,13 +599,13 @@ function transformSingle(value: string, type: EncodingType, direction: EncodingD
       if (encode) {
         return Array.from(value, (character) => {
           const code = character.codePointAt(0)!
-          if (code > 127) throw new Error(`字符“${character}”不属于 ASCII`)
+          if (code > 127) throw new EncodingError(`字符“${character}”不属于 ASCII`, "notAscii", character)
           return code.toString(10)
         }).join(" ")
       }
       return value.trim().split(/[\s,]+/).map((item) => {
         const code = Number(item)
-        if (!Number.isInteger(code) || code < 0 || code > 127) throw new Error("ASCII 码必须在 0–127")
+        if (!Number.isInteger(code) || code < 0 || code > 127) throw new EncodingError("ASCII 码必须在 0–127", "asciiRange")
         return String.fromCharCode(code)
       }).join("")
     case "base32":
@@ -621,7 +656,12 @@ export function transformEncoding(
         return transformSingle(line, type, direction)
       } catch (error) {
         const message = error instanceof Error ? error.message : "输入格式无效"
-        throw new Error(`第 ${index + 1} 行：${message}`)
+        throw new EncodingError(
+          `第 ${index + 1} 行：${message}`,
+          error instanceof EncodingError ? error.code : "invalid",
+          error instanceof EncodingError ? error.character : undefined,
+          index + 1,
+        )
       }
     })
     .join("\n")
