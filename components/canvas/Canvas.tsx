@@ -441,6 +441,8 @@ export function Canvas() {
       }
 
       if (modifier && key === "c") {
+        // 页面上选中了文字(比如节点预览里的内容)时交给浏览器复制文字,不复制节点
+        if (window.getSelection()?.toString()) return
         if (copySelection()) event.preventDefault()
         return
       }

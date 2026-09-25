@@ -181,6 +181,25 @@ test.describe("Canvas Page", () => {
     expect(position).toEqual({ x: 300, y: 200 })
   })
 
+  test("Backspace after clicking the property panel does not delete the node", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      store.getState().addNode({ id: "panel-guard-node", type: "string", position: { x: 300, y: 200 }, config: { value: "keep" } })
+      store.getState().selectNode("panel-guard-node")
+    })
+    const panel = page.getByRole("region", { name: "String" })
+    await expect(panel).toBeVisible()
+    await panel.getByRole("heading", { name: "String" }).click()
+    await page.keyboard.press("Backspace")
+    await page.keyboard.press("Delete")
+
+    const exists = await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      return store.getState().nodes.some((candidate: { id: string }) => candidate.id === "panel-guard-node")
+    })
+    expect(exists).toBe(true)
+  })
+
   test("should display inline editor for number node", async ({ page }) => {
     await page.evaluate(() => {
       const store = (window as any).__ZUSTAND_STORE__

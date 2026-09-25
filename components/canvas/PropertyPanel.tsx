@@ -101,7 +101,14 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
 
   return (
     <>
-    <section className="flex h-full max-h-[72dvh] w-full flex-col rounded-t-2xl border-t border-md-outline-variant bg-md-surface-container-low shadow-2xl lg:max-h-none lg:w-72 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none">
+    <section
+      // 点面板空白处时让焦点落在面板上而不是 body,画布快捷键据此放行:
+      // 否则在这里按 Backspace 会绕过删除确认直接删掉节点,选中输出文字按 Ctrl+C 复制的是节点
+      tabIndex={-1}
+      data-canvas-shortcuts="off"
+      aria-label={definition.label}
+      className="flex h-full max-h-[72dvh] w-full flex-col rounded-t-2xl border-t border-md-outline-variant bg-md-surface-container-low shadow-2xl outline-none lg:max-h-none lg:w-72 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none"
+    >
       <div className="flex min-h-12 items-center gap-2 border-b border-md-outline-variant p-2 pl-3">
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-md-on-surface">
           {definition.label}

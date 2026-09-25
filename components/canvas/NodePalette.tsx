@@ -283,7 +283,9 @@ export function NodePalette({
   return (
     <aside
       id="canvas-node-palette"
-      className="relative flex h-full min-h-0 w-72 max-w-[88vw] flex-col overflow-hidden border-r border-md-outline-variant bg-md-surface-container-low"
+      tabIndex={-1}
+      data-canvas-shortcuts="off"
+      className="relative flex h-full min-h-0 w-72 max-w-[88vw] flex-col overflow-hidden border-r border-md-outline-variant bg-md-surface-container-low outline-none"
       aria-label={t("palette")}
     >
       {onRequestClose && (
