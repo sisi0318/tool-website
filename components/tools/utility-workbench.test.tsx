@@ -2,7 +2,8 @@ import React, { type ReactElement } from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { UtilityWorkbench } from "./utility-workbench"
+import { UtilityWorkbench, workbenchError } from "./utility-workbench"
+import { LocatedError } from "@/lib/text-location"
 vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 const toast = vi.fn()
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
@@ -269,5 +270,46 @@ describe("UtilityWorkbench text files", () => {
     unmount()
     render(<Harness textFile />)
     expect(screen.getByRole("button", { name: "openFile" })).toBeInTheDocument()
+  })
+})
+
+describe("UtilityWorkbench error locations", () => {
+  it("shows the library's reason and jumps to the reported position", () => {
+    render(
+      <UtilityWorkbench
+        title="Demo tool"
+        description="Demo description"
+        icon={<span>Icon</span>}
+        input={"line one\nline two"}
+        output=""
+        operation="convert"
+        operations={[{ value: "convert", label: "Convert" }]}
+        onInputChange={() => undefined}
+        onOperationChange={() => undefined}
+        onRun={() => undefined}
+        onClear={() => undefined}
+        error={{ message: "Could not parse", detail: "Unexpected token", location: { line: 2, column: 6 } }}
+      />,
+    )
+    const alert = screen.getByRole("alert")
+    expect(alert).toHaveTextContent("Could not parse")
+    expect(alert).toHaveTextContent("Unexpected token")
+
+    fireEvent.click(screen.getByRole("button", { name: "revealError" }))
+    const input = screen.getAllByRole("textbox")[0] as HTMLTextAreaElement
+    expect(input).toHaveFocus()
+    expect([input.selectionStart, input.selectionEnd]).toEqual([14, 15])
+  })
+
+  it("keeps the first line of long library errors and reads their position", () => {
+    const sqlError = new Error("Parse error at token: ) at line 2 column 9\nUnexpected token: {...}\nInstead, I was expecting ...")
+    expect(workbenchError("SQL failed", sqlError)).toEqual({
+      message: "SQL failed",
+      detail: "Parse error at token: ) at line 2 column 9",
+      location: { line: 2, column: 9 },
+      targetId: undefined,
+    })
+    expect(workbenchError("Failed", new LocatedError("Invalid XML: bad tag", { line: 3, column: 1 }), "other").location).toEqual({ line: 3, column: 1 })
+    expect(workbenchError("Failed", "not an error")).toEqual({ message: "Failed", detail: undefined, location: null, targetId: undefined })
   })
 })

@@ -14,6 +14,8 @@ import { copyTextToClipboard } from "@/lib/clipboard"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useUndoToast } from "@/hooks/use-undo-toast"
 import { useTextFileInput } from "@/hooks/use-text-file-input"
+import { ErrorLocation } from "@/components/tools/error-location"
+import { LocatedError, locationFromMessage, type TextLocation } from "@/lib/text-location"
 
 /**
  * 独立工具页(/tools/<id>)把操作类型写回 URL,链接可以直接指向某个模式(如 ?op=decode);
@@ -32,6 +34,26 @@ export interface WorkbenchOperation {
   label: string
 }
 
+/** 结构化的错误：主提示 + lib 的原始说明 + 出错位置（可一键定位） */
+export interface WorkbenchError {
+  message: string
+  detail?: string
+  location?: TextLocation | null
+  /** 出错位置所在输入框的 id，默认是工作台的主输入框 */
+  targetId?: string
+}
+
+/**
+ * 把捕获的异常整理成 WorkbenchError：保留 lib 报错的第一行作为说明，
+ * 位置取 LocatedError 自带的，或从报错文字里识别。以前这些信息都被一句“处理失败”盖掉了。
+ */
+export function workbenchError(message: string, cause: unknown, targetId?: string): WorkbenchError {
+  const raw = cause instanceof Error ? cause.message : ""
+  const detail = raw.split("\n")[0].slice(0, 300) || undefined
+  const location = cause instanceof LocatedError ? cause.location : raw ? locationFromMessage(raw) : null
+  return { message, detail, location, targetId }
+}
+
 interface UtilityWorkbenchProps {
   title: string
   description: string
@@ -48,7 +70,7 @@ interface UtilityWorkbenchProps {
   running?: boolean
   allowWhitespaceInput?: boolean
   canRun?: boolean
-  error?: string
+  error?: string | WorkbenchError
   inputLabel?: string
   outputLabel?: string
   inputPlaceholder?: string
@@ -104,6 +126,7 @@ export function UtilityWorkbench({
   const t = useTranslations("utilityWorkbench")
   // 工作台里可能同时挂着好几个工具，id 不能写死
   const fieldId = useId()
+  const errorInfo: WorkbenchError | null = typeof error === "string" ? (error ? { message: error } : null) : error ?? null
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState("")
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -310,13 +333,19 @@ export function UtilityWorkbench({
               <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("autoRunPaused")}</p>
             )}
 
-            {error && (
-              <p
+            {errorInfo && (
+              <div
                 role="alert"
                 className="rounded-2xl bg-[var(--md-sys-color-error-container)] px-4 py-3 text-sm text-[var(--md-sys-color-on-error-container)]"
               >
-                {error}
-              </p>
+                <p>{errorInfo.message}</p>
+                {errorInfo.detail && <p className="mt-1 break-words font-mono text-xs opacity-90">{errorInfo.detail}</p>}
+                {errorInfo.location && (
+                  <p className="mt-2 text-xs">
+                    <ErrorLocation location={errorInfo.location} targetId={errorInfo.targetId ?? `${fieldId}-input`} />
+                  </p>
+                )}
+              </div>
             )}
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">

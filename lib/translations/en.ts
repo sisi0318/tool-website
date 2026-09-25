@@ -42,6 +42,8 @@ common: {
   textFileTooLarge: "The file is larger than {size}. Choose a smaller file.",
   notTextFile: "This is not a UTF-8 or UTF-16 text file.",
   inputReplacedByFile: "Input replaced by the file contents",
+  errorAt: "Line {line}, column {column}",
+  revealError: "Show in input",
   filesSkipped: "Skipped {count} files",
   skippedType: "unsupported format",
   skippedSize: "larger than {size}",

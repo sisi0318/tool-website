@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { FileCode2 } from "lucide-react"
 
-import { UtilityWorkbench } from "@/components/tools/utility-workbench"
+import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/components/tools/utility-workbench"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
@@ -18,16 +18,16 @@ export default function XmlToolsPage() {
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<XmlOperation>("format")
   const [xpath, setXpath] = useState("//*")
-  const [error, setError] = useState("")
+  const [error, setError] = useState<string | WorkbenchError>("")
 
   const run = () => {
     try {
       const next = processXml(input, operation, xpath)
       setOutput(operation === "validate" ? t("validXml") : next)
       setError("")
-    } catch {
+    } catch (cause) {
       setOutput("")
-      setError(t("failed"))
+      setError(workbenchError(t("failed"), cause))
     }
   }
 

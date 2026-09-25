@@ -44,6 +44,8 @@ common: {
   textFileTooLarge: "文件超过 {size}，请选择较小的文件。",
   notTextFile: "这不是 UTF-8 或 UTF-16 编码的文本文件。",
   inputReplacedByFile: "输入已换成文件内容",
+  errorAt: "第 {line} 行，第 {column} 列",
+  revealError: "定位",
   filesSkipped: "已跳过 {count} 个文件",
   skippedType: "格式不支持",
   skippedSize: "超过 {size}",

@@ -1,11 +1,12 @@
 import { XMLBuilder, XMLParser, XMLValidator } from "fast-xml-parser"
+import { LocatedError, parseJsonLocated } from "@/lib/text-location"
 
 export type XmlOperation = "format" | "minify" | "to-json" | "from-json" | "xpath" | "validate"
 
 function assertValidXml(input: string): void {
   const validation = XMLValidator.validate(input)
   if (validation !== true) {
-    throw new Error(`Invalid XML at line ${validation.err.line}, column ${validation.err.col}: ${validation.err.msg}`)
+    throw new LocatedError(`Invalid XML: ${validation.err.msg}`, { line: validation.err.line, column: validation.err.col })
   }
 }
 
@@ -41,7 +42,7 @@ export function xmlToJson(input: string): string {
 }
 
 export function jsonToXml(input: string): string {
-  const parsed = JSON.parse(input)
+  const parsed = parseJsonLocated(input)
   const normalized = Array.isArray(parsed)
     ? { root: { item: parsed } }
     : parsed && typeof parsed === "object"

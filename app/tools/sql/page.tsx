@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Database } from "lucide-react"
 
-import { UtilityWorkbench } from "@/components/tools/utility-workbench"
+import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/components/tools/utility-workbench"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
@@ -25,15 +25,15 @@ export default function SqlPage() {
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<SqlOperation>("format")
   const [dialect, setDialect] = useState<SqlDialect>("sql")
-  const [error, setError] = useState("")
+  const [error, setError] = useState<string | WorkbenchError>("")
 
   const run = () => {
     try {
       setOutput(processSql(input, operation, { language: dialect, keywordCase: "upper", tabWidth: 2 }))
       setError("")
-    } catch {
+    } catch (cause) {
       setOutput("")
-      setError(t("failed"))
+      setError(workbenchError(t("failed"), cause))
     }
   }
 

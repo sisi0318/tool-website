@@ -1,5 +1,6 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from "ajv"
 import addFormats from "ajv-formats"
+import { jsonErrorLocation, LocatedError, type TextLocation } from "@/lib/text-location"
 
 export type JsonSchemaOperation = "validate" | "infer"
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
@@ -15,13 +16,21 @@ addFormats(ajv, { mode: "fast" })
 const validatorCache = new Map<string, ValidateFunction>()
 const MAX_VALIDATOR_CACHE_SIZE = 50
 
-function parseJson(value: unknown, label: string): unknown {
+/** 数据或 schema 不是合法 JSON、或 schema 本身无效；field 指明是哪个输入框 */
+export class JsonSchemaInputError extends LocatedError {
+  constructor(readonly field: "data" | "schema", message: string, location: TextLocation | null = null) {
+    super(message, location)
+    this.name = "JsonSchemaInputError"
+  }
+}
+
+function parseJson(value: unknown, field: "data" | "schema"): unknown {
   if (typeof value !== "string") return value
   try {
     return JSON.parse(value)
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "Invalid JSON"
-    throw new Error(`${label}: ${message}`)
+    throw new JsonSchemaInputError(field, `${field === "data" ? "Data" : "Schema"}: ${message}`, jsonErrorLocation(value, cause))
   }
 }
 
@@ -80,14 +89,18 @@ function normalizeErrors(errors: ErrorObject[] | null | undefined): JsonSchemaVa
 }
 
 export function validateJsonSchema(dataInput: unknown, schemaInput: unknown): JsonSchemaValidationResult {
-  const data = parseJson(dataInput, "Data")
-  const schema = parseJson(schemaInput, "Schema") as object
-  if (!schema || typeof schema !== "object" || Array.isArray(schema)) throw new Error("Schema must be a JSON object")
+  const data = parseJson(dataInput, "data")
+  const schema = parseJson(schemaInput, "schema") as object
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) throw new JsonSchemaInputError("schema", "Schema must be a JSON object")
 
   const key = schemaKey(schema as JsonSchema)
   let validate = validatorCache.get(key)
   if (!validate) {
-    validate = ajv.compile(schema)
+    try {
+      validate = ajv.compile(schema)
+    } catch (cause) {
+      throw new JsonSchemaInputError("schema", `Schema: ${cause instanceof Error ? cause.message : "invalid schema"}`)
+    }
     if (validatorCache.size >= MAX_VALIDATOR_CACHE_SIZE) {
       const oldestKey = validatorCache.keys().next().value
       if (oldestKey) validatorCache.delete(oldestKey)
@@ -100,7 +113,7 @@ export function validateJsonSchema(dataInput: unknown, schemaInput: unknown): Js
 
 export function processJsonSchema(dataInput: unknown, operation: JsonSchemaOperation, schemaInput?: unknown) {
   if (operation === "infer") {
-    const data = parseJson(dataInput, "Data") as JsonValue
+    const data = parseJson(dataInput, "data") as JsonValue
     return { valid: true, schema: inferJsonSchema(data), errors: [] as JsonSchemaValidationResult["errors"] }
   }
   const validation = validateJsonSchema(dataInput, schemaInput)

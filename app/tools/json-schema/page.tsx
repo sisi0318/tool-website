@@ -3,11 +3,11 @@
 import { useState } from "react"
 import { Braces, CheckCircle2, XCircle } from "lucide-react"
 
-import { UtilityWorkbench } from "@/components/tools/utility-workbench"
+import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/components/tools/utility-workbench"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
-import { processJsonSchema, type JsonSchemaOperation } from "@/lib/json-schema-tools"
+import { JsonSchemaInputError, processJsonSchema, type JsonSchemaOperation } from "@/lib/json-schema-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE_DATA = JSON.stringify({ id: 7, email: "dev@example.com", active: true, tags: ["tools", "local"] }, null, 2)
@@ -17,6 +17,8 @@ const SAMPLE_SCHEMA = JSON.stringify({
   required: ["id", "email"],
 }, null, 2)
 
+const SCHEMA_FIELD_ID = "json-schema-input"
+
 export default function JsonSchemaPage() {
   const t = useTranslations("jsonSchemaTools")
   const [input, setInput] = useToolDraft("json-schema")
@@ -24,7 +26,7 @@ export default function JsonSchemaPage() {
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<JsonSchemaOperation>("validate")
   const [valid, setValid] = useState<boolean | null>(null)
-  const [error, setError] = useState("")
+  const [error, setError] = useState<string | WorkbenchError>("")
 
   const run = () => {
     try {
@@ -32,10 +34,11 @@ export default function JsonSchemaPage() {
       setValid(result.valid)
       setOutput(JSON.stringify(operation === "infer" ? result.schema : { valid: result.valid, errors: result.errors }, null, 2))
       setError("")
-    } catch {
+    } catch (cause) {
       setOutput("")
       setValid(false)
-      setError(t("failed"))
+      // schema 出错时定位到 schema 输入框，数据出错定位到主输入框
+      setError(workbenchError(t("failed"), cause, cause instanceof JsonSchemaInputError && cause.field === "schema" ? SCHEMA_FIELD_ID : undefined))
     }
   }
 
@@ -58,8 +61,8 @@ export default function JsonSchemaPage() {
       inputPlaceholder={t("dataPlaceholder")}
       controls={operation === "validate" ? (
         <div>
-          <Label htmlFor="json-schema-input">{t("schema")}</Label>
-          <Textarea id="json-schema-input" value={schema} onChange={(event) => setSchema(event.target.value)} placeholder={t("schemaPlaceholder")} spellCheck={false} className="mt-2 min-h-48 resize-y rounded-2xl font-mono text-sm leading-6" />
+          <Label htmlFor={SCHEMA_FIELD_ID}>{t("schema")}</Label>
+          <Textarea id={SCHEMA_FIELD_ID} value={schema} onChange={(event) => setSchema(event.target.value)} placeholder={t("schemaPlaceholder")} spellCheck={false} className="mt-2 min-h-48 resize-y rounded-2xl font-mono text-sm leading-6" />
         </div>
       ) : undefined}
       footer={valid !== null && (
