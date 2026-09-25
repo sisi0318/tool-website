@@ -26,6 +26,7 @@ import {
   revokeObjectUrl,
 } from "@/lib/object-url"
 import { buildPaymentQrValue } from "@/lib/qrcode-tools"
+import { CopyImageButton } from "@/components/tools/copy-image-button"
 
 // QR Code content types
 type ContentType = "text" | "url" | "contact" | "phone" | "email" | "location" | "event" | "wifi" | "payment"
@@ -377,12 +378,13 @@ END:VEVENT`
     dispatchAppearance({ field: "logoFile", value: file })
   }
 
-  // Download QR code as PNG
-  const downloadQRCode = () => {
-    if (!qrCodeRef.current) return
-
-    const svg = qrCodeRef.current.querySelector("svg")
-    if (!svg) return
+  // 把预览里的二维码（含 Logo）渲染成 PNG，下载与复制图片共用
+  const renderQRCodePng = (): Promise<Blob> => new Promise((resolve, reject) => {
+    const svg = qrCodeRef.current?.querySelector("svg")
+    if (!svg) {
+      reject(new Error("QR code is not rendered"))
+      return
+    }
 
     const svgClone = svg.cloneNode(true) as SVGSVGElement
     svgClone.querySelectorAll("image").forEach((image) => image.remove())
@@ -396,19 +398,22 @@ END:VEVENT`
       revokeObjectUrl(svgBlobUrl)
       canvas.width = size
       canvas.height = size
-      if (!ctx) return
+      if (!ctx) {
+        reject(new Error("Canvas unavailable"))
+        return
+      }
       ctx.drawImage(img, 0, 0, size, size)
 
-      const finishDownload = () => {
+      const finish = () => {
         canvas.toBlob((blob) => {
-          if (!blob) return
-          downloadBlob(blob, `qrcode-${Date.now()}.png`)
+          if (blob) resolve(blob)
+          else reject(new Error("PNG encoding failed"))
         }, "image/png")
       }
 
       const logoSource = logoEnabled ? (logoPreviewUrl || logoUrl) : ""
       if (!logoSource) {
-        finishDownload()
+        finish()
         return
       }
 
@@ -418,14 +423,22 @@ END:VEVENT`
         const logoSize = Math.round((size * logoSizePercent) / 100)
         const offset = Math.round((size - logoSize) / 2)
         ctx.drawImage(logo, offset, offset, logoSize, logoSize)
-        finishDownload()
+        finish()
       }
-      logo.onerror = finishDownload
+      logo.onerror = finish
       logo.src = logoSource
     }
-    img.onerror = () => revokeObjectUrl(svgBlobUrl)
+    img.onerror = () => {
+      revokeObjectUrl(svgBlobUrl)
+      reject(new Error("QR code could not be rendered"))
+    }
 
     img.src = svgBlobUrl
+  })
+
+  // Download QR code as PNG
+  const downloadQRCode = () => {
+    void renderQRCodePng().then((blob) => downloadBlob(blob, `qrcode-${Date.now()}.png`)).catch(() => undefined)
   }
 
   // 复制到剪贴板
@@ -1135,6 +1148,7 @@ END:VEVENT`
                       <Download className="h-4 w-4 mr-2" />
                       {t("downloadQRCode")}
                     </Button>
+                    <CopyImageButton image={renderQRCodePng} className="w-full h-10" />
                     
                     {!autoGenerate && (
                       <Button variant="outline" className="w-full h-10" onClick={generateQrValue}>

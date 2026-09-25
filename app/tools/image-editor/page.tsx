@@ -66,6 +66,7 @@ import {
   type ImageEditorState,
 } from "@/lib/image-editor-tools"
 import { downloadBlob } from "@/lib/object-url"
+import { CopyImageButton } from "@/components/tools/copy-image-button"
 
 const PREVIEW_MAX_DIMENSION = 1600
 const PREVIEW_MAX_PIXELS = 2_500_000
@@ -772,6 +773,28 @@ export default function ImageEditorPage() {
     }
   }, [isExporting, outputFormat, outputQuality, sourceFile?.name, t])
 
+  // 复制图片：按当前编辑状态渲染成 PNG，与导出共用尺寸上限
+  const renderEditedPng = useCallback((): Promise<Blob> => {
+    const image = originalImageRef.current
+    if (!image) return Promise.reject(new Error("No image"))
+    const geometry = getImageRenderGeometry(image.naturalWidth, image.naturalHeight, imageStateRef.current)
+    if (
+      geometry.outputWidth > MAX_EXPORT_DIMENSION ||
+      geometry.outputHeight > MAX_EXPORT_DIMENSION ||
+      geometry.outputWidth * geometry.outputHeight > MAX_EXPORT_PIXELS
+    ) {
+      setError(t("outputTooLarge"))
+      return Promise.reject(new Error("Output too large"))
+    }
+    try {
+      const canvas = document.createElement("canvas")
+      renderEditedCanvas(canvas, image, imageStateRef.current, 1, false)
+      return canvasToBlob(canvas, "image/png")
+    } catch (caught) {
+      return Promise.reject(caught)
+    }
+  }, [t])
+
   const mirrorDescription =
     imageState.flipHorizontal && imageState.flipVertical
       ? t("mirrorBoth")
@@ -1183,6 +1206,7 @@ export default function ImageEditorPage() {
                       )}
                       {isExporting ? t("exporting") : t("exportImage")}
                     </Button>
+                    <CopyImageButton image={renderEditedPng} size="sm" />
                   </div>
                 </div>
               </CardContent>

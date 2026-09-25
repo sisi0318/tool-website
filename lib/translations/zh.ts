@@ -6,6 +6,9 @@
  */
 export const zh = {
 common: {
+  copyImage: "复制图片",
+  imageCopied: "图片已复制，可以直接粘贴",
+  copyImageFailedHint: "这个浏览器不允许把图片写进剪贴板，请下载后再上传。",
   copyFailed: "复制失败",
   copyFailedHint: "浏览器没有允许写入剪贴板。请选中内容后按 Ctrl+C（⌘+C）复制。",
   siteName: "工具站",

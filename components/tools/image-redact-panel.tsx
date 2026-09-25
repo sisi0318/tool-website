@@ -13,6 +13,7 @@ import { OcrError, type OcrProgress } from "@/lib/ocr-shared"
 import { createRedactSample, runRedactImage } from "@/lib/image-redact"
 import { detectRedactRegions, REDACT_LIMITS, redactRect, type RedactImage, type RedactRect, type RedactRegion, type SensitiveKind } from "@/lib/image-redact-shared"
 import { SendToMenu } from "./send-to-menu"
+import { CopyImageButton } from "./copy-image-button"
 
 const frame = "rounded-2xl border border-md-outline-variant bg-md-surface-container-lowest p-4 sm:p-5"
 const selectClass = "h-10 rounded-lg border border-md-outline-variant bg-md-surface px-3 text-sm"
@@ -130,6 +131,6 @@ export default function ImageRedactPanel() {
         <Button className="h-auto min-h-10 w-full whitespace-normal" disabled={busy || !selected.length} onClick={() => void render()}>{phase === "render" ? <Loader2 className="animate-spin" /> : <Shield />}{t("apply")} ({selected.length})</Button>
       </section>
     </div>}
-    {output && outputUrl && <section className={`${frame} space-y-4`}><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{t("result")}</h2><div className="flex flex-wrap gap-2"><Button asChild><a href={outputUrl} download={output.name}><Download />{t("download")}</a></Button><SendToMenu value={output} source={t("title")} filename={output.name} /></div></div><p className="text-xs leading-5 text-md-on-surface-variant">{t("resultHint")}</p><div className="max-h-[70vh] overflow-auto rounded-lg border border-md-outline-variant bg-md-surface-container"><img src={outputUrl} alt={t("resultPreview")} className="mx-auto block h-auto max-w-full" /></div></section>}
+    {output && outputUrl && <section className={`${frame} space-y-4`}><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{t("result")}</h2><div className="flex flex-wrap gap-2"><Button asChild><a href={outputUrl} download={output.name}><Download />{t("download")}</a></Button><CopyImageButton image={() => output} /><SendToMenu value={output} source={t("title")} filename={output.name} /></div></div><p className="text-xs leading-5 text-md-on-surface-variant">{t("resultHint")}</p><div className="max-h-[70vh] overflow-auto rounded-lg border border-md-outline-variant bg-md-surface-container"><img src={outputUrl} alt={t("resultPreview")} className="mx-auto block h-auto max-w-full" /></div></section>}
   </div>
 }

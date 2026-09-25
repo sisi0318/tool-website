@@ -4,6 +4,9 @@
  */
 export const en = {
 common: {
+  copyImage: "Copy image",
+  imageCopied: "Image copied; paste it anywhere",
+  copyImageFailedHint: "This browser does not allow putting images on the clipboard. Download the image instead.",
   copyFailed: "Copy failed",
   copyFailedHint: "The browser did not allow clipboard access. Select the content and press Ctrl+C (⌘+C) instead.",
   siteName: "Tool Station",
