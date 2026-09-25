@@ -187,9 +187,9 @@ test.describe("Canvas Page", () => {
       store.getState().addNode({ id: "panel-guard-node", type: "string", position: { x: 300, y: 200 }, config: { value: "keep" } })
       store.getState().selectNode("panel-guard-node")
     })
-    const panel = page.getByRole("region", { name: "String" })
-    await expect(panel).toBeVisible()
-    await panel.getByRole("heading", { name: "String" }).click()
+    const heading = page.getByRole("heading", { name: "String" })
+    await expect(heading).toBeVisible()
+    await heading.click()
     await page.keyboard.press("Backspace")
     await page.keyboard.press("Delete")
 
