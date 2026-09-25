@@ -264,6 +264,18 @@
     background-color: var(--md-sys-color-primary-container);
     color: var(--md-sys-color-on-primary-container);
   }
+
+  /*
+   * iOS 在聚焦字号小于 16px 的输入框时会自动放大页面，要用户再双指缩回去。
+   * 基础组件本来用 text-base md:text-sm 规避，但工具页大量用 text-sm / text-xs 覆盖了它；
+   * 触屏设备上把这些小字号输入框抬到 16px（选择器特异性高于单个工具类）。
+   * 用了更大字号的输入框不受影响；画布节点自带缩放，保持原样。
+   */
+  @media (pointer: coarse) {
+    :is(input, textarea, select):is(.text-xs, .text-sm, [class*="text-[10px]"], [class*="text-[11px]"], [class*="text-[12px]"], [class*="text-[13px]"]):not(.react-flow *) {
+      font-size: 16px;
+    }
+  }
 }
 
 /* ============================================

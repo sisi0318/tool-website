@@ -154,4 +154,14 @@ test.describe("mobile tool layouts", () => {
     await expect(page.locator("#crypto-output")).toHaveValue("hello")
     await expectNoPageOverflow(page)
   })
+
+  test("small-text inputs use 16px on touch screens so iOS does not zoom on focus", async ({
+    page,
+  }) => {
+    await openChineseTool(page, "/tools/xml")
+    const input = page.locator("#utility-workbench-input")
+    await expect(input).toBeVisible()
+    // the workbench textarea is styled text-sm (14px) and would trigger iOS auto-zoom
+    expect(await input.evaluate((element) => getComputedStyle(element).fontSize)).toBe("16px")
+  })
 })
