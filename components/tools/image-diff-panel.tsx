@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useRef, useState, type PointerEvent } from "react"
+import { fileBaseName } from "@/lib/output-name"
 import { ArrowLeftRight, Download, GitCompareArrows, Loader2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,7 @@ type Item = { file: File; source: DiffSource }
 export default function ImageDiffPanel() {
   const t = useTranslations("imageDiff"), ot = useTranslations("ocrTools"), clipId = useId().replace(/:/g, "")
   const [items, setItems] = useState<[Item | null, Item | null]>([null, null]), [options, setOptions] = useState<ImageDiffOptions>({ ...DEFAULT_IMAGE_DIFF_OPTIONS })
+  const diffBase = `${fileBaseName(items[0]?.file.name, "a")}_vs_${fileBaseName(items[1]?.file.name, "b")}`
   const [result, setResult] = useState<ImageDiffResult | null>(null), [busy, setBusy] = useState(false), [stage, setStage] = useState<ImageDiffStage | "prepare" | null>(null), [notice, setNotice] = useState("")
   const [mode, setMode] = useState<"wipe" | "overlay" | "difference">("wipe"), [amount, setAmount] = useState(50), [zoom, setZoom] = useState(100)
   const version = useRef(0), active = useRef<AbortController | null>(null), inputs = useRef<Array<HTMLInputElement | null>>([]), drag = useRef<number | null>(null)
@@ -84,7 +86,7 @@ export default function ImageDiffPanel() {
         </>}
       </svg></div>
       <p role="status" className="text-sm leading-6 text-md-on-surface-variant">{t(mode === "wipe" ? "wipeHint" : mode === "overlay" ? "overlayHint" : "diffHint")} {result.stats.changed === 0 ? t("identical") : result.stats.bounds && `${t("bounds")} X=${result.stats.bounds.x}, Y=${result.stats.bounds.y}, ${result.stats.bounds.width} × ${result.stats.bounds.height}`}</p>
-      <div className="flex flex-wrap gap-2">{downloadUrl && <Button asChild><a href={downloadUrl} download="image-difference.png"><Download />{t("download")}</a></Button>}{reportUrl && <Button asChild variant="outline"><a href={reportUrl} download="image-difference.json">{t("report")}</a></Button>}{outputFile && <SendToMenu value={outputFile} source={t("title")} />}</div>
+      <div className="flex flex-wrap gap-2">{downloadUrl && <Button asChild><a href={downloadUrl} download={`${diffBase}_diff.png`}><Download />{t("download")}</a></Button>}{reportUrl && <Button asChild variant="outline"><a href={reportUrl} download={`${diffBase}_diff.json`}>{t("report")}</a></Button>}{outputFile && <SendToMenu value={outputFile} source={t("title")} />}</div>
     </section>}
   </div>
 }

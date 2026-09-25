@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useMemo } from "react"
+import { extensionForMime } from "@/lib/output-name"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -489,7 +490,8 @@ export default function ImageToBase64() {
 
     const link = document.createElement('a')
     link.href = decodedImage.dataUrl
-    link.download = `decoded_image_${Date.now()}.${decodedImage.format.toLowerCase()}`
+    const mimeType = decodedImage.dataUrl.match(/^data:([^;,]+)/)?.[1]
+    link.download = `decoded_image_${Date.now()}.${extensionForMime(mimeType, "png")}`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

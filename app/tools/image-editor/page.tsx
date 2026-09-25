@@ -1,5 +1,6 @@
 "use client"
 
+import { extensionForMime } from "@/lib/output-name"
 import {
   useCallback,
   useEffect,
@@ -383,6 +384,8 @@ export default function ImageEditorPage() {
       originalImageRef.current = null
       setImageMeta(null)
       setSourceFile(file)
+      // 默认按原图格式导出：JPEG 照片编辑后按 PNG 导出，体积常常翻几倍
+      setOutputFormat(file.type === "image/jpeg" ? "jpg" : file.type === "image/webp" ? "webp" : "png")
       setError("")
     },
     [t],
@@ -756,7 +759,7 @@ export default function ImageEditorPage() {
       if (exportIdRef.current !== exportId) return
       downloadBlob(
         blob,
-        `${safeEditedImageBase(sourceFile?.name ?? "")}_edited.${outputFormat}`,
+        `${safeEditedImageBase(sourceFile?.name ?? "")}_edited.${extensionForMime(blob.type || mimeType, outputFormat)}`,
       )
     } catch (caught) {
       if (exportIdRef.current !== exportId) return

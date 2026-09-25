@@ -1,4 +1,5 @@
 import { PDFDocument, PDFArray, PDFDict, PDFName, PDFNumber, PDFSignature, StandardFonts, degrees, rgb, type PDFPage } from "pdf-lib"
+import { fileBaseName } from "./output-name"
 
 import { PDF_LIMITS, PdfToolError, pdfRotation, parsePdfSelection, pdfImageDimensions, type PdfSource, type PdfPageInfo, type PdfInfo, type PdfNumbering, type PdfComposeOptions, type PdfComposition, type PdfOutput, type PdfPageReference, type PdfProgressCallback, type PdfImageOptions } from "./pdf-shared"
 export * from "./pdf-shared"
@@ -88,6 +89,8 @@ export async function composePdfs(sources: PdfSource[], options: PdfComposeOptio
   const used = new Set(plan.map((page) => page.source))
   const relevant = loaded.filter((_, index) => used.has(index))
   const singleSource = relevant.length === 1 ? relevant[0] : null
+  // 以前固定叫 processed.pdf / part-001.pdf，多处理几次就是一堆 processed (3).pdf
+  const outputBase = `${fileBaseName(relevant[0]?.info.name, "document")}${relevant.length > 1 ? "_merged" : ""}`
   const preserve = !!singleSource && outputCount === 1 && plan.length === singleSource.info.pages.length && new Set(plan.map((page) => page.page)).size === singleSource.info.pages.length
   if (relevant.some(({ info }) => info.unsupportedForm)) throw new PdfToolError("formStructure")
   if (relevant.some(({ info }) => info.signed) && !options.allowSignatureChanges) throw new PdfToolError("signatureConsent")
@@ -113,7 +116,7 @@ export async function composePdfs(sources: PdfSource[], options: PdfComposeOptio
     const bytes = await document.save({ updateFieldAppearances: false })
     outputBytes += bytes.length
     if (outputBytes > PDF_LIMITS.outputBytes) throw new PdfToolError("outputLimit")
-    files.push({ name: outputCount === 1 ? "processed.pdf" : `part-${String(index + 1).padStart(3, "0")}.pdf`, bytes, pages: document.getPageCount() })
+    files.push({ name: outputCount === 1 ? `${outputBase}${relevant.length > 1 ? "" : "_edited"}.pdf` : `${outputBase}_part-${String(index + 1).padStart(3, "0")}.pdf`, bytes, pages: document.getPageCount() })
     onProgress?.({ stage: "writing", completed: index + 1, total: outputCount })
   }
   if (preserve) {
@@ -138,7 +141,7 @@ export async function composePdfs(sources: PdfSource[], options: PdfComposeOptio
     for (const [index, reference] of pages.entries()) { const page = copied[index]; isolatePageContents(page, document); page.setRotation(degrees(pdfRotation(page.getRotation().angle + rotation + (reference.rotation ?? 0)))); document.addPage(page) }
     await save(document, group, offset)
   }
-  return { files, pages: plan.length, flattenedForms, retainedForms: preserve && !flattenedForms && relevant.some(({ info }) => info.formFields > 0), droppedOutlines: !preserve && relevant.some(({ info }) => info.outlines), changedSignatures: relevant.some(({ info }) => info.signed) }
+  return { files, pages: plan.length, outputBase, flattenedForms, retainedForms: preserve && !flattenedForms && relevant.some(({ info }) => info.formFields > 0), droppedOutlines: !preserve && relevant.some(({ info }) => info.outlines), changedSignatures: relevant.some(({ info }) => info.signed) }
 }
 
 export async function createPdfSample(): Promise<Uint8Array> {
@@ -195,5 +198,6 @@ export async function imagesToPdf(sources: PdfSource[], options: PdfImageOptions
   await numberPages(document, options.numbering, 0, sources.length)
   const bytes = await document.save({ updateFieldAppearances: false })
   if (bytes.length > PDF_LIMITS.outputBytes) throw new PdfToolError("outputLimit")
-  return { files: [{ name: "images.pdf", bytes, pages: sources.length }], pages: sources.length, flattenedForms: false, retainedForms: false, droppedOutlines: false, changedSignatures: false }
+  const outputBase = `${fileBaseName(sources[0]?.name, "images")}${sources.length > 1 ? "_images" : ""}`
+  return { files: [{ name: `${outputBase}.pdf`, bytes, pages: sources.length }], pages: sources.length, outputBase, flattenedForms: false, retainedForms: false, droppedOutlines: false, changedSignatures: false }
 }

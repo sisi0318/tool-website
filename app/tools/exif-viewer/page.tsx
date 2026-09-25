@@ -1,6 +1,7 @@
 "use client"
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { fileBaseName } from "@/lib/output-name"
 import { createClientId } from "@/lib/client-id"
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react"
@@ -463,7 +464,7 @@ export default function ExifViewerPage() {
     if (!selectedImage?.exifData) return
 
     let content = ""
-    let filename = `exif_${selectedImage.file.name.split('.')[0]}`
+    let filename = `exif_${fileBaseName(selectedImage.file.name, "image")}`
 
     switch (exportFormat) {
       case "json":

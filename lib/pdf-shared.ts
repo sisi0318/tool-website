@@ -9,7 +9,7 @@ export interface PdfPageReference { source: number; page: number; rotation?: num
 export interface PdfNumbering { enabled: boolean; position?: "bottom-center" | "bottom-right" | "top-right"; fontSize?: number; margin?: number; total?: boolean }
 export interface PdfComposeOptions { pages?: PdfPageReference[]; selection?: string; rotation?: number; splitEvery?: number; numbering?: PdfNumbering; flattenForms?: boolean; allowSignatureChanges?: boolean }
 export interface PdfOutput { name: string; bytes: Uint8Array; pages: number }
-export interface PdfComposition { files: PdfOutput[]; pages: number; flattenedForms: boolean; retainedForms: boolean; droppedOutlines: boolean; changedSignatures: boolean }
+export interface PdfComposition { files: PdfOutput[]; pages: number; /** 输出文件名的主干，取自源文件名，拆分打包时用它给 ZIP 命名 */ outputBase?: string; flattenedForms: boolean; retainedForms: boolean; droppedOutlines: boolean; changedSignatures: boolean }
 export interface PdfProgress { stage: "reading" | "writing" | "images"; completed: number; total: number }
 export interface PdfImageOptions { pageSize?: "a4" | "a4-landscape" | "letter" | "letter-landscape" | "image"; margin?: number; numbering?: PdfNumbering }
 export type PdfProgressCallback = (progress: PdfProgress) => void

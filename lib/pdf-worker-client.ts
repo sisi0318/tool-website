@@ -45,7 +45,7 @@ async function resultFiles(result: PdfComposition, context: PdfTaskContext): Pro
   let download = files[0].file
   if (files.length > 1) {
     const { createZip } = await import("./zip-tools")
-    try { const bytes = await createZip(result.files.map((output) => ({ name: output.name, data: output.bytes as Uint8Array<ArrayBuffer> })), { level: 0, signal: context.signal }); if (bytes.length > PDF_LIMITS.outputBytes) throw new PdfToolError("outputLimit"); download = new File([bytes], "split-pages.zip", { type: "application/zip" }) }
+    try { const bytes = await createZip(result.files.map((output) => ({ name: output.name, data: output.bytes as Uint8Array<ArrayBuffer> })), { level: 0, signal: context.signal }); if (bytes.length > PDF_LIMITS.outputBytes) throw new PdfToolError("outputLimit"); download = new File([bytes], `${result.outputBase ? `${result.outputBase}_split` : "split-pages"}.zip`, { type: "application/zip" }) }
     catch (cause) { context.signal?.throwIfAborted(); throw new PdfToolError("outputLimit", cause instanceof Error ? cause.message : "") }
   }
   return { ...result, files, download }

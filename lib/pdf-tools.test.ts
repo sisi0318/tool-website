@@ -57,9 +57,15 @@ describe("PDF page operations", () => {
       expect(labels).toEqual([`${index + 1} / 4`])
     })
   })
+  it("names outputs after the source document", async () => {
+    expect((await composePdfs([sample], { selection: "2,1" })).files[0].name).toBe("sample_edited.pdf")
+    const merged = await composePdfs([sample, { ...sample, name: "appendix.pdf" }])
+    expect(merged.files[0].name).toBe("sample_merged.pdf")
+    expect(merged.outputBase).toBe("sample_merged")
+  })
   it("splits selected pages into bounded groups", async () => {
     const result = await composePdfs([sample], { selection: "3-1", splitEvery: 2, numbering: { enabled: true } })
-    expect(result.files.map((file) => [file.name, file.pages])).toEqual([["part-001.pdf", 2], ["part-002.pdf", 1]])
+    expect(result.files.map((file) => [file.name, file.pages])).toEqual([["sample_part-001.pdf", 2], ["sample_part-002.pdf", 1]])
     expect((await PDFDocument.load(result.files[1].bytes)).getPageCount()).toBe(1)
     await expect(composePdfs([sample], { pages: [{ source: 0, page: 3 }] })).rejects.toThrow("invalidSelection")
   })
@@ -122,6 +128,7 @@ describe("PDF page operations", () => {
 describe("images to PDF", () => {
   it("handles all eight EXIF orientations without re-encoding JPEG data", async () => {
     const sources = await orientedImages(), result = await imagesToPdf(sources, { pageSize: "image", margin: 0 })
+    expect(result.files[0].name).toBe("orientation-1_images.pdf")
     const output = await PDFDocument.load(result.files[0].bytes)
     expect(output.getPages().map((page) => page.getSize())).toEqual([...Array(4).fill({ width: 180, height: 120 }), ...Array(4).fill({ width: 120, height: 180 })])
   })
@@ -130,6 +137,7 @@ describe("images to PDF", () => {
     expect(pdfImageDimensions(png)).toEqual({ width: 32, height: 16, format: "png" })
     const result = await imagesToPdf([{ name: "image.png", bytes: png }], { pageSize: "letter-landscape", numbering: { enabled: true } })
     expect((await PDFDocument.load(result.files[0].bytes)).getPage(0).getSize()).toEqual({ width: 792, height: 612 })
+    expect(result.files[0].name).toBe("image.pdf")
     const huge = new Uint8Array(png); new DataView(huge.buffer).setUint32(16, 2000000)
     expect(() => pdfImageDimensions(huge)).toThrow("imageLimit")
   })

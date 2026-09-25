@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
+import { extensionForMime } from "@/lib/output-name"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -181,7 +182,8 @@ export default function ImageCompressPage() {
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                resolve({ blob, width, height, actualFormat })
+                // 浏览器不支持所选编码时会退回 PNG；扩展名和格式标签以实际结果为准
+                resolve({ blob, width, height, actualFormat: extensionForMime(blob.type || mimeType, actualFormat) })
               } else {
                 reject(new Error('COMPRESS_FAILED'))
               }
