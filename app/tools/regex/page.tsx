@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { useTextFileInput } from "@/hooks/use-text-file-input"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { useUndoToast } from "@/hooks/use-undo-toast"
 import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
 import { RegexTimeoutError, runRegex } from "@/lib/regex-runner"
@@ -254,12 +256,15 @@ export default function RegexTester() {
   const tc = useTranslations("common")
   const showUndo = useUndoToast()
   // 打开文件整段替换测试文本，替换前留一份，提示里可以撤销
-  const testFile = useTextFileInput({
-    onText: (text) => {
-      const previous = testText
-      setTestText(text)
-      if (previous.trim() && previous !== text) showUndo(tc("inputReplacedByFile"), () => setTestText(previous))
-    },
+  const replaceTestText = (text: string, messageKey: "inputReplacedByFile" | "inputReplacedByTransfer") => {
+    const previous = testText
+    setTestText(text)
+    if (previous.trim() && previous !== text) showUndo(tc(messageKey), () => setTestText(previous))
+  }
+  const testFile = useTextFileInput({ onText: (text) => replaceTestText(text, "inputReplacedByFile") })
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) replaceTestText(text, "inputReplacedByTransfer")
   })
   const [replaceText, setReplaceText] = useState("")
   

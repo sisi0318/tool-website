@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { UtilityWorkbench, workbenchError } from "./utility-workbench"
 import { LocatedError } from "@/lib/text-location"
+import { ToolRuntimeParamsProvider } from "@/components/tool-runtime-params"
+import { WorkspaceProvider } from "@/components/workspace-context"
+import { toolTransfers } from "@/lib/tool-transfer"
 vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 const toast = vi.fn()
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
@@ -311,5 +314,29 @@ describe("UtilityWorkbench error locations", () => {
     })
     expect(workbenchError("Failed", new LocatedError("Invalid XML: bad tag", { line: 3, column: 1 }), "other").location).toEqual({ line: 3, column: 1 })
     expect(workbenchError("Failed", "not an error")).toEqual({ message: "Failed", detail: undefined, location: null, targetId: undefined })
+  })
+})
+
+describe("UtilityWorkbench incoming data", () => {
+  afterEach(() => { toolTransfers.clear(); toast.mockClear() })
+
+  function inTab(id: string, children: React.ReactNode) {
+    return <WorkspaceProvider value={{ openTool: vi.fn() }}><ToolRuntimeParamsProvider params={{ handoff: id }}>{children}</ToolRuntimeParamsProvider></WorkspaceProvider>
+  }
+
+  it("puts text sent from another tool into the input", async () => {
+    const id = toolTransfers.put({ from: "json" }, "JSON")
+    render(inTab(id, <Harness />))
+    await waitFor(() => expect(screen.getAllByRole("textbox")[0]).toHaveValue(JSON.stringify({ from: "json" }, null, 2)))
+  })
+
+  it("hands files to the page", async () => {
+    const file = new File(["bytes"], "blob.bin")
+    const id = toolTransfers.put(file, "Source")
+    const onIncomingFile = vi.fn()
+    render(inTab(id, (
+      <UtilityWorkbench title="Demo tool" description="Demo description" icon={<span>Icon</span>} input="" output="" operation="convert" operations={[{ value: "convert", label: "Convert" }]} onInputChange={() => undefined} onOperationChange={() => undefined} onRun={() => undefined} onClear={() => undefined} onIncomingFile={onIncomingFile} />
+    )))
+    await waitFor(() => expect(onIncomingFile).toHaveBeenCalledWith(file))
   })
 })

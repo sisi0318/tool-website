@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { Buffer } from "buffer"
 import { createIncrementalHasher } from "@/lib/hash-algorithms"
 import { Input } from "@/components/ui/input"
@@ -672,7 +674,23 @@ const cancelCalculationRef = useRef<boolean>(false)
     setFileError("")
   }
 
-// 当输入变化且自动计算开启时，计算哈希
+  // 其它工具发来的数据：文本放进文本框，文件切到文件模式
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    stopActiveCalculation()
+    setHashResult("")
+    setAllHashResults([])
+    setCalculationError("")
+    if (text !== null) {
+      setInputMode("text")
+      setInput(text)
+    } else if (transfer.value instanceof File) {
+      setInputMode("file")
+      selectFile(transfer.value)
+    }
+  })
+
+  // 当输入变化且自动计算开启时，计算哈希
   useEffect(() => {
     if (!autoCalculate) return
 

@@ -44,6 +44,7 @@ common: {
   textFileTooLarge: "文件超过 {size}，请选择较小的文件。",
   notTextFile: "这不是 UTF-8 或 UTF-16 编码的文本文件。",
   inputReplacedByFile: "输入已换成文件内容",
+  inputReplacedByTransfer: "输入已换成传入的数据",
   errorAt: "第 {line} 行，第 {column} 列",
   errorAtLine: "第 {line} 行",
   revealError: "定位",
@@ -522,7 +523,9 @@ tools: {
   hexBinaryTools: { name: "Hex / 二进制查看" },
 },
 toolTransfer: {
-  continue: "继续处理", journey: "在数据旅程中继续", chooseTool: "选择下一步工具…",
+  continue: "继续处理", journey: "在数据旅程中继续", chooseTool: "在数据旅程中选下一步…",
+  openInTool: "在工具中打开…", openInToolTitle: "在工具中打开", openInToolDescription: "只列出能接收这份数据的工具。", searchTools: "搜索工具", noCompatibleTools: "没有匹配的工具",
+  journeyOpenedInNewTab: "已在新标签页打开数据旅程，工作台保持原样", transferExpired: "传入的数据已失效，请回到原工具重新发送。",
   tooLarge: "数据过大，最多传递 64 MB 文件或 8M 字符文本。", invalidValue: "此结果无法传递，请先转为文本、JSON 或文件。", failed: "未能传递数据，请重试。",
   received: "接收到工具输出", draftConflict: "当前有尚未保存的旅程草稿。开始新旅程会用传入数据替换草稿；也可以返回原旅程继续处理或先保存。",
   startNew: "用传入数据开始新旅程", restoreDraft: "返回原旅程",

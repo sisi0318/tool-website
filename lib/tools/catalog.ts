@@ -30,6 +30,19 @@ export interface ToolCatalogEntry {
   features: readonly ToolSearchFeature[]
   /** 只用于搜索的别名：英文词、缩写与常见叫法，如 hash 的 md5 / 哈希 / checksum */
   keywords?: readonly string[]
+  /**
+   * 能接收“继续处理 → 在工具中打开”传来的哪类数据（页面里用 useIncomingInput 接收）。
+   * "file" 包含图片。没有这一项的工具不会出现在选择列表里。
+   */
+  accepts?: readonly ToolInputKind[]
+}
+
+export type ToolInputKind = "text" | "image" | "file"
+
+/** 这个工具能不能接收某一类数据；接收任意文件的工具也能接收图片 */
+export function toolAccepts(entry: Pick<ToolCatalogEntry, "accepts">, kind: ToolInputKind): boolean {
+  const accepts = entry.accepts ?? []
+  return accepts.includes(kind) || (kind === "image" && accepts.includes("file"))
 }
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
@@ -82,7 +95,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     features: [["SQLite 数据库", "Local database files, tables, views and indexes"], ["只读 SQL", "Bounded worker queries with exact 64-bit integers"], ["BLOB / 数据导出", "Binary preview, CSV and JSON result export"]],
   },
   {
-    id: "binary-codec", translationKey: "binaryCodecTools", category: "developer",
+    id: "binary-codec", translationKey: "binaryCodecTools", category: "developer", accepts: ["text", "file"],
     seo: { title: "MessagePack / CBOR 编解码", description: "浏览器本地 MessagePack 与 CBOR 编解码，支持二进制文件、Hex、Base64 和扩展 JSON，保留大整数、字节串、映射键与标签。" },
     features: [["MessagePack", "Binary serialization, 64-bit integers and extension payloads"], ["CBOR", "Tags, bignums, indefinite containers and simple values"], ["扩展 JSON", "Lossless bytes, maps, special numbers and tagged values"]],
   },
@@ -92,12 +105,12 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     features: [["URL 解析", "URL components, IDN, IPv6 and relative references"], ["查询参数", "Retain duplicate parameters, flags and query order"], ["URL 编辑 / 解码", "Edit and rebuild query strings without losing raw encodings"]],
   },
   {
-    id: "text-lines", translationKey: "textLinesTools", category: "text",
+    id: "text-lines", translationKey: "textLinesTools", category: "text", accepts: ["text"],
     seo: { title: "文本行处理", description: "浏览器本地文本行去重、自然与精确数值排序、空白清理、添加前后缀、列提取及文本集合并集交集差集。" },
     features: [["去重 / 排序", "Deduplicate, natural and exact numeric sorting"], ["空白 / 前后缀", "Trim lines, remove blanks, add prefix and suffix"], ["列提取", "Extract and reorder delimited columns"], ["集合操作", "Union, intersection, difference and symmetric difference"]],
   },
   {
-    id: "unicode", translationKey: "unicodeTools", category: "text",
+    id: "unicode", translationKey: "unicodeTools", category: "text", accepts: ["text"],
     seo: { title: "Unicode 字符检查器", description: "本地查看 Unicode 码点、UTF-8 字节、UTF-16 偏移、不可见字符及字素簇，支持 NFC、NFD、NFKC、NFKD 规范化。" },
     features: [["Unicode 码点", "Code points, UTF-8 bytes and UTF-16 offsets"], ["不可见字符", "Zero-width, bidi controls, whitespace and combining marks"], ["Unicode 规范化", "NFC NFD NFKC NFKD normalization"]],
   },
@@ -133,7 +146,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "case-converter",
     translationKey: "caseConverter",
-    category: "text",
+    category: "text", accepts: ["text"],
     seo: {
       title: "大小写转换",
       description: "在线文本大小写转换工具，支持大写、小写、标题格式、camelCase、snake_case、kebab-case 等命名风格互转。",
@@ -148,7 +161,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "certificate",
     translationKey: "certificateTools",
-    category: "security",
+    category: "security", accepts: ["text", "file"],
     seo: {
       title: "证书解析",
       description: "在线 X.509 证书解析工具，支持 PEM、CSR、JWK/JWKS，查看签名算法、有效期与公钥信息。",
@@ -193,7 +206,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "compression",
     translationKey: "compression",
-    category: "developer",
+    category: "developer", accepts: ["text", "file"],
     seo: {
       title: "压缩解压",
       description: "在线数据压缩解压工具，支持 GZip、Zlib、Deflate、Brotli 与 ZIP 归档，本地处理不上传。",
@@ -241,7 +254,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "csv",
     translationKey: "csvTools",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "CSV / JSONL 日志工具",
       description: "浏览器本地 CSV、TSV、JSONL 日志处理，支持筛选、排序、分组计数、错误行定位、结果导出及 JSON 互转。",
@@ -273,7 +286,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "data-detector",
     translationKey: "dataDetector",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "数据识别",
       description: "在线智能数据格式识别工具，自动检测 JSON、JWT、Base64、时间戳、UUID 等常见格式。",
@@ -332,7 +345,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "encoding",
     translationKey: "encoding",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "编码转换",
       description: "在线编码解码工具，支持 Base64、URL、Unicode、HTML 实体、Hex、Base58、Punycode 等 16+ 格式。",
@@ -363,7 +376,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "hash",
     translationKey: "hash",
-    category: "security",
+    category: "security", accepts: ["text", "file"],
     seo: {
       title: "哈希计算",
       description: "在线哈希计算工具，支持 MD5、SHA-1、SHA-2、SHA-3、SM3、BLAKE2、CRC32，支持文本与大文件。",
@@ -380,7 +393,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "hex-binary",
     translationKey: "hexBinaryTools",
-    category: "developer",
+    category: "developer", accepts: ["text", "file"],
     seo: {
       title: "Hex 查看器",
       description: "在线十六进制查看与转换工具，Hex Dump、文件签名识别与二进制/Base64 互转。",
@@ -510,7 +523,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "json",
     translationKey: "json",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "JSON 工具",
       description: "在线 JSON 格式化、压缩、校验与转换工具，支持 YAML 互转、Unicode 转义与树形视图。",
@@ -527,7 +540,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "json-schema",
     translationKey: "jsonSchemaTools",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "JSON Schema 校验",
       description: "在线 JSON Schema 校验工具，按 Schema 验证数据并支持从 JSON 推导 Schema。",
@@ -554,7 +567,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "markdown",
     translationKey: "markdownTools",
-    category: "text",
+    category: "text", accepts: ["text"],
     seo: {
       title: "Markdown 工具",
       description: "在线 Markdown 编辑预览工具，支持实时渲染、HTML 互转与目录生成。",
@@ -653,7 +666,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "regex",
     translationKey: "regex",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "正则测试",
       description: "在线正则表达式测试工具，实时高亮匹配、捕获分组与替换，附常用示例库。",
@@ -669,7 +682,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "sql",
     translationKey: "sqlTools",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "SQL 格式化",
       description: "在线 SQL 格式化与压缩工具，支持 MySQL、PostgreSQL、SQLite 等方言。",
@@ -682,7 +695,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "subnet",
     translationKey: "subnetTools",
-    category: "network",
+    category: "network", accepts: ["text"],
     seo: {
       title: "子网计算",
       description: "在线 IP 子网计算器，支持 IPv4/IPv6 CIDR、掩码、网络地址与主机范围计算。",
@@ -787,7 +800,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "xml",
     translationKey: "xmlTools",
-    category: "developer",
+    category: "developer", accepts: ["text"],
     seo: {
       title: "XML 工具",
       description: "在线 XML 格式化、压缩、校验工具，支持 XPath 查询与 JSON 互转。",

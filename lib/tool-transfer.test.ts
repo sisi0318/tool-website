@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { ToolTransferStore, normalizeTransferValue, toolTransferIdFromHash, toolTransferUrl } from "./tool-transfer"
+import { ToolTransferStore, normalizeTransferValue, offerTransferToOtherTabs, receiveTransfer, toolPageTransferUrl, toolTransferIdFromHash, toolTransferUrl } from "./tool-transfer"
 
 const store = new ToolTransferStore()
 afterEach(() => { store.clear(); vi.useRealTimers() })
@@ -57,5 +57,28 @@ describe("tool value transfer", () => {
     const loop: Record<string, unknown> = {}; loop.self = loop
     for (const value of [loop, { value: undefined }, NaN, BigInt(1)]) expect(() => store.put(value, "invalid")).toThrow(/invalidValue/)
     expect(() => store.put("x".repeat(8 * 1024 * 1024 + 1), "large")).toThrow(/tooLarge/)
+  })
+})
+
+describe("handing data to other pages and tabs", () => {
+  it("addresses a tool page with an opaque handle", () => {
+    const url = toolPageTransferUrl("json", "transfer-1")
+    expect(url).toBe("/tools/json#handoff=transfer-1")
+    expect(toolTransferIdFromHash(url.split("#")[1])).toBe("transfer-1")
+  })
+
+  it("takes data from this tab first", async () => {
+    const id = store.put("local", "source")
+    expect((await receiveTransfer(id, store))?.value).toBe("local")
+  })
+
+  it("fetches data that another tab offered, exactly once", async () => {
+    const sender = new ToolTransferStore()
+    const id = sender.put("from the workspace", "Workspace")
+    offerTransferToOtherTabs(id, sender)
+    const received = await receiveTransfer(id, new ToolTransferStore())
+    expect(received).toMatchObject({ value: "from the workspace", source: "Workspace" })
+    expect(sender.take(id)).toBeNull()
+    expect(await receiveTransfer(id, new ToolTransferStore(), 100)).toBeNull()
   })
 })

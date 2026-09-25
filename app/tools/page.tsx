@@ -70,11 +70,19 @@ import { useBreakpoint } from "@/hooks/use-breakpoint"
 import { useSwipe } from "@/hooks/use-swipe"
 import { ToolRuntimeParamsProvider, type ToolRuntimeParams } from "@/components/tool-runtime-params"
 import { ToolActivityProvider } from "@/components/tool-activity"
+import { WorkspaceProvider } from "@/components/workspace-context"
 import { useToolPreferences } from "@/hooks/use-tool-preferences"
 import { haveEqualToolParams, uniqueToolIds } from "@/lib/tool-workspace"
 import { TOOL_CATALOG, getToolEntry, type ToolCategoryId } from "@/lib/tools/catalog"
 import { TOOL_COMPONENTS } from "./tool-components"
 import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
+
+/** 交接句柄只用一次，不写进本地存储和地址栏 */
+function persistentToolParams(params?: Record<string, string>) {
+  if (!params || !("handoff" in params)) return params
+  const { handoff: _handoff, ...rest } = params
+  return rest
+}
 
 function createToolRenderer(Component: React.ComponentType) {
   const ToolRenderer = (params?: ToolRuntimeParams) => (
@@ -350,7 +358,7 @@ export default function ToolsPage() {
       const serializableTabs = currentTabs.map((tab) => ({
         id: tab.id,
         toolId: tab.toolId,
-        params: tab.params || {},
+        params: persistentToolParams(tab.params) ?? {},
       }))
 
       writeLocalStorage(TABS_STORAGE_KEY, JSON.stringify(serializableTabs))
@@ -399,8 +407,9 @@ export default function ToolsPage() {
       const toolIds = currentTabs.map((tab) => tab.toolId)
       const toolParams: Record<string, Record<string, string>> = {}
       currentTabs.forEach((tab) => {
-        if (tab.params && Object.keys(tab.params).length > 0) {
-          toolParams[tab.toolId] = tab.params
+        const params = persistentToolParams(tab.params)
+        if (params && Object.keys(params).length > 0) {
+          toolParams[tab.toolId] = params
         }
       })
 
@@ -469,6 +478,11 @@ export default function ToolsPage() {
     },
     [toolDefinitions, tabCounter, createShareableUrl, tabs, saveTabsToLocalStorage, updateUrl, recordRecent],
   )
+
+  // 工具里“继续处理 → 在工具中打开”用它就地开标签，不离开工作台；addTab 每次渲染都变，经 ref 转一道让 context 保持稳定
+  const addTabRef = useRef(addTab)
+  addTabRef.current = addTab
+  const workspaceControls = useMemo(() => ({ openTool: (toolId: string, params?: Record<string, string>) => addTabRef.current(toolId, params) }), [])
 
   // 复制分享链接到剪贴板
   const copyShareLink = useCallback(
@@ -1323,16 +1337,18 @@ export default function ToolsPage() {
           transition: 'none',
         } : undefined}
       >
-        {[...tabs, ...closingTabs].map((tab) => (
-          <ToolActivityProvider key={tab.id} active={activeTab === tab.id}>
-            <div
-              className={activeTab === tab.id ? "block" : "hidden"}
-              aria-hidden={activeTab !== tab.id}
-            >
-              {tab.component}
-            </div>
-          </ToolActivityProvider>
-        ))}
+        <WorkspaceProvider value={workspaceControls}>
+          {[...tabs, ...closingTabs].map((tab) => (
+            <ToolActivityProvider key={tab.id} active={activeTab === tab.id}>
+              <div
+                className={activeTab === tab.id ? "block" : "hidden"}
+                aria-hidden={activeTab !== tab.id}
+              >
+                {tab.component}
+              </div>
+            </ToolActivityProvider>
+          ))}
+        </WorkspaceProvider>
       </div>
 
       {/* Mobile Bottom Sheet for Tool Options */}

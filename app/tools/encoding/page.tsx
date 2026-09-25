@@ -37,6 +37,8 @@ import {
 import { locationAt, type TextLocation } from "@/lib/text-location"
 import { ErrorLocation } from "@/components/tools/error-location"
 import { useTranslations } from "@/hooks/use-translations"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 
 const COMMON_ENCODING_TYPES: EncodingType[] = ["base64", "url", "hex", "unicode", "html"]
@@ -116,6 +118,11 @@ export default function EncodingPage() {
       setError(null)
     }
   }
+
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) handleInputChange(text)
+  })
 
   const handleEncodingTypeChange = (nextType: EncodingType) => {
     setEncodingType(nextType)

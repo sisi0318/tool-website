@@ -8,9 +8,14 @@ vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
 // Every tool renders a stub that keeps its own state, so a remount would be visible
 vi.mock("./tool-components", async () => {
   const { useState } = await import("react")
+  const { useWorkspace } = await import("@/components/workspace-context")
   function StubTool() {
     const [value, setValue] = useState("")
-    return <input aria-label="stub tool input" value={value} onChange={(event) => setValue(event.target.value)} />
+    const workspace = useWorkspace()
+    return <>
+      <input aria-label="stub tool input" value={value} onChange={(event) => setValue(event.target.value)} />
+      <button type="button" onClick={() => workspace?.openTool("sql", { handoff: "transfer-test" })}>send to sql</button>
+    </>
   }
   const entry = { icon: () => null, load: StubTool }
   return { TOOL_COMPONENTS: new Proxy({}, { get: () => entry }) }
@@ -65,5 +70,24 @@ describe("closing a workspace tab", () => {
     act(() => { action.props.onClick() })
     expect(screen.getByLabelText("Close tab")).toBeInTheDocument()
     expect(screen.getByLabelText("stub tool input")).toHaveValue("draft")
+  })
+})
+
+describe("opening another tool from a tab", () => {
+  beforeEach(() => window.localStorage.clear())
+
+  it("opens a new tab in place and keeps the one-time handle out of storage and the URL", async () => {
+    render(<ToolsPage />)
+    const search = screen.getByRole("textbox", { name: /搜索/ })
+    fireEvent.focus(search)
+    fireEvent.change(search, { target: { value: "json" } })
+    fireEvent.keyDown(search, { key: "Enter" })
+    fireEvent.change(await screen.findByLabelText("stub tool input"), { target: { value: "kept" } })
+
+    fireEvent.click(screen.getByRole("button", { name: "send to sql" }))
+    expect(screen.getAllByLabelText("Close tab")).toHaveLength(2)
+    expect(screen.getAllByLabelText("stub tool input", { selector: "input" })[0]).toHaveValue("kept")
+    expect(window.localStorage.getItem("tool_tabs_state")).not.toContain("handoff")
+    expect(window.location.href).not.toContain("handoff")
   })
 })

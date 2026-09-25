@@ -54,7 +54,7 @@ export default function CertificatePage() {
   }
 
   return (
-    <UtilityWorkbench
+    <UtilityWorkbench onIncomingFile={(file) => void loadFile(file)}
       title={t("title")}
       description={t("description")}
       icon={<ShieldCheck className="h-6 w-6" />}

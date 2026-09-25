@@ -14,6 +14,8 @@ import { copyTextToClipboard } from "@/lib/clipboard"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useUndoToast } from "@/hooks/use-undo-toast"
 import { useTextFileInput } from "@/hooks/use-text-file-input"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { ErrorLocation } from "@/components/tools/error-location"
 import { LocatedError, locationFromMessage, type TextLocation } from "@/lib/text-location"
 
@@ -89,6 +91,8 @@ interface UtilityWorkbenchProps {
   autoRunKey?: string
   /** 输入是文本时开启：输入框旁出现“打开文件”，也可以把文件拖进输入框 */
   textFile?: boolean | { accept?: string; maxBytes?: number }
+  /** 其它工具发来的是文件时交给页面处理；不传则只接收文本 */
+  onIncomingFile?: (file: File) => void
 }
 
 export function UtilityWorkbench({
@@ -122,6 +126,7 @@ export function UtilityWorkbench({
   autoRunMaxChars = DEFAULT_AUTO_RUN_MAX_CHARS,
   autoRunKey = "",
   textFile = false,
+  onIncomingFile,
 }: UtilityWorkbenchProps) {
   const t = useTranslations("utilityWorkbench")
   // 工作台里可能同时挂着好几个工具，id 不能写死
@@ -203,11 +208,18 @@ export function UtilityWorkbench({
   // 清空和载入示例会整段覆盖输入，覆盖前留一份，提示里可以撤销
   const tc = useTranslations("common")
   const showUndo = useUndoToast()
-  const replaceInput = (replace: () => void, messageKey: "inputCleared" | "inputReplacedBySample" | "inputReplacedByFile") => {
+  const replaceInput = (replace: () => void, messageKey: "inputCleared" | "inputReplacedBySample" | "inputReplacedByFile" | "inputReplacedByTransfer") => {
     const previous = input
     replace()
     if (previous.trim()) showUndo(tc(messageKey), () => onInputChange(previous))
   }
+
+  // 其它工具“在工具中打开”发来的数据：文本进输入框（可撤销），文件交给页面
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) replaceInput(() => onInputChange(text), "inputReplacedByTransfer")
+    else if (transfer.value instanceof File) onIncomingFile?.(transfer.value)
+  })
 
   const textFileOptions = typeof textFile === "object" ? textFile : {}
   const fileInput = useTextFileInput({

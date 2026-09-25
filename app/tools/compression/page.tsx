@@ -90,7 +90,7 @@ function CompressionTextPage() {
   )
 
   return (
-    <UtilityWorkbench
+    <UtilityWorkbench onIncomingFile={(file) => void loadFile(file)}
       title={t("title")}
       description={t("description")}
       icon={<Archive className="h-6 w-6" />}

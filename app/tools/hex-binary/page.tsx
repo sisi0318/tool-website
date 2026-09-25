@@ -65,7 +65,7 @@ export default function HexBinaryPage() {
   }
 
   return (
-    <UtilityWorkbench
+    <UtilityWorkbench onIncomingFile={(file) => void loadFile(file)}
       title={t("title")}
       description={t("description")}
       icon={<Binary className="h-6 w-6" />}

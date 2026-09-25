@@ -10,7 +10,7 @@ import { withDefaultConfig } from "@/lib/canvas/node-factory"
 import type { NodeDefinition } from "@/lib/canvas/types"
 import { applyStep, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
 import { isTypeCompatible } from "@/lib/canvas/validation"
-import { toolTransferIdFromHash, toolTransfers, type ToolTransfer } from "@/lib/tool-transfer"
+import { receiveTransfer as fetchTransfer, toolTransferIdFromHash, toolTransfers, type ToolTransfer } from "@/lib/tool-transfer"
 import {
   decodeSharedPath,
   deleteDraft,
@@ -219,9 +219,15 @@ export default function JourneyPage() {
     setStepSheetOpen(Boolean(canUseTool))
   }
 
+  // 同一标签页内发来的数据直接从内存取；取不到时可能是工作台在新标签打开了旅程，数据还在工作台那边，向它要
   const receiveTransfer = (id: string, current: Journey | null) => {
-    const transfer = toolTransfers.take(id)
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`)
+    const local = toolTransfers.take(id)
+    if (local) acceptTransfer(local, current)
+    else void fetchTransfer(id).then((transfer) => acceptTransfer(transfer, current))
+  }
+
+  const acceptTransfer = (transfer: ToolTransfer | null, current: Journey | null) => {
     if (!transfer) {
       toast({ title: t("transferExpired"), variant: "destructive" })
       if (!current) setJourney(loadDraft())

@@ -20,6 +20,8 @@ import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { escapeJsonText, sortJsonKeys, tryRepairCommonJson, unescapeJsonText } from "@/lib/json-text-tools"
 import { downloadBlob } from "@/lib/object-url"
 import { useTextHistory } from "@/hooks/use-text-history"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { ErrorLocation } from "@/components/tools/error-location"
 import { jsonErrorLocation, type TextLocation } from "@/lib/text-location"
 
@@ -48,6 +50,11 @@ export default function JsonTool() {
   )
   const jsonText = history.text
   const replaceText = history.replace
+  // 其它工具“在工具中打开”发来的数据进快照栈，可以撤销
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) replaceText(text)
+  })
   // 折叠时记下原文和折叠结果；编辑框内容还等于折叠结果才算折叠状态，改过就不会被“展开”覆盖
   const [collapsedFrom, setCollapsedFrom] = useState<{ original: string; collapsed: string } | null>(null)
   const [error, setError] = useState<string | null>(null)

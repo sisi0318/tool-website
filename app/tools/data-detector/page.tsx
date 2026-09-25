@@ -8,12 +8,15 @@ import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { useTranslations } from "@/hooks/use-translations"
 import { detectData, type DetectionResult } from "@/lib/data-detector"
 import { useToolDraft } from "@/hooks/use-tool-draft"
+import { useOpenInTool } from "@/hooks/use-open-in-tool"
+import { getToolEntry, toolAccepts } from "@/lib/tools/catalog"
 
 const SAMPLE = '{"name":"tool-website","features":["canvas","detector"]}'
 
 export default function DataDetectorPage() {
   const t = useTranslations("dataDetector")
   const [input, setInput] = useToolDraft("data-detector")
+  const openInTool = useOpenInTool()
   const [result, setResult] = useState<DetectionResult | null>(null)
 
   const localizedResult = useMemo(() => {
@@ -61,14 +64,14 @@ export default function DataDetectorPage() {
               <span className="rounded-full bg-[var(--md-sys-color-secondary-container)] px-2.5 py-1 text-xs font-bold text-[var(--md-sys-color-on-secondary-container)]">
                 {Math.round(match.confidence * 100)}%
               </span>
-              {match.suggestedTool && (
-                <Link
-                  href={`/tools/${match.suggestedTool}`}
-                  className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-semibold text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary-container)]"
-                >
-                  {t("openTool")}<ArrowRight className="h-4 w-4" />
-                </Link>
-              )}
+              {match.suggestedTool && (() => {
+                const className = "inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-semibold text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary-container)]"
+                const entry = getToolEntry(match.suggestedTool)
+                // 能接收文本的工具直接带上当前输入；工作台里就地开标签，不再离开工作台
+                return entry && toolAccepts(entry, "text")
+                  ? <button type="button" className={className} onClick={() => openInTool(entry.id, input, t("title"))}>{t("openTool")}<ArrowRight className="h-4 w-4" /></button>
+                  : <Link href={`/tools/${match.suggestedTool}`} className={className}>{t("openTool")}<ArrowRight className="h-4 w-4" /></Link>
+              })()}
             </div>
           ))}
         </div>

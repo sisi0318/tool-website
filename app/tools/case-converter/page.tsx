@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { useUndoToast } from "@/hooks/use-undo-toast"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { 
   Copy, Trash2, ArrowRightLeft, Type, FileText,
   CaseSensitive, CaseUpper, CaseLower
@@ -143,11 +145,15 @@ export default function CaseConverterPage() {
   }, [outputText, t, toast])
 
   // 清空、示例、交换都会整段覆盖输入，覆盖前留一份，提示里可以撤销
-  const replaceInput = (value: string, messageKey: "inputCleared" | "inputReplacedBySample" | "inputReplacedByResult") => {
+  const replaceInput = (value: string, messageKey: "inputCleared" | "inputReplacedBySample" | "inputReplacedByResult" | "inputReplacedByTransfer") => {
     const previous = inputText
     setInputText(value)
     if (previous.trim() && previous !== value) showUndo(tc(messageKey), () => setInputText(previous))
   }
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) replaceInput(text, "inputReplacedByTransfer")
+  })
   const clearAll = () => replaceInput("", "inputCleared")
   const loadExample = () => replaceInput("helloWorld API response_example", "inputReplacedBySample")
   // 结果移到输入框，接着按其它格式再转

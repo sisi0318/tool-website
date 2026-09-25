@@ -73,3 +73,57 @@ export class ToolTransferStore {
 export const toolTransfers = new ToolTransferStore()
 export const toolTransferUrl = (id: string) => `/journey#handoff=${encodeURIComponent(id)}`
 export const toolTransferIdFromHash = (hash: string) => new URLSearchParams(hash.replace(/^#/, "")).get("handoff")
+
+/** 发往某个工具页（独立页）；工作台里改为就地开标签，不走 URL */
+export const toolPageTransferUrl = (toolId: string, id: string) => `/tools/${encodeURIComponent(toolId)}#handoff=${encodeURIComponent(id)}`
+
+const TRANSFER_CHANNEL = "tool-transfer"
+interface TransferMessage { type: "request" | "response"; id: string; transfer?: ToolTransfer | null }
+
+/**
+ * 让另一个浏览器标签取走这份数据：工作台里发往旅程时在新标签打开旅程，
+ * 数据留在发出方的内存里，由这里通过 BroadcastChannel 应答一次。被取走或过期后停止应答。
+ */
+export function offerTransferToOtherTabs(id: string, store: ToolTransferStore = toolTransfers, ttl = 5 * 60_000): void {
+  if (typeof BroadcastChannel === "undefined") return
+  const channel = new BroadcastChannel(TRANSFER_CHANNEL)
+  const stop = () => { clearTimeout(timer); channel.close() }
+  const timer = setTimeout(stop, ttl)
+  channel.onmessage = (event: MessageEvent<TransferMessage>) => {
+    if (event.data?.type !== "request" || event.data.id !== id) return
+    const transfer = store.take(id)
+    channel.postMessage({ type: "response", id, transfer } satisfies TransferMessage)
+    stop()
+  }
+}
+
+/** 取交接数据：先查本标签的内存，没有再向其它标签要（在新标签里打开的旅程就是这种情况） */
+export async function receiveTransfer(id: string, store: ToolTransferStore = toolTransfers, timeoutMs = 1500): Promise<ToolTransfer | null> {
+  const local = store.take(id)
+  if (local || typeof BroadcastChannel === "undefined") return local
+  return new Promise((resolve) => {
+    const channel = new BroadcastChannel(TRANSFER_CHANNEL)
+    const finish = (transfer: ToolTransfer | null) => { clearTimeout(timer); channel.close(); resolve(transfer) }
+    const timer = setTimeout(() => finish(null), timeoutMs)
+    channel.onmessage = (event: MessageEvent<TransferMessage>) => {
+      if (event.data?.type === "response" && event.data.id === id) finish(event.data.transfer ?? null)
+    }
+    channel.postMessage({ type: "request", id } satisfies TransferMessage)
+  })
+}
+
+/** 交接数据的大类，对应工具目录里的 accepts：文本（含 JSON 值）、图片文件、其它文件 */
+export type TransferKind = "text" | "image" | "file"
+
+export function transferKind(value: unknown): TransferKind {
+  if (typeof Blob !== "undefined" && value instanceof Blob) return value.type.startsWith("image/") ? "image" : "file"
+  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) return "file"
+  return "text"
+}
+
+/** 文本类工具收到的值：字符串原样，JSON 值格式化成文本；文件返回 null */
+export function transferText(value: unknown): string | null {
+  if (typeof value === "string") return value
+  if (transferKind(value) !== "text") return null
+  return JSON.stringify(value, null, 2) ?? null
+}

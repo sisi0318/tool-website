@@ -1,5 +1,5 @@
 import React from "react"
-import { act, fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import JourneyPage from "./page"
 import { clearRegistry, registerNode } from "@/lib/canvas/registry"
@@ -83,14 +83,15 @@ describe("journey tool transfer intake", () => {
     fireEvent.click(screen.getByRole("button", { name: "restoreDraft" }))
     expect(screen.getByTestId("current-value")).toHaveTextContent('"keep me"')
   })
-  it("handles an in-page transfer and an expired handle without replacing the draft", () => {
+  it("handles an in-page transfer and an expired handle without replacing the draft", async () => {
     saveDraft(createJourney("Existing", "keep me", "Original"))
     render(<JourneyPage />)
     act(() => {
       window.history.replaceState(null, "", "/journey#handoff=expired")
       window.dispatchEvent(new HashChangeEvent("hashchange"))
     })
-    expect(calls.toast).toHaveBeenCalledWith({ title: "transferExpired", variant: "destructive" })
+    // 本页没有这份数据时会先问其它标签，等不到应答才报过期
+    await waitFor(() => expect(calls.toast).toHaveBeenCalledWith({ title: "transferExpired", variant: "destructive" }), { timeout: 3000 })
     expect(screen.getByTestId("current-value")).toHaveTextContent('"keep me"')
     act(() => {
       window.history.replaceState(null, "", toolTransferUrl(toolTransfers.put("new", "Source")))

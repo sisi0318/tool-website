@@ -42,6 +42,7 @@ common: {
   textFileTooLarge: "The file is larger than {size}. Choose a smaller file.",
   notTextFile: "This is not a UTF-8 or UTF-16 text file.",
   inputReplacedByFile: "Input replaced by the file contents",
+  inputReplacedByTransfer: "Input replaced by the incoming data",
   errorAt: "Line {line}, column {column}",
   errorAtLine: "Line {line}",
   revealError: "Show in input",
@@ -520,7 +521,9 @@ tools: {
   hexBinaryTools: { name: "Hex / Binary Viewer" },
 },
 toolTransfer: {
-  continue: "Continue", journey: "Continue in Data Journey", chooseTool: "Choose the next tool…",
+  continue: "Continue", journey: "Continue in Data Journey", chooseTool: "Pick the next journey step…",
+  openInTool: "Open in a tool…", openInToolTitle: "Open in a tool", openInToolDescription: "Only tools that can take this data are listed.", searchTools: "Search tools", noCompatibleTools: "No matching tools",
+  journeyOpenedInNewTab: "Opened the Data Journey in a new tab; the workspace stays as it is", transferExpired: "The incoming data has expired. Send it again from the original tool.",
   tooLarge: "The data is too large. Transfer up to a 64 MB file or 8M text characters.", invalidValue: "This result cannot be transferred. Convert it to text, JSON or a file first.", failed: "Could not transfer the data. Try again.",
   received: "Tool output received", draftConflict: "There is an unsaved journey draft. Starting a new journey replaces that draft with the incoming data. You can return to the current journey to continue or save it first.",
   startNew: "Start a new journey with this data", restoreDraft: "Return to the current journey",
