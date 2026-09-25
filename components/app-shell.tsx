@@ -3,11 +3,13 @@
 import type { ReactNode } from "react"
 import { usePathname } from "next/navigation"
 import { BottomNav } from "@/components/bottom-nav"
+import { useFileDropGuard } from "@/hooks/use-file-drop-guard"
 import { cn } from "@/lib/utils"
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isCanvas = pathname.startsWith("/canvas")
+  useFileDropGuard()
 
   return (
     <>
