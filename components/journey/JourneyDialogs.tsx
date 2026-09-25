@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { FolderOpen, LoaderCircle, Play, Trash2 } from "lucide-react"
 import type { Journey } from "@/lib/journey/types"
 import { getPathSteps } from "@/lib/journey/tree"
-import { deleteJourney, encodeSharedPath, listSavedJourneys } from "@/lib/journey/serialize"
+import { encodeSharedPath, listSavedJourneys, restoreSavedJourney, takeSavedJourney } from "@/lib/journey/serialize"
+import { ToastAction } from "@/components/ui/toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import {
   Dialog,
@@ -143,6 +144,7 @@ export function OpenJourneyDialog({
   isCurrentSaved,
 }: DialogBaseProps & { onLoad: (name: string) => void; isCurrentSaved: () => boolean }) {
   const t = useTranslations("journey")
+  const { toast } = useToast()
   const [names, setNames] = useState<string[]>([])
   // 待确认覆盖的存档名;null 时显示列表
   const [confirming, setConfirming] = useState<string | null>(null)
@@ -157,9 +159,20 @@ export function OpenJourneyDialog({
     else setConfirming(name)
   }
 
+  // 一点即删,但提示里可以撤销:存档只在本机,删了就找不回来
   const handleDelete = (name: string) => {
-    deleteJourney(name)
+    const removed = takeSavedJourney(name)
     setNames(listSavedJourneys())
+    if (!removed) return
+    toast({
+      title: t("savedDeleted").replace("{name}", name),
+      duration: 8000,
+      action: (
+        <ToastAction altText={t("undo")} onClick={() => { if (restoreSavedJourney(name, removed)) setNames(listSavedJourneys()) }}>
+          {t("undo")}
+        </ToastAction>
+      ),
+    })
   }
 
   return (

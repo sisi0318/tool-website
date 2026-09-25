@@ -19,6 +19,7 @@ import {
   getPathSteps,
   inferDataType,
   removeSubtree,
+  restoreSubtree,
 } from "./tree"
 import { applyStep, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "./engine"
 import { getCompatibleTools, suggestNext } from "./suggest"
@@ -36,6 +37,9 @@ import {
   sanitizeConfig,
   saveDraft,
   saveJourney,
+  listSavedJourneys,
+  restoreSavedJourney,
+  takeSavedJourney,
 } from "./serialize"
 import { replaceNodeValue } from "./tree"
 import { pathToWorkflow } from "./to-canvas"
@@ -104,6 +108,22 @@ describe("tree", () => {
     const pruned = removeSubtree(b.journey, a.nodeId)
     expect(Object.keys(pruned.nodes)).toEqual([journey.rootId])
     expect(pruned.activeId).toBe(journey.rootId)
+  })
+
+  it("puts a deleted subtree back for undo, even after other edits", () => {
+    const journey = createJourney("t", "data", "input")
+    const a = appendNode(journey, journey.rootId, BASE64_DECODE, "a", "A")
+    const b = appendNode(a.journey, a.nodeId, BASE64_DECODE, "b", "B")
+    const pruned = removeSubtree(b.journey, a.nodeId)
+    const removed = Object.fromEntries(Object.entries(b.journey.nodes).filter(([id]) => !pruned.nodes[id]))
+    const edited = appendNode(pruned, journey.rootId, BASE64_DECODE, "c", "C").journey
+
+    const restored = restoreSubtree(edited, removed, b.journey.activeId)
+    expect(Object.keys(restored.nodes).sort()).toEqual([...Object.keys(edited.nodes), a.nodeId, b.nodeId].sort())
+    expect(restored.activeId).toBe(b.nodeId)
+    // a second undo, or an undo after the parent is gone, changes nothing
+    expect(restoreSubtree(restored, removed)).toBe(restored)
+    expect(restoreSubtree(createJourney("other", "x", "input"), removed).nodes[a.nodeId]).toBeUndefined()
   })
 
   it("never removes the root", () => {
@@ -309,6 +329,20 @@ describe("suggest", () => {
 })
 
 describe("serialize", () => {
+  it("takes a saved journey out and puts it back for undo without clobbering a newer save", () => {
+    const journey = { ...createJourney("keep", "data", "input"), name: "keep" }
+    saveJourney(journey)
+    const taken = takeSavedJourney("keep")
+    expect(listSavedJourneys()).not.toContain("keep")
+    expect(restoreSavedJourney("keep", taken!)).toBe(true)
+    expect(loadJourney("keep")?.rootId).toBe(journey.rootId)
+
+    const again = takeSavedJourney("keep")!
+    saveJourney({ ...createJourney("keep", "newer", "input"), name: "keep" })
+    expect(restoreSavedJourney("keep", again)).toBe(false)
+    expect(takeSavedJourney("missing")).toBeNull()
+  })
+
   it("round-trips a shared path through the URL hash", () => {
     const encoded = encodeSharedPath("我的旅程", [BASE64_DECODE], "aGVsbG8=")
     const decoded = decodeSharedPath(`#${encoded}`)

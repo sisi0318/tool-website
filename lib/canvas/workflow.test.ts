@@ -7,6 +7,8 @@ import {
   saveWorkflow,
   loadWorkflow,
   deleteWorkflow,
+  restoreWorkflow,
+  takeWorkflow,
   workflowExists,
   parseWorkflowFile,
   serializeWorkflow,
@@ -192,6 +194,28 @@ describe("workflow", () => {
       saveWorkflow("test2", { nodes: [], edges: [] })
       deleteWorkflow("test1")
       expect(getWorkflowList()).toEqual(["test2"])
+    })
+  })
+
+  describe("takeWorkflow / restoreWorkflow", () => {
+    it("restores a deleted workflow at its old position", () => {
+      saveWorkflow("first", { nodes: [], edges: [] })
+      saveWorkflow("second", { nodes: [{ id: "n", type: "string", position: { x: 1, y: 2 }, config: {} }], edges: [] })
+      saveWorkflow("third", { nodes: [], edges: [] })
+      const taken = takeWorkflow("second")
+      expect(getWorkflowList()).toEqual(["first", "third"])
+      expect(restoreWorkflow("second", taken!)).toBe(true)
+      expect(getWorkflowList()).toEqual(["first", "second", "third"])
+      expect(loadWorkflow("second")?.nodes[0].id).toBe("n")
+    })
+
+    it("does not overwrite a workflow saved again under the same name", () => {
+      saveWorkflow("same", { nodes: [], edges: [] })
+      const taken = takeWorkflow("same")
+      saveWorkflow("same", { nodes: [{ id: "new", type: "string", position: { x: 0, y: 0 }, config: {} }], edges: [] })
+      expect(restoreWorkflow("same", taken!)).toBe(false)
+      expect(loadWorkflow("same")?.nodes[0].id).toBe("new")
+      expect(takeWorkflow("missing")).toBeNull()
     })
   })
 

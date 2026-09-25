@@ -133,6 +133,19 @@ export function removeSubtree(journey: Journey, nodeId: string): Journey {
   return { ...journey, nodes, activeId }
 }
 
+/**
+ * 撤销 removeSubtree:把删掉的节点放回去。删除之后旅程可能又有了别的改动,
+ * 所以是往当前旅程里补回子树,而不是整份回滚;子树挂靠的父节点已不在时原样返回。
+ */
+export function restoreSubtree(journey: Journey, removed: Record<string, JourneyNode>, previousActiveId?: string): Journey {
+  const nodes = Object.values(removed)
+  if (nodes.length === 0 || nodes.some((node) => journey.nodes[node.id])) return journey
+  const attachedTo = nodes.filter((node) => !node.parentId || !removed[node.parentId])
+  if (attachedTo.some((node) => !node.parentId || !journey.nodes[node.parentId])) return journey
+  const activeId = previousActiveId && removed[previousActiveId] ? previousActiveId : journey.activeId
+  return { ...journey, nodes: { ...journey.nodes, ...removed }, activeId }
+}
+
 /** 替换某节点的值(重跑恢复用);新值到位即清除 valueMissing 标记 */
 export function replaceNodeValue(journey: Journey, nodeId: string, value: unknown): Journey {
   const node = journey.nodes[nodeId]

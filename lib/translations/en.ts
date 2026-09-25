@@ -81,6 +81,7 @@ workflowTemplates: {
   "json-yaml_title": "JSON configuration to YAML", "json-yaml_description": "Convert JSON objects into a YAML configuration file while retaining their structure.", "json-yaml_hint": "Up to 1 million characters and 4 MB per text file. Store long identifiers as JSON strings when exact precision matters.", "json-yaml_step1": "Convert JSON to YAML", "json-yaml_step2": "Create config.yaml",
 },
 journey: {
+  stepsDeleted: "Deleted {count} step(s)", savedDeleted: "Deleted saved journey “{name}”", undo: "Undo",
   transferExpired: "The transferred data expired or belongs to another tab. Send it again from the original tool.",
   configureNewStep: "Review this step's settings and output, then run it on the current data.",
   configureExistingStep: "Update the settings, then rerun this step and its descendant branches.",
@@ -3977,6 +3978,7 @@ hexBinaryTools: {
   },
 },
 canvas: {
+  deleteWorkflow: "Delete workflow", workflowDeleted: "Deleted workflow “{name}”",
   workflow: "Workflow",
   nodes: "Nodes",
   newCanvas: "New",

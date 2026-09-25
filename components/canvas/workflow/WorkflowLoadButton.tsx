@@ -4,11 +4,14 @@ import { useState, useCallback } from "react"
 import { FolderOpen } from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
+import { useToast } from "@/hooks/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 import { LoadDialog } from "./LoadDialog"
-import { getWorkflowList, loadWorkflow, deleteWorkflow } from "@/lib/canvas/workflow"
+import { getWorkflowList, loadWorkflow, restoreWorkflow, takeWorkflow } from "@/lib/canvas/workflow"
 
 export function WorkflowLoadButton() {
   const t = useTranslations("canvas")
+  const { toast } = useToast()
   const [showDialog, setShowDialog] = useState(false)
   const [workflows, setWorkflows] = useState<string[]>([])
   const replaceWorkflow = useCanvasStore((state) => state.replaceWorkflow)
@@ -18,10 +21,21 @@ export function WorkflowLoadButton() {
     setShowDialog(true)
   }, [])
 
+  // 一点即删,提示里可以撤销:工作流只存在本机
   const handleDelete = useCallback((name: string) => {
-    deleteWorkflow(name)
+    const taken = takeWorkflow(name)
     setWorkflows(getWorkflowList())
-  }, [])
+    if (!taken) return
+    toast({
+      title: t("workflowDeleted").replace("{name}", name),
+      duration: 8000,
+      action: (
+        <ToastAction altText={t("undo")} onClick={() => { if (restoreWorkflow(name, taken)) setWorkflows(getWorkflowList()) }}>
+          {t("undo")}
+        </ToastAction>
+      ),
+    })
+  }, [t, toast])
 
   const handleLoad = useCallback((name: string) => {
     const data = loadWorkflow(name)

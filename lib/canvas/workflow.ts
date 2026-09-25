@@ -209,6 +209,32 @@ export function deleteWorkflow(name: string): void {
   removeLocalStorage(getWorkflowKey(name))
 }
 
+export interface TakenWorkflow {
+  raw: string
+  index: number
+}
+
+/** 删除工作流并交回原始存储内容与列表位置,供"撤销"时原样写回 */
+export function takeWorkflow(name: string): TakenWorkflow | null {
+  const raw = readLocalStorage(getWorkflowKey(name))
+  const index = getWorkflowList().indexOf(name)
+  deleteWorkflow(name)
+  return raw !== null && index >= 0 ? { raw, index } : null
+}
+
+/** 写回 takeWorkflow 取走的工作流;同名工作流已重新存在时不覆盖 */
+export function restoreWorkflow(name: string, taken: TakenWorkflow): boolean {
+  const list = getWorkflowList()
+  if (list.includes(name)) return false
+  if (!writeLocalStorage(getWorkflowKey(name), taken.raw)) return false
+  list.splice(Math.min(taken.index, list.length), 0, name)
+  if (!writeLocalStorage(WORKFLOW_LIST_KEY, JSON.stringify(list))) {
+    removeLocalStorage(getWorkflowKey(name))
+    return false
+  }
+  return true
+}
+
 /**
  * 检查 workflow 名字是否存在
  */

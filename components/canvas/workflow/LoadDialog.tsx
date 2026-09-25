@@ -61,7 +61,7 @@ export function LoadDialog({ workflows, onLoad, onDelete, onClose }: LoadDialogP
                 <button
                   type="button"
                   onClick={(event) => { event.stopPropagation(); onDelete(name) }}
-                  aria-label={`${t("deleteNode")}: ${name}`}
+                  aria-label={`${t("deleteWorkflow")}: ${name}`}
                   className="flex h-8 w-8 items-center justify-center rounded-full text-md-on-surface-variant outline-none transition-colors hover:bg-md-error-container/60 hover:text-md-error focus-visible:ring-2 focus-visible:ring-md-primary"
                 >
                   <Trash2 className="h-4 w-4" />

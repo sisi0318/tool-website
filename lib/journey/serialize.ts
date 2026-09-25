@@ -264,9 +264,23 @@ export function loadJourney(name: string): Journey | null {
 }
 
 export function deleteJourney(name: string): boolean {
+  return takeSavedJourney(name) !== null
+}
+
+/** 删除存档并交回原始数据,供"撤销"时原样放回 */
+export function takeSavedJourney(name: string): PersistedJourney | null {
   const saves = readSaves()
-  if (!(name in saves)) return false
+  const removed = saves[name]
+  if (!removed) return null
   delete saves[name]
+  return writeLocalStorage(SAVES_KEY, JSON.stringify(saves)) ? removed : null
+}
+
+/** 放回 takeSavedJourney 取走的存档;同名存档已被重新占用时不覆盖 */
+export function restoreSavedJourney(name: string, persisted: PersistedJourney): boolean {
+  const saves = readSaves()
+  if (name in saves) return false
+  saves[name] = persisted
   return writeLocalStorage(SAVES_KEY, JSON.stringify(saves))
 }
 

@@ -32,6 +32,7 @@ import {
   getPath,
   getPathSteps,
   removeSubtree,
+  restoreSubtree,
   replaceNodeValue,
 } from "@/lib/journey/tree"
 import type {
@@ -62,6 +63,7 @@ import { ConfirmDialog } from "@/components/canvas/workflow/ConfirmDialog"
 import { TemplateStage, type TemplateRunProgress } from "@/components/journey/TemplateStage"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 
@@ -450,9 +452,28 @@ export default function JourneyPage() {
     }
   }
 
+  // 删除一步会连同它之后的整棵子树一起删掉;删后在提示里可以撤销
+  const deleteStep = (nodeId: string) => {
+    if (!journey) return
+    const after = removeSubtree(journey, nodeId)
+    if (after === journey) return
+    const removed = Object.fromEntries(Object.entries(journey.nodes).filter(([id]) => !after.nodes[id]))
+    const previousActiveId = journey.activeId
+    setJourney(after)
+    toast({
+      title: t("stepsDeleted").replace("{count}", String(Object.keys(removed).length)),
+      duration: 8000,
+      action: (
+        <ToastAction altText={t("undo")} onClick={() => setJourney((current) => (current ? restoreSubtree(current, removed, previousActiveId) : current))}>
+          {t("undo")}
+        </ToastAction>
+      ),
+    })
+  }
+
   const deleteActiveStep = () => {
     setStepSheetOpen(false)
-    setJourney((prev) => (prev ? removeSubtree(prev, prev.activeId) : prev))
+    if (journey) deleteStep(journey.activeId)
   }
 
   const commitSave = () => {
@@ -648,7 +669,7 @@ export default function JourneyPage() {
           selectNode(nodeId)
           setBranchesOpen(false)
         }}
-        onDelete={(nodeId) => setJourney((prev) => (prev ? removeSubtree(prev, nodeId) : prev))}
+        onDelete={deleteStep}
       />
       <ShareDialog open={dialog === "share"} onOpenChange={(open) => setDialog(open ? "share" : null)} journey={journey} />
       <OpenJourneyDialog
