@@ -354,7 +354,7 @@ export default function RdapQueryPage() {
 
   const copyRawData = useCallback(async () => {
     if (!rdapData?.raw) return
-    const success = await copyTextToClipboard(rdapData.raw)
+    const success = await copyTextToClipboard(rdapData.raw, { reportFailure: false })
     toast({
       title: success ? t("copied") : t("copyFailed"),
       description: success ? t("copiedDescription") : undefined,

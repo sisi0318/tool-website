@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
 import { DEFAULT_OCR_OPTIONS, OCR_LIMITS, OCR_LOW_CONFIDENCE, OcrError, ocrExport, ocrFileName, ocrImageHeader, type OcrOptions, type OcrProgress, type OcrResult } from "@/lib/ocr-shared"
 import { recognizeImage } from "@/lib/ocr-worker-client"
@@ -68,7 +69,7 @@ export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: 
     } catch (cause) { if (version.current === id) setError(cause instanceof OcrError ? cause.code : "engine") }
     finally { if (version.current === id) { setProgress(null); active.current = null } }
   }
-  const copy = async () => { try { await navigator.clipboard.writeText(text); toast({ description: t("copied") }) } catch { toast({ description: t("copyFailed"), variant: "destructive" }) } }
+  const copy = async () => { toast(await copyTextToClipboard(text, { reportFailure: false }) ? { description: t("copied") } : { description: t("copyFailed"), variant: "destructive" }) }
   const update = (next: OcrOptions) => { invalidate(); setOptions(next); setConfirmRerun(false) }
   const selectLine = (id: number) => { setSelected(id); document.getElementById(`ocr-line-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }) }
   return <div className="space-y-6" onPaste={event => {

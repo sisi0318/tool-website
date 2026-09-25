@@ -464,7 +464,7 @@ export default function ImageToBase64() {
   // 复制到剪贴板
   const copyToClipboard = async (text: string, type: string) => {
     try {
-      if (!await writeClipboardText(text)) throw new Error("Clipboard unavailable")
+      if (!await writeClipboardText(text, { reportFailure: false })) throw new Error("Clipboard unavailable")
       setCopied(prev => ({ ...prev, [type]: true }))
       setTimeout(() => {
         setCopied(prev => ({ ...prev, [type]: false }))

@@ -407,7 +407,7 @@ export default function QRCodeDecoder() {
   }, [files, processFiles, selectedFileIndex])
 
   const copyValue = useCallback(async (value: string) => {
-    const success = await copyTextToClipboard(value)
+    const success = await copyTextToClipboard(value, { reportFailure: false })
     toast({
       title: success ? t("copied") : t("copyFailed"),
       description: success ? t("copiedDescription") : undefined,

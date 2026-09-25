@@ -95,7 +95,7 @@ export function UtilityWorkbench({
     if (copyFeedbackTimeoutRef.current) clearTimeout(copyFeedbackTimeoutRef.current)
 
     try {
-      if (!await copyTextToClipboard(output)) throw new Error("Clipboard unavailable")
+      if (!await copyTextToClipboard(output, { reportFailure: false })) throw new Error("Clipboard unavailable")
       setCopyError("")
       setCopied(true)
       copyFeedbackTimeoutRef.current = setTimeout(() => setCopied(false), 1500)

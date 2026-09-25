@@ -633,7 +633,7 @@ export default function CryptoPage() {
 
   const copyOutput = useCallback(() => {
     if (!output) return
-    void copyTextToClipboard(output).then((success) => {
+    void copyTextToClipboard(output, { reportFailure: false }).then((success) => {
       if (!success) {
         setError(t("copyFailed"))
         return

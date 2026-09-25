@@ -175,7 +175,7 @@ export default function BaseConverterPage() {
   const handleCopy = useCallback(
     async (text: string, key: string) => {
       if (!text) return
-      const success = await copyTextToClipboard(text)
+      const success = await copyTextToClipboard(text, { reportFailure: false })
       if (!success) {
         toast({ title: t("copyFailed"), variant: "destructive" })
         return

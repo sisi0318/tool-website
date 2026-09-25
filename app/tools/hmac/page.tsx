@@ -267,7 +267,7 @@ export default function HmacPage() {
 
   const copyOutput = useCallback(async () => {
     if (!output) return
-    const success = await copyTextToClipboard(output)
+    const success = await copyTextToClipboard(output, { reportFailure: false })
     if (!success) {
       toast({ title: t("copyFailed"), variant: "destructive" })
       return

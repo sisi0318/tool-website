@@ -4,6 +4,8 @@
  */
 export const en = {
 common: {
+  copyFailed: "Copy failed",
+  copyFailedHint: "The browser did not allow clipboard access. Select the content and press Ctrl+C (⌘+C) instead.",
   siteName: "Tool Station",
   home: "Home",
   tools: "Tools",

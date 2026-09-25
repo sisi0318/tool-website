@@ -15,7 +15,7 @@ function legacyCopyText(text: string): boolean {
   }
 }
 
-export async function copyTextToClipboard(text: string): Promise<boolean> {
+async function writeText(text: string): Promise<boolean> {
   try {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text)
@@ -30,4 +30,23 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/**
+ * 复制失败时在 window 上派发的事件，由根布局里的 ClipboardFailureNotifier 统一提示。
+ * 以前不少工具复制失败时什么都不显示，用户以为已经复制，粘出去的却是旧内容。
+ */
+export const CLIPBOARD_FAILURE_EVENT = "tool-website:clipboard-failure"
+
+export interface CopyTextOptions {
+  /** 调用方自己已经展示失败（toast、行内报错）时传 false，避免同一次失败提示两遍 */
+  reportFailure?: boolean
+}
+
+export async function copyTextToClipboard(text: string, options: CopyTextOptions = {}): Promise<boolean> {
+  const copied = await writeText(text)
+  if (!copied && options.reportFailure !== false && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CLIPBOARD_FAILURE_EVENT))
+  }
+  return copied
 }

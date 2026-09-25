@@ -83,7 +83,7 @@ export function ProtobufInspector({ inspection, readOnly = false, onValueChange 
   const copy = async (payloadOnly: boolean) => {
     if (!selected) return
     const value = bytesToHex(inspection.bytes.subarray(payloadOnly ? selected.dataOffset : selected.offset, payloadOnly ? selected.payloadEnd : selected.end))
-    setCopyStatus(await copyTextToClipboard(value) ? t("copied") : t("copyFailed"))
+    setCopyStatus(await copyTextToClipboard(value, { reportFailure: false }) ? t("copied") : t("copyFailed"))
   }
 
   return (

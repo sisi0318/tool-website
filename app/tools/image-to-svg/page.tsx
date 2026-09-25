@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
 import { DEFAULT_VECTOR_OPTIONS, ImageVectorError, VECTOR_LIMITS, rasterHeader, type ImageVectorOptions, type ImageVectorResult, type VectorStage, type VectorErrorCode } from "@/lib/image-vector-shared"
 import { vectorizeImage } from "@/lib/image-vector-worker-client"
@@ -71,7 +72,7 @@ export default function ImageToSvgPage() {
     } catch (cause) { if (version.current === id) setError(t(`error_${cause instanceof ImageVectorError ? cause.code : "engine"}`)) }
     finally { if (version.current === id) { setStage(null); active.current = null } }
   }
-  const copy = async () => { if (!result) return; try { await navigator.clipboard.writeText(result.svg); toast({ description: t("copied") }) } catch { toast({ description: t("copyFailed"), variant: "destructive" }) } }
+  const copy = async () => { if (!result) return; toast(await copyTextToClipboard(result.svg, { reportFailure: false }) ? { description: t("copied") } : { description: t("copyFailed"), variant: "destructive" }) }
   const preview = (url: string | null, label: string, svg = false) => <section className={`${frame} min-w-0 overflow-hidden`}><div className="border-b border-[var(--md-sys-color-outline-variant)] px-4 py-3 text-sm font-semibold">{label}</div><div className="h-80 overflow-auto" style={checker}>{url ? <div className="relative" style={{ width: `${Number(zoom)}%`, height: 320 * zoomFactor }}><img src={url} alt={label} draggable={false} className="absolute inset-0 h-full w-full object-contain" /></div> : <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[var(--md-sys-color-on-surface-variant)]">{svg ? t("outputEmpty") : t("inputEmpty")}</div>}</div></section>
 
   return <div className="container mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">

@@ -238,7 +238,7 @@ export default function TOTPPage() {
   // 复制验证码
   const copyCode = useCallback(async (code: string) => {
     try {
-      if (!await copyTextToClipboard(code)) throw new Error("Clipboard unavailable")
+      if (!await copyTextToClipboard(code, { reportFailure: false })) throw new Error("Clipboard unavailable")
       toast({ title: t("copied"), description: t("copiedDescription") })
     } catch {
       toast({ title: t("copyFailed"), variant: "destructive" })

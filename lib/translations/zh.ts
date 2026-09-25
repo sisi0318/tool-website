@@ -6,6 +6,8 @@
  */
 export const zh = {
 common: {
+  copyFailed: "复制失败",
+  copyFailedHint: "浏览器没有允许写入剪贴板。请选中内容后按 Ctrl+C（⌘+C）复制。",
   siteName: "工具站",
   home: "首页",
   tools: "工具",

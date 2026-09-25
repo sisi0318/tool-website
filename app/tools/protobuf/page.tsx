@@ -253,7 +253,7 @@ export default function ProtobufTool() {
 
   // Copy output to clipboard
   const copyToClipboard = useCallback((text: string, key: string = "main") => {
-    void writeClipboardText(text).then((success) => {
+    void writeClipboardText(text, { reportFailure: false }).then((success) => {
       if (!success) {
         setError(t("copyError"))
         return

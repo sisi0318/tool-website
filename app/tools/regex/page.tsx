@@ -394,7 +394,7 @@ export default function RegexTester() {
 
   // 复制功能
   const copyToClipboard = useCallback((text: string, label: string) => {
-    void writeClipboardText(text).then((success) => {
+    void writeClipboardText(text, { reportFailure: false }).then((success) => {
       toast({
         title: success ? t("copied") : t("copyFailed"),
         description: success ? t("copiedDescription").replace("{label}", label) : undefined,

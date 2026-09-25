@@ -265,7 +265,7 @@ export default function ExifViewerPage() {
   // 复制到剪贴板
   const copyToClipboard = async (text: string, label: string) => {
     try {
-      if (!await writeClipboardText(text)) throw new Error("Clipboard unavailable")
+      if (!await writeClipboardText(text, { reportFailure: false })) throw new Error("Clipboard unavailable")
       toast({
         title: t("copied"),
         description: t("copiedToClipboard").replace("{label}", label),

@@ -764,7 +764,7 @@ export default function CrontabPage() {
 
   // Copy expression to clipboard
   const handleCopy = () => {
-    void copyTextToClipboard(expression).then((success) => {
+    void copyTextToClipboard(expression, { reportFailure: false }).then((success) => {
       toast({
         title: success ? t("copied") : t("copyFailed"),
         duration: 2000,
@@ -1259,7 +1259,7 @@ export default function CrontabPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        void copyTextToClipboard(generateCrontabCommand("your-command")).then((success) => {
+                        void copyTextToClipboard(generateCrontabCommand("your-command"), { reportFailure: false }).then((success) => {
                           toast({
                             title: success ? t("copied") : t("copyFailed"),
                             description: success ? t("commandCopiedDescription") : undefined,

@@ -144,7 +144,7 @@ export default function CaseConverterPage() {
   const copyToClipboard = useCallback(async () => {
     if (!outputText) return
     try {
-      if (!await copyTextToClipboard(outputText)) throw new Error("Clipboard unavailable")
+      if (!await copyTextToClipboard(outputText, { reportFailure: false })) throw new Error("Clipboard unavailable")
       toast({ title: t("copied"), description: t("copiedDescription") })
     } catch {
       toast({ title: t("copyFailed"), variant: "destructive" })

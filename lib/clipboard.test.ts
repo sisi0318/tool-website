@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { copyTextToClipboard } from "./clipboard"
+import { CLIPBOARD_FAILURE_EVENT, copyTextToClipboard } from "./clipboard"
 
 describe("copyTextToClipboard", () => {
   afterEach(() => {
@@ -29,5 +29,26 @@ describe("copyTextToClipboard", () => {
     })
 
     await expect(copyTextToClipboard("fallback")).resolves.toBe(true)
+  })
+
+  it("announces a failure unless the caller reports it itself", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    })
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: vi.fn().mockReturnValue(false),
+    })
+    const listener = vi.fn()
+    window.addEventListener(CLIPBOARD_FAILURE_EVENT, listener)
+    try {
+      await expect(copyTextToClipboard("nope")).resolves.toBe(false)
+      expect(listener).toHaveBeenCalledTimes(1)
+      await expect(copyTextToClipboard("nope", { reportFailure: false })).resolves.toBe(false)
+      expect(listener).toHaveBeenCalledTimes(1)
+    } finally {
+      window.removeEventListener(CLIPBOARD_FAILURE_EVENT, listener)
+    }
   })
 })

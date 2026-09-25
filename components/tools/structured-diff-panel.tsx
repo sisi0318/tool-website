@@ -78,7 +78,7 @@ export function StructuredDiffPanel({ left, right, onLeftChange, onRightChange, 
   }
   const report = result ? JSON.stringify(result, null, 2) : ""
   const pages = Math.max(1, Math.ceil((result?.changes.length ?? 0) / PAGE_SIZE))
-  const copy = async (value: string) => setCopyStatus(await copyTextToClipboard(value) ? t("copied") : t("copyFailed"))
+  const copy = async (value: string) => setCopyStatus(await copyTextToClipboard(value, { reportFailure: false }) ? t("copied") : t("copyFailed"))
 
   return <div className="space-y-5" data-testid="structured-diff">
     <p className="text-sm text-md-on-surface-variant">{t("help")}</p>

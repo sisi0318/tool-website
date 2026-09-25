@@ -82,7 +82,7 @@ export function JsonTreeView({ className, emptyMessage, emphasizeIndentation = f
   }, [index, root, displayed])
 
   const copy = async (value: string, key: string) => {
-    const ok = await copyTextToClipboard(value)
+    const ok = await copyTextToClipboard(value, { reportFailure: false })
     setCopyFailed(!ok)
     setCopied(ok ? key : null)
     if (copyTimer.current) clearTimeout(copyTimer.current)

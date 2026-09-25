@@ -716,7 +716,7 @@ export default function DockerConverterPage() {
 
   const copyToClipboard = (text: string, target: "converted" | "run" | "generatedCompose") => {
     if (text) {
-      void copyTextToClipboard(text).then((success) => {
+      void copyTextToClipboard(text, { reportFailure: false }).then((success) => {
         if (!success) {
           setCopyFailed(true)
           return

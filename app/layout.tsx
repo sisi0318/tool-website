@@ -6,6 +6,7 @@ import { M3ThemeProvider } from "@/lib/m3/theme"
 import { I18nProvider } from "@/components/i18n-provider"
 import { AppShell } from "@/components/app-shell"
 import { Toaster } from "@/components/ui/toaster"
+import { ClipboardFailureNotifier } from "@/components/clipboard-failure-notifier"
 import { getSiteUrl } from "@/lib/site-url"
 
 /**
@@ -84,6 +85,7 @@ export default function RootLayout({
             <a href="#main-content" className="skip-link">跳到主要内容</a>
             <AppShell>{children}</AppShell>
             <Toaster />
+            <ClipboardFailureNotifier />
           </I18nProvider>
         </M3ThemeProvider>
       </body>

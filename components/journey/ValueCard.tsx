@@ -51,7 +51,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: V
 
   const handleCopy = async () => {
     const text = isString ? (node.value as string) : formatCanvasValue(node.value, true)
-    const ok = await copyTextToClipboard(text)
+    const ok = await copyTextToClipboard(text, { reportFailure: false })
     toast(ok ? { title: t("copied") } : { title: t("copyFailed"), variant: "destructive" })
   }
 
