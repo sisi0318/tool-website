@@ -8,7 +8,7 @@ import { Check, Clipboard, Copy, Dices, KeyRound, RefreshCw, ShieldCheck } from 
 import { Button } from "@/components/ui/button"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { NumberInput } from "@/components/ui/number-input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
@@ -159,7 +159,7 @@ export default function PasswordGeneratorPage() {
                 <div>
                   <div className="mb-3 flex items-center justify-between">
                     <Label>{t("length")}</Label>
-                    <Input type="number" min={8} max={128} value={length} onChange={(event) => setLength(Math.min(128, Math.max(8, Number(event.target.value) || 8)))} aria-label={t("length")} className="h-10 w-20 text-center font-mono" />
+                    <NumberInput min={8} max={128} value={length} onValueChange={setLength} aria-label={t("length")} className="h-10 w-20 text-center font-mono" />
                   </div>
                   <Slider min={8} max={128} step={1} value={[length]} onValueChange={([value]) => setLength(value)} aria-label={t("length")} />
                 </div>
@@ -202,7 +202,7 @@ export default function PasswordGeneratorPage() {
             <div className="flex items-end gap-3">
               <div className="w-24">
                 <Label htmlFor="password-count">{t("count")}</Label>
-                <Input id="password-count" type="number" min={1} max={20} value={count} onChange={(event) => setCount(Math.min(20, Math.max(1, Number(event.target.value) || 1)))} className="mt-2" />
+                <NumberInput id="password-count" min={1} max={20} value={count} onValueChange={setCount} className="mt-2" />
               </div>
               <Button onClick={generate} className="h-10 flex-1 gap-2">
                 <RefreshCw className="h-4 w-4" />{t("generate")}
