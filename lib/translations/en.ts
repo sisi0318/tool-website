@@ -4054,6 +4054,7 @@ canvas: {
   connectionCycle: "This connection would create a cycle.",
   nodeInCycle: "This node is part of a cycle and cannot run.",
   nodeUpstreamFailed: "An upstream node failed, so this node did not run.",
+  nodeWaitingForUpstream: "The upstream node has no output yet, so this node did not run. Run the upstream node first; manual nodes need a click.",
   connectionIncompatible: "Incompatible types: {source} → {target}.",
   selectNodeToEdit: "Select a node to edit",
   config: "Config",

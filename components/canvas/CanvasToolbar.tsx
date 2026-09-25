@@ -17,7 +17,7 @@ import {
   Zap,
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { ConfirmDialog } from "./workflow/ConfirmDialog"
 
 interface ToolbarButtonProps {
@@ -95,7 +95,7 @@ export function CanvasToolbar({
   const [confirmClear, setConfirmClear] = useState(false)
 
   const runningCount = Object.values(nodeRunning).filter(Boolean).length
-  const errorCount = Object.values(nodeErrors).filter(Boolean).length
+  const errorCount = Object.values(nodeErrors).filter(isBlockingNodeError).length
   const isRunning = requestedAction !== null || runningCount > 0
 
   const runAll = async () => {

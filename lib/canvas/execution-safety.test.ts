@@ -3,13 +3,13 @@ import type { NodeDefinition } from "./types"
 
 async function harness() {
   const { registerNode } = await import("./registry")
-  const { useCanvasStore, stopPendingCanvasWork, UPSTREAM_ERROR } = await import("./store")
+  const { useCanvasStore, stopPendingCanvasWork, UPSTREAM_ERROR, UPSTREAM_PENDING } = await import("./store")
   const register = (type: string, execute: NodeDefinition["execute"], manual = false) => registerNode({
     type, label: type, category: "dev", icon: (() => null) as never, config: [],
     outputs: [{ id: "out", name: "Out", dataType: "string" }], execute,
     ...(manual ? { executionMode: "manual" as const, network: true } : {}),
   })
-  return { store: useCanvasStore, stopPendingCanvasWork, UPSTREAM_ERROR, register }
+  return { store: useCanvasStore, stopPendingCanvasWork, UPSTREAM_ERROR, UPSTREAM_PENDING, register }
 }
 const node = (id: string, type = id) => ({ id, type, position: { x: 0, y: 0 }, config: {} })
 const edge = (source: string, target: string) => ({ id: `${source}-${target}`, source, target, sourcePort: "out", targetPort: "in" })
@@ -111,5 +111,54 @@ describe("execution safety across lifecycle and entry points", () => {
     expect(hash).toHaveBeenCalledTimes(1)
     expect(store.getState().nodeOutputs.hash).toEqual({ out: "valid" })
     expect(store.getState().nodeErrors.hash).toBeUndefined()
+  })
+
+  it("a node wired to an upstream that never ran waits instead of computing its defaults", async () => {
+    const { store, register, UPSTREAM_PENDING } = await harness()
+    const hash = vi.fn(async (inputs: Record<string, unknown>) => ({ out: `hash:${String(inputs.in ?? "")}` }))
+    register("generator", async () => ({ out: "pw" })); register("hash", hash)
+    store.setState({ nodes: [node("generator"), node("hash")], edges: [edge("generator", "hash")], autoRun: false, nodeOutputs: { hash: { out: "stale" } } })
+    await store.getState().executeNode("hash", undefined, false, false)
+    expect(hash).not.toHaveBeenCalled()
+    expect(store.getState().nodeErrors.hash).toBe(UPSTREAM_PENDING)
+    expect(store.getState().nodeOutputs.hash).toBeUndefined()
+    expect(store.getState().executionLog.at(-1)).toMatchObject({ nodeId: "hash", status: "skipped", error: UPSTREAM_PENDING })
+  })
+
+  it("connecting a freshly added upstream runs it before the downstream", async () => {
+    const { store, register } = await harness()
+    const generator = vi.fn(async () => ({ out: "pw" }))
+    const hash = vi.fn(async (inputs: Record<string, unknown>) => ({ out: `hash:${String(inputs.in)}` }))
+    register("generator", generator); register("hash", hash)
+    store.setState({ nodes: [node("generator"), node("hash")], edges: [], autoRun: true })
+    store.getState().addEdge(edge("generator", "hash"))
+    await vi.advanceTimersByTimeAsync(10)
+    expect(generator).toHaveBeenCalledTimes(1)
+    expect(hash).toHaveBeenCalledTimes(1)
+    expect(store.getState().nodeOutputs.hash).toEqual({ out: "hash:pw" })
+    expect(store.getState().nodeErrors).toEqual({ generator: undefined, hash: undefined })
+  })
+
+  it("an unclicked manual upstream leaves the node waiting rather than failed", async () => {
+    const { store, register, UPSTREAM_PENDING } = await harness()
+    const request = vi.fn(async () => ({ out: "response" }))
+    const sink = vi.fn(async () => ({ out: "wrong" }))
+    register("post", request, true); register("sink", sink)
+    store.setState({ nodes: [node("post"), node("sink")], edges: [edge("post", "sink")], autoRun: true })
+    await store.getState().executeToNode("sink", true)
+    expect(request).not.toHaveBeenCalled()
+    expect(sink).not.toHaveBeenCalled()
+    expect(store.getState().nodeErrors.sink).toBe(UPSTREAM_PENDING)
+  })
+
+  it("waiting passes down a cascade as waiting, not as an upstream failure", async () => {
+    const { store, register, UPSTREAM_PENDING } = await harness()
+    const middle = vi.fn(async () => ({ out: "b" }))
+    const last = vi.fn(async () => ({ out: "c" }))
+    register("first", async () => ({ out: "a" })); register("middle", middle); register("last", last)
+    store.setState({ nodes: [node("first"), node("middle"), node("last")], edges: [edge("first", "middle"), edge("middle", "last")], autoRun: false })
+    await store.getState().executeNode("middle", undefined, true, false)
+    expect(middle).not.toHaveBeenCalled(); expect(last).not.toHaveBeenCalled()
+    expect(store.getState().nodeErrors).toMatchObject({ middle: UPSTREAM_PENDING, last: UPSTREAM_PENDING })
   })
 })

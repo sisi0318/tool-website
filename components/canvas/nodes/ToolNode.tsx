@@ -5,13 +5,14 @@ import { Handle, Position } from "@xyflow/react"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
-import { CYCLE_ERROR, UPSTREAM_ERROR, useCanvasStore } from "@/lib/canvas/store"
+import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import { previewCanvasValue } from "@/lib/canvas/format-value"
 import type { ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
 import { JsonTreeViewer } from "./JsonTreeViewer"
 import { NodeRunButton } from "./NodeRunButton"
+import { NodeStatusMessage } from "./NodeStatusMessage"
 import { NodeBypassButton } from "./NodeBypassButton"
 
 /** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
@@ -90,7 +91,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
     <div
       data-node-disabled={data.disabled ? "true" : undefined}
       className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-md-surface-container-low text-md-on-surface shadow-md transition-opacity sm:max-w-[400px] ${
-        nodeErrors
+        isBlockingNodeError(nodeErrors)
           ? "border-md-error"
           : isSelected
           ? "border-md-primary"
@@ -104,7 +105,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
           {definition.label}
         </span>
         <NodeBypassButton nodeId={data.id} disabled={Boolean(data.disabled)} />
-        <NodeRunButton nodeId={data.id} running={Boolean(nodeRunning)} hasError={Boolean(nodeErrors)} />
+        <NodeRunButton nodeId={data.id} running={Boolean(nodeRunning)} hasError={isBlockingNodeError(nodeErrors)} />
       </div>
 
       {/* Parameters */}
@@ -254,11 +255,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
         </div>
       )}
 
-      {nodeErrors && (
-        <div className="rounded-b-[calc(var(--md-sys-shape-corner-medium)-2px)] border-t border-md-error/40 bg-md-error-container/60 px-3 py-2">
-          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-md-on-error-container">{nodeErrors === CYCLE_ERROR ? t("nodeInCycle") : nodeErrors === UPSTREAM_ERROR ? t("nodeUpstreamFailed") : nodeErrors}</p>
-        </div>
-      )}
+      {nodeErrors && <NodeStatusMessage error={nodeErrors} />}
     </div>
   )
 }

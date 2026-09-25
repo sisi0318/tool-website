@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { formatCanvasValue, previewCanvasValue } from "@/lib/canvas/format-value"
 import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
@@ -95,7 +95,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
   }
 
   const outputs = nodeOutputs[selectedNode.id]
-  const error = nodeErrors[selectedNode.id]
+  const error = isBlockingNodeError(nodeErrors[selectedNode.id])
   const running = nodeRunning[selectedNode.id]
   const incomingEdges = edges.filter((edge) => edge.target === selectedNode.id)
 

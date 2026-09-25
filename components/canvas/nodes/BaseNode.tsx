@@ -4,12 +4,13 @@ import { memo, useMemo } from "react"
 import { Handle, Position } from "@xyflow/react"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
-import { CYCLE_ERROR, UPSTREAM_ERROR, useCanvasStore } from "@/lib/canvas/store"
+import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import { previewCanvasValue } from "@/lib/canvas/format-value"
 import type { NodeInstance, ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
 import { NodeRunButton } from "./NodeRunButton"
+import { NodeStatusMessage } from "./NodeStatusMessage"
 import { NodeBypassButton } from "./NodeBypassButton"
 
 /** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
@@ -60,7 +61,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
     <div
       data-node-disabled={node.disabled ? "true" : undefined}
       className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-md-surface-container-low text-md-on-surface shadow-md transition-opacity sm:max-w-[400px] ${
-        nodeErrors
+        isBlockingNodeError(nodeErrors)
           ? "border-md-error"
           : isSelected
           ? "border-md-primary"
@@ -74,7 +75,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
           {definition.label}
         </span>
         <NodeBypassButton nodeId={node.id} disabled={Boolean(node.disabled)} />
-        <NodeRunButton nodeId={node.id} running={Boolean(nodeRunning)} hasError={Boolean(nodeErrors)} />
+        <NodeRunButton nodeId={node.id} running={Boolean(nodeRunning)} hasError={isBlockingNodeError(nodeErrors)} />
       </div>
 
       {/* Parameters */}
@@ -189,11 +190,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
         )}
       </div>
 
-      {nodeErrors && (
-        <div className="rounded-b-[calc(var(--md-sys-shape-corner-medium)-2px)] border-t border-md-error/40 bg-md-error-container/60 px-3 py-2">
-          <p className="max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs text-md-on-error-container">{nodeErrors === CYCLE_ERROR ? t("nodeInCycle") : nodeErrors === UPSTREAM_ERROR ? t("nodeUpstreamFailed") : nodeErrors}</p>
-        </div>
-      )}
+      {nodeErrors && <NodeStatusMessage error={nodeErrors} />}
     </div>
   )
 }

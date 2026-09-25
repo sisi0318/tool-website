@@ -32,6 +32,16 @@ const CONFIG_HISTORY_WINDOW_MS = 750
 export const CYCLE_ERROR = "canvas:cycle"
 /** 上游节点执行失败,本节点被阻断;用统一错误码让 UI 能本地化提示。 */
 export const UPSTREAM_ERROR = "canvas:upstream-failed"
+/**
+ * 连着线的上游还没有任何输出(从没运行过,或是没人点过的手动节点)。
+ * 这不是失败:不计入错误数,也不把下游标成"上游失败",下游同样只是等待。
+ */
+export const UPSTREAM_PENDING = "canvas:upstream-pending"
+
+/** 真正的失败才阻断下游、计入错误;"等待上游"只是还没轮到 */
+export function isBlockingNodeError(error: string | undefined): boolean {
+  return Boolean(error) && error !== UPSTREAM_PENDING
+}
 
 /** 画布自动保存的存储键,登记在 lib/storage/app-storage.ts */
 const CANVAS_STATE_KEY = "canvas-state"
@@ -194,10 +204,10 @@ function markCyclicNodes(candidates: NodeInstance[], sorted: NodeInstance[]): vo
   }))
 }
 
-/** 上游失败:清掉本节点的陈旧输出、记错误、写一条 skipped 日志,不执行。 */
-function markBlockedByUpstream(node: NodeInstance): void {
+/** 上游失败或上游尚无输出:清掉本节点的陈旧输出、记状态码、写一条 skipped 日志,不执行。 */
+function markBlockedByUpstream(node: NodeInstance, code: typeof UPSTREAM_ERROR | typeof UPSTREAM_PENDING = UPSTREAM_ERROR): void {
   useCanvasStore.setState((s) => ({
-    nodeErrors: { ...s.nodeErrors, [node.id]: UPSTREAM_ERROR },
+    nodeErrors: { ...s.nodeErrors, [node.id]: code },
     nodeRunning: { ...s.nodeRunning, [node.id]: false },
     nodeOutputs: Object.fromEntries(
       Object.entries(s.nodeOutputs).filter(([id]) => id !== node.id),
@@ -211,7 +221,7 @@ function markBlockedByUpstream(node: NodeInstance): void {
         status: "skipped" as const,
         startedAt: Date.now(),
         durationMs: 0,
-        error: UPSTREAM_ERROR,
+        error: code,
       },
     ].slice(-MAX_EXECUTION_LOG_ENTRIES),
   }))
@@ -307,7 +317,7 @@ async function runGraphInWaves(
 
     const errors = useCanvasStore.getState().nodeErrors
     for (const id of runnable) {
-      if (errors[id]) failed.add(id)
+      if (isBlockingNodeError(errors[id])) failed.add(id)
     }
 
     const next: string[] = []
@@ -886,9 +896,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     })
     if (get().autoRun) {
       scheduleGraphWork(() => {
-        if (get().autoRun) {
-          get().executeNode(edge.target, undefined, true, false)
-        }
+        const current = get()
+        if (!current.autoRun) return
+        // 刚连上的上游若从没跑过(比如刚从面板拖出来),从上游开始级联;
+        // 否则下游只会停在"等待上游"。手动节点不替用户按下运行。
+        const source = current.nodes.find((candidate) => candidate.id === edge.source)
+        const startId = source && !current.nodeOutputs[edge.source] && !isManualNode(source)
+          ? edge.source
+          : edge.target
+        current.executeNode(startId, undefined, true, false)
       }, 0)
     }
   },
@@ -1002,8 +1018,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const incomingEdges = state.edges.filter((e) => e.target === nodeId)
     // Every execution entry point (including single-step and automatic cascade)
     // must respect upstream failure before an adapter can use its defaults.
-    if (incomingEdges.some((edge) => state.nodeErrors[edge.source])) {
+    if (incomingEdges.some((edge) => isBlockingNodeError(state.nodeErrors[edge.source]))) {
       markBlockedByUpstream(node)
+      return
+    }
+    // A connected upstream that has produced nothing yet (never ran, or an unclicked
+    // manual node) is not "no input": falling back to defaults here is how Hash used
+    // to report a confident MD5 of the empty string.
+    if (incomingEdges.some((edge) => !state.nodeOutputs[edge.source])) {
+      markBlockedByUpstream(node, UPSTREAM_PENDING)
       return
     }
     const inputs: Record<string, unknown> = {}
