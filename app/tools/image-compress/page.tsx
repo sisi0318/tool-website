@@ -72,7 +72,7 @@ export default function ImageCompressPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [previewTitle, setPreviewTitle] = useState<string>("")
 
-const imagesRef = useRef<CompressedImage[]>([])
+  const imagesRef = useRef<CompressedImage[]>([])
   const mountedRef = useRef(true)
   const objectUrls = useObjectUrlRegistry()
   const releaseImageUrls = useCallback((image: CompressedImage) => {
@@ -311,9 +311,9 @@ const imagesRef = useRef<CompressedImage[]>([])
     }
   }
 
-usePasteFiles((files) => void addFiles(files), !isProcessing)
+  usePasteFiles((files) => void addFiles(files), !isProcessing)
 
-// 重新压缩选中的图片
+  // 重新压缩选中的图片
   const recompressImage = async (imageId: string) => {
     const image = images.find(img => img.id === imageId)
     if (!image) return

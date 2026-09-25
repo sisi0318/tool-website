@@ -166,7 +166,7 @@ const algorithmDescriptions: Record<string, string> = {
 export default function HashPage() {
   const t = useTranslations("hash")
   const tc = useTranslations("common")
-const params = useToolRuntimeParams()
+  const params = useToolRuntimeParams()
   const isToolActive = useToolActivity()
 
   // 哈希计算器状态
@@ -190,7 +190,7 @@ const params = useToolRuntimeParams()
   const [size, setSize] = useState<number>(256)
   const [calculationError, setCalculationError] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)
-const cancelCalculationRef = useRef<boolean>(false)
+  const cancelCalculationRef = useRef<boolean>(false)
   const calculationIdRef = useRef(0)
   const calculationAbortRef = useRef<AbortController | null>(null)
   // Add the hmacKey state after the other state declarations
@@ -935,7 +935,7 @@ const cancelCalculationRef = useRef<boolean>(false)
                     </Button>
                   </div>
                 </div>
-{fileError && (
+                {fileError && (
                   <div
                     className="rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
                     role="alert"

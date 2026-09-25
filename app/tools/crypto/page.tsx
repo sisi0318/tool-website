@@ -218,7 +218,7 @@ function readFileWithProgress(
 export default function CryptoPage() {
   const t = useTranslations("crypto")
   const tc = useTranslations("common")
-const params = useToolRuntimeParams()
+  const params = useToolRuntimeParams()
   const isToolActive = useToolActivity()
   const [operation, setOperation] = useState<"encrypt" | "decrypt">("encrypt")
   const [inputMode, setInputMode] = useState<"text" | "file">("text")
@@ -243,7 +243,7 @@ const params = useToolRuntimeParams()
   const [outputFormat, setOutputFormat] = useState<CryptoInputFormat>("hex")
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
-const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const processIdRef = useRef(0)
   const fileReaderRef = useRef<FileReader | null>(null)
 
@@ -593,7 +593,7 @@ const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     [cancelProcessing, clearResults, t],
   )
 
-const clearInput = useCallback(() => {
+  const clearInput = useCallback(() => {
     cancelProcessing()
     setInput("")
     setFileInfo(null)
@@ -1050,7 +1050,7 @@ const clearInput = useCallback(() => {
               </TabsContent>
 
               <TabsContent value="file" className="space-y-4">
-<FileDropZone
+                <FileDropZone
                   onFiles={(files) => selectFile(files[0])}
                   title={t("dropFileHere")}
                   hint={(
