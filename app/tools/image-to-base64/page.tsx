@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
+import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
 import { withObjectUrl } from "@/lib/object-url"
 import { createClientId } from "@/lib/client-id"
@@ -286,9 +287,8 @@ export default function ImageToBase64() {
     }
   }, [toast, createPreviewImage, t])
 
-  // 处理文件选择
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  // 选择、拖放、粘贴都走这里；格式和大小由 processFile 校验并提示（拖放以前会静默丢掉非图片）
+  const addFiles = async (files: File[]) => {
     if (files.length === 0) return
 
     setIsProcessing(true)
@@ -324,11 +324,16 @@ export default function ImageToBase64() {
     } finally {
       setIsProcessing(false)
       setProcessingProgress(0)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ""
+    void addFiles(files)
+  }
+
+  usePasteFiles((files) => void addFiles(files), !isProcessing)
 
   // 拖拽处理
   const handleDragOver = (e: React.DragEvent) => {
@@ -341,39 +346,10 @@ export default function ImageToBase64() {
     setIsDragging(false)
   }
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-
-    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'))
-    if (files.length === 0) return
-
-    setIsProcessing(true)
-    setProcessingProgress(0)
-
-    try {
-      const processedImages: ProcessedImage[] = []
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        const processed = await processFile(file, (progress) => {
-          const overallProgress = ((i * 100) + progress) / files.length
-          setProcessingProgress(overallProgress)
-        })
-        if (processed) {
-          processedImages.push(processed)
-        }
-      }
-
-      if (processedImages.length > 0) {
-        setImages(prev => [...prev, ...processedImages])
-        setSelectedImageId(processedImages[0].id)
-        setShowOriginalPreview(false)
-      }
-    } finally {
-      setIsProcessing(false)
-      setProcessingProgress(0)
-    }
+    void addFiles(Array.from(e.dataTransfer.files))
   }
 
   // 删除图片

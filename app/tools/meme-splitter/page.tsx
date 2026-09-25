@@ -35,6 +35,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { useToolActivity } from "@/components/tool-activity"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
 import {
   FILE_SIZE_LIMITS,
@@ -279,6 +280,8 @@ export default function MemeSplitterPage() {
     },
     [handleFileUpload],
   )
+
+  usePasteFiles((files) => handleFileUpload(preferImage(files)))
 
   const clearImage = useCallback(() => {
     resetResults()

@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useObjectUrlRegistry } from "@/hooks/use-object-url"
+import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { formatExifDate } from "@/lib/exif-date"
@@ -133,9 +134,8 @@ export default function ExifViewerPage() {
     }
   }, [objectUrls, t])
 
-  // 处理文件选择
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  // 选择、拖放、粘贴都走这里；不支持的格式跳过并提示（拖放以前会静默丢掉）
+  const addFiles = async (files: File[]) => {
     if (files.length === 0) return
 
     setIsProcessing(true)
@@ -183,11 +183,16 @@ export default function ExifViewerPage() {
       if (mountedRef.current) {
         setIsProcessing(false)
       }
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ""
+    void addFiles(files)
+  }
+
+  usePasteFiles((files) => void addFiles(files), !isProcessing)
 
   // 拖拽处理
   const handleDragOver = (e: React.DragEvent) => {
@@ -200,37 +205,10 @@ export default function ExifViewerPage() {
     setIsDragging(false)
   }
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-
-    const files = Array.from(e.dataTransfer.files).filter(file =>
-      supportedFormats.includes(file.type)
-    )
-
-    if (files.length === 0) return
-
-    setIsProcessing(true)
-
-    try {
-      const processedImages = await Promise.all(
-        files.map(file => processFile(file))
-      )
-
-      if (!mountedRef.current) {
-        return
-      }
-
-      setImages(prev => [...prev, ...processedImages])
-
-      if (processedImages.length > 0) {
-        setSelectedImageId(processedImages[0].id)
-      }
-    } finally {
-      if (mountedRef.current) {
-        setIsProcessing(false)
-      }
-    }
+    void addFiles(Array.from(e.dataTransfer.files))
   }
 
   // 删除图片

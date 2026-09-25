@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
 import {
   FILE_SIZE_LIMITS,
@@ -127,6 +128,8 @@ export default function ImageCoordinatesPage() {
     setManualError("")
     setZoom(100)
   }, [t])
+
+  usePasteFiles((files) => handleFileUpload(preferImage(files)))
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()

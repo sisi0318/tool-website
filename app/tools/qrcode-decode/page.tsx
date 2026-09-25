@@ -40,6 +40,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { createClientId } from "@/lib/client-id"
@@ -357,12 +358,7 @@ export default function QRCodeDecoder() {
     validateAndProcessFiles(Array.from(event.dataTransfer.files))
   }, [validateAndProcessFiles])
 
-  const handlePaste = useCallback((event: React.ClipboardEvent<HTMLDivElement>) => {
-    const pastedFiles = Array.from(event.clipboardData.files)
-    if (pastedFiles.length === 0) return
-    event.preventDefault()
-    validateAndProcessFiles(pastedFiles)
-  }, [validateAndProcessFiles])
+  usePasteFiles(validateAndProcessFiles)
 
   const pasteFromClipboard = useCallback(async () => {
     try {
@@ -674,7 +670,6 @@ export default function QRCodeDecoder() {
                         openFilePicker()
                       }
                     }}
-                    onPaste={handlePaste}
                     onDragEnter={() => setIsDragging(true)}
                     onDragLeave={() => setIsDragging(false)}
                     onDragOver={(event) => event.preventDefault()}

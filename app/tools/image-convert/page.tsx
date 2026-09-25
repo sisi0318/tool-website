@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
+import { usePasteFiles } from "@/hooks/use-paste-files"
 import { convertImageFile, type ImageOutputFormat } from "@/lib/image-convert"
 import { mapWithConcurrency } from "@/lib/async-pool"
 import { createClientId } from "@/lib/client-id"
@@ -90,6 +91,8 @@ export default function ImageConvertPage() {
     }))
     updateItems((current) => [...current, ...next])
   }
+
+  usePasteFiles(addFiles)
 
   const removeItem = (id: string) => {
     updateItems((current) => {

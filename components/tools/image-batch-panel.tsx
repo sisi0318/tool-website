@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
 import { downloadBlob } from "@/lib/object-url"
@@ -89,7 +90,8 @@ export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: {
     if (jobs.reduce((sum, job) => sum + batchResultBytes(job.id === selected.id ? result : job.result), 0) > IMAGE_BATCH_LIMITS.outputBytes) { setNotice(t("error_outputLimit")); return }
     setArchive(null); updateJobs(list => list.map(job => job.id === selected.id ? { ...job, result } : job))
   }
-  return <div className="space-y-5" onPaste={event => { if (busy) return; const files = Array.from(event.clipboardData.items).filter(item => item.kind === "file").map(item => item.getAsFile()).filter((file): file is File => !!file); if (files.length) { event.preventDefault(); add(files) } }}>
+  usePasteFiles(add, !busy)
+  return <div className="space-y-5">
     <header><Heading className="flex items-center gap-3 text-2xl font-semibold"><Files className="h-7 w-7 text-md-primary" />{t("title")}</Heading><p className="mt-2 max-w-4xl text-sm leading-6 text-md-on-surface-variant">{t("description")}</p></header>
     <section className={`${frame} space-y-4`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!busy) add(Array.from(event.dataTransfer.files)) }}>
       <input ref={input} type="file" multiple className="hidden" aria-label={t("add")} accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={event => { if (!busy) add(Array.from(event.target.files ?? [])); event.target.value = "" }} />

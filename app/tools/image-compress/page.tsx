@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useObjectUrlRegistry } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import { usePasteFiles } from "@/hooks/use-paste-files"
 import { mapWithConcurrency } from "@/lib/async-pool"
 import { createClientId } from "@/lib/client-id"
 import {
@@ -262,16 +263,15 @@ export default function ImageCompressPage() {
     }
   }, [quality, outputFormat, maxWidth, maxHeight, compressImage, objectUrls])
 
-  // 处理文件选择
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  // 选择、拖放、粘贴都走这里；不支持的格式跳过并提示（拖放以前会静默丢掉）
+  const addFiles = async (files: File[]) => {
     if (files.length === 0) return
 
     setIsProcessing(true)
-    
+
     try {
       const validFiles = files.filter(file => supportedFormats.includes(file.type))
-      
+
       if (validFiles.length === 0) {
         toast({
           title: t("unsupportedFormatTitle"),
@@ -279,6 +279,13 @@ export default function ImageCompressPage() {
           variant: "destructive"
         })
         return
+      }
+
+      if (validFiles.length !== files.length) {
+        toast({
+          title: t("filesSkippedTitle"),
+          description: t("filesSkippedDescription").replace("{count}", String(files.length - validFiles.length)),
+        })
       }
 
       const processedImages = await mapWithConcurrency(validFiles, 3, processFile)
@@ -302,11 +309,16 @@ export default function ImageCompressPage() {
       if (mountedRef.current) {
         setIsProcessing(false)
       }
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ""
+    void addFiles(files)
+  }
+
+  usePasteFiles((files) => void addFiles(files), !isProcessing)
 
   // 拖拽处理
   const handleDragOver = (e: React.DragEvent) => {
@@ -319,35 +331,10 @@ export default function ImageCompressPage() {
     setIsDragging(false)
   }
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-
-    const files = Array.from(e.dataTransfer.files).filter(file => 
-      supportedFormats.includes(file.type)
-    )
-
-    if (files.length === 0) return
-
-    setIsProcessing(true)
-    
-    try {
-      const processedImages = await mapWithConcurrency(files, 3, processFile)
-
-      if (!mountedRef.current) {
-        return
-      }
-
-      setImages(prev => [...prev, ...processedImages])
-      
-      if (processedImages.length > 0) {
-        setSelectedImageId(processedImages[0].id)
-      }
-    } finally {
-      if (mountedRef.current) {
-        setIsProcessing(false)
-      }
-    }
+    void addFiles(Array.from(e.dataTransfer.files))
   }
 
   // 重新压缩选中的图片

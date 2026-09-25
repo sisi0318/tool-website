@@ -47,6 +47,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
 import {
   FILE_SIZE_LIMITS,
@@ -401,6 +402,8 @@ export default function ImageEditorPage() {
     },
     [handleFileUpload],
   )
+
+  usePasteFiles((files) => handleFileUpload(preferImage(files)))
 
   const clearImage = useCallback(() => {
     exportIdRef.current += 1

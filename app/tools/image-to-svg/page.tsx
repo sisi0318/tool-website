@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
@@ -55,6 +56,7 @@ export default function ImageToSvgPage() {
     setFile(next)
   }
   const choose = (next: File | null) => { invalidate(); setSampleLoading(false); replaceFile(next) }
+  usePasteFiles(files => choose(preferImage(files)))
   const update = (key: keyof ImageVectorOptions, value: string | number) => { setOptions(previous => ({ ...previous, [key]: value })); setResult(null); setError("") }
   const example = async (type: VectorSample) => {
     const id = invalidate(); setSampleLoading(true); setError(""); setResult(null)

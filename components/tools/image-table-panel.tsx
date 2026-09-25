@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
 import { downloadBlob } from "@/lib/object-url"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { recognizeImage } from "@/lib/ocr-worker-client"
 import { OcrError, type OcrLine, type OcrProgress } from "@/lib/ocr-shared"
 import { createTableSample, runImageTable } from "@/lib/image-table"
@@ -80,7 +81,8 @@ export default function ImageTablePanel() {
     showGrid({ ...draftGrid, [drag.axis]: values }); setOutput(null)
   }
   const beginDrag = (event: PointerEvent<SVGLineElement>, axis: "x" | "y", index: number) => { if (busy) return; event.preventDefault(); dragging.current = { axis, index, pointer: event.pointerId }; event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId) }
-  return <div className="space-y-5" onPaste={event => { const pasted = event.clipboardData.files[0]; if (!busy && pasted) { event.preventDefault(); void load(pasted) } }}>
+  usePasteFiles(files => void load(preferImage(files)), !busy)
+  return <div className="space-y-5">
     <header><h1 className="flex items-center gap-3 text-2xl font-semibold"><Table2 className="h-7 w-7 text-md-primary" />{t("title")}</h1><p className="mt-2 max-w-4xl text-sm leading-6 text-md-on-surface-variant">{t("description")}</p></header>
     <section className={`${frame} space-y-3`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!busy && event.dataTransfer.files[0]) void load(event.dataTransfer.files[0]) }}>
       <input ref={input} aria-label={t("upload")} type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" className="hidden" onChange={event => { if (!busy && event.target.files?.[0]) void load(event.target.files[0]); event.target.value = "" }} />

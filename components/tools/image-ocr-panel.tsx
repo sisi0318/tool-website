@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
@@ -72,10 +73,8 @@ export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: 
   const copy = async () => { toast(await copyTextToClipboard(text, { reportFailure: false }) ? { description: t("copied") } : { description: t("copyFailed"), variant: "destructive" }) }
   const update = (next: OcrOptions) => { invalidate(); setOptions(next); setConfirmRerun(false) }
   const selectLine = (id: number) => { setSelected(id); document.getElementById(`ocr-line-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }) }
-  return <div className="space-y-6" onPaste={event => {
-    const image = Array.from(event.clipboardData.items).find(item => item.kind === "file" && item.type.startsWith("image/"))?.getAsFile()
-    if (image) { event.preventDefault(); choose(image) }
-  }}>
+  usePasteFiles(files => choose(preferImage(files)))
+  return <div className="space-y-6">
     <header className="space-y-3"><h1 className="flex items-center gap-3 text-2xl font-bold sm:text-3xl"><ScanText className="h-7 w-7 text-[var(--md-sys-color-primary)]" />{t("title")}</h1><p className={`max-w-3xl text-sm leading-6 ${muted}`}>{t("description")}</p><div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-[var(--md-sys-color-primary-container)] px-3 py-1 text-[var(--md-sys-color-on-primary-container)]">{t("local")}</span><span className={`px-2 py-1 ${muted}`}>PaddleOCR · PP-OCRv6</span></div></header>
     <section className={`${frame} space-y-4 p-5`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (event.dataTransfer.files[0]) choose(event.dataTransfer.files[0]) }}>
       <input ref={inputRef} type="file" className="hidden" aria-label={t("chooseFile")} accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={event => { choose(event.target.files?.[0] ?? null); event.target.value = "" }} />

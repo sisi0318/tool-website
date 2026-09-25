@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
 import { useObjectUrl } from "@/hooks/use-object-url"
+import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { createClientId } from "@/lib/client-id"
 import { recognizeImage } from "@/lib/ocr-worker-client"
 import { OcrError, type OcrProgress } from "@/lib/ocr-shared"
@@ -91,7 +92,8 @@ export default function ImageRedactPanel() {
     if (!focused || !source || !Number.isFinite(value)) return
     try { const next = redactRect({ ...focused, [key]: value }, source.width, source.height); replaceRegions(regions.map(region => region.id === focused.id ? { ...region, ...next } : region)) } catch { /* Keep the previous nonempty rectangle. */ }
   }
-  return <div className="space-y-5" onPaste={event => { const pasted = Array.from(event.clipboardData.files)[0]; if (!busy && pasted) { event.preventDefault(); void load(pasted) } }}>
+  usePasteFiles(files => void load(preferImage(files)), !busy)
+  return <div className="space-y-5">
     <header><h1 className="flex items-center gap-3 text-2xl font-semibold"><Shield className="h-7 w-7 text-md-primary" />{t("title")}</h1><p className="mt-2 max-w-4xl text-sm leading-6 text-md-on-surface-variant">{t("description")}</p></header>
     <section className={`${frame} space-y-4`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const incoming = event.dataTransfer.files[0]; if (!busy && incoming) void load(incoming) }}>
       <input ref={input} type="file" className="hidden" aria-label={t("upload")} accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={event => { const incoming = event.target.files?.[0]; if (!busy && incoming) void load(incoming); event.target.value = "" }} />
