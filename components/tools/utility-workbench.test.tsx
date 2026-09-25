@@ -108,8 +108,9 @@ describe("UtilityWorkbench mobile layout", () => {
   })
 })
 
-function Harness({ autoRun = false, onRunSpy = vi.fn(), operations = [{ value: "upper", label: "Upper" }, { value: "lower", label: "Lower" }] }: {
+function Harness({ autoRun = false, textFile = false, onRunSpy = vi.fn(), operations = [{ value: "upper", label: "Upper" }, { value: "lower", label: "Lower" }] }: {
   autoRun?: boolean
+  textFile?: boolean
   onRunSpy?: (input: string) => void
   operations?: Array<{ value: string; label: string }>
 }) {
@@ -132,6 +133,7 @@ function Harness({ autoRun = false, onRunSpy = vi.fn(), operations = [{ value: "
       onSample={() => setInput("sample")}
       autoRun={autoRun}
       autoRunMaxChars={20}
+      textFile={textFile}
     />
   )
 }
@@ -225,5 +227,47 @@ describe("UtilityWorkbench replacing input", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear" }))
     fireEvent.click(screen.getByRole("button", { name: "Sample" }))
     expect(toast).not.toHaveBeenCalled()
+  })
+})
+
+// jsdom 的 File 没有 arrayBuffer()，和其它测试一样给对象补上
+function fileWithBytes(name: string, bytes: number[]) {
+  const data = new Uint8Array(bytes)
+  const file = new File([data], name)
+  Object.defineProperty(file, "arrayBuffer", { value: async () => data.buffer })
+  return file
+}
+
+describe("UtilityWorkbench text files", () => {
+  afterEach(() => { toast.mockClear() })
+
+  it("loads a dropped text file into the input and offers undo", async () => {
+    render(<Harness textFile />)
+    const [input] = screen.getAllByRole("textbox")
+    fireEvent.change(input, { target: { value: "typed" } })
+    const file = fileWithBytes("notes.txt", [0xef, 0xbb, 0xbf, ...new TextEncoder().encode("from file")])
+    fireEvent.drop(input, { dataTransfer: { files: [file], types: ["Files"] } })
+    await waitFor(() => expect(input).toHaveValue("from file"))
+    expect(toast).toHaveBeenLastCalledWith(expect.objectContaining({ title: "inputReplacedByFile" }))
+
+    const action = toast.mock.calls.at(-1)![0].action as ReactElement<{ onClick: () => void }>
+    act(() => { action.props.onClick() })
+    expect(input).toHaveValue("typed")
+  })
+
+  it("refuses binary files with an explanation", async () => {
+    render(<Harness textFile />)
+    const [input] = screen.getAllByRole("textbox")
+    fireEvent.drop(input, { dataTransfer: { files: [fileWithBytes("image.png", [0x89, 0x50, 0x4e, 0x47, 0x00, 0xff])], types: ["Files"] } })
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "openFileFailed", description: "notTextFile", variant: "destructive" })))
+    expect(input).toHaveValue("")
+  })
+
+  it("shows the open-file button only when the tool asks for it", () => {
+    const { unmount } = render(<Harness />)
+    expect(screen.queryByRole("button", { name: "openFile" })).not.toBeInTheDocument()
+    unmount()
+    render(<Harness textFile />)
+    expect(screen.getByRole("button", { name: "openFile" })).toBeInTheDocument()
   })
 })

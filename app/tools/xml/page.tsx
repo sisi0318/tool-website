@@ -41,7 +41,7 @@ export default function XmlToolsPage() {
   ]
 
   return (
-    <UtilityWorkbench autoRun autoRunKey={xpath}
+    <UtilityWorkbench textFile autoRun autoRunKey={xpath}
       title={t("title")}
       description={t("description")}
       icon={<FileCode2 className="h-6 w-6" />}

@@ -10,6 +10,7 @@ export const FILE_SIZE_LIMITS = {
   imageBase64: 50 * MEBIBYTE,
   memeImage: 25 * MEBIBYTE,
   imageEditor: 25 * MEBIBYTE,
+  textInput: 10 * MEBIBYTE,
 } as const
 
 export function isFileWithinLimit(file: Pick<File, "size">, maxBytes: number): boolean {

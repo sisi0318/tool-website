@@ -38,7 +38,7 @@ export default function SqlPage() {
   }
 
   return (
-    <UtilityWorkbench autoRun autoRunKey={dialect}
+    <UtilityWorkbench textFile autoRun autoRunKey={dialect}
       title={t("title")}
       description={t("description")}
       icon={<Database className="h-6 w-6" />}

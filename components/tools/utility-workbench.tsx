@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
 import { usePathname } from "next/navigation"
-import { Check, Copy, Loader2, Play, RotateCcw, Sparkles } from "lucide-react"
+import { Check, Copy, FileUp, Loader2, Play, RotateCcw, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +13,7 @@ import { useTranslations } from "@/hooks/use-translations"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useUndoToast } from "@/hooks/use-undo-toast"
+import { useTextFileInput } from "@/hooks/use-text-file-input"
 
 /**
  * 独立工具页(/tools/<id>)把操作类型写回 URL,链接可以直接指向某个模式(如 ?op=decode);
@@ -64,6 +65,8 @@ interface UtilityWorkbenchProps {
   autoRunMaxChars?: number
   /** 页面自己的选项（如 SQL 方言）变化时也要自动重跑，把它们拼成一个字符串传进来 */
   autoRunKey?: string
+  /** 输入是文本时开启：输入框旁出现“打开文件”，也可以把文件拖进输入框 */
+  textFile?: boolean | { accept?: string; maxBytes?: number }
 }
 
 export function UtilityWorkbench({
@@ -96,6 +99,7 @@ export function UtilityWorkbench({
   autoRun = false,
   autoRunMaxChars = DEFAULT_AUTO_RUN_MAX_CHARS,
   autoRunKey = "",
+  textFile = false,
 }: UtilityWorkbenchProps) {
   const t = useTranslations("utilityWorkbench")
   // 工作台里可能同时挂着好几个工具，id 不能写死
@@ -176,11 +180,18 @@ export function UtilityWorkbench({
   // 清空和载入示例会整段覆盖输入，覆盖前留一份，提示里可以撤销
   const tc = useTranslations("common")
   const showUndo = useUndoToast()
-  const replaceInput = (replace: () => void, messageKey: "inputCleared" | "inputReplacedBySample") => {
+  const replaceInput = (replace: () => void, messageKey: "inputCleared" | "inputReplacedBySample" | "inputReplacedByFile") => {
     const previous = input
     replace()
     if (previous.trim()) showUndo(tc(messageKey), () => onInputChange(previous))
   }
+
+  const textFileOptions = typeof textFile === "object" ? textFile : {}
+  const fileInput = useTextFileInput({
+    accept: textFileOptions.accept,
+    maxBytes: textFileOptions.maxBytes,
+    onText: (text) => replaceInput(() => onInputChange(text), "inputReplacedByFile"),
+  })
 
   const handleShortcut = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey)) return
@@ -267,9 +278,17 @@ export function UtilityWorkbench({
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <Label htmlFor={`${fieldId}-input`}>{inputLabel ?? t("input")}</Label>
-                <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                <span className="ml-auto text-xs text-[var(--md-sys-color-on-surface-variant)]">
                   {t("characters").replace("{count}", String(input.length))}
                 </span>
+                {textFile && (
+                  <>
+                    <Button type="button" variant="ghost" size="sm" onClick={fileInput.open} disabled={inputDisabled} className="h-8 gap-1.5 px-2">
+                      <FileUp className="h-4 w-4" />{tc("openFile")}
+                    </Button>
+                    <input {...fileInput.inputProps} />
+                  </>
+                )}
               </div>
               <Textarea
                 id={`${fieldId}-input`}
@@ -278,6 +297,7 @@ export function UtilityWorkbench({
                 value={input}
                 disabled={inputDisabled}
                 onChange={(event) => onInputChange(event.target.value)}
+                {...(textFile && !inputDisabled ? fileInput.dropProps : {})}
                 placeholder={inputPlaceholder ?? t("inputPlaceholder")}
                 spellCheck={false}
                 className="min-h-40 resize-y rounded-2xl font-mono text-sm leading-6 sm:min-h-64"

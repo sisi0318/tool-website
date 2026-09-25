@@ -19,6 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { usePersistedHistory } from "@/hooks/use-persisted-history"
+import { useTextFileInput } from "@/hooks/use-text-file-input"
+import { useUndoToast } from "@/hooks/use-undo-toast"
 import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
 import { RegexTimeoutError, runRegex } from "@/lib/regex-runner"
 import { downloadBlob } from "@/lib/object-url"
@@ -27,7 +29,7 @@ import {
   RotateCcw, Settings, BookOpen,
   Zap, Target, Code, FileText, CheckCircle2, 
   AlertTriangle, Info, Clock, Hash, Eye, 
-  ChevronDown, ChevronUp, Lightbulb, TestTube2
+  ChevronDown, ChevronUp, Lightbulb, TestTube2, FileUp
 } from "lucide-react"
 
 interface RegexMatch {
@@ -249,6 +251,16 @@ export default function RegexTester() {
   const [activeTab, setActiveTab] = useState("tester")
   const [pattern, setPattern] = useState("")
   const [testText, setTestText] = useState("")
+  const tc = useTranslations("common")
+  const showUndo = useUndoToast()
+  // 打开文件整段替换测试文本，替换前留一份，提示里可以撤销
+  const testFile = useTextFileInput({
+    onText: (text) => {
+      const previous = testText
+      setTestText(text)
+      if (previous.trim() && previous !== text) showUndo(tc("inputReplacedByFile"), () => setTestText(previous))
+    },
+  })
   const [replaceText, setReplaceText] = useState("")
   
   // 标志位
@@ -632,6 +644,10 @@ export default function RegexTester() {
                           />
                           <Label htmlFor="highlight" className="text-sm">{t("highlightMatches")}</Label>
                         </div>
+                        <Button variant="ghost" size="sm" onClick={testFile.open} aria-label={tc("openFile")} title={tc("openFile")}>
+                          <FileUp className="h-4 w-4" />
+                        </Button>
+                        <input {...testFile.inputProps} />
                         <Button variant="ghost" size="sm" onClick={() => copyToClipboard(testText, t("testString"))} aria-label={t("copy")}>
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -642,6 +658,7 @@ export default function RegexTester() {
                     <Textarea
                       value={testText}
                       onChange={(e) => setTestText(e.target.value)}
+                      {...testFile.dropProps}
                       placeholder={t("testStringPlaceholder")}
                       rows={8}
                       className="font-mono"

@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
+import { useTextFileInput } from "@/hooks/use-text-file-input"
+import { useUndoToast } from "@/hooks/use-undo-toast"
 import {
   AlertTriangle,
   ArrowRightLeft,
@@ -22,6 +24,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  FileUp,
   Loader2,
   Trash2,
 } from "lucide-react"
@@ -39,6 +42,15 @@ export default function DiffPage() {
   const [comparisonMode, setComparisonMode] = useState("text")
   const [newText, setNewText] = useState("")
   const [showLineNumbers, setShowLineNumbers] = useState(true)
+  const tc = useTranslations("common")
+  const showUndo = useUndoToast()
+  // 打开文件整段替换某一侧，替换前留一份，提示里可以撤销
+  const loadInto = (current: string, set: (value: string) => void) => (text: string) => {
+    set(text)
+    if (current.trim() && current !== text) showUndo(tc("inputReplacedByFile"), () => set(current))
+  }
+  const oldFile = useTextFileInput({ onText: loadInto(oldText, setOldText) })
+  const newFile = useTextFileInput({ onText: loadInto(newText, setNewText) })
   const [algorithm, setAlgorithm] = useState<"simple" | "myers">("myers")
   const [copied, setCopied] = useState(false)
   
@@ -248,13 +260,20 @@ function add(a, b) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 原始文本 */}
           <div className="space-y-2">
-            <Label htmlFor="old-text">{t("originalText")}</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="old-text">{t("originalText")}</Label>
+              <Button type="button" variant="ghost" size="sm" onClick={oldFile.open} aria-label={`${tc("openFile")} · ${t("originalText")}`} className="h-8 gap-1.5 px-2">
+                <FileUp className="h-4 w-4" />{tc("openFile")}
+              </Button>
+              <input {...oldFile.inputProps} />
+            </div>
             <Textarea
               ref={oldTextareaRef}
               id="old-text"
               placeholder={t("originalPlaceholder")}
               value={oldText}
               onChange={(e) => setOldText(e.target.value)}
+              {...oldFile.dropProps}
               rows={15}
               className="font-mono text-sm"
             />
@@ -262,13 +281,20 @@ function add(a, b) {
           
           {/* 新文本 */}
           <div className="space-y-2">
-            <Label htmlFor="new-text">{t("newText")}</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="new-text">{t("newText")}</Label>
+              <Button type="button" variant="ghost" size="sm" onClick={newFile.open} aria-label={`${tc("openFile")} · ${t("newText")}`} className="h-8 gap-1.5 px-2">
+                <FileUp className="h-4 w-4" />{tc("openFile")}
+              </Button>
+              <input {...newFile.inputProps} />
+            </div>
             <Textarea
               ref={newTextareaRef}
               id="new-text"
               placeholder={t("newPlaceholder")}
               value={newText}
               onChange={(e) => setNewText(e.target.value)}
+              {...newFile.dropProps}
               rows={15}
               className="font-mono text-sm"
             />

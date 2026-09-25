@@ -64,6 +64,7 @@ function CsvConvertPage() {
 
   return (
     <UtilityWorkbench
+      textFile
       title={t("title")}
       description={t("description")}
       icon={<Table2 className="h-6 w-6" />}
