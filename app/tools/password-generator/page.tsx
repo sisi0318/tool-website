@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { NumberInput } from "@/components/ui/number-input"
+import { useToolPref } from "@/hooks/use-tool-pref"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
@@ -50,17 +51,17 @@ export default function PasswordGeneratorPage() {
   const t = useTranslations("passwordGenerator")
   const params = useToolRuntimeParams()
   const [mode, setMode] = useState<Mode>(params?.feature?.toLowerCase().includes("passphrase") ? "passphrase" : "password")
-  const [length, setLength] = useState(20)
-  const [lowercase, setLowercase] = useState(true)
-  const [uppercase, setUppercase] = useState(true)
-  const [numbers, setNumbers] = useState(true)
-  const [symbols, setSymbols] = useState(true)
-  const [excludeAmbiguous, setExcludeAmbiguous] = useState(true)
-  const [wordCount, setWordCount] = useState(4)
-  const [separator, setSeparator] = useState("-")
-  const [capitalize, setCapitalize] = useState(false)
-  const [includeNumber, setIncludeNumber] = useState(true)
-  const [count, setCount] = useState(3)
+  const [length, setLength] = useToolPref("password-generator", "length", 20, (value) => Number.isInteger(value) && value >= 8 && value <= 128)
+  const [lowercase, setLowercase] = useToolPref("password-generator", "lowercase", true)
+  const [uppercase, setUppercase] = useToolPref("password-generator", "uppercase", true)
+  const [numbers, setNumbers] = useToolPref("password-generator", "numbers", true)
+  const [symbols, setSymbols] = useToolPref("password-generator", "symbols", true)
+  const [excludeAmbiguous, setExcludeAmbiguous] = useToolPref("password-generator", "excludeAmbiguous", true)
+  const [wordCount, setWordCount] = useToolPref("password-generator", "wordCount", 4, (value) => Number.isInteger(value) && value >= 3 && value <= 8)
+  const [separator, setSeparator] = useToolPref("password-generator", "separator", "-", (value) => value.length <= 3)
+  const [capitalize, setCapitalize] = useToolPref("password-generator", "capitalize", false)
+  const [includeNumber, setIncludeNumber] = useToolPref("password-generator", "includeNumber", true)
+  const [count, setCount] = useToolPref("password-generator", "count", 3, (value) => Number.isInteger(value) && value >= 1 && value <= 20)
   const [results, setResults] = useState<GeneratedValue[]>([])
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState("")

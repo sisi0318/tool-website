@@ -67,6 +67,7 @@ settings: {
   storageJourneySaves: "已保存的数据旅程",
   storageTotp: "TOTP 账户与种子",
   storageHttpTemplates: "HTTP 测试的请求模板（含请求头）",
+  storageToolPrefs: "各工具记住的选项（格式、长度、质量等）",
   storageToolHistory: "工具历史记录（正则、WHOIS、汇率换算）",
   storageDeviceIp: "公网 IP 与归属地缓存",
   storageDeviceIpPref: "设备信息页的缓存开关",

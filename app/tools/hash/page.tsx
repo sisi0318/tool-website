@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { useToolActivity } from "@/components/tool-activity"
+import { useToolPref } from "@/hooks/use-tool-pref"
 
 // 添加参数接口
 interface HashAlgorithm {
@@ -176,12 +177,12 @@ export default function HashPage() {
   const [selectedCategory, setSelectedCategory] = useState("MD")
   const [hashResult, setHashResult] = useState("")
   const [allHashResults, setAllHashResults] = useState<HashResult[]>([])
-  const [showAllResults, setShowAllResults] = useState(false)
+  const [showAllResults, setShowAllResults] = useToolPref("hash", "showAllResults", false)
   const [verifyHash, setVerifyHash] = useState("")
   const [verifyResult, setVerifyResult] = useState<VerifyResultType | null>(null)
-  const [autoCalculate, setAutoCalculate] = useState(false)
+  const [autoCalculate, setAutoCalculate] = useToolPref("hash", "autoCalculate", false)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
-  const [outputFormat, setOutputFormat] = useState("hex")
+  const [outputFormat, setOutputFormat] = useToolPref("hash", "outputFormat", "hex", (value) => value === "hex" || value === "base64")
   const [size, setSize] = useState<number>(256)
   const [calculationError, setCalculationError] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)

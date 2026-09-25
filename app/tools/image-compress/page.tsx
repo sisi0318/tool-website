@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { extensionForMime } from "@/lib/output-name"
+import { useToolPref } from "@/hooks/use-tool-pref"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -61,10 +62,10 @@ export default function ImageCompressPage() {
   const [isDragging, setIsDragging] = useState(false)
   
   // 压缩设置
-  const [quality, setQuality] = useState(80)
-  const [outputFormat, setOutputFormat] = useState<string>("original")
-  const [maxWidth, setMaxWidth] = useState<string>("")
-  const [maxHeight, setMaxHeight] = useState<string>("")
+  const [quality, setQuality] = useToolPref("image-compress", "quality", 80, (value) => Number.isInteger(value) && value >= 1 && value <= 100)
+  const [outputFormat, setOutputFormat] = useToolPref<string>("image-compress", "outputFormat", "original", (value) => ["original", "jpeg", "webp", "png"].includes(value))
+  const [maxWidth, setMaxWidth] = useToolPref<string>("image-compress", "maxWidth", "", (value) => /^\d{0,5}$/.test(value))
+  const [maxHeight, setMaxHeight] = useToolPref<string>("image-compress", "maxHeight", "", (value) => /^\d{0,5}$/.test(value))
   
   // 图片预览弹窗
   const [previewImage, setPreviewImage] = useState<string | null>(null)
