@@ -1247,6 +1247,7 @@ color: {
   selectColor: "Select color:",
   nameDetection: "Name detection",
   formatPlaceholder: "Enter {format} format...",
+  invalidFormat: "Unrecognized {format} value",
   clearValue: "Clear",
   copiedToClipboard: "Copied to clipboard",
 },

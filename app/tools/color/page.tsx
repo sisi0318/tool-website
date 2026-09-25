@@ -6,7 +6,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useTranslations } from "@/hooks/use-translations"
-import { rgbToLch } from "@/lib/color-conversion"
+import { parseColorInput, rgbToLch, type ColorInputFormat } from "@/lib/color-conversion"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -176,9 +176,14 @@ const NAME_TO_HEX: Record<string, string> = Object.entries(COLOR_NAMES).reduce(
 )
 
 interface ColorFormat {
-  label: string
+  label: ColorInputFormat | "name"
   value: string
-  copied: boolean
+}
+
+/** 把某个格式框里的文字解析成 #rrggbb；名称走本页的 CSS 颜色名表 */
+function parseFormatValue(label: ColorFormat["label"], value: string): string | null {
+  if (label === "name") return NAME_TO_HEX[value.trim().toLowerCase()] ?? null
+  return parseColorInput(label, value)
 }
 
 export default function ColorPickerPage() {
@@ -192,17 +197,20 @@ export default function ColorPickerPage() {
 
   const [color, setColor] = useState("#106a2f")
   const [formats, setFormats] = useState<ColorFormat[]>([
-    { label: "hex", value: "#106a2f", copied: false },
-    { label: "rgb", value: "rgb(16, 106, 47)", copied: false },
-    { label: "hsl", value: "hsl(141, 74%, 24%)", copied: false },
-    { label: "hwb", value: "hwb(141 6% 58%)", copied: false },
-    { label: "lch", value: "lch(38.93% 44.59 145.3)", copied: false },
-    { label: "cmyk", value: "device-cmyk(85% 0% 56% 58%)", copied: false },
-    { label: "name", value: "forestgreen", copied: false },
+    { label: "hex", value: "#106a2f" },
+    { label: "rgb", value: "rgb(16, 106, 47)" },
+    { label: "hsl", value: "hsl(141, 74%, 24%)" },
+    { label: "hwb", value: "hwb(141 6% 58%)" },
+    { label: "lch", value: "lch(38.93% 44.58 145.3)" },
+    { label: "cmyk", value: "device-cmyk(85% 0% 56% 58%)" },
+    { label: "name", value: "forestgreen" },
   ])
+  const [copiedLabel, setCopiedLabel] = useState<ColorFormat["label"] | null>(null)
   const [recentColors, setRecentColors] = useState<string[]>([])
 
-  const copyTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 用户正在某个格式框里输入时，重算各格式不应把这一框改写成规范写法（光标会跳到末尾）
+  const editedFormatRef = useRef<ColorFormat | null>(null)
 
   // Find the closest named color
   // Pre-compute RGB values for all named colors (only once)
@@ -285,9 +293,7 @@ export default function ColorPickerPage() {
   // Clean up timeouts on unmount
   useEffect(() => {
     return () => {
-      // 卸载时要清掉“此刻挂着”的定时器，读的正是 cleanup 时刻的 .current，规则在这里是误报
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      Object.values(copyTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout))
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
     }
   }, [])
 
@@ -386,15 +392,23 @@ export default function ColorPickerPage() {
     const [cy, my, yy, ky] = rgbToCmyk(r, g, b)
     const name = findClosestNamedColor(hexColor)
 
-    setFormats([
-      { label: "hex", value: hexColor, copied: false },
-      { label: "rgb", value: `rgb(${r}, ${g}, ${b})`, copied: false },
-      { label: "hsl", value: `hsl(${h}, ${s}%, ${l}%)`, copied: false },
-      { label: "hwb", value: `hwb(${hw} ${ww}% ${bw}%)`, copied: false },
-      { label: "lch", value: `lch(${lc}% ${cc} ${hc})`, copied: false },
-      { label: "cmyk", value: `device-cmyk(${cy}% ${my}% ${yy}% ${ky}%)`, copied: false },
-      { label: "name", value: name, copied: false },
-    ])
+    const next: ColorFormat[] = [
+      { label: "hex", value: hexColor },
+      { label: "rgb", value: `rgb(${r}, ${g}, ${b})` },
+      { label: "hsl", value: `hsl(${h}, ${s}%, ${l}%)` },
+      { label: "hwb", value: `hwb(${hw} ${ww}% ${bw}%)` },
+      { label: "lch", value: `lch(${lc}% ${cc} ${hc})` },
+      { label: "cmyk", value: `device-cmyk(${cy}% ${my}% ${yy}% ${ky}%)` },
+      { label: "name", value: name },
+    ]
+    // 颜色正是从某个格式框解析来的：保留用户在那一框里的原文
+    const edited = editedFormatRef.current
+    editedFormatRef.current = null
+    setFormats(
+      edited && parseFormatValue(edited.label, edited.value) === hexColor
+        ? next.map((format) => (format.label === edited.label ? edited : format))
+        : next,
+    )
   }
 
   // Handle color input change
@@ -403,210 +417,31 @@ export default function ColorPickerPage() {
   }
 
   // Handle format input change
-  const handleFormatChange = (value: string, index: number) => {
-    const newFormats = [...formats]
-    newFormats[index].value = value
-    setFormats(newFormats)
+  const handleFormatChange = (value: string, label: ColorFormat["label"]) => {
+    setFormats((previous) => previous.map((format) => (format.label === label ? { label, value } : format)))
 
-    // Try to parse the input and update the color
-    try {
-      const format = formats[index].label
-      let newColor = color
-
-      switch (format) {
-        case "hex":
-          if (/^#[0-9A-Fa-f]{6}$/i.test(value)) {
-            newColor = value.toLowerCase()
-          }
-          break
-        case "rgb":
-          const rgbMatch = value.match(/rgb$$\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*$$/)
-          if (rgbMatch) {
-            const [_, r, g, b] = rgbMatch.map(Number)
-            if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
-              newColor = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
-            }
-          }
-          break
-        case "hsl":
-          const hslMatch = value.match(/hsl$$\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%\s*$$/)
-          if (hslMatch) {
-            const [_, h, s, l] = hslMatch.map(Number)
-            if (h >= 0 && h <= 360 && s >= 0 && s <= 100 && l >= 0 && l <= 100) {
-              // Convert HSL to RGB
-              const hue = h / 360
-              const sat = s / 100
-              const light = l / 100
-
-              let r, g, b
-
-              if (sat === 0) {
-                r = g = b = light
-              } else {
-                const hue2rgb = (p: number, q: number, t: number) => {
-                  if (t < 0) t += 1
-                  if (t > 1) t -= 1
-                  if (t < 1 / 6) return p + (q - p) * 6 * t
-                  if (t < 1 / 2) return q
-                  if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
-                  return p
-                }
-
-                const q = light < 0.5 ? light * (1 + sat) : light + sat - light * sat
-                const p = 2 * light - q
-
-                r = hue2rgb(p, q, hue + 1 / 3)
-                g = hue2rgb(p, q, hue)
-                b = hue2rgb(p, q, hue - 1 / 3)
-              }
-
-              const toHex = (x: number) => {
-                const hex = Math.round(x * 255).toString(16)
-                return hex.length === 1 ? "0" + hex : hex
-              }
-
-              newColor = `#${toHex(r)}${toHex(g)}${toHex(b)}`
-            }
-          }
-          break
-        case "hwb":
-          const hwbMatch = value.match(/hwb$$\s*(\d+)\s+(\d+)%\s+(\d+)%\s*$$/)
-          if (hwbMatch) {
-            const [_, hwbH, hwbW, hwbB] = hwbMatch.map(Number)
-            if (hwbH >= 0 && hwbH <= 360 && hwbW >= 0 && hwbW <= 100 && hwbB >= 0 && hwbB <= 100) {
-              // Convert HWB to RGB (simplified conversion)
-              const hue = hwbH / 360
-              const white = hwbW / 100
-              const black = hwbB / 100
-
-              // If white + black exceeds 1, normalize them
-              const sum = white + black
-              const wn = sum > 1 ? white / sum : white
-              const bn = sum > 1 ? black / sum : black
-
-              // Convert to HSV first
-              const v = 1 - bn
-              const s = v === 0 ? 0 : 1 - wn / v
-
-              // Then HSV to RGB
-              const i = Math.floor(hue * 6)
-              const f = hue * 6 - i
-              const p = v * (1 - s)
-              const q = v * (1 - f * s)
-              const t = v * (1 - (1 - f) * s)
-
-              let r, g, b
-              switch (i % 6) {
-                case 0:
-                  r = v
-                  g = t
-                  b = p
-                  break
-                case 1:
-                  r = q
-                  g = v
-                  b = p
-                  break
-                case 2:
-                  r = p
-                  g = v
-                  b = t
-                  break
-                case 3:
-                  r = p
-                  g = q
-                  b = v
-                  break
-                case 4:
-                  r = t
-                  g = p
-                  b = v
-                  break
-                case 5:
-                  r = v
-                  g = p
-                  b = q
-                  break
-                default:
-                  r = 0
-                  g = 0
-                  b = 0
-              }
-
-              const toHex = (x: number) => {
-                const hex = Math.round(x * 255).toString(16)
-                return hex.length === 1 ? "0" + hex : hex
-              }
-
-              newColor = `#${toHex(r)}${toHex(g)}${toHex(b)}`
-            }
-          }
-          break
-        case "cmyk":
-          const cmykMatch = value.match(/device-cmyk$$\s*(\d+)%\s+(\d+)%\s+(\d+)%\s+(\d+)%\s*$$/)
-          if (cmykMatch) {
-            const [_, c, m, y, k] = cmykMatch.map(Number)
-            if (c >= 0 && c <= 100 && m >= 0 && m <= 100 && y >= 0 && y <= 100 && k >= 0 && k <= 100) {
-              // Convert CMYK to RGB
-              const cyan = c / 100
-              const magenta = m / 100
-              const yellow = y / 100
-              const key = k / 100
-
-              const r = Math.round(255 * (1 - cyan) * (1 - key))
-              const g = Math.round(255 * (1 - magenta) * (1 - key))
-              const b = Math.round(255 * (1 - yellow) * (1 - key))
-
-              newColor = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
-            }
-          }
-          break
-        case "name":
-          const colorName = value.toLowerCase().trim()
-          if (colorName in NAME_TO_HEX) {
-            newColor = NAME_TO_HEX[colorName]
-          }
-          break
-        // LCH conversion is complex and would require a more sophisticated color library
-        // for accurate conversion, so we'll skip it for now
-      }
-
-      if (newColor !== color) {
-        setColor(newColor)
-      }
-    } catch (error) {
-      console.error("Error parsing color format:", error)
+    const parsed = parseFormatValue(label, value)
+    if (parsed && parsed !== color) {
+      editedFormatRef.current = { label, value }
+      setColor(parsed)
     }
   }
 
   // Handle clear button click
-  const handleClear = (index: number) => {
-    const newFormats = [...formats]
-    newFormats[index].value = ""
-    setFormats(newFormats)
+  const handleClear = (label: ColorFormat["label"]) => {
+    setFormats((previous) => previous.map((format) => (format.label === label ? { label, value: "" } : format)))
   }
 
   // Handle copy button click
-  const handleCopy = (index: number) => {
-    const value = formats[index].value
+  const handleCopy = (label: ColorFormat["label"], value: string) => {
     if (!value) return
 
     void copyTextToClipboard(value).then((success) => {
       if (!success) return
-      const newFormats = [...formats]
-      newFormats[index].copied = true
-      setFormats(newFormats)
-
-      // Clear previous timeout
-      if (copyTimeoutsRef.current[index]) {
-        clearTimeout(copyTimeoutsRef.current[index])
-      }
-
-      // Set timeout to reset copied state
-      copyTimeoutsRef.current[index] = setTimeout(() => {
-        const resetFormats = [...formats]
-        resetFormats[index].copied = false
-        setFormats(resetFormats)
+      setCopiedLabel(label)
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedLabel((current) => (current === label ? null : current))
       }, 2000)
     })
   }
@@ -824,21 +659,28 @@ export default function ColorPickerPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {formats.map((format, index) => (
+                {formats.map((format) => {
+                  const inputId = `color-format-${format.label}`
+                  const invalid = format.value.trim() !== "" && parseFormatValue(format.label, format.value) === null
+                  const copied = copiedLabel === format.label
+                  return (
                   <div key={format.label} className="space-y-2">
-                    <Label className="text-sm font-medium uppercase text-[var(--md-sys-color-on-surface-variant)]">
+                    <Label htmlFor={inputId} className="text-sm font-medium uppercase text-[var(--md-sys-color-on-surface-variant)]">
                       {format.label}
                     </Label>
                     <div className="relative">
                       <Input
+                        id={inputId}
                         value={format.value}
-                        onChange={(e) => handleFormatChange(e.target.value, index)}
+                        onChange={(e) => handleFormatChange(e.target.value, format.label)}
+                        aria-invalid={invalid || undefined}
+                        aria-describedby={invalid ? `${inputId}-error` : undefined}
                         className="pr-16 font-mono text-sm"
                         placeholder={t("formatPlaceholder").replace("{format}", format.label.toUpperCase())}
                       />
                       <div className="absolute right-0 top-0 h-full flex items-center space-x-1 pr-2">
                         {format.value && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleClear(index)} aria-label={t("clearValue")}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleClear(format.label)} aria-label={t("clearValue")}>
                             <X className="h-3 w-3" />
                           </Button>
                         )}
@@ -849,28 +691,34 @@ export default function ColorPickerPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6"
-                                onClick={() => handleCopy(index)}
+                                onClick={() => handleCopy(format.label, format.value)}
                                 disabled={!format.value}
-                                aria-label={format.copied ? t("copied") : t("copy")}
+                                aria-label={copied ? t("copied") : t("copy")}
                               >
-                                {format.copied ? <Check className="h-3 w-3 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-3 w-3" />}
+                                {copied ? <Check className="h-3 w-3 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-3 w-3" />}
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {format.copied ? t("copied") : t("copy")}
+                              {copied ? t("copied") : t("copy")}
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
                     </div>
-                    {format.copied && (
+                    {invalid && (
+                      <p id={`${inputId}-error`} className="text-xs text-[var(--md-sys-color-error)]">
+                        {t("invalidFormat").replace("{format}", format.label.toUpperCase())}
+                      </p>
+                    )}
+                    {copied && (
                       <div className="text-xs text-[var(--md-sys-color-primary)] flex items-center gap-1">
                         <Check className="h-3 w-3" />
                         {t("copiedToClipboard")}
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>

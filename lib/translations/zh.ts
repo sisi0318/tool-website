@@ -1249,6 +1249,7 @@ color: {
   selectColor: "颜色选择:",
   nameDetection: "名称检测",
   formatPlaceholder: "输入 {format} 格式...",
+  invalidFormat: "无法识别的 {format} 值",
   clearValue: "清空",
   copiedToClipboard: "已复制到剪贴板",
 },
