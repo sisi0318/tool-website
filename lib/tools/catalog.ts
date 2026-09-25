@@ -12,8 +12,12 @@
 
 export type ToolCategoryId = "developer" | "security" | "image" | "text" | "network" | "life"
 
-/** 工作台搜索的功能点：[展示名, 说明] */
-export type ToolSearchFeature = readonly [name: string, description?: string]
+/**
+ * 工作台搜索的功能点：[展示名, 说明, 打开工具时传的 feature 参数]。
+ * 参数缺省时传展示名 —— hash / crypto / encoding 按算法名匹配正好能用；
+ * json、密码生成器认的是 format / minify / passphrase 这类固定值，需要显式给出。
+ */
+export type ToolSearchFeature = readonly [name: string, description?: string, param?: string]
 
 export interface ToolCatalogEntry {
   /** 路由片段，同时是画布之外全站使用的工具 id */
@@ -24,6 +28,8 @@ export interface ToolCatalogEntry {
   /** 独立工具页的 SEO 标题与描述（站点主语言为中文） */
   seo: { title: string; description: string }
   features: readonly ToolSearchFeature[]
+  /** 只用于搜索的别名：英文词、缩写与常见叫法，如 hash 的 md5 / 哈希 / checksum */
+  keywords?: readonly string[]
 }
 
 export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
@@ -55,6 +61,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "ocr", translationKey: "ocr", category: "image",
     seo: { title: "OCR 图片与 PDF 文字识别", description: "浏览器本地使用 PaddleOCR 识别中英文、小字、长截图和 PDF 扫描件，支持逐行核对、TXT / JSON 导出和可搜索 PDF。" },
+    keywords: ["文字识别", "图片转文字", "提取文字"],
     features: [["OCR 文字识别", "Chinese and English image to text with PaddleOCR"], ["截图 / 小字 / 长图", "Local screenshot recognition with overlapping crops"], ["识别框 / 文本导出", "Review confidence, edit text, export TXT and JSON"], ["PDF OCR / 可搜索扫描件", "Recognize selected PDF pages, correct lines and export searchable PDFs"]],
   },
   {
@@ -65,11 +72,13 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "pdf", translationKey: "pdfTools", category: "developer",
     seo: { title: "PDF 页面工具", description: "浏览器本地合并、拆分、选择、重排、旋转 PDF 页面并添加页码，支持图片转 PDF、扫描件 OCR 和可搜索 PDF 导出。" },
+    keywords: ["合并 pdf", "拆分 pdf"],
     features: [["PDF 合并 / 拆分", "Merge documents or split selected pages into groups"], ["PDF 重排 / 旋转", "Reorder, select and rotate pages with preview"], ["图片转 PDF", "PNG/JPEG and EXIF orientation"], ["PDF 页码", "Page numbers aligned to rotated and cropped pages"], ["扫描件 OCR", "PDF text recognition and searchable document export"]],
   },
   {
     id: "sqlite", translationKey: "sqliteTools", category: "developer",
     seo: { title: "SQLite 文件查看器", description: "在浏览器本地打开 SQLite 数据库，浏览表、视图、索引和结构，执行只读 SQL，预览 BLOB 并导出 CSV 或 JSON。" },
+    keywords: ["db", "数据库"],
     features: [["SQLite 数据库", "Local database files, tables, views and indexes"], ["只读 SQL", "Bounded worker queries with exact 64-bit integers"], ["BLOB / 数据导出", "Binary preview, CSV and JSON result export"]],
   },
   {
@@ -100,6 +109,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "进制转换器",
       description: "在线进制转换工具，支持二进制、八进制、十进制、十六进制及 2-64 任意进制互转，BigInt 大数精确计算。",
     },
+    keywords: ["进制", "二进制", "十进制", "binary", "radix"],
     features: [
       ["二进制", "Base 2 conversion"],
       ["十六进制", "Base 16 conversion"],
@@ -128,6 +138,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "大小写转换",
       description: "在线文本大小写转换工具，支持大写、小写、标题格式、camelCase、snake_case、kebab-case 等命名风格互转。",
     },
+    keywords: ["大小写", "驼峰", "camelcase", "snake case", "kebab case"],
     features: [
       ["大小写转换", "Uppercase and lowercase"],
       ["camelCase", "Camel and Pascal case"],
@@ -170,6 +181,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "颜色转换器",
       description: "在线颜色格式转换工具，HEX、RGB、HSL、CMYK 互转，附取色器与最近使用调色板。",
     },
+    keywords: ["颜色", "rgb", "hsl", "取色"],
     features: [
       ["HEX", "HEX 颜色"],
       ["RGB", "RGB / RGBA"],
@@ -186,6 +198,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "压缩解压",
       description: "在线数据压缩解压工具，支持 GZip、Zlib、Deflate、Brotli 与 ZIP 归档，本地处理不上传。",
     },
+    keywords: ["zip", "gzip", "unzip", "解压", "压缩包", "brotli"],
     features: [
       ["GZip", "GZip compress and decompress"],
       ["Zlib / Deflate", "Zlib and Deflate"],
@@ -217,6 +230,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "加密解密",
       description: "在线 AES、DES、3DES、RC4、Rabbit 加密解密工具，支持自定义密钥、IV 与输出格式，本地计算。",
     },
+    keywords: ["加密", "解密", "aes", "des", "encrypt", "decrypt"],
     features: [
       ["AES", "AES 加密与解密"],
       ["DES / 3DES", "DES 与 Triple DES"],
@@ -232,6 +246,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "CSV / JSONL 日志工具",
       description: "浏览器本地 CSV、TSV、JSONL 日志处理，支持筛选、排序、分组计数、错误行定位、结果导出及 JSON 互转。",
     },
+    keywords: ["表格", "jsonl"],
     features: [
       ["CSV / TSV", "Delimited table data"],
       ["JSONL / NDJSON", "逐行 JSON 日志"],
@@ -248,6 +263,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "汇率换算",
       description: "在线汇率换算工具，支持 27 种常用货币实时汇率查询与批量换算。",
     },
+    keywords: ["汇率", "exchange rate", "换算"],
     features: [
       ["汇率换算", "Convert between currencies"],
       ["实时汇率", "Live exchange rates"],
@@ -276,6 +292,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "设备信息",
       description: "在线查看浏览器与设备信息，包括 User Agent、屏幕分辨率、WebGL 指纹与网络地址。",
     },
+    keywords: ["浏览器", "user agent", "ua", "指纹", "ip 地址"],
     features: [
       ["设备指纹", "Browser and device fingerprint"],
       ["User Agent", "浏览器与系统识别"],
@@ -291,6 +308,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "文本与结构化数据对比",
       description: "对比文本、JSON 和 YAML，逐行高亮或按字段路径显示差异，支持忽略字段和数组按 id 对齐。",
     },
+    keywords: ["对比", "比较", "compare", "差异"],
     features: [
       ["文本对比", "Compare two texts"],
       ["差异高亮", "Added, removed and changed lines"],
@@ -319,6 +337,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "编码转换",
       description: "在线编码解码工具，支持 Base64、URL、Unicode、HTML 实体、Hex、Base58、Punycode 等 16+ 格式。",
     },
+    keywords: ["编码", "解码", "base64", "urlencode"],
     features: [
       ["Base64", "Base64 编码与解码"],
       ["URL 编码", "Percent encode / decode"],
@@ -349,6 +368,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "哈希计算",
       description: "在线哈希计算工具，支持 MD5、SHA-1、SHA-2、SHA-3、SM3、BLAKE2、CRC32，支持文本与大文件。",
     },
+    keywords: ["哈希", "散列", "摘要", "校验和", "checksum", "md5", "sha1", "sha256", "sha512", "crc32"],
     features: [
       ["MD5", "MD5 摘要与校验"],
       ["SHA-1", "SHA1 哈希"],
@@ -394,6 +414,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "HTTP 测试",
       description: "在线 HTTP 接口测试工具，支持 GET/POST 等方法、自定义请求头、FormData 与 cURL 导入导出。",
     },
+    keywords: ["api", "curl", "postman", "请求", "接口"],
     features: [
       ["HTTP 请求", "GET / POST / PUT / DELETE"],
       ["请求头", "Headers and authentication"],
@@ -410,6 +431,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "图片压缩",
       description: "在线图片压缩工具，支持 JPEG、WebP 质量调节与批量压缩，本地处理不上传。",
     },
+    keywords: ["压缩图片", "图片瘦身"],
     features: [
       ["图片压缩", "Reduce image file size"],
       ["压缩质量", "JPEG / WebP quality"],
@@ -465,6 +487,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "图片转 Base64",
       description: "在线图片转 Base64 编码工具，生成 Data URL 便于内嵌网页与样式表，本地转换。",
     },
+    keywords: ["data url", "dataurl"],
     features: [
       ["图片转 Base64", "Image to Base64"],
       ["Data URL", "生成可嵌入的数据 URL"],
@@ -492,9 +515,10 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "JSON 工具",
       description: "在线 JSON 格式化、压缩、校验与转换工具，支持 YAML 互转、Unicode 转义与树形视图。",
     },
+    keywords: ["格式化", "format", "美化", "pretty", "yaml"],
     features: [
-      ["JSON 格式化", "Format and pretty print JSON"],
-      ["JSON 压缩", "Minify JSON"],
+      ["JSON 格式化", "Format and pretty print JSON", "format"],
+      ["JSON 压缩", "Minify JSON", "minify"],
       ["JSON 校验", "Validate and repair JSON"],
       ["JSON / YAML", "JSON 与 YAML 互转"],
       ["转义", "Escape / unescape Unicode 与字符串"],
@@ -521,6 +545,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "JWT 解析",
       description: "在线 JWT 解析工具，解码 Header 与 Payload，检查签名算法与过期时间。",
     },
+    keywords: ["token", "bearer"],
     features: [
       ["JWT 解析", "Decode header and payload"],
       ["JWT 验证", "Token signature and claims"],
@@ -534,6 +559,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "Markdown 工具",
       description: "在线 Markdown 编辑预览工具，支持实时渲染、HTML 互转与目录生成。",
     },
+    keywords: ["md"],
     features: [
       ["Markdown 预览", "Render Markdown"],
       ["Markdown / HTML", "Convert Markdown and HTML"],
@@ -574,9 +600,10 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "密码生成器",
       description: "在线安全密码生成器，自定义长度与字符集，支持口令短语与强度评估。",
     },
+    keywords: ["password", "随机密码", "密码"],
     features: [
       ["密码生成", "Secure random password"],
-      ["口令短语", "Readable passphrase"],
+      ["口令短语", "Readable passphrase", "passphrase"],
       ["密码强度", "Entropy and strength"],
     ],
   },
@@ -602,6 +629,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "二维码生成",
       description: "在线二维码生成器，支持文本、网址、Wi-Fi、名片等类型，可自定义颜色与 Logo。",
     },
+    keywords: ["qr", "qr code", "二维码生成"],
     features: [
       ["二维码生成", "QR code generator"],
       ["Wi-Fi 二维码", "Wi-Fi QR payload"],
@@ -616,6 +644,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "二维码识别",
       description: "在线二维码识别工具，上传或粘贴图片即可解码内容，支持批量与增强识别。",
     },
+    keywords: ["扫码", "识别二维码", "qr decode", "scan"],
     features: [
       ["二维码识别", "Decode QR code image"],
       ["扫码", "QR scanner and reader"],
@@ -629,6 +658,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "正则测试",
       description: "在线正则表达式测试工具，实时高亮匹配、捕获分组与替换，附常用示例库。",
     },
+    keywords: ["正则", "regexp", "regular expression"],
     features: [
       ["正则测试", "Regular expression tester"],
       ["匹配", "Find matches and capture groups"],
@@ -657,6 +687,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "子网计算",
       description: "在线 IP 子网计算器，支持 IPv4/IPv6 CIDR、掩码、网络地址与主机范围计算。",
     },
+    keywords: ["cidr", "子网", "ip", "掩码", "netmask"],
     features: [
       ["CIDR", "IPv4 and IPv6 CIDR"],
       ["子网计算", "Network, broadcast and host range"],
@@ -671,6 +702,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "温度换算",
       description: "在线温度单位换算工具，摄氏度、华氏度、开尔文及科学温标互转。",
     },
+    keywords: ["温度", "摄氏", "华氏", "celsius", "fahrenheit"],
     features: [
       ["摄氏度", "Celsius °C"],
       ["华氏度", "Fahrenheit °F"],
@@ -686,6 +718,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "字数统计",
       description: "在线字数统计工具，统计字符、单词、行数、句子与预计阅读时间。",
     },
+    keywords: ["字数", "字符数", "word count", "统计"],
     features: [
       ["字数统计", "Characters, words and lines"],
       ["文本分析", "Sentences and reading time"],
@@ -699,6 +732,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "时间工具",
       description: "在线时间工具，世界时钟、时间戳转换、秒表与倒计时。",
     },
+    keywords: ["时间戳", "timestamp", "unix", "epoch", "时区", "timezone"],
     features: [
       ["时间戳转换", "Unix timestamp and date"],
       ["世界时钟", "World clock and time zones"],
@@ -714,6 +748,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "TOTP 验证码",
       description: "在线 TOTP 两步验证码生成器，兼容 Google Authenticator，支持导入 otpauth 链接。",
     },
+    keywords: ["2fa", "otp", "mfa", "两步验证", "动态口令", "验证码", "authenticator"],
     features: [
       ["TOTP", "Time-based one-time password"],
       ["2FA", "Authenticator compatible code"],
@@ -728,6 +763,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "UUID 生成器",
       description: "在线 UUID 生成器，支持 v1、v4、v7 与批量生成。",
     },
+    keywords: ["guid"],
     features: [
       ["UUID v4", "Random UUID"],
       ["UUID v1 / v7", "Time based UUID"],
@@ -742,6 +778,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
       title: "WHOIS 查询",
       description: "在线 WHOIS/RDAP 域名与 IP 查询工具，查看注册商、注册时间与 DNS 信息。",
     },
+    keywords: ["域名", "rdap", "domain"],
     features: [
       ["WHOIS 查询", "Domain registration lookup"],
       ["域名信息", "Registrar, dates and nameservers"],

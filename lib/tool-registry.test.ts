@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { createSearchableFeatures } from "@/app/tools/search-utils"
+import { createToolSearchIndex } from "@/app/tools/search-utils"
 import { TOOL_COMPONENTS } from "@/app/tools/tool-components"
 import { toolTranslationKeys } from "@/components/tool-route-bar"
 import { TOOL_SEO, toolPageMetadata } from "@/lib/tool-metadata"
@@ -80,8 +80,8 @@ describe("从目录派生的各处清单", () => {
     const names = Object.fromEntries(
       TOOL_CATALOG.map((entry) => [entry.translationKey, { name: entry.id }]),
     )
-    const results = createSearchableFeatures(names)
-    const covered = new Set(results.map((result) => result.toolId))
+    const index = createToolSearchIndex(names)
+    const covered = new Set(index.map((tool) => tool.toolId))
     expect([...TOOL_IDS].filter((id) => !covered.has(id)), "这些工具搜不到").toEqual([])
   })
 

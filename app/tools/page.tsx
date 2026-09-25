@@ -61,7 +61,7 @@ import {
   WandSparkles,
 } from "lucide-react"
 import dynamic from "next/dynamic"
-import { type SearchResult, createSearchableFeatures, searchFeatures } from "./search-utils"
+import { type SearchResult, type SearchableTool, createToolSearchIndex, searchTools } from "./search-utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { M3Tabs, type TabItem } from "@/components/m3/tabs"
 import { M3BottomSheet } from "@/components/m3/bottom-sheet"
@@ -221,13 +221,14 @@ export default function ToolsPage() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [searchableFeatures, setSearchableFeatures] = useState<SearchResult[]>([])
+  const [searchIndex, setSearchIndex] = useState<SearchableTool[]>([])
   const [shareTooltip, setShareTooltip] = useState<{ [key: string]: boolean }>({})
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [showToolOptionsSheet, setShowToolOptionsSheet] = useState(false)
   const [activeCategory, setActiveCategory] = useState<ToolCategoryId | "all">("all")
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchResultsRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const tabContentRef = useRef<HTMLDivElement>(null)
 
@@ -299,10 +300,10 @@ export default function ToolsPage() {
         {} as Record<string, { name: string }>,
       )
 
-      setSearchableFeatures(createSearchableFeatures(validTranslations))
+      setSearchIndex(createToolSearchIndex(validTranslations))
     } catch (error) {
       console.error("Error initializing searchable features:", error)
-      setSearchableFeatures([])
+      setSearchIndex([])
     }
   }, [t])
 
@@ -517,16 +518,15 @@ export default function ToolsPage() {
   const handleSearch = useCallback(
     (term: string) => {
       setSearchTerm(term)
-      const results = searchFeatures(searchableFeatures, term)
-      setSearchResults(results)
+      setSearchResults(searchTools(searchIndex, term))
     },
-    [searchableFeatures],
+    [searchIndex],
   )
 
   // 打开工具并跳转到特定功能
   const openToolWithFeature = useCallback(
-    (toolId: string, featureName: string) => {
-      addTab(toolId, { feature: featureName })
+    (toolId: string, featureParam?: string) => {
+      addTab(toolId, featureParam ? { feature: featureParam } : undefined)
       setSearchTerm("")
       setSearchResults([])
       setIsSearchFocused(false)
@@ -867,7 +867,14 @@ export default function ToolsPage() {
                       setIsSearchFocused(false)
                     } else if (event.key === "Enter" && searchResults[0]) {
                       event.preventDefault()
-                      openToolWithFeature(searchResults[0].toolId, searchResults[0].featureName)
+                      openToolWithFeature(searchResults[0].toolId, searchResults[0].featureParam)
+                    } else if (event.key === "ArrowDown") {
+                      // ↓ 进入结果列表，之后用 ↑ / ↓ 在结果间移动、Enter 打开
+                      const first = searchResultsRef.current?.querySelector<HTMLButtonElement>("button")
+                      if (first) {
+                        event.preventDefault()
+                        first.focus()
+                      }
                     }
                   }}
                   placeholder={t("search.placeholder")}
@@ -908,6 +915,19 @@ export default function ToolsPage() {
           {/* M3 Expressive Search Results Menu */}
           {isSearchFocused && (searchTerm.trim().length > 0 || quickAccessTools.length > 0) && (
             <div
+              ref={searchResultsRef}
+              onKeyDown={(event) => {
+                if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Escape") return
+                const buttons = [...(searchResultsRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])]
+                const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+                if (index < 0) return
+                event.preventDefault()
+                if (event.key === "Escape" || (event.key === "ArrowUp" && index === 0)) {
+                  searchInputRef.current?.focus()
+                } else {
+                  buttons[Math.min(buttons.length - 1, Math.max(0, index + (event.key === "ArrowDown" ? 1 : -1)))]?.focus()
+                }
+              }}
               className="
                 search-results
                 absolute z-50 w-full mt-3
@@ -940,9 +960,10 @@ export default function ToolsPage() {
                     </button>
                   ))}
                 </div>
-              ) : searchResults.length > 0 ? searchResults.map((result, index) => (
+              ) : searchResults.length > 0 ? searchResults.map((result) => (
                 <button
-                  key={index}
+                  key={result.toolId}
+                  type="button"
                   className="
                     w-full p-3 text-left
                     rounded-[var(--md-sys-shape-corner-medium)]
@@ -951,7 +972,7 @@ export default function ToolsPage() {
                     transition-colors duration-md-short-2
                     flex items-start gap-3
                   "
-                  onClick={() => openToolWithFeature(result.toolId, result.featureName)}
+                  onClick={() => openToolWithFeature(result.toolId, result.featureParam)}
                 >
                   <div className="
                     p-2 rounded-full
@@ -963,16 +984,18 @@ export default function ToolsPage() {
                   </div>
                   <div className="flex-grow min-w-0">
                     <div className="font-medium text-[var(--md-sys-color-on-surface)] truncate">
-                      {result.featureName}
+                      {result.toolName}
                     </div>
-                    <div className="text-sm text-[var(--md-sys-color-on-surface-variant)] flex items-center mt-0.5">
-                      <span>{result.toolName}</span>
-                      {result.featureDescription && (
-                        <span className="ml-2 text-xs truncate">
-                          - {result.featureDescription}
-                        </span>
-                      )}
-                    </div>
+                    {result.featureName && (
+                      <div className="text-sm text-[var(--md-sys-color-on-surface-variant)] flex items-center mt-0.5 min-w-0">
+                        <span className="shrink-0">{result.featureName}</span>
+                        {result.featureDescription && (
+                          <span className="ml-2 text-xs truncate">
+                            - {result.featureDescription}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </button>
               )) : (
