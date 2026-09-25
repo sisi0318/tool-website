@@ -1,4 +1,4 @@
-import { removeLocalStorage } from "../safe-storage"
+import { removeLocalStorage, removeSessionStorage } from "../safe-storage"
 
 /**
  * 本站在浏览器里存了什么 —— 单一清单。
@@ -23,6 +23,8 @@ export interface StorageEntry {
   descriptionKey: string
   /** 含长期凭据或个人数据，界面上要单独标出 */
   sensitive?: boolean
+  /** 存在 sessionStorage：只在当前标签页里保留，关闭即清除 */
+  session?: boolean
 }
 
 export const STORAGE_ENTRIES: readonly StorageEntry[] = [
@@ -59,6 +61,8 @@ export const STORAGE_ENTRIES: readonly StorageEntry[] = [
   { key: "http_tester_templates", group: "tools", descriptionKey: "storageHttpTemplates", sensitive: true },
   // 各工具记住的选项（格式、长度、质量等），见 hooks/use-tool-pref.ts
   { prefix: "tool-prefs:", group: "tools", descriptionKey: "storageToolPrefs" },
+  // 工作台类工具的输入草稿，见 hooks/use-tool-draft.ts
+  { prefix: "tool-draft:", group: "tools", descriptionKey: "storageToolDrafts", sensitive: true, session: true },
   { key: "regex-history", group: "tools", descriptionKey: "storageToolHistory" },
   { key: "whois-history", group: "tools", descriptionKey: "storageToolHistory" },
   { key: "currency-history", group: "tools", descriptionKey: "storageToolHistory" },
@@ -89,10 +93,22 @@ export const STORAGE_GROUPS: readonly StorageGroupId[] = [
 ]
 
 /** 某个实际存在的键属于哪条登记项 */
-function matchEntry(key: string): StorageEntry | undefined {
+function matchEntry(key: string, session = false): StorageEntry | undefined {
   return STORAGE_ENTRIES.find(
-    (entry) => entry.key === key || (entry.prefix !== undefined && key.startsWith(entry.prefix)),
+    (entry) =>
+      Boolean(entry.session) === session &&
+      (entry.key === key || (entry.prefix !== undefined && key.startsWith(entry.prefix))),
   )
+}
+
+interface OwnedKey {
+  key: string
+  session: boolean
+  entry: StorageEntry
+}
+
+function storageArea(session: boolean): Storage {
+  return session ? window.sessionStorage : window.localStorage
 }
 
 export interface StorageGroupUsage {
@@ -105,29 +121,31 @@ export interface StorageGroupUsage {
   sensitive: boolean
 }
 
-function listOwnedKeys(): string[] {
+function listOwnedKeys(): OwnedKey[] {
   if (typeof window === "undefined") return []
-  try {
-    const keys: string[] = []
-    for (let index = 0; index < window.localStorage.length; index += 1) {
-      const key = window.localStorage.key(index)
-      if (key && matchEntry(key)) keys.push(key)
+  const keys: OwnedKey[] = []
+  for (const session of [false, true]) {
+    try {
+      const area = storageArea(session)
+      for (let index = 0; index < area.length; index += 1) {
+        const key = area.key(index)
+        const entry = key ? matchEntry(key, session) : undefined
+        if (key && entry) keys.push({ key, session, entry })
+      }
+    } catch {
+      // 某一种存储被禁用时，另一种照常统计
     }
-    return keys
-  } catch {
-    return []
   }
+  return keys
 }
 
 export function readStorageUsage(): StorageGroupUsage[] {
   const usage = new Map<StorageGroupId, StorageGroupUsage>()
 
-  for (const key of listOwnedKeys()) {
-    const entry = matchEntry(key)
-    if (!entry) continue
+  for (const { key, session, entry } of listOwnedKeys()) {
     let value = ""
     try {
-      value = window.localStorage.getItem(key) ?? ""
+      value = storageArea(session).getItem(key) ?? ""
     } catch {
       // 读不到就按 0 计，不影响清除
     }
@@ -155,11 +173,9 @@ export function clearAppStorage(groups?: readonly StorageGroupId[]): number {
   const wanted = groups ? new Set(groups) : null
   let removed = 0
 
-  for (const key of listOwnedKeys()) {
-    const entry = matchEntry(key)
-    if (!entry) continue
+  for (const { key, session, entry } of listOwnedKeys()) {
     if (wanted && !wanted.has(entry.group)) continue
-    if (removeLocalStorage(key)) removed += 1
+    if (session ? removeSessionStorage(key) : removeLocalStorage(key)) removed += 1
   }
 
   return removed

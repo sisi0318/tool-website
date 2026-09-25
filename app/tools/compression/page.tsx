@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
 import { bytesToBase64, transformCompression, type BinaryEncoding, type CompressionFormat, type CompressionOperation, type CompressionResult } from "@/lib/compression"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 import {
   FILE_SIZE_LIMITS,
   formatFileSizeLimit,
@@ -24,7 +25,7 @@ const FileCompressionPanel = dynamic(() => import("@/components/tools/file-compr
 
 function CompressionTextPage() {
   const t = useTranslations("compression")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("compression")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<CompressionOperation>("compress")
   const [format, setFormat] = useState<CompressionFormat>("gzip")

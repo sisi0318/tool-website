@@ -12,11 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTranslations } from "@/hooks/use-translations"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { processTextLines, SET_LINE_OPERATIONS, TextLineError, type TextLineOperation, type TextLineOptions, type TextLineResult } from "@/lib/text-line-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const OPERATIONS: TextLineOperation[] = ["dedupe", "clean", "sort", "affix", "columns", ...SET_LINE_OPERATIONS]
 export default function TextLinesPage() {
   const t = useTranslations("textLinesTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("text-lines")
   const [operation, setOperation] = useState<TextLineOperation>("dedupe")
   const [options, setOptions] = useState<TextLineOptions>({ trim: false, removeEmpty: true, ignoreCase: false, sortMode: "lexical", descending: false, prefix: "", suffix: "", delimiter: "\\t", outputDelimiter: "\\t", columns: "1", missingColumn: "empty", newline: "lf", trailingNewline: false, other: "" })
   const [result, setResult] = useState<TextLineResult | null>(null)

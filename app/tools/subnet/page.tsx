@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
 import { calculateSubnet, type SubnetResult } from "@/lib/subnet-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 export default function SubnetPage() {
   const t = useTranslations("subnetTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("subnet")
   const [probe, setProbe] = useState("")
   const [output, setOutput] = useState("")
   const [result, setResult] = useState<SubnetResult | null>(null)

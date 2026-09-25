@@ -11,6 +11,7 @@ import {
 
 beforeEach(() => {
   window.localStorage.clear()
+  window.sessionStorage.clear()
 })
 
 describe("readStorageUsage", () => {
@@ -59,6 +60,22 @@ describe("clearAppStorage", () => {
     expect(clearAppStorage()).toBe(2)
     expect(window.localStorage.getItem("some-other-app")).toBe("keep me")
     expect(readStorageUsage()).toEqual([])
+  })
+})
+
+describe("sessionStorage 草稿", () => {
+  it("工具输入草稿计入工具分组，按分组清除时一并删除", () => {
+    window.sessionStorage.setItem("tool-draft:xml", "<a/>")
+    window.localStorage.setItem("tool-prefs:hash", '{"outputFormat":"hex"}')
+    window.sessionStorage.setItem("other-session-key", "keep me")
+
+    const tools = readStorageUsage().find((item) => item.group === "tools")
+    expect(tools?.keys.sort()).toEqual(["tool-draft:xml", "tool-prefs:hash"])
+    expect(tools?.sensitive).toBe(true)
+
+    expect(clearAppStorage(["tools"])).toBe(2)
+    expect(window.sessionStorage.getItem("tool-draft:xml")).toBeNull()
+    expect(window.sessionStorage.getItem("other-session-key")).toBe("keep me")
   })
 })
 

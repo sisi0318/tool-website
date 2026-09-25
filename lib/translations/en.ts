@@ -65,6 +65,7 @@ settings: {
   storageJourneySaves: "Saved data journeys",
   storageTotp: "TOTP accounts and secrets",
   storageHttpTemplates: "HTTP tester request templates, including headers",
+  storageToolDrafts: "Tool input drafts (kept only in this browser tab, cleared when it closes)",
   storageToolPrefs: "Options remembered by each tool (formats, lengths, quality and so on)",
   storageToolHistory: "Tool history (regex, WHOIS, currency conversions)",
   storageDeviceIp: "Public IP and geolocation cache",

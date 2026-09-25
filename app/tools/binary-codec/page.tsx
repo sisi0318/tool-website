@@ -14,10 +14,11 @@ import { useObjectUrl } from "@/hooks/use-object-url"
 import { bytesToBase64, bytesToHex } from "@/lib/binary"
 import { BINARY_CODEC_LIMITS, BinaryCodecError, encodeBinaryJson, type BinaryCodecFormat, type BinaryJson } from "@/lib/binary-codecs"
 import { processBinaryCodec, type BinaryCodecResult } from "@/lib/binary-codec-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 export default function BinaryCodecPage() {
   const t = useTranslations("binaryCodecTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("binary-codec")
   const [file, setFile] = useState<File | null>(null)
   const [format, setFormat] = useState<BinaryCodecFormat>("msgpack")
   const [operation, setOperation] = useState<"encode" | "decode">("decode")

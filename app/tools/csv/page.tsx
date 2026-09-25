@@ -12,6 +12,7 @@ import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmente
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { useTranslations } from "@/hooks/use-translations"
 import { processCsv, type CsvOperation, type CsvResult } from "@/lib/csv-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE = "name,language,stars\nTool Website,TypeScript,5\nCyberChef,JavaScript,5"
 
@@ -37,7 +38,7 @@ export default function CsvToolsPage() {
 
 function CsvConvertPage() {
   const t = useTranslations("csvTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("csv")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<CsvOperation>("to-json")
   const [delimiter, setDelimiter] = useState("auto")

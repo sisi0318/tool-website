@@ -15,12 +15,13 @@ import {
   isFileWithinLimit,
 } from "@/lib/file-limits"
 import { processHexBinary, type HexBinaryOperation, type HexBinaryResult } from "@/lib/hex-binary-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE_PNG = "89504e470d0a1a0a0000000d49484452"
 
 export default function HexBinaryPage() {
   const t = useTranslations("hexBinaryTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("hex-binary")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<HexBinaryOperation>("hexdump")
   const [encoding, setEncoding] = useState<BinaryEncoding>("text")

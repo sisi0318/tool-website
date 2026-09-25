@@ -35,3 +35,33 @@ export function removeLocalStorage(key: string): boolean {
     return false
   }
 }
+
+/** sessionStorage 版本：只在当前标签页里保留，关闭即清除；同样从不抛错 */
+export function readSessionStorage(key: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    return window.sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+export function writeSessionStorage(key: string, value: string): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    window.sessionStorage.setItem(key, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function removeSessionStorage(key: string): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    window.sessionStorage.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
+}

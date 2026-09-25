@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { processJsonSchema, type JsonSchemaOperation } from "@/lib/json-schema-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE_DATA = JSON.stringify({ id: 7, email: "dev@example.com", active: true, tags: ["tools", "local"] }, null, 2)
 const SAMPLE_SCHEMA = JSON.stringify({
@@ -18,7 +19,7 @@ const SAMPLE_SCHEMA = JSON.stringify({
 
 export default function JsonSchemaPage() {
   const t = useTranslations("jsonSchemaTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("json-schema")
   const [schema, setSchema] = useState("")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<JsonSchemaOperation>("validate")

@@ -7,6 +7,7 @@ import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { useTranslations } from "@/hooks/use-translations"
 import { processMarkdown, type MarkdownOperation } from "@/lib/markdown-tools"
 import { sanitizeDocumentHtml } from "@/lib/sanitize-document-html"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE = `# Release notes
 
@@ -20,7 +21,7 @@ const SAMPLE = `# Release notes
 
 export default function MarkdownPage() {
   const t = useTranslations("markdownTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("markdown")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<MarkdownOperation>("to-html")
   const [error, setError] = useState("")

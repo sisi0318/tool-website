@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { NORMALIZATION_FORMS, processUnicode, UnicodeError, type UnicodeCharacter, type UnicodeOperation } from "@/lib/unicode-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE = "Café / Cafe\u0301\nＡ①ﬃ / A1ffi\nA B\u00A0C\u200BD\u200DE\u202EF\u202C\n👩‍💻 🇨🇳 中\t文\uFE0F"
 function glyph(entry: UnicodeCharacter) {
@@ -18,7 +19,7 @@ function glyph(entry: UnicodeCharacter) {
 
 export default function UnicodePage() {
   const t = useTranslations("unicodeTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("unicode")
   const [operation, setOperation] = useState<UnicodeOperation>("inspect")
   const [result, setResult] = useState<ReturnType<typeof processUnicode> | null>(null)
   const [error, setError] = useState("")

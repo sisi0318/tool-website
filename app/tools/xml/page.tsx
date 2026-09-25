@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
 import { processXml, type XmlOperation } from "@/lib/xml-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE = '<?xml version="1.0"?>\n<catalog><book id="1"><title>Tool Website</title><author>Codex</author></book></catalog>'
 
 export default function XmlToolsPage() {
   const t = useTranslations("xmlTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("xml")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<XmlOperation>("format")
   const [xpath, setXpath] = useState("//*")

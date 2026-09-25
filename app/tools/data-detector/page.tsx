@@ -7,12 +7,13 @@ import Link from "next/link"
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { useTranslations } from "@/hooks/use-translations"
 import { detectData, type DetectionResult } from "@/lib/data-detector"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE = '{"name":"tool-website","features":["canvas","detector"]}'
 
 export default function DataDetectorPage() {
   const t = useTranslations("dataDetector")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("data-detector")
   const [result, setResult] = useState<DetectionResult | null>(null)
 
   const localizedResult = useMemo(() => {

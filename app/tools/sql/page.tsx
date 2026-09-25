@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
 import { processSql, type SqlDialect, type SqlOperation } from "@/lib/sql-tools"
+import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE = "select u.id,u.name,count(o.id) as orders from users u left join orders o on o.user_id=u.id where u.active=true group by u.id,u.name order by orders desc;"
 
@@ -20,7 +21,7 @@ const DIALECTS: Array<[SqlDialect, string]> = [
 
 export default function SqlPage() {
   const t = useTranslations("sqlTools")
-  const [input, setInput] = useState("")
+  const [input, setInput] = useToolDraft("sql")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<SqlOperation>("format")
   const [dialect, setDialect] = useState<SqlDialect>("sql")
