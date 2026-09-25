@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { extensionForMime } from "@/lib/output-name"
 import { useToolPref } from "@/hooks/use-tool-pref"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -312,6 +313,8 @@ export default function ImageCompressPage() {
   }
 
   usePasteFiles((files) => void addFiles(files), !isProcessing)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) void addFiles([transfer.value]) })
 
   // 重新压缩选中的图片
   const recompressImage = async (imageId: string) => {

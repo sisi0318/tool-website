@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy, Download, Link2, Play, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +33,8 @@ export default function UrlPage() {
   const [page, setPage] = useState(0)
   useEffect(() => { if (booted.current) return; booted.current = true; const value = params?.input ?? new URLSearchParams(window.location.search).get("input"); if (value && value.length <= 4096) setInput(value) }, [params])
   const reset = () => { setParts(null); setError(""); setPage(0); setCopyStatus("") }
+  // 其它工具“在工具中打开”发来的文本
+  useIncomingInput((transfer) => { const text = transferText(transfer.value); if (text !== null) { reset(); setInput(text) } })
   const parsed = useMemo(() => {
     if (!parts) return { url: "", report: null, error: "" }
     try { const url = buildUrl(parts, { preserveEncoding, spaceEncoding }); return { url, report: inspectUrl(url, { plusAsSpace: spaceEncoding === "plus" || plusAsSpace }), error: "" } }

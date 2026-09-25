@@ -1,6 +1,7 @@
 "use client"
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { fileBaseName } from "@/lib/output-name"
 import { createClientId } from "@/lib/client-id"
 
@@ -193,6 +194,8 @@ export default function ExifViewerPage() {
   }
 
   usePasteFiles((files) => void addFiles(files), !isProcessing)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) void addFiles([transfer.value]) })
 
   // 拖拽处理
   const handleDragOver = (e: React.DragEvent) => {

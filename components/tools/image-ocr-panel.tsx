@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { Copy, Download, ImagePlus, Loader2, ScanText, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -74,6 +75,8 @@ export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: 
   const update = (next: OcrOptions) => { invalidate(); setOptions(next); setConfirmRerun(false) }
   const selectLine = (id: number) => { setSelected(id); document.getElementById(`ocr-line-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }) }
   usePasteFiles(files => choose(preferImage(files)))
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) choose(transfer.value) })
   return <div className="space-y-6">
     <header className="space-y-3"><h1 className="flex items-center gap-3 text-2xl font-bold sm:text-3xl"><ScanText className="h-7 w-7 text-[var(--md-sys-color-primary)]" />{t("title")}</h1><p className={`max-w-3xl text-sm leading-6 ${muted}`}>{t("description")}</p><div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-[var(--md-sys-color-primary-container)] px-3 py-1 text-[var(--md-sys-color-on-primary-container)]">{t("local")}</span><span className={`px-2 py-1 ${muted}`}>PaddleOCR · PP-OCRv6</span></div></header>
     <section className={`${frame} space-y-4 p-5`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (event.dataTransfer.files[0]) choose(event.dataTransfer.files[0]) }}>

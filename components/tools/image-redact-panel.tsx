@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useId, useRef, useState, type PointerEvent } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { Download, Loader2, Plus, ScanText, Shield, Trash2, Undo2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -93,6 +94,8 @@ export default function ImageRedactPanel() {
     try { const next = redactRect({ ...focused, [key]: value }, source.width, source.height); replaceRegions(regions.map(region => region.id === focused.id ? { ...region, ...next } : region)) } catch { /* Keep the previous nonempty rectangle. */ }
   }
   usePasteFiles(files => void load(preferImage(files)), !busy)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) void load(transfer.value) })
   return <div className="space-y-5">
     <header><h1 className="flex items-center gap-3 text-2xl font-semibold"><Shield className="h-7 w-7 text-md-primary" />{t("title")}</h1><p className="mt-2 max-w-4xl text-sm leading-6 text-md-on-surface-variant">{t("description")}</p></header>
     <section className={`${frame} space-y-4`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const incoming = event.dataTransfer.files[0]; if (!busy && incoming) void load(incoming) }}>

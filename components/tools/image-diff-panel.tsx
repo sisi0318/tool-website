@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useRef, useState, type PointerEvent } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { fileBaseName } from "@/lib/output-name"
 import { ArrowLeftRight, Download, GitCompareArrows, Loader2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -60,6 +61,8 @@ export default function ImageDiffPanel() {
   const wipe = (event: PointerEvent<SVGSVGElement>) => { if (mode !== "wipe") return; const box = event.currentTarget.getBoundingClientRect(); setAmount(Math.round(Math.max(0, Math.min(100, (event.clientX - box.left) / box.width * 100)))) }
   // 焦点不在哪一侧时，粘贴的图片先填 A，A 已有就填（或替换）B
   usePasteFiles(files => void load(items[0] ? 1 : 0, preferImage(files)), !busy)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) void load(items[0] ? 1 : 0, transfer.value) })
   return <div className="space-y-5">
     <header><h1 className="flex items-center gap-3 text-2xl font-semibold"><GitCompareArrows className="h-7 w-7 text-md-primary" />{t("title")}</h1><p className="mt-2 max-w-4xl text-sm leading-6 text-md-on-surface-variant">{t("description")}</p></header>
     <div className="grid gap-4 md:grid-cols-2">{([0, 1] as const).map(side => <section key={side} className={`${frame} space-y-3`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!busy && event.dataTransfer.files[0]) void load(side, event.dataTransfer.files[0]) }} onPaste={event => { if (!busy && event.clipboardData.files[0]) { event.preventDefault(); void load(side, event.clipboardData.files[0]) } }}>

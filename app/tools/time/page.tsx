@@ -1,6 +1,8 @@
 "use client"
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
@@ -119,6 +121,11 @@ export default function TimePage() {
   const [timerCompleted, setTimerCompleted] = useState(false)
   const [timestamp, setTimestamp] = useState<string>("")
   const [timestampUnit, setTimestampUnit] = useState<TimestampUnitChoice>("auto")
+  // 其它工具“在工具中打开”发来的文本
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) setTimestamp(text.trim())
+  })
   const [dateInput, setDateInput] = useState<string>("")
   const [dateResult, setDateResult] = useState<{ seconds: number; milliseconds: number } | null>(null)
   const [dateError, setDateError] = useState(false)

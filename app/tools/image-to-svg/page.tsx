@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { Copy, Download, ImagePlus, Loader2, PenTool, RotateCcw, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -57,6 +58,8 @@ export default function ImageToSvgPage() {
   }
   const choose = (next: File | null) => { invalidate(); setSampleLoading(false); replaceFile(next) }
   usePasteFiles(files => choose(preferImage(files)))
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) choose(transfer.value) })
   const update = (key: keyof ImageVectorOptions, value: string | number) => { setOptions(previous => ({ ...previous, [key]: value })); setResult(null); setError("") }
   const example = async (type: VectorSample) => {
     const id = invalidate(); setSampleLoading(true); setError(""); setResult(null)

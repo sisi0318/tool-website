@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { takeInputFiles } from "@/lib/file-input"
 import {
   AlertTriangle,
@@ -360,6 +361,8 @@ export default function QRCodeDecoder() {
   }, [validateAndProcessFiles])
 
   usePasteFiles(validateAndProcessFiles)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) validateAndProcessFiles([transfer.value]) })
 
   const pasteFromClipboard = useCallback(async () => {
     try {

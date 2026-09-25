@@ -27,6 +27,7 @@ import {
   ZoomOut,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { takeInputFiles } from "@/lib/file-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -283,6 +284,8 @@ export default function MemeSplitterPage() {
   )
 
   usePasteFiles((files) => handleFileUpload(preferImage(files)))
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) handleFileUpload(transfer.value) })
 
   const clearImage = useCallback(() => {
     resetResults()

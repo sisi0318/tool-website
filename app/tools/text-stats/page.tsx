@@ -1,6 +1,8 @@
 "use client"
 
 import { copyTextToClipboard } from "@/lib/clipboard"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 
 import type React from "react"
 import {
@@ -25,6 +27,11 @@ export default function TextStatsPage() {
   const t = useTranslations("textStats")
 
   const [text, setText] = useState("")
+  // 其它工具“在工具中打开”发来的文本
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) setText(text)
+  })
   const [copied, setCopied] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)

@@ -1,6 +1,8 @@
 "use client"
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { transferText } from "@/lib/tool-transfer"
 
 import type React from "react"
 
@@ -186,6 +188,11 @@ export default function QRCodePage() {
   const [appearance, dispatchAppearance] = useReducer(appearanceReducer, INITIAL_APPEARANCE_STATE)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [qrValue, setQrValue] = useState("")
+  // 其它工具“在工具中打开”发来的文本
+  useIncomingInput((transfer) => {
+    const text = transferText(transfer.value)
+    if (text !== null) setQrValue(text)
+  })
   const previousErrorCorrectionRef = useRef<ErrorCorrectionLevel>("M")
   const logoPreviewUrl = useObjectUrl(appearance.logoFile)
 

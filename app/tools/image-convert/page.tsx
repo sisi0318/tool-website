@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { CheckCircle2, Download, FileArchive, FileImage, ImageDown, Loader2, Trash2, Upload, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -93,6 +94,8 @@ export default function ImageConvertPage() {
   }
 
   usePasteFiles(addFiles)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) addFiles([transfer.value]) })
 
   const removeItem = (id: string) => {
     updateItems((current) => {

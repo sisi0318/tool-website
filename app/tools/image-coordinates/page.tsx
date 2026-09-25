@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { takeInputFiles } from "@/lib/file-input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -131,6 +132,8 @@ export default function ImageCoordinatesPage() {
   }, [t])
 
   usePasteFiles((files) => handleFileUpload(preferImage(files)))
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) handleFileUpload(transfer.value) })
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()

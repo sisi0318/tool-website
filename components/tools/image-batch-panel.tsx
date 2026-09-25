@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { CheckCircle2, Copy, Download, FileArchive, Files, Loader2, RotateCcw, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -96,6 +97,8 @@ export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: {
     setArchive(null); updateJobs(list => list.map(job => job.id === selected.id ? { ...job, result } : job))
   }
   usePasteFiles(add, !busy)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) add([transfer.value]) })
   return <div className="space-y-5">
     <header><Heading className="flex items-center gap-3 text-2xl font-semibold"><Files className="h-7 w-7 text-md-primary" />{t("title")}</Heading><p className="mt-2 max-w-4xl text-sm leading-6 text-md-on-surface-variant">{t("description")}</p></header>
     <section className={`${frame} space-y-4`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!busy) add(Array.from(event.dataTransfer.files)) }}>

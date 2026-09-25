@@ -52,33 +52,33 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     features: [["HAR / 请求瀑布图", "Local HTTP Archive viewer with per-phase timings and page filters"], ["慢请求 / 失败 / 重复", "Latency percentiles, HTTP errors, network failures and repeated URLs"], ["请求详情 / 摘要导出", "Review headers and bounded body text, export filtered reports with URL masking"]],
   },
   {
-    id: "image-diff", translationKey: "imageDiff", category: "image",
+    id: "image-diff", translationKey: "imageDiff", category: "image", accepts: ["image"],
     seo: { title: "图片对比与差异高亮", description: "在本地滑动对照或透明叠加两张图片，按像素高亮差异，支持不同尺寸、居中对齐、位置偏移、阈值调节与 PNG / JSON 导出。" },
     features: [["图片滑动 / 叠加对比", "Wipe slider and opacity overlay for design and screenshot comparison"], ["像素差异高亮", "Threshold, transparency-aware comparison and changed-pixel bounds"], ["尺寸 / 位置对齐", "Original-size top-left or centered alignment with pixel offsets"]],
   },
   {
-    id: "image-table", translationKey: "imageTable", category: "image",
+    id: "image-table", translationKey: "imageTable", category: "image", accepts: ["image"],
     seo: { title: "截图表格识别", description: "本地将表格截图识别为可编辑行列，支持网格线检测、分隔线调整、原图校对与 CSV / Excel 导出，保留编号、空白与多行文字。" },
     features: [["截图转表格 / Excel", "Local OCR to editable rows and columns, CSV and XLSX export"], ["网格线 / 行列校正", "Detect table borders, infer text alignment and adjust boundaries"], ["单元格校对", "Review uncertain text, preserve identifiers, blank cells and multiline content"]],
   },
   {
-    id: "image-redact", translationKey: "imageRedact", category: "image",
+    id: "image-redact", translationKey: "imageRedact", category: "image", accepts: ["image"],
     seo: { title: "图片隐私打码", description: "本地检测截图中的手机号、邮箱和身份证号码，手动画框与微调选区，确认后以纯色覆盖像素，导出 PNG 或 JPEG 图片。" },
     features: [["隐私检测 / 打码", "Find phone numbers, emails and Chinese identity numbers with local OCR"], ["手动画框 / 选区确认", "Review, adjust and select regions before opaque pixel redaction"], ["安全图片导出", "Flatten selected masks into PNG or JPEG without source metadata"]],
   },
   {
-    id: "image-batch", translationKey: "imageBatch", category: "image",
+    id: "image-batch", translationKey: "imageBatch", category: "image", accepts: ["image"],
     seo: { title: "图片批量处理", description: "本地批量 OCR、压缩图片、调整尺寸与转换 JPEG / PNG / WebP，支持逐项进度、取消后继续、失败重试、文本校对和 ZIP 下载。" },
     features: [["批量 OCR", "Recognize multiple images with one local model session"], ["批量压缩 / 转换", "Resize and convert PNG JPEG WebP images in a bounded queue"], ["队列 / ZIP 打包", "Retry failed files, retain completed work and export unique filenames"]],
   },
   {
-    id: "ocr", translationKey: "ocr", category: "image",
+    id: "ocr", translationKey: "ocr", category: "image", accepts: ["image"],
     seo: { title: "OCR 图片与 PDF 文字识别", description: "浏览器本地使用 PaddleOCR 识别中英文、小字、长截图和 PDF 扫描件，支持逐行核对、TXT / JSON 导出和可搜索 PDF。" },
     keywords: ["文字识别", "图片转文字", "提取文字"],
     features: [["OCR 文字识别", "Chinese and English image to text with PaddleOCR"], ["截图 / 小字 / 长图", "Local screenshot recognition with overlapping crops"], ["识别框 / 文本导出", "Review confidence, edit text, export TXT and JSON"], ["PDF OCR / 可搜索扫描件", "Recognize selected PDF pages, correct lines and export searchable PDFs"]],
   },
   {
-    id: "image-to-svg", translationKey: "imageToSvg", category: "image",
+    id: "image-to-svg", translationKey: "imageToSvg", category: "image", accepts: ["image"],
     seo: { title: "图片转 SVG", description: "浏览器本地将 PNG、JPEG、WebP 描摹成真实 SVG 路径，支持像素保真、平滑轮廓、黑白处理、精度调节与原图叠加对比。" },
     features: [["图片矢量化", "PNG JPEG WebP to SVG paths, processed locally"], ["像素保真 / 平滑描摹", "Faithful pixel contours or smooth vector curves"], ["精度与原图对比", "Color precision, tracing resolution and overlay comparison"]],
   },
@@ -100,7 +100,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     features: [["MessagePack", "Binary serialization, 64-bit integers and extension payloads"], ["CBOR", "Tags, bignums, indefinite containers and simple values"], ["扩展 JSON", "Lossless bytes, maps, special numbers and tagged values"]],
   },
   {
-    id: "url", translationKey: "urlTools", category: "network",
+    id: "url", translationKey: "urlTools", category: "network", accepts: ["text"],
     seo: { title: "URL 解析与参数编辑", description: "本地解析和重新组装 URL，保留重复查询参数、顺序和原始编码，编辑主机端口路径并查看百分号解码、IDN 域名及片段。" },
     features: [["URL 解析", "URL components, IDN, IPv6 and relative references"], ["查询参数", "Retain duplicate parameters, flags and query order"], ["URL 编辑 / 解码", "Edit and rebuild query strings without losing raw encodings"]],
   },
@@ -362,7 +362,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "exif-viewer",
     translationKey: "exifViewer",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "EXIF 查看器",
       description: "在线图片 EXIF 元数据查看工具，读取相机型号、拍摄参数与 GPS 位置信息，本地解析不上传。",
@@ -439,7 +439,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "image-compress",
     translationKey: "imageCompress",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "图片压缩",
       description: "在线图片压缩工具，支持 JPEG、WebP 质量调节与批量压缩，本地处理不上传。",
@@ -454,7 +454,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "image-convert",
     translationKey: "imageConvert",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "图片格式转换",
       description: "在线图片格式转换工具，PNG、JPEG、WebP 批量互转并可调整尺寸，本地处理不上传。",
@@ -468,7 +468,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "image-coordinates",
     translationKey: "imageCoordinates",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "图片坐标",
       description: "在线图片坐标拾取工具，点击获取像素坐标与百分比位置，适合标注与前端定位。",
@@ -481,7 +481,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "image-editor",
     translationKey: "imageEditor",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "图片编辑",
       description: "在线图片编辑工具，支持裁剪、旋转、翻转与亮度、对比度、饱和度调节，本地处理。",
@@ -495,7 +495,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "image-to-base64",
     translationKey: "imageToBase64",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "图片转 Base64",
       description: "在线图片转 Base64 编码工具，生成 Data URL 便于内嵌网页与样式表，本地转换。",
@@ -553,7 +553,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "jwt",
     translationKey: "jwt",
-    category: "security",
+    category: "security", accepts: ["text"],
     seo: {
       title: "JWT 解析",
       description: "在线 JWT 解析工具，解码 Header 与 Payload，检查签名算法与过期时间。",
@@ -582,7 +582,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "meme-splitter",
     translationKey: "memeSplitter",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "表情包切图",
       description: "在线九宫格切图工具，自动检测分隔线并切分表情包图片，支持打包下载。",
@@ -637,7 +637,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "qrcode",
     translationKey: "qrcode",
-    category: "image",
+    category: "image", accepts: ["text"],
     seo: {
       title: "二维码生成",
       description: "在线二维码生成器，支持文本、网址、Wi-Fi、名片等类型，可自定义颜色与 Logo。",
@@ -652,7 +652,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "qrcode-decode",
     translationKey: "qrcodeDecoder",
-    category: "image",
+    category: "image", accepts: ["image"],
     seo: {
       title: "二维码识别",
       description: "在线二维码识别工具，上传或粘贴图片即可解码内容，支持批量与增强识别。",
@@ -726,7 +726,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "text-stats",
     translationKey: "textStats",
-    category: "text",
+    category: "text", accepts: ["text"],
     seo: {
       title: "字数统计",
       description: "在线字数统计工具，统计字符、单词、行数、句子与预计阅读时间。",
@@ -740,7 +740,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
   {
     id: "time",
     translationKey: "time",
-    category: "life",
+    category: "life", accepts: ["text"],
     seo: {
       title: "时间工具",
       description: "在线时间工具，世界时钟、时间戳转换、秒表与倒计时。",

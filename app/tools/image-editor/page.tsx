@@ -1,6 +1,7 @@
 "use client"
 
 import { extensionForMime } from "@/lib/output-name"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import {
   useCallback,
   useEffect,
@@ -404,6 +405,8 @@ export default function ImageEditorPage() {
   )
 
   usePasteFiles((files) => handleFileUpload(preferImage(files)))
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) handleFileUpload(transfer.value) })
 
   const clearImage = useCallback(() => {
     exportIdRef.current += 1

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useMemo } from "react"
+import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { extensionForMime } from "@/lib/output-name"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -334,6 +335,8 @@ export default function ImageToBase64() {
   }
 
   usePasteFiles((files) => void addFiles(files), !isProcessing)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) void addFiles([transfer.value]) })
 
   // 拖拽处理
   const handleDragOver = (e: React.DragEvent) => {
