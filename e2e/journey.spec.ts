@@ -1,8 +1,14 @@
 import { expect, test, type Page } from "@playwright/test"
 
 async function startJourney(page: Page, text: string) {
-  await page.getByRole("textbox", { name: "从一份数据开始" }).fill(text)
-  await page.getByRole("button", { name: "开始探索" }).click()
+  const input = page.getByRole("textbox", { name: "从一份数据开始" })
+  const start = page.getByRole("button", { name: "开始探索" })
+  // 页面可能还没水合：先于水合的输入会被 React 重置，按钮一直禁用。填到按钮可用为止
+  await expect(async () => {
+    await input.fill(text)
+    await expect(start).toBeEnabled({ timeout: 1000 })
+  }).toPass()
+  await start.click()
 }
 
 /** 当前值卡片里的正文;识别芯片也会写出类似「plain text」的字样,所以只认 <pre> */
