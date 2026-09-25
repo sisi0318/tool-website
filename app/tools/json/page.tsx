@@ -20,6 +20,16 @@ import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { escapeJsonText, sortJsonKeys, tryRepairCommonJson, unescapeJsonText } from "@/lib/json-text-tools"
 import { downloadBlob } from "@/lib/object-url"
 import { useTextHistory } from "@/hooks/use-text-history"
+import { ErrorLocation } from "@/components/tools/error-location"
+import { jsonErrorLocation, type TextLocation } from "@/lib/text-location"
+
+const JSON_EDITOR_ID = "json-editor"
+
+/** js-yaml 的报错带 mark（从 0 开始的行列） */
+function yamlErrorLocation(error: unknown): TextLocation | null {
+  const mark = (error as { mark?: { line?: number; column?: number } } | null)?.mark
+  return typeof mark?.line === "number" ? { line: mark.line + 1, column: (mark.column ?? 0) + 1 } : null
+}
 
 export default function JsonTool() {
   const t = useTranslations("json")
@@ -41,7 +51,7 @@ export default function JsonTool() {
   // 折叠时记下原文和折叠结果；编辑框内容还等于折叠结果才算折叠状态，改过就不会被“展开”覆盖
   const [collapsedFrom, setCollapsedFrom] = useState<{ original: string; collapsed: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [errorPosition, setErrorPosition] = useState<{ line: number; column: number } | null>(null)
+  const [errorPosition, setErrorPosition] = useState<TextLocation | null>(null)
   const [repairSuggestion, setRepairSuggestion] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -76,17 +86,7 @@ export default function JsonTool() {
         if (!(err instanceof Error)) return
 
         setError(err.message)
-        const posMatch = err.message.match(/at position (\d+)/)
-        if (posMatch?.[1]) {
-          const position = Number.parseInt(posMatch[1], 10)
-          const lines = jsonText.substring(0, position).split("\n")
-          setErrorPosition({
-            line: lines.length,
-            column: lines[lines.length - 1].length + 1,
-          })
-        } else {
-          setErrorPosition(null)
-        }
+        setErrorPosition(jsonErrorLocation(jsonText, err))
 
         const repaired = tryRepairCommonJson(jsonText)
         setRepairSuggestion(
@@ -116,18 +116,7 @@ export default function JsonTool() {
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
-
-        // Try to extract line and column from error message
-        const posMatch = err.message.match(/at position (\d+)/)
-        if (posMatch && posMatch[1]) {
-          const position = Number.parseInt(posMatch[1], 10)
-          const lines = jsonText.substring(0, position).split("\n")
-          setErrorPosition({
-            line: lines.length,
-            column: lines[lines.length - 1].length + 1,
-          })
-
-        }
+        setErrorPosition(jsonErrorLocation(jsonText, err))
 
         const repaired = tryRepairCommonJson(jsonText)
         setRepairSuggestion(
@@ -153,17 +142,7 @@ export default function JsonTool() {
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
-
-        // Try to extract line and column from error message
-        const posMatch = err.message.match(/at position (\d+)/)
-        if (posMatch && posMatch[1]) {
-          const position = Number.parseInt(posMatch[1], 10)
-          const lines = jsonText.substring(0, position).split("\n")
-          setErrorPosition({
-            line: lines.length,
-            column: lines[lines.length - 1].length + 1,
-          })
-        }
+        setErrorPosition(jsonErrorLocation(jsonText, err))
       }
     }
   }
@@ -231,6 +210,7 @@ export default function JsonTool() {
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
+        setErrorPosition(yamlErrorLocation(err))
       }
     }
   }
@@ -357,17 +337,7 @@ export default function JsonTool() {
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message)
-
-          // Try to extract line and column from error message
-          const posMatch = err.message.match(/at position (\d+)/)
-          if (posMatch && posMatch[1]) {
-            const position = Number.parseInt(posMatch[1], 10)
-            const lines = content.substring(0, position).split("\n")
-            setErrorPosition({
-              line: lines.length,
-              column: lines[lines.length - 1].length + 1,
-            })
-          }
+          setErrorPosition(jsonErrorLocation(content, err))
         }
       }
     }
@@ -399,17 +369,7 @@ export default function JsonTool() {
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message)
-
-          // Try to extract line and column from error message
-          const posMatch = err.message.match(/at position (\d+)/)
-          if (posMatch && posMatch[1]) {
-            const position = Number.parseInt(posMatch[1], 10)
-            const lines = content.substring(0, position).split("\n")
-            setErrorPosition({
-              line: lines.length,
-              column: lines[lines.length - 1].length + 1,
-            })
-          }
+          setErrorPosition(jsonErrorLocation(content, err))
         }
       }
     }
@@ -567,10 +527,8 @@ export default function JsonTool() {
             <div className="font-medium">{t("parseError")}</div>
             <div className="text-sm mt-1">{error}</div>
             {errorPosition && (
-              <div className="text-xs mt-1 opacity-90">
-                {t("position")
-                  .replace("{line}", String(errorPosition.line))
-                  .replace("{column}", String(errorPosition.column))}
+              <div className="mt-2 text-xs">
+                <ErrorLocation location={errorPosition} targetId={JSON_EDITOR_ID} />
               </div>
             )}
             {repairSuggestion && (
@@ -631,6 +589,7 @@ export default function JsonTool() {
             </CardHeader>
             <CardContent className="p-0">
               <textarea
+                id={JSON_EDITOR_ID}
                 ref={textareaRef}
                 className="h-[62vh] min-h-96 max-h-[48rem] w-full resize-none border-0 bg-[var(--md-sys-color-surface-container-low)] p-4 font-mono text-sm leading-relaxed text-[var(--md-sys-color-on-surface)] outline-none transition-colors focus:bg-[var(--md-sys-color-surface-container-lowest)]"
                 value={jsonText}

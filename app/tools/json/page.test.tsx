@@ -60,4 +60,12 @@ describe("JSON tool history", () => {
     expect(screen.queryByRole("button", { name: "expand" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "collapse" })).toBeInTheDocument()
   })
+
+  it("points at the error even when the engine gives no position", async () => {
+    render(<JsonTool />)
+    type('{\n  "a": }')
+    fireEvent.click(await screen.findByRole("button", { name: "revealError" }))
+    expect(editor()).toHaveFocus()
+    expect(editor().selectionStart).toBe(9)
+  })
 })
