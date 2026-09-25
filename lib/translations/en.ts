@@ -3312,6 +3312,8 @@ textStats: {
   frequencyLimited: "For responsiveness, word frequency analyzes only the first {count} characters of long text.",
 },
 utilityWorkbench: {
+  staleOutput: "The input or operation changed; this is the previous result. Press Ctrl+Enter (⌘+Enter) or Run to update it.",
+  autoRunPaused: "The input is long, so automatic runs are paused; press Ctrl+Enter (⌘+Enter) to run.",
   inputSettings: "Input & settings",
   operation: "Operation",
   input: "Input",

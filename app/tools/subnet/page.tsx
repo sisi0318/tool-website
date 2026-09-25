@@ -32,7 +32,7 @@ export default function SubnetPage() {
   }
 
   return (
-    <UtilityWorkbench
+    <UtilityWorkbench autoRun autoRunKey={probe}
       title={t("title")}
       description={t("description")}
       icon={<Network className="h-6 w-6" />}

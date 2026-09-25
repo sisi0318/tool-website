@@ -35,7 +35,7 @@ export default function DataDetectorPage() {
   const run = () => setResult(detectData(input))
 
   return (
-    <UtilityWorkbench
+    <UtilityWorkbench autoRun
       title={t("title")}
       description={t("description")}
       icon={<ScanSearch className="h-6 w-6" />}

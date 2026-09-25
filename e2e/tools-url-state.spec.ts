@@ -13,9 +13,9 @@ test.describe("工具页 URL 状态", () => {
     const input = "a,b\n1,2"
     await page.goto(`/tools/csv?op=to-tsv&input=${encodeURIComponent(input)}`, { waitUntil: "domcontentloaded" })
 
-    const operation = page.locator("#utility-workbench-operation")
+    const operation = page.locator("[data-workbench-operation]")
     await expect(operation).toContainText("转为 TSV")
-    await expect(page.locator("#utility-workbench-input")).toHaveValue(input)
+    await expect(page.locator("[data-workbench-input]")).toHaveValue(input)
 
     // 切到非默认操作:URL 跟着变
     await operation.click()
@@ -31,7 +31,7 @@ test.describe("工具页 URL 状态", () => {
 
   test("过长的 input 参数被忽略", async ({ page }) => {
     await page.goto(`/tools/csv?input=${encodeURIComponent("x".repeat(5000))}`, { waitUntil: "domcontentloaded" })
-    await expect(page.locator("#utility-workbench-operation")).toBeVisible()
-    await expect(page.locator("#utility-workbench-input")).toHaveValue("")
+    await expect(page.locator("[data-workbench-operation]")).toBeVisible()
+    await expect(page.locator("[data-workbench-input]")).toHaveValue("")
   })
 })

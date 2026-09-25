@@ -159,7 +159,7 @@ test.describe("mobile tool layouts", () => {
     page,
   }) => {
     await openChineseTool(page, "/tools/xml")
-    const input = page.locator("#utility-workbench-input")
+    const input = page.locator("[data-workbench-input]")
     await expect(input).toBeVisible()
     // the workbench textarea is styled text-sm (14px) and would trigger iOS auto-zoom
     expect(await input.evaluate((element) => getComputedStyle(element).fontSize)).toBe("16px")

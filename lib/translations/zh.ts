@@ -3313,6 +3313,8 @@ textStats: {
   frequencyLimited: "文本较长，高频词仅分析前 {count} 个字符。",
 },
 utilityWorkbench: {
+  staleOutput: "输入或操作已改动，下面是上一次的结果。按 Ctrl+Enter（⌘+Enter）或点击运行更新。",
+  autoRunPaused: "输入较长，已暂停自动运行；按 Ctrl+Enter（⌘+Enter）运行。",
   inputSettings: "输入与设置",
   operation: "操作",
   input: "输入",

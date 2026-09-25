@@ -40,7 +40,7 @@ export default function JsonSchemaPage() {
   }
 
   return (
-    <UtilityWorkbench
+    <UtilityWorkbench autoRun autoRunKey={schema}
       title={t("title")}
       description={t("description")}
       icon={<Braces className="h-6 w-6" />}

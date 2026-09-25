@@ -1,5 +1,5 @@
 import React from "react"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { UtilityWorkbench } from "./utility-workbench"
@@ -103,5 +103,88 @@ describe("UtilityWorkbench mobile layout", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Copy" }))
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Copy failed"))
+  })
+})
+
+function Harness({ autoRun = false, onRunSpy = vi.fn(), operations = [{ value: "upper", label: "Upper" }, { value: "lower", label: "Lower" }] }: {
+  autoRun?: boolean
+  onRunSpy?: (input: string) => void
+  operations?: Array<{ value: string; label: string }>
+}) {
+  const [input, setInput] = React.useState("")
+  const [output, setOutput] = React.useState("")
+  const [operation, setOperation] = React.useState(operations[0].value)
+  return (
+    <UtilityWorkbench
+      title="Demo tool"
+      description="Demo description"
+      icon={<span>Icon</span>}
+      input={input}
+      output={output}
+      operation={operation}
+      operations={operations}
+      onInputChange={setInput}
+      onOperationChange={setOperation}
+      onRun={() => { onRunSpy(input); setOutput(operation === "upper" ? input.toUpperCase() : input.toLowerCase()) }}
+      onClear={() => { setInput(""); setOutput("") }}
+      onSample={() => setInput("sample")}
+      autoRun={autoRun}
+      autoRunMaxChars={20}
+    />
+  )
+}
+
+describe("UtilityWorkbench run flow", () => {
+  afterEach(() => { vi.useRealTimers() })
+
+  it("runs with Ctrl/Cmd+Enter from the input", async () => {
+    render(<Harness />)
+    const [input, output] = screen.getAllByRole("textbox")
+    fireEvent.change(input, { target: { value: "abc" } })
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true })
+    await waitFor(() => expect(output).toHaveValue("ABC"))
+    fireEvent.change(input, { target: { value: "xyz" } })
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true })
+    await waitFor(() => expect(output).toHaveValue("XYZ"))
+  })
+
+  it("marks the output stale when the input changes and blocks copying it", async () => {
+    render(<Harness />)
+    const [input] = screen.getAllByRole("textbox")
+    fireEvent.change(input, { target: { value: "abc" } })
+    fireEvent.click(screen.getByRole("button", { name: "Run" }))
+    await waitFor(() => expect(screen.getAllByRole("textbox")[1]).toHaveValue("ABC"))
+    expect(screen.queryByText("staleOutput")).not.toBeInTheDocument()
+    fireEvent.change(input, { target: { value: "abcd" } })
+    expect(screen.getByText("staleOutput")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Copy" })).toBeDisabled()
+  })
+
+  it("runs the sample right after loading it", async () => {
+    render(<Harness />)
+    fireEvent.click(screen.getByRole("button", { name: "Sample" }))
+    await waitFor(() => expect(screen.getAllByRole("textbox")[1]).toHaveValue("SAMPLE"))
+  })
+
+  it("runs automatically after typing pauses and stops for long input", async () => {
+    vi.useFakeTimers()
+    const onRunSpy = vi.fn()
+    render(<Harness autoRun onRunSpy={onRunSpy} />)
+    const [input] = screen.getAllByRole("textbox")
+    fireEvent.change(input, { target: { value: "ab" } })
+    fireEvent.change(input, { target: { value: "abc" } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(350) })
+    expect(onRunSpy).toHaveBeenCalledTimes(1)
+    expect(onRunSpy).toHaveBeenLastCalledWith("abc")
+
+    fireEvent.change(input, { target: { value: "x".repeat(21) } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(350) })
+    expect(onRunSpy).toHaveBeenCalledTimes(1)
+    expect(screen.getByText("autoRunPaused")).toBeInTheDocument()
+  })
+
+  it("hides the operation picker when there is only one operation", () => {
+    render(<Harness operations={[{ value: "upper", label: "Upper" }]} />)
+    expect(screen.queryByText("Operation")).not.toBeInTheDocument()
   })
 })

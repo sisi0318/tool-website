@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
 import { usePathname } from "next/navigation"
-import { Check, Copy, Play, RotateCcw, Sparkles } from "lucide-react"
+import { Check, Copy, Loader2, Play, RotateCcw, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +21,9 @@ import { SendToMenu } from "@/components/tools/send-to-menu"
 const OPERATION_PARAM = "op"
 const INPUT_PARAM = "input"
 const MAX_URL_INPUT_CHARS = 4096
+/** 自动运行的防抖与输入上限：更长的输入改为提示用 Ctrl/⌘+Enter 手动运行 */
+const AUTO_RUN_DELAY_MS = 300
+const DEFAULT_AUTO_RUN_MAX_CHARS = 200_000
 
 export interface WorkbenchOperation {
   value: string
@@ -54,6 +57,12 @@ interface UtilityWorkbenchProps {
   additionalInput?: ReactNode
   result?: ReactNode
   footer?: ReactNode
+  /** 输入或操作变化后自动运行（防抖）；只给同步、开销小的工具开 */
+  autoRun?: boolean
+  /** 超过这个长度不再自动运行 */
+  autoRunMaxChars?: number
+  /** 页面自己的选项（如 SQL 方言）变化时也要自动重跑，把它们拼成一个字符串传进来 */
+  autoRunKey?: string
 }
 
 export function UtilityWorkbench({
@@ -83,8 +92,13 @@ export function UtilityWorkbench({
   additionalInput,
   result,
   footer,
+  autoRun = false,
+  autoRunMaxChars = DEFAULT_AUTO_RUN_MAX_CHARS,
+  autoRunKey = "",
 }: UtilityWorkbenchProps) {
   const t = useTranslations("utilityWorkbench")
+  // 工作台里可能同时挂着好几个工具，id 不能写死
+  const fieldId = useId()
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState("")
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -111,6 +125,58 @@ export function UtilityWorkbench({
       if (copyFeedbackTimeoutRef.current) clearTimeout(copyFeedbackTimeoutRef.current)
     }
   }, [])
+
+  const hasRunnableInput = canRun ?? (allowWhitespaceInput ? input.length > 0 : input.trim().length > 0)
+  const [pending, setPending] = useState(false)
+  const busy = running || pending
+  // 输出对应的是哪一次输入与操作；两者之一变了，结果就过期了
+  const [resultSource, setResultSource] = useState<{ input: string; operation: string } | null>(null)
+  const stale = Boolean(output) && resultSource !== null && (resultSource.input !== input || resultSource.operation !== operation)
+
+  useEffect(() => {
+    // 页面在别处更新了输出（比如自动识别、反向处理），也视为对应当前的输入
+    if (output) setResultSource({ input, operation })
+    // 只在输出变化时记录
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [output])
+
+  const run = useCallback(async () => {
+    if (busy || !hasRunnableInput) return
+    const source = { input, operation }
+    setPending(true)
+    // 让出一帧：同步的重计算开始前先把"处理中"画出来
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    try {
+      await onRun()
+      setResultSource(source)
+    } finally {
+      setPending(false)
+    }
+  }, [busy, hasRunnableInput, input, onRun, operation])
+
+  const runRef = useRef(run)
+  runRef.current = run
+  const tooLargeForAutoRun = autoRun && input.length > autoRunMaxChars
+
+  useEffect(() => {
+    if (!autoRun || tooLargeForAutoRun || !hasRunnableInput) return
+    const timer = setTimeout(() => void runRef.current(), AUTO_RUN_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [autoRun, autoRunKey, hasRunnableInput, input, operation, tooLargeForAutoRun])
+
+  // 点"示例"后等输入更新完再运行一次
+  const runAfterSampleRef = useRef(false)
+  useEffect(() => {
+    if (!runAfterSampleRef.current) return
+    runAfterSampleRef.current = false
+    void runRef.current()
+  }, [input])
+
+  const handleShortcut = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey)) return
+    event.preventDefault()
+    void run()
+  }
 
   const pathname = usePathname()
   const syncUrl = pathname !== "/tools"
@@ -165,36 +231,40 @@ export function UtilityWorkbench({
       </section>
 
       <div className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
+        <Card onKeyDown={handleShortcut} className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
           <CardHeader className="p-4 sm:p-6">
             <CardTitle>{t("inputSettings")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
-            <div>
-              <Label htmlFor="utility-workbench-operation">{t("operation")}</Label>
-              <Select value={operation} onValueChange={onOperationChange}>
-                <SelectTrigger id="utility-workbench-operation" className="mt-2 min-h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {operations.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {operations.length > 1 && (
+              <div>
+                <Label htmlFor={`${fieldId}-operation`}>{t("operation")}</Label>
+                <Select value={operation} onValueChange={onOperationChange}>
+                  <SelectTrigger id={`${fieldId}-operation`} data-workbench-operation className="mt-2 min-h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {operations.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {controls}
 
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <Label htmlFor="utility-workbench-input">{inputLabel ?? t("input")}</Label>
+                <Label htmlFor={`${fieldId}-input`}>{inputLabel ?? t("input")}</Label>
                 <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
                   {t("characters").replace("{count}", String(input.length))}
                 </span>
               </div>
               <Textarea
-                id="utility-workbench-input"
+                id={`${fieldId}-input`}
+                data-workbench-input
+                data-primary-input
                 value={input}
                 disabled={inputDisabled}
                 onChange={(event) => onInputChange(event.target.value)}
@@ -206,6 +276,10 @@ export function UtilityWorkbench({
 
             {additionalInput}
 
+            {tooLargeForAutoRun && (
+              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("autoRunPaused")}</p>
+            )}
+
             {error && (
               <p
                 role="alert"
@@ -216,12 +290,13 @@ export function UtilityWorkbench({
             )}
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <Button onClick={() => void onRun()} disabled={running || !(canRun ?? (allowWhitespaceInput ? input.length > 0 : input.trim().length > 0))} className="col-span-2 min-h-11 w-full gap-2 sm:w-auto">
-                <Play className="h-4 w-4" />
-                {running ? t("processing") : (runLabel ?? t("run"))}
+              <Button onClick={() => void run()} disabled={busy || !hasRunnableInput} className="col-span-2 min-h-11 w-full gap-2 sm:w-auto">
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {busy ? t("processing") : (runLabel ?? t("run"))}
+                <kbd aria-hidden="true" className="ml-1 hidden rounded border border-current/30 px-1 text-[10px] font-medium opacity-70 sm:inline">Ctrl ↵</kbd>
               </Button>
               {onSample && (
-                <Button type="button" variant="outline" onClick={onSample} className="min-h-11 w-full gap-2 sm:w-auto">
+                <Button type="button" variant="outline" onClick={() => { runAfterSampleRef.current = true; onSample() }} className="min-h-11 w-full gap-2 sm:w-auto">
                   <Sparkles className="h-4 w-4" />{t("sample")}
                 </Button>
               )}
@@ -236,8 +311,8 @@ export function UtilityWorkbench({
           <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-4 sm:p-6">
             <CardTitle>{outputLabel ?? t("output")}</CardTitle>
             <div className="ml-auto flex flex-wrap gap-2">
-            <SendToMenu value={output} source={title} disabled={!output || running} />
-            <Button type="button" variant="outline" size="sm" onClick={copyOutput} disabled={!output} className="min-h-10 gap-2">
+            <SendToMenu value={output} source={title} disabled={!output || busy || stale} />
+            <Button type="button" variant="outline" size="sm" onClick={copyOutput} disabled={!output || stale} className="min-h-10 gap-2">
               {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
               {copied ? t("copied") : t("copy")}
             </Button>
@@ -252,6 +327,12 @@ export function UtilityWorkbench({
                 {copyError}
               </p>
             )}
+            {stale && (
+              <p role="status" className="rounded-2xl bg-[var(--md-sys-color-surface-container)] px-4 py-3 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                {t("staleOutput")}
+              </p>
+            )}
+            <div className={stale ? "opacity-60" : undefined}>
             {result ?? (
               <Textarea
                 value={output}
@@ -261,6 +342,7 @@ export function UtilityWorkbench({
                 className="min-h-48 resize-y rounded-2xl bg-[var(--md-sys-color-surface-container-low)] font-mono text-sm leading-6 sm:min-h-[26rem]"
               />
             )}
+            </div>
             {footer}
           </CardContent>
         </Card>

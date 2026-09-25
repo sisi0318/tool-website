@@ -38,7 +38,7 @@ export default function MarkdownPage() {
   }
 
   return (
-    <UtilityWorkbench
+    <UtilityWorkbench autoRun
       title={t("title")}
       description={t("description")}
       icon={<FileText className="h-6 w-6" />}
