@@ -2066,6 +2066,8 @@ crontab: {
   collapse: "收起",
   expand: "展开",
   includeSecondsHelp: "启用 6 位表达式（包含秒）",
+  secondsFieldDetected: "检测到 Quartz / Spring 风格的含秒表达式，已切换为“包含秒”",
+  standardCronDetected: "检测到标准 5 段表达式，已关闭“包含秒”",
   displayTimezone: "显示时区",
   history: "历史记录",
   export: "导出",

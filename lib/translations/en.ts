@@ -2065,6 +2065,8 @@ crontab: {
   collapse: "Collapse",
   expand: "Expand",
   includeSecondsHelp: "Use a 6-field expression that includes seconds",
+  secondsFieldDetected: "Detected a Quartz/Spring expression with seconds; switched to “Include seconds”",
+  standardCronDetected: "Detected a standard 5-field expression; turned off “Include seconds”",
   displayTimezone: "Display Timezone",
   history: "History",
   export: "Export",

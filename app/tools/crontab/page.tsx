@@ -21,6 +21,7 @@ import {
   expandCronField,
   generateCronDescription,
   getNextExecutionTimes,
+  inferCronIncludeSeconds,
 } from "@/lib/crontab-tools"
 import { downloadBlob } from "@/lib/object-url"
 
@@ -293,6 +294,9 @@ export default function CrontabPage() {
   const [showHistory, setShowHistory] = useState(false)
   const debounceTimerRef = useRef<number | null>(null)
   const parseTimerRef = useRef<number | null>(null)
+  // 只有用户在可视化选择器里点选过，才由选择结果重写表达式；
+  // 切到"可视化"页签或切换秒模式都不该覆盖手输或预设的表达式
+  const visualEditedRef = useRef(false)
 
   // Builder state
   const [seconds, setSeconds] = useState("0")
@@ -418,12 +422,12 @@ export default function CrontabPage() {
   }, [selectedMinutes, selectedHours, selectedDays, selectedMonths, selectedWeekdays, includeSeconds])
 
   // 增强的验证函数
-  const validateExpression = useCallback((expr: string) => {
+  const validateExpression = useCallback((expr: string, withSeconds = includeSeconds) => {
     const errors: string[] = []
     const warnings: string[] = []
-    
+
     const parts = expr.trim().split(/\s+/)
-    const expectedParts = includeSeconds ? 6 : 5
+    const expectedParts = withSeconds ? 6 : 5
     
     if (parts.length !== expectedParts && parts.length !== expectedParts + 1) {
       errors.push(formatTranslation(t, "invalidPartCount", {
@@ -434,7 +438,7 @@ export default function CrontabPage() {
     }
     
     // 验证各字段范围
-    const ranges = includeSeconds 
+    const ranges = withSeconds
       ? [
           { name: t("seconds"), min: 0, max: 59, value: parts[0] },
           { name: t("minute"), min: 0, max: 59, value: parts[1] },
@@ -472,8 +476,9 @@ export default function CrontabPage() {
       }
     })
     
-    // 检查潜在问题
-    if (parts[includeSeconds ? 3 : 2] !== "*" && parts[includeSeconds ? 5 : 4] !== "*") {
+    // 检查潜在问题（"?" 与 "*" 一样表示不限定）
+    const restricted = (value: string | undefined) => value !== undefined && value !== "*" && value !== "?"
+    if (restricted(parts[withSeconds ? 3 : 2]) && restricted(parts[withSeconds ? 5 : 4])) {
       warnings.push(t("dayAndWeekWarning"))
     }
     
@@ -481,7 +486,7 @@ export default function CrontabPage() {
   }, [includeSeconds, t])
 
   // Parse cron expression and generate description
-  const parseCron = (expr: string) => {
+  const parseCron = (expr: string, withSeconds = includeSeconds) => {
     try {
       if (parseTimerRef.current !== null) {
         window.clearTimeout(parseTimerRef.current)
@@ -490,7 +495,7 @@ export default function CrontabPage() {
       setIsProcessing(true)
 
       // 使用增强的验证函数
-      const validation = validateExpression(expr)
+      const validation = validateExpression(expr, withSeconds)
       setErrors(validation.errors)
       setWarnings(validation.warnings)
       setIsValid(validation.isValid)
@@ -506,11 +511,11 @@ export default function CrontabPage() {
       parseTimerRef.current = window.setTimeout(() => {
         try {
           // 生成人类可读的描述
-          const desc = generateCronDescription(expr, includeSeconds, t)
+          const desc = generateCronDescription(expr, withSeconds, t)
           setDescription(desc)
 
           // 生成下一个执行时间
-          const nextRunTimes = getNextExecutionTimes(expr, includeSeconds, 8)
+          const nextRunTimes = getNextExecutionTimes(expr, withSeconds, 8)
           const formattedTimes = nextRunTimes.map((date) => {
             const options: Intl.DateTimeFormatOptions = {
               year: "numeric",
@@ -518,7 +523,7 @@ export default function CrontabPage() {
               day: "numeric",
               hour: use24HourFormat ? "2-digit" : "numeric",
               minute: "2-digit",
-              second: includeSeconds ? "2-digit" : undefined,
+              second: withSeconds ? "2-digit" : undefined,
               hour12: !use24HourFormat,
               timeZone: selectedTimezone === "local" ? undefined : selectedTimezone,
             }
@@ -528,7 +533,7 @@ export default function CrontabPage() {
           setNextRuns(formattedTimes)
 
           // 生成更多执行时间用于时间线可视化
-          const timelineData = getNextExecutionTimes(expr, includeSeconds, 50)
+          const timelineData = getNextExecutionTimes(expr, withSeconds, 50)
           setTimelineTimes(timelineData)
           
           // 添加到历史记录
@@ -573,10 +578,22 @@ export default function CrontabPage() {
   }
 
   // Update builder from expression
-  const updateBuilderFromExpression = (expr: string) => {
+  const updateBuilderFromExpression = (expr: string, withSeconds = includeSeconds) => {
     const parts = expr.trim().split(/\s+/)
 
-    if (includeSeconds && parts.length >= 6) {
+    // 可视化选择器同步显示当前表达式；只填入，不回写表达式
+    const offset = withSeconds ? 1 : 0
+    if (parts.length >= 5 + offset) {
+      const pick = (field: string, min: number, max: number) =>
+        field === "*" || field === "?" ? [] : expandCronField(field, min, max)
+      setSelectedMinutes(pick(parts[offset], 0, 59))
+      setSelectedHours(pick(parts[offset + 1], 0, 23))
+      setSelectedDays(pick(parts[offset + 2], 1, 31))
+      setSelectedMonths(pick(parts[offset + 3], 1, 12))
+      setSelectedWeekdays([...new Set(pick(parts[offset + 4], 0, 7).map((day) => day % 7))].sort((a, b) => a - b))
+    }
+
+    if (withSeconds && parts.length >= 6) {
       setSeconds(parts[0])
       setMinute(parts[1])
       setHour(parts[2])
@@ -584,7 +601,7 @@ export default function CrontabPage() {
       setMonth(parts[4])
       setDayOfWeek(parts[5])
       setYear(parts[6] || "")
-    } else if (!includeSeconds && parts.length >= 5) {
+    } else if (!withSeconds && parts.length >= 5) {
       setSeconds("0")
       setMinute(parts[0])
       setHour(parts[1])
@@ -603,17 +620,26 @@ export default function CrontabPage() {
       window.clearTimeout(debounceTimerRef.current)
     }
     debounceTimerRef.current = window.setTimeout(() => {
-      parseCron(value)
-      updateBuilderFromExpression(value)
+      applyExpression(value)
       debounceTimerRef.current = null
     }, 300)
+  }
+
+  // 粘贴 Quartz / Spring 的 6 段表达式时自动改为含秒解析，含秒模式下选了 5 段表达式则切回
+  const applyExpression = (value: string) => {
+    const withSeconds = inferCronIncludeSeconds(value, includeSeconds)
+    if (withSeconds !== includeSeconds) {
+      setIncludeSeconds(withSeconds)
+      toast({ title: t(withSeconds ? "secondsFieldDetected" : "standardCronDetected"), duration: 3000 })
+    }
+    parseCron(value, withSeconds)
+    updateBuilderFromExpression(value, withSeconds)
   }
 
   // Handle preset selection
   const handlePresetSelect = (value: string) => {
     setExpression(value)
-    parseCron(value)
-    updateBuilderFromExpression(value)
+    applyExpression(value)
   }
 
   // 导出配置
@@ -772,12 +798,18 @@ export default function CrontabPage() {
     }
   }, [])
 
-  // 自动构建表达式
+  // 可视化选择器被点选后，由选择结果重建表达式
   useEffect(() => {
-    if (activeTab === "visual") {
+    if (activeTab === "visual" && visualEditedRef.current) {
+      visualEditedRef.current = false
       buildExpressionFromVisual()
     }
   }, [selectedMinutes, selectedHours, selectedDays, selectedMonths, selectedWeekdays, buildExpressionFromVisual, activeTab])
+
+  const editVisual = (update: (values: number[]) => void) => (values: number[]) => {
+    visualEditedRef.current = true
+    update(values)
+  }
 
   return (
     <div className="container mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
@@ -919,7 +951,7 @@ export default function CrontabPage() {
                     min={0}
                     max={59}
                     selected={selectedMinutes}
-                    onChange={setSelectedMinutes}
+                    onChange={editVisual(setSelectedMinutes)}
                   />
                   
                   <TimeSelector
@@ -927,7 +959,7 @@ export default function CrontabPage() {
                     min={0}
                     max={23}
                     selected={selectedHours}
-                    onChange={setSelectedHours}
+                    onChange={editVisual(setSelectedHours)}
                   />
                   
                   <TimeSelector
@@ -935,7 +967,7 @@ export default function CrontabPage() {
                     min={1}
                     max={31}
                     selected={selectedDays}
-                    onChange={setSelectedDays}
+                    onChange={editVisual(setSelectedDays)}
                   />
                   
                   <TimeSelector
@@ -943,7 +975,7 @@ export default function CrontabPage() {
                     min={1}
                     max={12}
                     selected={selectedMonths}
-                    onChange={setSelectedMonths}
+                    onChange={editVisual(setSelectedMonths)}
                     format={(value) => {
                       return new Intl.DateTimeFormat(locale, { month: "short" })
                         .format(new Date(2024, value - 1, 1))
@@ -955,7 +987,7 @@ export default function CrontabPage() {
                     min={0}
                     max={6}
                     selected={selectedWeekdays}
-                    onChange={setSelectedWeekdays}
+                    onChange={editVisual(setSelectedWeekdays)}
                     format={(value) => {
                       return new Intl.DateTimeFormat(locale, { weekday: "short" })
                         .format(new Date(2024, 0, 7 + value))

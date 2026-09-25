@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { expandCronField, generateCronDescription, getNextExecutionTimes } from "./crontab-tools"
+import { expandCronField, generateCronDescription, getNextExecutionTimes, inferCronIncludeSeconds } from "./crontab-tools"
 
 describe("crontab tools", () => {
   it("expands ranges with steps correctly", () => {
@@ -51,5 +51,32 @@ describe("crontab tools", () => {
 
     expect(description).toBe("Run at minute 0, at 1:00 through 3:00")
     expect(description).not.toMatch(/[\u3400-\u9fff]/)
+  })
+})
+
+describe("inferCronIncludeSeconds", () => {
+  it("reads six fields as Quartz / Spring seconds-first when that is the only sensible reading", () => {
+    expect(inferCronIncludeSeconds("0 0 9 * * ?", false)).toBe(true)
+    expect(inferCronIncludeSeconds("0 0 9 * * *", false)).toBe(true)
+    expect(inferCronIncludeSeconds("0 0 9 * * 1-5", false)).toBe(true)
+    expect(inferCronIncludeSeconds("0 0 12 * * ? 2030", false)).toBe(true)
+  })
+
+  it("keeps the five-fields-plus-year reading for AWS style and explicit years", () => {
+    expect(inferCronIncludeSeconds("0 12 * * ? *", false)).toBe(false)
+    expect(inferCronIncludeSeconds("0 0 1 1 * 2030", false)).toBe(false)
+    expect(inferCronIncludeSeconds("*/5 * * * *", false)).toBe(false)
+  })
+
+  it("switches back to standard mode when a valid five-field expression is pasted", () => {
+    expect(inferCronIncludeSeconds("*/5 * * * *", true)).toBe(false)
+    expect(inferCronIncludeSeconds("0 */5 * * * *", true)).toBe(true)
+    expect(inferCronIncludeSeconds("bad * * * *", true)).toBe(true)
+  })
+
+  it("schedules the Quartz example daily at 09:00:00 once read with seconds", () => {
+    const start = new Date(2026, 0, 2, 12, 0, 0)
+    const runs = getNextExecutionTimes("0 0 9 * * ?", true, 2, start)
+    expect(runs.map((date) => [date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()])).toEqual([[3, 9, 0, 0], [4, 9, 0, 0]])
   })
 })

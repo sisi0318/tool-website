@@ -63,6 +63,50 @@ export function expandCronField(field: string, min: number, max: number): number
   return [...values].sort((left, right) => left - right)
 }
 
+const CRON_FIELD_RANGES = {
+  seconds: [0, 59],
+  minutes: [0, 59],
+  hours: [0, 23],
+  dayOfMonth: [1, 31],
+  month: [1, 12],
+  dayOfWeek: [0, 7],
+  year: [1970, 2199],
+} as const
+
+function isValidCronField(value: string, field: keyof typeof CRON_FIELD_RANGES): boolean {
+  // "?" 只在日、星期两个字段里有意义(Quartz / AWS 的"不指定")
+  if (value === "?") return field === "dayOfMonth" || field === "dayOfWeek"
+  const [min, max] = CRON_FIELD_RANGES[field]
+  return expandCronField(value, min, max).length > 0
+}
+
+function isValidCronLayout(parts: string[], includeSeconds: boolean): boolean {
+  const layout: Array<keyof typeof CRON_FIELD_RANGES> = includeSeconds
+    ? ["seconds", "minutes", "hours", "dayOfMonth", "month", "dayOfWeek", "year"]
+    : ["minutes", "hours", "dayOfMonth", "month", "dayOfWeek", "year"]
+  const required = layout.length - 1
+  if (parts.length !== required && parts.length !== required + 1) return false
+  return parts.every((part, index) => isValidCronField(part, layout[index]))
+}
+
+/**
+ * 判断一段表达式是否带秒字段,返回应当使用的 includeSeconds。
+ *
+ * 6 段表达式有两种读法:Quartz / Spring 的「秒 + 5 段」,和 AWS 等的「5 段 + 年」。
+ * 此前在默认的 5 段模式下一律按后者解析,`0 0 9 * * ?` 被算成「每月 9 日 00:00」而不给任何提示。
+ * 只有按「秒」读得通、且按「年」读不通或年份位只是 * / ? 时才认为带秒;
+ * 含秒模式下粘贴标准 5 段表达式则切回标准模式。其余情况维持当前模式。
+ */
+export function inferCronIncludeSeconds(expression: string, includeSeconds: boolean): boolean {
+  const parts = expression.trim().split(/\s+/).filter(Boolean)
+  if (includeSeconds) {
+    return !(parts.length === 5 && isValidCronLayout(parts, false))
+  }
+  if (parts.length === 7) return isValidCronLayout(parts, true)
+  if (parts.length !== 6 || !isValidCronLayout(parts, true)) return false
+  return !isValidCronLayout(parts, false) || parts[5] === "*" || parts[5] === "?"
+}
+
 function expandDayOfWeek(field: string): number[] {
   return [...new Set(expandCronField(field === "?" ? "*" : field, 0, 7).map((value) => value === 7 ? 0 : value))]
     .sort((left, right) => left - right)
