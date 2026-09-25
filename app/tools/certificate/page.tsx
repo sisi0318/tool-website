@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { takeInputFiles } from "@/lib/file-input"
 import { FileUp, ShieldCheck } from "lucide-react"
 
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
@@ -71,7 +72,7 @@ export default function CertificatePage() {
       inputPlaceholder={t("placeholder")}
       controls={(
         <Button type="button" variant="outline" asChild className="min-h-11 gap-2">
-          <label><FileUp className="h-4 w-4" />{t("chooseFile")}<input type="file" className="sr-only" onChange={(event) => event.target.files?.[0] && void loadFile(event.target.files[0])} /></label>
+          <label><FileUp className="h-4 w-4" />{t("chooseFile")}<input type="file" className="sr-only" onChange={(event) => { const [file] = takeInputFiles(event); if (file) void loadFile(file) }} /></label>
         </Button>
       )}
       footer={<p className="text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">{t("privacyNote")}</p>}

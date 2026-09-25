@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
+import { takeInputFiles } from "@/lib/file-input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -365,7 +366,7 @@ export default function OfficeViewerPage() {
                 ref={fileInputRef}
                 type="file"
                 accept=".docx,.xls,.xlsx,.csv,.pptx"
-                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                onChange={(e) => { const [file] = takeInputFiles(e); if (file) void handleFileUpload(file) }}
                 className="hidden"
               />
               <button

@@ -6,6 +6,7 @@ import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { FileDropZone } from "@/components/tools/file-drop-zone"
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -162,7 +163,8 @@ const algorithmDescriptions: Record<string, string> = {
 
 export default function HashPage() {
   const t = useTranslations("hash")
-  const params = useToolRuntimeParams()
+  const tc = useTranslations("common")
+const params = useToolRuntimeParams()
   const isToolActive = useToolActivity()
 
   // 哈希计算器状态
@@ -186,8 +188,7 @@ export default function HashPage() {
   const [size, setSize] = useState<number>(256)
   const [calculationError, setCalculationError] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const cancelCalculationRef = useRef<boolean>(false)
+const cancelCalculationRef = useRef<boolean>(false)
   const calculationIdRef = useRef(0)
   const calculationAbortRef = useRef<AbortController | null>(null)
   // Add the hmacKey state after the other state declarations
@@ -671,36 +672,7 @@ export default function HashPage() {
     setFileError("")
   }
 
-  // 处理文件上传
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files && files.length > 0) {
-      selectFile(files[0])
-    }
-
-    // 重置文件输入，以便可以再次选择同一个文件
-    if (e.target) {
-      e.target.value = ""
-    }
-  }
-
-  // 处理文件拖放
-  const handleFileDrop = (e: React.DragEvent<HTMLElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      selectFile(e.dataTransfer.files[0])
-    }
-  }
-
-  // 防止默认拖放行为
-  const preventDefaults = (e: React.DragEvent<HTMLElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }
-
-  // 当输入变化且自动计算开启时，计算哈希
+// 当输入变化且自动计算开启时，计算哈希
   useEffect(() => {
     if (!autoCalculate) return
 
@@ -945,13 +917,7 @@ export default function HashPage() {
                     </Button>
                   </div>
                 </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                {fileError && (
+{fileError && (
                   <div
                     className="rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
                     role="alert"
@@ -959,37 +925,32 @@ export default function HashPage() {
                     {fileError}
                   </div>
                 )}
-                {!fileInfo ? (
-                  <button
-                    type="button"
-                    className="w-full rounded-[var(--md-sys-shape-corner-large)] border-2 border-dashed border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] p-7 text-center transition-colors hover:border-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={preventDefaults}
-                    onDragEnter={preventDefaults}
-                    onDragLeave={preventDefaults}
-                    onDrop={handleFileDrop}
-                  >
-                    <Upload
-                      className="mx-auto mb-3 h-10 w-10 text-[var(--md-sys-color-on-surface-variant)]"
-                      aria-hidden="true"
-                    />
-                    <span className="block font-medium">{t("dropFileHere")}</span>
-                    <span className="mt-2 inline-block rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 py-1 text-sm text-[var(--md-sys-color-on-secondary-container)]">
+                <FileDropZone
+                  onFiles={(files) => selectFile(files[0])}
+                  title={t("dropFileHere")}
+                  hint={(
+                    <span className="inline-block rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 py-1 text-sm text-[var(--md-sys-color-on-secondary-container)]">
                       {t("uploadFile")}
                     </span>
-                  </button>
-                ) : (
+                  )}
+                >
+                  {fileInfo ? (browse) => (
                   <div className="rounded-[var(--md-sys-shape-corner-medium)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <h3 className="font-medium">{t("fileInfo")}</h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={clearInput}
-                        aria-label={t("removeFile")}
-                      >
-                        <X className="h-4 w-4" aria-hidden="true" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={browse}>
+                          {tc("replaceFile")}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={clearInput}
+                          aria-label={t("removeFile")}
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </div>
                     </div>
                     <dl className="grid gap-3 text-sm sm:grid-cols-2">
                       <div className="min-w-0">
@@ -1015,7 +976,8 @@ export default function HashPage() {
                       </div>
                     )}
                   </div>
-                )}
+                  ) : undefined}
+                </FileDropZone>
               </TabsContent>
             </Tabs>
           </CardContent>

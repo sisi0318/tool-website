@@ -1,6 +1,7 @@
 "use client"
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { takeInputFiles } from "@/lib/file-input"
 
 import type React from "react"
 
@@ -106,7 +107,7 @@ export default function ProtobufTool() {
   // Handle file upload
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFile = e.target.files?.[0]
+      const [selectedFile] = takeInputFiles(e)
       if (!selectedFile) return
 
       // Check file size (10MB limit)
@@ -134,7 +135,7 @@ export default function ProtobufTool() {
   // Handle proto file upload
   const handleProtoFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFile = e.target.files?.[0]
+      const [selectedFile] = takeInputFiles(e)
       if (!selectedFile) return
 
       // Check file size (1MB limit)

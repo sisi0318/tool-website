@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { usePasteFiles } from "@/hooks/use-paste-files"
+import { matchesAccept } from "@/components/tools/file-drop-zone"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
 import { downloadBlob } from "@/lib/object-url"
@@ -27,6 +28,8 @@ function DownloadFile({ file }: { file: File }) {
   const url = useObjectUrl(file)
   return url ? <Button asChild variant="outline" size="sm"><a href={url} download={file.name}><Download />{file.name.split(".").pop()?.toUpperCase()}</a></Button> : null
 }
+const BATCH_ACCEPT = "image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+
 export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: { headingLevel?: "h1" | "h2"; onBusyChange?: (busy: boolean) => void }) {
   const t = useTranslations("imageBatch"), ot = useTranslations("ocrTools"), { toast } = useToast(), id = useId(), Heading = headingLevel
   const [jobs, setJobs] = useState<BatchImageJob[]>([]), [options, setOptions] = useState<ImageBatchOptions>(DEFAULT_BATCH_OPTIONS)
@@ -48,13 +51,15 @@ export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: {
   const add = (files: File[]) => {
     setArchive(null); setNotice("")
     const used = new Set(current.current.map(job => job.base.toLowerCase())), next: BatchImageJob[] = []
-    let total = current.current.reduce((sum, job) => sum + job.file.size, 0), skipped = false
+    let total = current.current.reduce((sum, job) => sum + job.file.size, 0), skipped = false, wrongType = 0
     for (const file of files) {
+      // 不是图片的文件以前也会进队列，到处理时才失败
+      if (!matchesAccept(file, BATCH_ACCEPT)) { wrongType += 1; continue }
       if (current.current.length + next.length >= IMAGE_BATCH_LIMITS.files || total + file.size > IMAGE_BATCH_LIMITS.inputBytes || file.size > OCR_LIMITS.fileBytes) { skipped = true; continue }
       total += file.size; next.push({ id: createClientId("batch"), file, base: uniqueImageBase(file.name, used), status: "ready" })
     }
     updateJobs(list => [...list, ...next])
-    if (skipped) setNotice(t("skipped"))
+    setNotice([wrongType ? t("skippedType").replace("{count}", String(wrongType)) : "", skipped ? t("skipped") : ""].filter(Boolean).join(" "))
   }
   const samples = async () => {
     const ticket = ++version.current; setPhase("sample"); setNotice("")
@@ -94,7 +99,7 @@ export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: {
   return <div className="space-y-5">
     <header><Heading className="flex items-center gap-3 text-2xl font-semibold"><Files className="h-7 w-7 text-md-primary" />{t("title")}</Heading><p className="mt-2 max-w-4xl text-sm leading-6 text-md-on-surface-variant">{t("description")}</p></header>
     <section className={`${frame} space-y-4`} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!busy) add(Array.from(event.dataTransfer.files)) }}>
-      <input ref={input} type="file" multiple className="hidden" aria-label={t("add")} accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={event => { if (!busy) add(Array.from(event.target.files ?? [])); event.target.value = "" }} />
+      <input ref={input} type="file" multiple className="hidden" aria-label={t("add")} accept={BATCH_ACCEPT} onChange={event => { if (!busy) add(Array.from(event.target.files ?? [])); event.target.value = "" }} />
       <div className="flex flex-wrap items-center gap-3"><Button variant="outline" disabled={busy} onClick={() => input.current?.click()}><Upload />{t("add")}</Button><Button size="sm" variant="ghost" disabled={busy} onClick={() => void samples()}>{t("samples")}</Button><span className="text-xs text-md-on-surface-variant">{t("dropHint")}</span>{!!jobs.length && <Button size="sm" variant="ghost" onClick={() => { cancel(); updateJobs(() => []); setArchive(null); setNotice("") }}><X />{t("clear")}</Button>}</div>
       <p className="text-xs leading-5 text-md-on-surface-variant">{t("limits")}</p>
       <Tabs value={options.mode} onValueChange={value => change({ ...DEFAULT_BATCH_OPTIONS, mode: value as ImageBatchOptions["mode"] })}><TabsList><TabsTrigger value="ocr" disabled={busy}>{t("ocrMode")}</TabsTrigger><TabsTrigger value="images" disabled={busy}>{t("imageMode")}</TabsTrigger></TabsList>

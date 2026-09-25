@@ -27,6 +27,7 @@ import {
   ZoomOut,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { takeInputFiles } from "@/lib/file-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -736,7 +737,7 @@ export default function MemeSplitterPage() {
                 type="file"
                 accept="image/*"
                 onChange={(event) => {
-                  const file = event.target.files?.[0]
+                  const [file] = takeInputFiles(event)
                   if (file) handleFileUpload(file)
                 }}
                 className="hidden"

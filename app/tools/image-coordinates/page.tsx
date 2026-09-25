@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
+import { takeInputFiles } from "@/lib/file-input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -308,7 +309,7 @@ export default function ImageCoordinatesPage() {
                 type="file"
                 accept="image/*"
                 aria-label={t("chooseImage")}
-                onChange={(event) => event.target.files?.[0] && handleFileUpload(event.target.files[0])}
+                onChange={(event) => { const [file] = takeInputFiles(event); if (file) handleFileUpload(file) }}
                 className="hidden"
               />
               <div

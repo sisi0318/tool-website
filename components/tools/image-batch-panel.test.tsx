@@ -23,6 +23,12 @@ describe("batch queue UI", () => {
     expect(screen.getByRole("tabpanel", { name: "imageMode" })).toContainElement(screen.getByLabelText("format"))
     expect(screen.queryByRole("tabpanel", { name: "ocrMode" })).not.toBeInTheDocument()
   })
+  it("keeps files that are not images out of the queue and says so", () => {
+    render(<ImageBatchPanel />)
+    fireEvent.change(screen.getByLabelText("add", { selector: "input" }), { target: { files: [new File(["one"], "one.png"), new File(["x"], "notes.txt", { type: "text/plain" })] } })
+    expect(screen.getByRole("button", { name: "run (1)" })).toBeInTheDocument()
+    expect(screen.getByText(/skippedType/)).toBeInTheDocument()
+  })
   it("retains completed files on cancel and resumes only the remaining files", async () => {
     let release: () => void = () => {}, signal: AbortSignal | undefined
     mocks.run.mockImplementation(async (jobs: BatchImageJob[], _options, context) => {

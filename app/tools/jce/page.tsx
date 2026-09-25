@@ -1,6 +1,7 @@
 "use client"
 
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
+import { takeInputFiles } from "@/lib/file-input"
 
 import type React from "react"
 import { useState, useRef, useCallback, useEffect } from "react"
@@ -525,7 +526,7 @@ export default function JceTool() {
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const f = e.target.files?.[0]
+      const [f] = takeInputFiles(e)
       if (!f) return
       if (f.size > 10 * 1024 * 1024) {
         setError(t("fileTooBig"))

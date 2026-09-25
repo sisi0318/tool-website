@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import { extensionForMime } from "@/lib/output-name"
 import { useToolPref } from "@/hooks/use-tool-pref"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { FileDropZone } from "@/components/tools/file-drop-zone"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,8 +61,7 @@ export default function ImageCompressPage() {
   const [images, setImages] = useState<CompressedImage[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-  
+
   // 压缩设置
   const [quality, setQuality] = useToolPref("image-compress", "quality", 80, (value) => Number.isInteger(value) && value >= 1 && value <= 100)
   const [outputFormat, setOutputFormat] = useToolPref<string>("image-compress", "outputFormat", "original", (value) => ["original", "jpeg", "webp", "png"].includes(value))
@@ -72,8 +72,7 @@ export default function ImageCompressPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [previewTitle, setPreviewTitle] = useState<string>("")
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const imagesRef = useRef<CompressedImage[]>([])
+const imagesRef = useRef<CompressedImage[]>([])
   const mountedRef = useRef(true)
   const objectUrls = useObjectUrlRegistry()
   const releaseImageUrls = useCallback((image: CompressedImage) => {
@@ -312,32 +311,9 @@ export default function ImageCompressPage() {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    e.target.value = ""
-    void addFiles(files)
-  }
+usePasteFiles((files) => void addFiles(files), !isProcessing)
 
-  usePasteFiles((files) => void addFiles(files), !isProcessing)
-
-  // 拖拽处理
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    void addFiles(Array.from(e.dataTransfer.files))
-  }
-
-  // 重新压缩选中的图片
+// 重新压缩选中的图片
   const recompressImage = async (imageId: string) => {
     const image = images.find(img => img.id === imageId)
     if (!image) return
@@ -530,45 +506,23 @@ export default function ImageCompressPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div
-                className={`border-2 border-dashed rounded-[var(--md-sys-shape-corner-large)] p-6 text-center transition-colors cursor-pointer ${
-                  isDragging 
-                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/20" 
-                    : "border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-outline)]"
-                }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
+              {/* 以前是只能用鼠标点的 div，键盘无法选择文件 */}
+              <FileDropZone
+                onFiles={(files) => void addFiles(files)}
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                disabled={isProcessing}
+                icon={<ImageIcon className="mx-auto mb-3 h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]" aria-hidden="true" />}
+                title={t("dropHint")}
+                hint={t("supportedFormats")}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                
-                {isProcessing ? (
-                  <div className="space-y-3">
+                {isProcessing ? () => (
+                  <div role="status" className="space-y-3 rounded-[inherit] border-2 border-dashed border-[var(--md-sys-color-outline-variant)] p-6 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--md-sys-color-primary)] mx-auto"></div>
                     <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("compressing")}</div>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <ImageIcon className="mx-auto h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]" />
-                    <div>
-                      <p className="font-medium text-[var(--md-sys-color-on-surface)]">
-                        {t("dropHint")}
-                      </p>
-                      <p className="text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1">
-                        {t("supportedFormats")}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                ) : undefined}
+              </FileDropZone>
 
               {images.length > 0 && (
                 <div className="mt-4 flex justify-between items-center">

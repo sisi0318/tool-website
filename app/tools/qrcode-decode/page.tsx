@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { takeInputFiles } from "@/lib/file-input"
 import {
   AlertTriangle,
   Check,
@@ -656,7 +657,7 @@ export default function QRCodeDecoder() {
                     accept="image/*"
                     multiple={batchMode}
                     aria-label={t("chooseImages")}
-                    onChange={(event) => validateAndProcessFiles(Array.from(event.target.files ?? []))}
+                    onChange={(event) => validateAndProcessFiles(takeInputFiles(event))}
                     className="hidden"
                   />
                   <div

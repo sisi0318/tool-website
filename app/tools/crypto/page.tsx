@@ -6,8 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
-  type DragEvent,
 } from "react"
 import {
   AlertTriangle,
@@ -26,6 +24,7 @@ import {
 } from "lucide-react"
 import CryptoJS from "crypto-js"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { FileDropZone } from "@/components/tools/file-drop-zone"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -218,7 +217,8 @@ function readFileWithProgress(
 
 export default function CryptoPage() {
   const t = useTranslations("crypto")
-  const params = useToolRuntimeParams()
+  const tc = useTranslations("common")
+const params = useToolRuntimeParams()
   const isToolActive = useToolActivity()
   const [operation, setOperation] = useState<"encrypt" | "decrypt">("encrypt")
   const [inputMode, setInputMode] = useState<"text" | "file">("text")
@@ -243,8 +243,7 @@ export default function CryptoPage() {
   const [outputFormat, setOutputFormat] = useState<CryptoInputFormat>("hex")
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const processIdRef = useRef(0)
   const fileReaderRef = useRef<FileReader | null>(null)
 
@@ -594,31 +593,7 @@ export default function CryptoPage() {
     [cancelProcessing, clearResults, t],
   )
 
-  const handleFileUpload = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0]
-      if (file) selectFile(file)
-      event.currentTarget.value = ""
-    },
-    [selectFile],
-  )
-
-  const handleFileDrop = useCallback(
-    (event: DragEvent<HTMLElement>) => {
-      event.preventDefault()
-      event.stopPropagation()
-      const file = event.dataTransfer.files[0]
-      if (file) selectFile(file)
-    },
-    [selectFile],
-  )
-
-  const preventDefaults = useCallback((event: DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-  }, [])
-
-  const clearInput = useCallback(() => {
+const clearInput = useCallback(() => {
     cancelProcessing()
     setInput("")
     setFileInfo(null)
@@ -1075,43 +1050,32 @@ export default function CryptoPage() {
               </TabsContent>
 
               <TabsContent value="file" className="space-y-4">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                {!fileInfo ? (
-                  <button
-                    type="button"
-                    className="w-full rounded-[var(--md-sys-shape-corner-large)] border-2 border-dashed border-[var(--md-sys-color-outline)] bg-[var(--md-sys-color-surface-container-low)] p-7 text-center transition-colors hover:border-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={preventDefaults}
-                    onDragEnter={preventDefaults}
-                    onDragLeave={preventDefaults}
-                    onDrop={handleFileDrop}
-                  >
-                    <Upload
-                      className="mx-auto mb-3 h-10 w-10 text-[var(--md-sys-color-on-surface-variant)]"
-                      aria-hidden="true"
-                    />
-                    <span className="block font-medium">{t("dropFileHere")}</span>
-                    <span className="mt-2 inline-block rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 py-1 text-sm text-[var(--md-sys-color-on-secondary-container)]">
+<FileDropZone
+                  onFiles={(files) => selectFile(files[0])}
+                  title={t("dropFileHere")}
+                  hint={(
+                    <span className="inline-block rounded-full bg-[var(--md-sys-color-secondary-container)] px-3 py-1 text-sm text-[var(--md-sys-color-on-secondary-container)]">
                       {t("uploadFile")}
                     </span>
-                  </button>
-                ) : (
+                  )}
+                >
+                  {fileInfo ? (browse) => (
                   <div className="rounded-[var(--md-sys-shape-corner-medium)] border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] p-4">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <h3 className="font-medium">{t("fileInfo")}</h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={clearInput}
-                        aria-label={t("removeFile")}
-                      >
-                        <X className="h-4 w-4" aria-hidden="true" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={browse}>
+                          {tc("replaceFile")}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={clearInput}
+                          aria-label={t("removeFile")}
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </div>
                     </div>
                     <dl className="grid gap-3 text-sm sm:grid-cols-2">
                       <div className="min-w-0">
@@ -1147,7 +1111,8 @@ export default function CryptoPage() {
                       </Button>
                     )}
                   </div>
-                )}
+                  ) : undefined}
+                </FileDropZone>
               </TabsContent>
             </Tabs>
           </CardContent>
