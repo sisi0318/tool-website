@@ -211,6 +211,7 @@ home: {
   buildWorkflow: "开始搭建工作流",
 },
 ocrTools: {
+  staleResult: "识别参数已改动，下面仍是上次的结果；点击“开始识别”按新设置重新识别。", confirmRerun: "重新识别会丢弃你对识别文字做的修改。", rerunAnyway: "仍然重新识别", keepEdits: "保留修改",
   imageMode: "图片识别", pdfMode: "PDF OCR", batchMode: "批量处理",
   title: "OCR 图片文字识别", description: "把图片里的中英文变成可编辑文本。保留小字细节，分段处理长截图，识别后可对照原图逐行核对。",
   local: "浏览器本地识别 · 图片不上传", chooseFile: "选择图片", fileHint: "拖入图片，或在此页面粘贴截图", clear: "清除图片",
@@ -275,6 +276,7 @@ imageRedact: {
   apply: "确认选区并生成图片", result: "打码后的图片", download: "下载图片", resultPreview: "已将选区覆盖为纯色的图片", resultHint: "请核对整张结果图后再分享。改动选区、颜色或格式后，需要重新生成。下载仅包含合成后的图片。",
 },
 imageBatch: {
+  confirmOptionChange: "修改参数会清空已完成的 {count} 项结果，手动校对过的文字也会丢失。", applyChange: "仍然修改", keepResults: "保留结果",
   title: "图片批量处理", description: "一次导入多张图片，批量识别文字，或压缩、缩放和转换格式。逐张处理、逐项查看结果，文件全程留在浏览器里。",
   add: "添加图片", samples: "试试三张示例", dropHint: "支持多选、拖放或粘贴图片", clear: "清空队列", limits: "支持 PNG / JPEG / WebP，最多 30 张、合计 120 MB；单张最多 20 MB / 2000 万像素。输出合计最多 120 MB。动态图片仅处理首帧。",
   skipped: "部分文件超过限制，未加入队列。每张最多 20 MB，队列最多 30 张 / 120 MB。", ocrMode: "批量 OCR", imageMode: "压缩与格式转换", format: "输出格式", quality: "质量（10–100）", width: "最大宽度（px）", height: "最大高度（px）", keepSize: "保持原尺寸",
@@ -286,6 +288,7 @@ imageBatch: {
   error_fileLimit: "文件为空或超过 20 MB。", error_queueLimit: "队列超过 30 张或 120 MB，请分批处理。", error_options: "请检查质量与尺寸参数：质量为 10–100，尺寸为 1–32768，留空保持原尺寸。", error_outputLimit: "结果超过单份 64 MB 或合计 120 MB，请缩小尺寸或减少文件。", error_unsupported: "浏览器不支持所选的图像处理方式，请更换格式或使用较新的浏览器。", error_convert: "处理失败，请检查文件是否完整后重试。", error_cancelled: "已取消。", error_timeout: "单张图片处理超时，请缩小图片后重试。",
 },
 pdfOcr: {
+  staleResult: "页码或识别参数已改动，下面仍是上次识别的结果；点击“识别所选页面”按新设置重新识别。", confirmRerun: "重新识别会丢弃你对识别文字做的修改。", rerunAnyway: "仍然重新识别", keepEdits: "保留修改",
   error_unsupportedInline: "此 PDF 包含当前 OCR 暂不支持的内联图片，已停止处理以避免生成缺图页面。请从原软件重新导出 PDF 后重试。",
   error_unsupportedContent: "此 PDF 的页面内容编码暂不支持安全检查，已停止处理。请从原软件重新导出 PDF 后重试。",
   error_contentLimit: "PDF 页面内容解压后超出处理上限，已停止处理。请减少页数或重新导出较简单的 PDF。",

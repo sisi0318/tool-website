@@ -23,6 +23,8 @@ export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: 
   const [text, setText] = useState(""), [error, setError] = useState("")
   const [progress, setProgress] = useState<OcrProgress | null>(null), [sampleLoading, setSampleLoading] = useState(false)
   const [selected, setSelected] = useState<number | null>(null), [showBoxes, setShowBoxes] = useState(true), [onlyLow, setOnlyLow] = useState(false), [zoom, setZoom] = useState("100")
+  // 结果对应的识别参数；改参数只把结果标成过期，校对过的文字在确认前不丢
+  const [resultKey, setResultKey] = useState(""), [confirmRerun, setConfirmRerun] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null), active = useRef<AbortController | null>(null), version = useRef(0)
   const sourceUrl = useObjectUrl(validated === file ? file : null), previewUrl = useObjectUrl(result?.preview)
   const inputUrl = file && validated === file ? sourceUrl : null
@@ -31,7 +33,8 @@ export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: 
   const textUrl = useObjectUrl(textBlob), jsonUrl = useObjectUrl(jsonBlob)
   const busy = progress !== null, lowCount = result?.lines.filter(line => line.score < OCR_LOW_CONFIDENCE).length ?? 0
   const invalidate = () => { version.current++; active.current?.abort(); active.current = null; setProgress(null); return version.current }
-  const clearResult = () => { setResult(null); setText(""); setSelected(null); setError("") }
+  const clearResult = () => { setResult(null); setText(""); setSelected(null); setError(""); setResultKey(""); setConfirmRerun(false) }
+  const optionsKey = JSON.stringify(options), stale = !!result && resultKey !== optionsKey, edited = !!result && text !== result.text
   const replaceFile = (next: File | null) => {
     clearResult(); setValidated(null); setZoom("100")
     if (next && (!next.size || next.size > OCR_LIMITS.fileBytes)) { setFile(null); setError("fileLimit"); return }
@@ -54,18 +57,19 @@ export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: 
     catch { if (version.current === id) setError("decode") }
     finally { if (version.current === id) setSampleLoading(false) }
   }
-  const run = async () => {
+  const run = async (force = false) => {
     if (!file || validated !== file) return
-    const id = invalidate(), controller = new AbortController(); active.current = controller
+    if (edited && !force) { setConfirmRerun(true); return }
+    const id = invalidate(), controller = new AbortController(), key = optionsKey; active.current = controller
     clearResult(); setProgress({ stage: "reading" })
     try {
       const next = await recognizeImage(file, options, { signal: controller.signal, onProgress: value => { if (version.current === id) setProgress(value) } })
-      if (version.current === id) { setResult(next); setText(next.text) }
+      if (version.current === id) { setResult(next); setText(next.text); setResultKey(key) }
     } catch (cause) { if (version.current === id) setError(cause instanceof OcrError ? cause.code : "engine") }
     finally { if (version.current === id) { setProgress(null); active.current = null } }
   }
   const copy = async () => { try { await navigator.clipboard.writeText(text); toast({ description: t("copied") }) } catch { toast({ description: t("copyFailed"), variant: "destructive" }) } }
-  const update = (next: OcrOptions) => { invalidate(); setOptions(next); clearResult() }
+  const update = (next: OcrOptions) => { invalidate(); setOptions(next); setConfirmRerun(false) }
   const selectLine = (id: number) => { setSelected(id); document.getElementById(`ocr-line-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }) }
   return <div className="space-y-6" onPaste={event => {
     const image = Array.from(event.clipboardData.items).find(item => item.kind === "file" && item.type.startsWith("image/"))?.getAsFile()
@@ -82,6 +86,8 @@ export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: 
       <div className="flex flex-wrap items-end gap-5"><div className="w-44 space-y-2"><Label htmlFor="ocr-rotation">{t("rotation")}</Label><Select value={String(options.rotation)} onValueChange={value => update({ ...options, rotation: Number(value) as OcrOptions["rotation"] })} disabled={busy}><SelectTrigger id="ocr-rotation"><SelectValue /></SelectTrigger><SelectContent>{[0, 90, 180, 270].map(value => <SelectItem key={value} value={String(value)}>{value === 0 ? t("rotationNone") : `${value}°`}</SelectItem>)}</SelectContent></Select></div><label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-[var(--md-sys-color-primary)]" checked={options.enhanceSmallText} disabled={busy} onChange={event => update({ ...options, enhanceSmallText: event.target.checked })} />{t("enhance")}</label></div>
       <p className={`text-xs leading-5 ${muted}`}>{t("accuracyHint")}</p>
       <div className="flex flex-wrap items-center gap-3"><Button disabled={!file || file !== validated || busy || sampleLoading} onClick={() => void run()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanText className="h-4 w-4" />}{busy ? t("working") : t("recognize")}</Button>{busy && <Button variant="outline" onClick={() => { invalidate(); setError("cancelled") }}>{t("cancel")}</Button>}<span className={`text-xs ${muted}`}>{t("downloadHint")}</span></div>
+      {stale && !busy && <p role="status" className="rounded-xl bg-[var(--md-sys-color-surface-container)] p-3 text-sm">{t("staleResult")}</p>}
+      {confirmRerun && <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--md-sys-color-error)]/40 bg-[var(--md-sys-color-error-container)]/40 p-3 text-sm"><span className="min-w-0 flex-1">{t("confirmRerun")}</span><Button size="sm" onClick={() => void run(true)}>{t("rerunAnyway")}</Button><Button size="sm" variant="ghost" onClick={() => setConfirmRerun(false)}>{t("keepEdits")}</Button></div>}
       {progress && <div role="status" aria-live="polite" className="space-y-2"><p className="text-sm">{t(`stage_${progress.stage}`)}{progress.total && progress.stage === "recognizing" ? ` · ${progress.completed! + 1} / ${progress.total}` : progress.total ? ` · ${Math.min(100, Math.round(progress.completed! / progress.total * 100))}%` : ""}</p>{progress.total && <progress aria-label={t(`stage_${progress.stage}`)} className="h-2 w-full accent-[var(--md-sys-color-primary)]" max={progress.total} value={progress.completed ?? 0} />}</div>}
       {error && <p role="alert" className="rounded-xl bg-[var(--md-sys-color-error-container)] px-4 py-3 text-sm text-[var(--md-sys-color-on-error-container)]">{t(`error_${error}`)}</p>}
     </section>

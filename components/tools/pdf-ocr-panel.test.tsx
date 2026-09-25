@@ -45,7 +45,25 @@ describe("PDF OCR review", () => {
     expect(screen.queryByRole("link", { name: "download" })).not.toBeInTheDocument()
     fireEvent.change(screen.getByRole("textbox", { name: "selection" }), { target: { value: "3" } })
     expect(screen.getByRole("button", { name: "recognize" })).toBeDisabled()
-    expect(screen.queryByRole("textbox", { name: "allText" })).not.toBeInTheDocument()
+    // 改页码不再清掉已识别和校对过的结果，只标成过期
+    expect(screen.getByRole("textbox", { name: "allText" })).toHaveValue("再校对")
+    expect(screen.getByText("staleResult")).toBeInTheDocument()
+  })
+  it("asks before recognizing again would discard corrections", async () => {
+    render(<PdfOcrPanel />); await load()
+    fireEvent.click(screen.getByRole("button", { name: "recognize" }))
+    fireEvent.change(await screen.findByRole("textbox", { name: "1" }), { target: { value: "已校对" } })
+    fireEvent.change(screen.getByLabelText("resolution"), { target: { value: "300" } })
+    fireEvent.click(screen.getByRole("button", { name: "recognize" }))
+    expect(screen.getByRole("alert")).toHaveTextContent("confirmRerun")
+    expect(mocks.recognize).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole("button", { name: "keepEdits" }))
+    expect(screen.getByRole("textbox", { name: "allText" })).toHaveValue("已校对")
+    fireEvent.click(screen.getByRole("button", { name: "recognize" }))
+    fireEvent.click(screen.getByRole("button", { name: "rerunAnyway" }))
+    await waitFor(() => expect(mocks.recognize).toHaveBeenCalledTimes(2))
+    expect(mocks.recognize.mock.calls[1][1]).toMatchObject({ dpi: 300 })
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "allText" })).toHaveValue("校对前"))
   })
   it("keeps recognizing while its tab is hidden and reports that it is busy", async () => {
     let resolve: (value: PdfOcrPage[]) => void = () => {}

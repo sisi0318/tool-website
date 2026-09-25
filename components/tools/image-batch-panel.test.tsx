@@ -47,4 +47,25 @@ describe("batch queue UI", () => {
     await waitFor(() => expect(mocks.run).toHaveBeenCalledTimes(2))
     expect(mocks.run.mock.calls[1][0].map((job: BatchImageJob) => job.file.name)).toEqual(["two.png"])
   })
+  it("asks before a settings change clears finished results", async () => {
+    mocks.run.mockImplementation(async (jobs: BatchImageJob[], _options, context) => {
+      context.onUpdate(jobs[0].id, { status: "done", result: { files: [new File(["ok"], "one.txt")], width: 10, height: 10, animated: false } })
+    })
+    render(<ImageBatchPanel />)
+    fireEvent.change(screen.getByLabelText("add", { selector: "input" }), { target: { files: [new File(["one"], "one.png")] } })
+    fireEvent.click(screen.getByRole("button", { name: "run (1)" }))
+    await screen.findByText("status_done")
+
+    fireEvent.change(screen.getByLabelText("rotation"), { target: { value: "90" } })
+    expect(screen.getByRole("alert")).toHaveTextContent("confirmOptionChange")
+    expect(screen.getByLabelText("rotation")).toHaveValue("0")
+    fireEvent.click(screen.getByRole("button", { name: "keepResults" }))
+    expect(screen.getByText("status_done")).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText("rotation"), { target: { value: "90" } })
+    fireEvent.click(screen.getByRole("button", { name: "applyChange" }))
+    expect(screen.getByLabelText("rotation")).toHaveValue("90")
+    expect(screen.queryByText("status_done")).not.toBeInTheDocument()
+    expect(screen.getByText("status_ready")).toBeInTheDocument()
+  })
 })

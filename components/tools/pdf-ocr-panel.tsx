@@ -26,6 +26,8 @@ export default function PdfOcrPanel({ isActive = true, headingLevel = "h2", onBu
   const [pages, setPages] = useState<PdfOcrPage[]>([]), [index, setIndex] = useState(0), [lineIndex, setLineIndex] = useState<number | null>(null)
   const [busy, setBusy] = useState(false), [progress, setProgress] = useState<PdfOcrProgress | null>(null), [error, setError] = useState("")
   const [output, setOutput] = useState<Blob | null>(null), [onlyLow, setOnlyLow] = useState(false), [zoom, setZoom] = useState("100")
+  // 结果对应的识别参数；改页码或参数只把结果标成过期，不再清掉已识别页和逐行校对
+  const [resultKey, setResultKey] = useState(""), [edited, setEdited] = useState(false), [confirmRerun, setConfirmRerun] = useState(false)
   const input = useRef<HTMLInputElement>(null), active = useRef<AbortController | null>(null), version = useRef(0)
   const previewUrl = useObjectUrl(pages[index]?.preview), outputUrl = useObjectUrl(output)
   const text = useMemo(() => pdfOcrText(pages), [pages])
@@ -34,7 +36,7 @@ export default function PdfOcrPanel({ isActive = true, headingLevel = "h2", onBu
   const textUrl = useObjectUrl(textBlob), jsonUrl = useObjectUrl(jsonBlob)
   const baseName = file?.name.replace(/\.[^.]*$/, "").replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 100) || "ocr"
   const cancel = () => { version.current++; active.current?.abort(); active.current = null; setBusy(false); setProgress(null) }
-  const resetResult = () => { setPages([]); setOutput(null); setIndex(0); setLineIndex(null); setError("") }
+  const resetResult = () => { setPages([]); setOutput(null); setIndex(0); setLineIndex(null); setError(""); setResultKey(""); setEdited(false); setConfirmRerun(false) }
   useEffect(() => () => { version.current++; active.current?.abort() }, [])
   // 切到别的子标签不再中断识别：长 PDF 识别到一半随手切一下，已完成的页会全部作废
   useEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
@@ -57,13 +59,16 @@ export default function PdfOcrPanel({ isActive = true, headingLevel = "h2", onBu
   }
   let count = 0, selectionError = ""
   if (info) { try { count = parsePdfSelection(selection, info.pages.length).length; if (count > PDF_OCR_LIMITS.pages) selectionError = t("error_pageLimit") } catch { selectionError = pt("errors.invalidSelection") } }
-  const run = () => {
+  const optionsKey = JSON.stringify({ selection, dpi, rotation }), stale = pages.length > 0 && resultKey !== optionsKey
+  const run = (force = false) => {
     if (!file || selectionError) return
+    // 手动校对过的文字只在用户确认后才丢弃
+    if (edited && !force) { setConfirmRerun(true); return }
     resetResult()
-    void task((signal, onProgress) => recognizePdf(file, { selection, dpi, rotation }, { signal, onProgress }), setPages)
+    void task((signal, onProgress) => recognizePdf(file, { selection, dpi, rotation }, { signal, onProgress }), next => { setPages(next); setResultKey(optionsKey) })
   }
   const generate = () => void task((signal, update) => { update({ stage: "writing", completed: 0, total: pages.length }); return exportSearchablePdf(pages, signal) }, setOutput)
-  const editLine = (line: number, value: string) => { setOutput(null); setPages(previous => previous.map((page, i) => i === index ? { ...page, lines: page.lines.map((item, n) => n === line ? { ...item, text: value } : item) } : page)) }
+  const editLine = (line: number, value: string) => { setOutput(null); setEdited(true); setPages(previous => previous.map((page, i) => i === index ? { ...page, lines: page.lines.map((item, n) => n === line ? { ...item, text: value } : item) } : page)) }
   const selectLine = (line: number) => { setOnlyLow(false); setLineIndex(line); requestAnimationFrame(() => document.getElementById(`${id}-line-${line}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" })) }
   const current = pages[index], lowCount = current?.lines.filter(line => line.score < OCR_LOW_CONFIDENCE).length ?? 0
   return <div className="space-y-5">
@@ -73,13 +78,15 @@ export default function PdfOcrPanel({ isActive = true, headingLevel = "h2", onBu
       <div className="flex flex-wrap items-center gap-3"><Button variant="outline" className="h-11" onClick={() => input.current?.click()}><FileUp />{t("choose")}</Button><Button size="sm" variant="ghost" disabled={busy} onClick={sample}>{t("sample")}</Button>{file && <><span className="order-last min-w-0 basis-full break-all text-sm sm:order-none sm:basis-0 sm:flex-1">{file.name} · {info?.pages.length} {pt("pages")}</span><Button aria-label={pt("clear")} variant="ghost" size="icon" onClick={() => choose(null)}><X /></Button></>}</div>
       <p className="text-xs leading-5 text-md-on-surface-variant">{t("limits")}</p>
       <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_140px_160px]">
-        <div className="space-y-2"><Label htmlFor={`${id}-pages`}>{t("selection")}</Label><Input id={`${id}-pages`} value={selection} disabled={busy} placeholder="1-3,5" onChange={e => { setSelection(e.target.value); resetResult() }} /><p className="text-xs text-md-on-surface-variant">{t("selectionHint")}{info && !selectionError ? ` · ${count} ${pt("pages")}` : ""}</p></div>
-        <div className="space-y-2"><Label htmlFor={`${id}-dpi`}>{t("resolution")}</Label><select id={`${id}-dpi`} className="h-10 w-full rounded-lg border border-md-outline-variant bg-md-surface px-3 text-sm" disabled={busy} value={dpi} onChange={e => { setDpi(Number(e.target.value)); resetResult() }}>{[144, 200, 300].map(value => <option key={value} value={value}>{value} DPI</option>)}</select></div>
-        <div className="space-y-2"><Label htmlFor={`${id}-rotation`}>{ot("rotation")}</Label><select id={`${id}-rotation`} className="h-10 w-full rounded-lg border border-md-outline-variant bg-md-surface px-3 text-sm" disabled={busy} value={rotation} onChange={e => { setRotation(Number(e.target.value) as OcrOptions["rotation"]); resetResult() }}>{[0, 90, 180, 270].map(value => <option key={value} value={value}>{value === 0 ? ot("rotationNone") : `${value}°`}</option>)}</select></div>
+        <div className="space-y-2"><Label htmlFor={`${id}-pages`}>{t("selection")}</Label><Input id={`${id}-pages`} value={selection} disabled={busy} placeholder="1-3,5" onChange={e => { setSelection(e.target.value); setConfirmRerun(false) }} /><p className="text-xs text-md-on-surface-variant">{t("selectionHint")}{info && !selectionError ? ` · ${count} ${pt("pages")}` : ""}</p></div>
+        <div className="space-y-2"><Label htmlFor={`${id}-dpi`}>{t("resolution")}</Label><select id={`${id}-dpi`} className="h-10 w-full rounded-lg border border-md-outline-variant bg-md-surface px-3 text-sm" disabled={busy} value={dpi} onChange={e => { setDpi(Number(e.target.value)); setConfirmRerun(false) }}>{[144, 200, 300].map(value => <option key={value} value={value}>{value} DPI</option>)}</select></div>
+        <div className="space-y-2"><Label htmlFor={`${id}-rotation`}>{ot("rotation")}</Label><select id={`${id}-rotation`} className="h-10 w-full rounded-lg border border-md-outline-variant bg-md-surface px-3 text-sm" disabled={busy} value={rotation} onChange={e => { setRotation(Number(e.target.value) as OcrOptions["rotation"]); setConfirmRerun(false) }}>{[0, 90, 180, 270].map(value => <option key={value} value={value}>{value === 0 ? ot("rotationNone") : `${value}°`}</option>)}</select></div>
       </div>
       {selectionError && <p role="alert" className="text-sm text-md-error">{selectionError}</p>}
+      {stale && !busy && <p role="status" className="rounded-xl bg-md-surface-container p-3 text-sm">{t("staleResult")}</p>}
+      {confirmRerun && <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-md-error/40 bg-md-error-container/40 p-3 text-sm"><span className="min-w-0 flex-1">{t("confirmRerun")}</span><Button size="sm" onClick={() => run(true)}>{t("rerunAnyway")}</Button><Button size="sm" variant="ghost" onClick={() => setConfirmRerun(false)}>{t("keepEdits")}</Button></div>}
       <p className="text-xs leading-5 text-md-on-surface-variant">{t("exportHint")}</p>
-      <div className="flex flex-wrap items-center gap-3"><Button disabled={!file || busy || !!selectionError} onClick={run}>{busy ? <Loader2 className="animate-spin" /> : <ScanText />}{t("recognize")}</Button>{busy && <Button variant="outline" onClick={() => { cancel(); setError(pt("errors.cancelled")) }}>{pt("cancel")}</Button>}<span className="text-xs text-md-on-surface-variant">{ot("downloadHint")}</span></div>
+      <div className="flex flex-wrap items-center gap-3"><Button disabled={!file || busy || !!selectionError} onClick={() => run()}>{busy ? <Loader2 className="animate-spin" /> : <ScanText />}{t("recognize")}</Button>{busy && <Button variant="outline" onClick={() => { cancel(); setError(pt("errors.cancelled")) }}>{pt("cancel")}</Button>}<span className="text-xs text-md-on-surface-variant">{ot("downloadHint")}</span></div>
       {busy && <div role="status" aria-live="polite" className="space-y-2 text-sm"><p>{t(`stage_${progress?.stage ?? "reading"}`)}{progress?.sourcePage ? ` · ${t("sourcePage").replace("{page}", String(progress.sourcePage))} · ${progress.completed + 1} / ${progress.total}` : ""}</p>{progress?.ocr && <p className="text-xs text-md-on-surface-variant">{ot(`stage_${progress.ocr.stage}`)}{progress.ocr.total ? ` · ${Math.min(100, Math.round((progress.ocr.completed ?? 0) / progress.ocr.total * 100))}%` : ""}</p>}</div>}
       {error && <p role="alert" className="rounded-xl bg-md-error-container p-3 text-sm text-md-on-error-container">{error}</p>}
     </section>

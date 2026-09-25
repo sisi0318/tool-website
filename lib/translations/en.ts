@@ -209,6 +209,7 @@ home: {
   buildWorkflow: "Build a workflow",
 },
 ocrTools: {
+  staleResult: "The settings changed; the results below are from the previous run. Recognize again to apply them.", confirmRerun: "Recognizing again discards your corrections to the recognized text.", rerunAnyway: "Recognize anyway", keepEdits: "Keep corrections",
   imageMode: "Image OCR", pdfMode: "PDF OCR", batchMode: "Batch processing",
   title: "OCR Image to Text", description: "Turn Chinese and English in images into editable text. Retain small details, process long screenshots in sections, and review each line against the image.",
   local: "Recognized locally · Images stay in your browser", chooseFile: "Choose image", fileHint: "Drop an image, or paste a screenshot on this page", clear: "Clear image",
@@ -273,6 +274,7 @@ imageRedact: {
   apply: "Confirm regions and generate", result: "Redacted image", download: "Download image", resultPreview: "Image with selected regions replaced by a solid color", resultHint: "Review the entire result before sharing. After changing regions, color or format, generate it again. The download contains only the flattened image.",
 },
 imageBatch: {
+  confirmOptionChange: "Changing the settings clears {count} finished results, including any corrected text.", applyChange: "Change anyway", keepResults: "Keep results",
   title: "Batch image processing", description: "Add multiple images to recognize text, or compress, resize and convert formats. Process one file at a time and review each result, entirely in your browser.",
   add: "Add images", samples: "Try three samples", dropHint: "Select, drop or paste multiple images", clear: "Clear queue", limits: "PNG / JPEG / WebP. Up to 30 files / 120 MB total, 20 MB / 20 megapixels per file. Results are capped at 120 MB in total. Animated images use the first frame only.",
   skipped: "Some files exceeded the limits and were skipped: 20 MB per file, 30 files / 120 MB per queue.", ocrMode: "Batch OCR", imageMode: "Compress & convert", format: "Output format", quality: "Quality (10–100)", width: "Maximum width (px)", height: "Maximum height (px)", keepSize: "Original size",
@@ -284,6 +286,7 @@ imageBatch: {
   error_fileLimit: "The file is empty or exceeds 20 MB.", error_queueLimit: "The queue exceeds 30 files or 120 MB. Process fewer files at a time.", error_options: "Check quality (10–100) and dimensions (1–32768, or blank to retain the original size).", error_outputLimit: "Results exceed 64 MB per file or 120 MB in total. Resize images or reduce the queue.", error_unsupported: "This browser does not support the selected operation. Try another format or a newer browser.", error_convert: "Processing failed. Check that the file is complete and retry.", error_cancelled: "Cancelled.", error_timeout: "This image took too long to process. Reduce its dimensions and retry.",
 },
 pdfOcr: {
+  staleResult: "The page selection or settings changed; the results below are from the previous run. Recognize again to apply the new settings.", confirmRerun: "Recognizing again discards your corrections to the recognized text.", rerunAnyway: "Recognize anyway", keepEdits: "Keep corrections",
   error_unsupportedInline: "This PDF contains inline images, which OCR does not currently support. Processing stopped to avoid missing page content. Export a new PDF from the original application and try again.",
   error_unsupportedContent: "This PDF uses page content encoding that cannot currently be checked safely. Processing stopped. Export a new PDF from the original application and try again.",
   error_contentLimit: "Expanded PDF page content exceeds the processing limit. Processing stopped. Select fewer pages or export a simpler PDF.",
