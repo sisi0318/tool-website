@@ -5,6 +5,7 @@ import { Download, Loader2, ScanText, Table2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { downloadBlob } from "@/lib/object-url"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { recognizeImage } from "@/lib/ocr-worker-client"
 import { OcrError, type OcrLine, type OcrProgress } from "@/lib/ocr-shared"
@@ -61,10 +62,12 @@ export default function ImageTablePanel() {
   const edit = (r: number, c: number, text: string) => {
     setData(current => current && { ...current, cells: current.cells.map((row, ri) => row.map((cell, ci) => ri === r && ci === c ? { text, review: false } : cell)) }); setOutput(null)
   }
+  // 生成后直接下载，下载链接保留，可以再次下载
+  const deliver = (next: File) => { setOutput(next); downloadBlob(next, next.name) }
   const exportFile = async (format: "csv" | "xlsx") => {
     if (!data || busy || changed) return
     const ticket = ++version.current, controller = new AbortController(); active.current = controller; setPhase("export"); setNotice(""); setOutput(null)
-    try { const result = await runImageTable({ action: "export", cells: data.cells.map(row => row.map(cell => cell.text)), format, numbers, safeCsv }, controller.signal); if (ticket === version.current && "output" in result) setOutput(new File([result.output], `${file?.name.replace(/\.[^.]*$/, "").replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 100) || "table"}.${format}`, { type: result.output.type })) }
+    try { const result = await runImageTable({ action: "export", cells: data.cells.map(row => row.map(cell => cell.text)), format, numbers, safeCsv }, controller.signal); if (ticket === version.current && "output" in result) deliver(new File([result.output], `${file?.name.replace(/\.[^.]*$/, "").replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 100) || "table"}.${format}`, { type: result.output.type })) }
     catch (error) { if (ticket === version.current) setNotice(errorText(error)) }
     finally { if (ticket === version.current) { setPhase(null); active.current = null } }
   }

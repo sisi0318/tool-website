@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { fileBaseName } from "@/lib/output-name"
+import { downloadBlob } from "@/lib/object-url"
 import { Download, Loader2, Network, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,10 +49,12 @@ export default function HarPanel() {
     catch (error) { if (ticket === version.current) { session.current?.dispose(); session.current = null; setNotice(`error_${error instanceof HarError ? error.code : "engine"}`) } }
     finally { if (ticket === version.current) setPhase(null) }
   }
+  // 生成后直接下载，下载链接保留，可以再次下载
+  const deliver = (next: File) => { setOutput(next); downloadBlob(next, next.name) }
   const exportRows = async (format: "csv" | "json") => {
     if (!session.current || busy || detailBusy || filtering || !rows.length) return
     const ticket = ++version.current; setOutput(null); setPhase("export"); setNotice("")
-    try { const response = await session.current.run({ action: "export", ids: rows.map(row => row.id), format, reveal }); if (ticket === version.current && "output" in response) setOutput(new File([response.output], `${fileBaseName(file?.name, "network")}_summary.${format}`, { type: response.output.type })) }
+    try { const response = await session.current.run({ action: "export", ids: rows.map(row => row.id), format, reveal }); if (ticket === version.current && "output" in response) deliver(new File([response.output], `${fileBaseName(file?.name, "network")}_summary.${format}`, { type: response.output.type })) }
     catch (error) { if (ticket === version.current) setNotice(`error_${error instanceof HarError ? error.code : "engine"}`) }
     finally { if (ticket === version.current) setPhase(null) }
   }

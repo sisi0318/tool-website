@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({ run: vi.fn(), ocr: vi.fn() }))
 vi.mock("@/lib/image-table", () => ({ runImageTable: mocks.run, createTableSample: vi.fn() }))
 vi.mock("@/lib/ocr-worker-client", () => ({ recognizeImage: mocks.ocr }))
 vi.mock("@/hooks/use-translations", () => { const t = (key: string) => key; return { useTranslations: () => t } })
-vi.mock("@/lib/object-url", () => ({ createObjectUrl: () => "blob:preview", revokeObjectUrl: vi.fn() }))
+const download = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/object-url", () => ({ createObjectUrl: () => "blob:preview", revokeObjectUrl: vi.fn(), downloadBlob: download }))
 vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 const image = { width: 200, height: 100, preview: new Blob(), animated: false, rules: { x: [0, 100, 200], y: [0, 50, 100] } }
 const result = { info: { width: 200, height: 100 }, lines: [{ id: 0, text: "00123", score: 0.98, poly: [[10, 10], [60, 10], [60, 30], [10, 30]] }] }
@@ -17,6 +18,7 @@ it("exports reviewed cells and invalidates downloads on edits and grid changes",
   fireEvent.change(screen.getByLabelText("cell A1"), { target: { value: "edited" } })
   mocks.run.mockResolvedValue({ output: new Blob(["xlsx"]) }); fireEvent.click(screen.getByRole("button", { name: "xlsx" }))
   await screen.findByRole("link", { name: "download XLSX" })
+  expect(download).toHaveBeenCalledWith(expect.any(File), expect.stringMatching(/\.xlsx$/))
   expect(mocks.run.mock.calls[1][0]).toMatchObject({ cells: [["edited", ""], ["", ""]], numbers: false })
   fireEvent.change(screen.getByLabelText("xEdges"), { target: { value: "0, 200" } })
   expect(screen.queryByRole("link", { name: "download XLSX" })).not.toBeInTheDocument(); expect(screen.getByRole("button", { name: "xlsx" })).toBeDisabled()

@@ -10,6 +10,7 @@ import PdfPreview from "./pdf-preview"
 import { SendToMenu } from "./send-to-menu"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
+import { downloadBlob } from "@/lib/object-url"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
 import { OcrError, OCR_LOW_CONFIDENCE, type OcrOptions } from "@/lib/ocr-shared"
@@ -68,7 +69,7 @@ export default function PdfOcrPanel({ isActive = true, headingLevel = "h2", onBu
     resetResult()
     void task((signal, onProgress) => recognizePdf(file, { selection, dpi, rotation }, { signal, onProgress }), next => { setPages(next); setResultKey(optionsKey) })
   }
-  const generate = () => void task((signal, update) => { update({ stage: "writing", completed: 0, total: pages.length }); return exportSearchablePdf(pages, signal) }, setOutput)
+  const generate = () => void task((signal, update) => { update({ stage: "writing", completed: 0, total: pages.length }); return exportSearchablePdf(pages, signal) }, blob => { setOutput(blob); downloadBlob(blob, `${baseName}-searchable.pdf`) })
   const editLine = (line: number, value: string) => { setOutput(null); setEdited(true); setPages(previous => previous.map((page, i) => i === index ? { ...page, lines: page.lines.map((item, n) => n === line ? { ...item, text: value } : item) } : page)) }
   const selectLine = (line: number) => { setOnlyLow(false); setLineIndex(line); requestAnimationFrame(() => document.getElementById(`${id}-line-${line}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" })) }
   const current = pages[index], lowCount = current?.lines.filter(line => line.score < OCR_LOW_CONFIDENCE).length ?? 0

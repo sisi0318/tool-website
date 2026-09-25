@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
+import { downloadBlob } from "@/lib/object-url"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { SendToMenu } from "./send-to-menu"
 import { createClientId } from "@/lib/client-id"
@@ -78,7 +79,7 @@ export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: {
   }
   const pack = async () => {
     const ticket = ++version.current, controller = new AbortController(); active.current = controller; setPhase("zip"); setArchive(null); setNotice("")
-    try { const zip = await imageBatchZip(current.current, options, controller.signal); if (ticket === version.current) setArchive(zip) }
+    try { const zip = await imageBatchZip(current.current, options, controller.signal); if (ticket === version.current) { setArchive(zip); downloadBlob(zip, `batch-${options.mode}.zip`) } }
     catch (error) { if (ticket === version.current) setNotice(describe(batchErrorCode(error))) }
     finally { if (ticket === version.current) { setPhase(null); active.current = null } }
   }
