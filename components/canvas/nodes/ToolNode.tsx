@@ -13,6 +13,7 @@ import { ConfigInput } from "./ConfigInput"
 import { JsonTreeViewer } from "./JsonTreeViewer"
 import { NodeRunButton } from "./NodeRunButton"
 import { NodeStatusMessage } from "./NodeStatusMessage"
+import { NODE_INTERACTIVE_CLASS } from "./interactive"
 import { NodeBypassButton } from "./NodeBypassButton"
 
 /** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
@@ -227,7 +228,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       {(data.type === "string-preview" || data.type === "json-preview" || data.type === "image-preview") && (
         <div className="border-t border-md-outline-variant px-3 py-2">
           {data.type === "string-preview" && contentPreview && contentPreview.text.length > 0 && (
-            <div className="max-h-32 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container p-2">
+            <div className={`${NODE_INTERACTIVE_CLASS} max-h-32 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container p-2`}>
               <pre className="text-[10px] whitespace-pre-wrap break-words">
                 {contentPreview.text}
               </pre>
@@ -239,7 +240,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
             </div>
           )}
           {data.type === "json-preview" && !!nodeOutputs?.parsed && (
-            <div className="max-h-48 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container p-2">
+            <div className={`${NODE_INTERACTIVE_CLASS} max-h-48 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container p-2`}>
               <JsonTreeViewer data={nodeOutputs.parsed} />
             </div>
           )}

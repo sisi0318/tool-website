@@ -5,6 +5,7 @@ import { SelectInput } from "./SelectInput"
 import { SliderInput } from "./SliderInput"
 import { SwitchInput } from "./SwitchInput"
 import { ColorInput } from "./ColorInput"
+import { NODE_INTERACTIVE_CLASS } from "./interactive"
 
 interface ConfigInputProps {
   field: ConfigField
@@ -111,7 +112,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         onChange={(e) => onChange(Number(e.target.value))}
         disabled={disabled}
         aria-label={field.name}
-        className="w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50"
+        className={`${NODE_INTERACTIVE_CLASS} w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50`}
       />
     )
   }
@@ -125,7 +126,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
         disabled={disabled}
         rows={2}
         aria-label={field.name}
-        className="w-full resize-y rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 font-mono text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50"
+        className={`${NODE_INTERACTIVE_CLASS} w-full resize-y rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 font-mono text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50`}
       />
     )
   }
@@ -134,7 +135,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
   if (field.dataType === "bytes") {
     const MAX_FILE_SIZE = 50 * 1024 * 1024
     return (
-      <div className="space-y-1">
+      <div className={`${NODE_INTERACTIVE_CLASS} space-y-1`}>
         <input
           type="file"
           onChange={(e) => {
@@ -169,7 +170,7 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label={field.name}
-      className="w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50"
+      className={`${NODE_INTERACTIVE_CLASS} w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-1.5 py-1 text-[10px] text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:opacity-50`}
     />
   )
 }

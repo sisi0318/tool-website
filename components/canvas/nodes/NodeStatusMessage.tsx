@@ -2,6 +2,7 @@
 
 import { useTranslations } from "@/hooks/use-translations"
 import { CYCLE_ERROR, UPSTREAM_ERROR, UPSTREAM_PENDING } from "@/lib/canvas/store"
+import { NODE_INTERACTIVE_CLASS } from "./interactive"
 
 /** 节点状态码转成可读文案;其余错误是适配器抛出的原文 */
 export function nodeStatusText(error: string, t: (key: string) => string): string {
@@ -22,7 +23,7 @@ export function NodeStatusMessage({ error }: { error: string }) {
         pending ? "border-md-outline-variant bg-md-surface-container-high" : "border-md-error/40 bg-md-error-container/60"
       }`}
     >
-      <p className={`max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs ${pending ? "text-md-on-surface-variant" : "text-md-on-error-container"}`}>
+      <p className={`${NODE_INTERACTIVE_CLASS} max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs ${pending ? "text-md-on-surface-variant" : "text-md-on-error-container"}`}>
         {nodeStatusText(error, t)}
       </p>
     </div>

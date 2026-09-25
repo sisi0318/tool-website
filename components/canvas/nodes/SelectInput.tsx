@@ -1,3 +1,5 @@
+import { NODE_INTERACTIVE_CLASS } from "./interactive"
+
 interface SelectInputProps {
   options: Array<{ label: string; value: string }>
   value: string
@@ -12,7 +14,7 @@ export function SelectInput({ options, value, onChange, disabled }: SelectInputP
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       data-testid="select-input"
-      className="w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-2 py-1 text-xs text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:cursor-not-allowed disabled:opacity-50"
+      className={`${NODE_INTERACTIVE_CLASS} w-full rounded-[var(--md-sys-shape-corner-extra-small)] border border-md-outline-variant bg-md-surface-container-lowest px-2 py-1 text-xs text-md-on-surface outline-none focus-visible:ring-1 focus-visible:ring-md-primary disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>

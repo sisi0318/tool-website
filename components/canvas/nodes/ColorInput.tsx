@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { NODE_INTERACTIVE_CLASS } from "./interactive"
 
 interface ColorInputProps {
   value: string
@@ -7,15 +7,10 @@ interface ColorInputProps {
 }
 
 export function ColorInput({ value, onChange, disabled }: ColorInputProps) {
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-  }, [])
-
   return (
     <div
-      className="flex items-center gap-2"
+      className={`${NODE_INTERACTIVE_CLASS} flex items-center gap-2`}
       data-testid="color-input"
-      onMouseDown={handleMouseDown}
     >
       <input
         type="color"

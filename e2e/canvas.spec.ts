@@ -154,6 +154,33 @@ test.describe("Canvas Page", () => {
     await expect(input).toHaveValue("hello")
   })
 
+  test("selecting text inside a node input does not drag the node", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      store.getState().addNode({
+        id: "drag-guard-node",
+        type: "string",
+        position: { x: 300, y: 200 },
+        config: { value: "select this text" },
+      })
+    })
+
+    const node = page.locator('.react-flow__node[data-id="drag-guard-node"]')
+    const input = node.getByRole("textbox", { name: "Value" })
+    await expect(input).toBeVisible()
+    const box = (await input.boundingBox())!
+    await page.mouse.move(box.x + 6, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width - 6, box.y + box.height / 2 + 40, { steps: 8 })
+    await page.mouse.up()
+
+    const position = await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__
+      return store.getState().nodes.find((candidate: { id: string }) => candidate.id === "drag-guard-node").position
+    })
+    expect(position).toEqual({ x: 300, y: 200 })
+  })
+
   test("should display inline editor for number node", async ({ page }) => {
     await page.evaluate(() => {
       const store = (window as any).__ZUSTAND_STORE__

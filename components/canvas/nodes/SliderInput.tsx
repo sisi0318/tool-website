@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { NODE_INTERACTIVE_CLASS } from "./interactive"
 
 interface SliderInputProps {
   min: number
@@ -10,15 +10,10 @@ interface SliderInputProps {
 }
 
 export function SliderInput({ min, max, step, value, onChange, disabled }: SliderInputProps) {
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-  }, [])
-
   return (
     <div
-      className="flex items-center gap-2"
+      className={`${NODE_INTERACTIVE_CLASS} flex items-center gap-2`}
       data-testid="slider-input"
-      onMouseDown={handleMouseDown}
     >
       <input
         type="range"

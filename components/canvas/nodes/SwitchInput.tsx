@@ -1,3 +1,5 @@
+import { NODE_INTERACTIVE_CLASS } from "./interactive"
+
 interface SwitchInputProps {
   checked: boolean
   onChange: (checked: boolean) => void
@@ -6,7 +8,7 @@ interface SwitchInputProps {
 
 export function SwitchInput({ checked, onChange, disabled }: SwitchInputProps) {
   return (
-    <label className="relative inline-flex items-center cursor-pointer" data-testid="switch-input">
+    <label className={`${NODE_INTERACTIVE_CLASS} relative inline-flex items-center cursor-pointer`} data-testid="switch-input">
       <input
         type="checkbox"
         checked={checked}
