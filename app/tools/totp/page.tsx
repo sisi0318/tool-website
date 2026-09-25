@@ -6,16 +6,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { 
+import {
   Copy, Plus, Trash2, Key, Clock, Shield,
-  QrCode, Eye, EyeOff, RefreshCw
+  Link2, Eye, EyeOff, RefreshCw
 } from "lucide-react"
 import { CircularProgress } from "@/components/ui/circular-progress"
+import { ToastAction } from "@/components/ui/toast"
 import { useToolActivity } from "@/components/tool-activity"
 import { createClientId } from "@/lib/client-id"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
-import { generateTotp, getTotpTimeRemaining, parseOtpauthUri } from "@/lib/totp-tools"
+import {
+  generateTotp,
+  getTotpTimeRemaining,
+  normalizeBase32Secret,
+  parseOtpauthUri,
+  TOTP_ALGORITHMS,
+  type OtpauthParseError,
+  type TotpAlgorithm,
+} from "@/lib/totp-tools"
 import { useTranslations } from "@/hooks/use-translations"
 
 interface TOTPAccount {
@@ -25,7 +34,12 @@ interface TOTPAccount {
   secret: string
   digits: number
   period: number
+  /** 旧数据没有这个字段，按 SHA1 处理 */
+  algorithm?: TotpAlgorithm
 }
+
+const TOTP_DIGITS = [6, 7, 8] as const
+const selectClassName = "h-10 w-full rounded-lg border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface)] px-3 text-sm text-[var(--md-sys-color-on-surface)]"
 
 export default function TOTPPage() {
   const { toast } = useToast()
@@ -42,7 +56,12 @@ export default function TOTPPage() {
   const [newName, setNewName] = useState("")
   const [newIssuer, setNewIssuer] = useState("")
   const [newSecret, setNewSecret] = useState("")
+  const [newAlgorithm, setNewAlgorithm] = useState<TotpAlgorithm>("SHA1")
+  const [newDigits, setNewDigits] = useState<number>(6)
+  const [newPeriod, setNewPeriod] = useState("30")
+  const [addError, setAddError] = useState("")
   const [importUri, setImportUri] = useState("")
+  const [importError, setImportError] = useState("")
   const [isStorageLoaded, setIsStorageLoaded] = useState(false)
 
   // 生成所有账户的验证码
@@ -50,7 +69,7 @@ export default function TOTPPage() {
     const newCodes: Record<string, string> = {}
     for (const account of accountList) {
       try {
-        newCodes[account.id] = await generateTotp(account.secret, account.period, account.digits, timestamp)
+        newCodes[account.id] = await generateTotp(account.secret, account.period, account.digits, timestamp, account.algorithm ?? "SHA1")
       } catch {
         newCodes[account.id] = '------'
       }
@@ -119,60 +138,102 @@ export default function TOTPPage() {
     }
   }, [accounts, isStorageLoaded])
 
+  const invalidSecretMessage = useCallback(
+    (characters: string[]) => t("invalidSecretCharacters").replace("{chars}", characters.join(" ")),
+    [t],
+  )
+
   // 添加账户
   const addAccount = useCallback(() => {
-    if (!newName || !newSecret) {
-      toast({ title: t("missingFields"), variant: "destructive" })
+    const secret = normalizeBase32Secret(newSecret)
+    if (!newName.trim() || (secret.ok && !secret.secret)) {
+      setAddError(t("missingFields"))
       return
     }
-    
-    const cleanSecret = newSecret.replace(/\s/g, '').toUpperCase()
-    
+    if (!secret.ok) {
+      setAddError(invalidSecretMessage(secret.invalidCharacters))
+      return
+    }
+    const period = Number(newPeriod)
+    if (!Number.isInteger(period) || period <= 0) {
+      setAddError(t("invalidPeriod"))
+      return
+    }
+
     const account: TOTPAccount = {
       id: createClientId("totp"),
-      name: newName,
-      issuer: newIssuer,
-      secret: cleanSecret,
-      digits: 6,
-      period: 30,
+      name: newName.trim(),
+      issuer: newIssuer.trim(),
+      secret: secret.secret,
+      digits: newDigits,
+      period,
+      algorithm: newAlgorithm,
     }
-    
+
     setAccounts(prev => [...prev, account])
     setNewName("")
     setNewIssuer("")
     setNewSecret("")
+    setAddError("")
     setShowAddForm(false)
     toast({ title: t("accountAdded") })
-  }, [newName, newIssuer, newSecret, t, toast])
+  }, [invalidSecretMessage, newAlgorithm, newDigits, newIssuer, newName, newPeriod, newSecret, t, toast])
 
   // 从 URI 导入
   const importFromUri = useCallback(() => {
-    const parsed = parseOtpauthUri(importUri)
-    if (!parsed || !parsed.secret) {
-      toast({ title: t("invalidUri"), variant: "destructive" })
+    const result = parseOtpauthUri(importUri)
+    if (!result.ok) {
+      const messages: Record<OtpauthParseError, string> = {
+        invalidUri: t("invalidUri"),
+        unsupportedType: t("unsupportedType").replace("{type}", result.detail ?? ""),
+        missingSecret: t("missingSecret"),
+        invalidSecret: invalidSecretMessage((result.detail ?? "").split(" ")),
+        unsupportedAlgorithm: t("unsupportedAlgorithm").replace("{algorithm}", result.detail ?? ""),
+      }
+      setImportError(messages[result.error])
       return
     }
-    
+
+    const parsed = result.account
     const account: TOTPAccount = {
       id: createClientId("totp"),
       name: parsed.name || t("unknownAccount"),
-      issuer: parsed.issuer || '',
+      issuer: parsed.issuer,
       secret: parsed.secret,
-      digits: parsed.digits || 6,
-      period: parsed.period || 30,
+      digits: parsed.digits,
+      period: parsed.period,
+      algorithm: parsed.algorithm,
     }
-    
+
     setAccounts(prev => [...prev, account])
     setImportUri("")
+    setImportError("")
     setShowAddForm(false)
     toast({ title: t("accountImported") })
-  }, [importUri, t, toast])
+  }, [importUri, invalidSecretMessage, t, toast])
 
-  // 删除账户
-  const deleteAccount = useCallback((id: string) => {
-    setAccounts(prev => prev.filter(a => a.id !== id))
-    toast({ title: t("accountDeleted") })
-  }, [t, toast])
+  // 删除账户：立即生效，提示里可以撤销（密钥只存在本机，删了就找不回来）
+  const deleteAccount = useCallback((account: TOTPAccount) => {
+    const index = accounts.findIndex(a => a.id === account.id)
+    setAccounts(prev => prev.filter(a => a.id !== account.id))
+    toast({
+      title: t("accountDeleted"),
+      description: account.issuer ? `${account.issuer} · ${account.name}` : account.name,
+      duration: 8000,
+      action: (
+        <ToastAction
+          altText={t("undo")}
+          onClick={() => setAccounts(prev => (
+            prev.some(a => a.id === account.id)
+              ? prev
+              : [...prev.slice(0, Math.max(index, 0)), account, ...prev.slice(Math.max(index, 0))]
+          ))}
+        >
+          {t("undo")}
+        </ToastAction>
+      ),
+    })
+  }, [accounts, t, toast])
 
   // 复制验证码
   const copyCode = useCallback(async (code: string) => {
@@ -218,19 +279,28 @@ export default function TOTPPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* 手动添加 */}
-              <div className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  addAccount()
+                }}
+              >
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>{t("accountName")}</Label>
+                    <Label htmlFor="totp-name">{t("accountName")}</Label>
                     <Input
+                      id="totp-name"
                       placeholder={t("accountNamePlaceholder")}
                       value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
+                      onChange={(e) => { setNewName(e.target.value); setAddError("") }}
+                      autoFocus
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t("issuer")}</Label>
+                    <Label htmlFor="totp-issuer">{t("issuer")}</Label>
                     <Input
+                      id="totp-issuer"
                       placeholder={t("issuerPlaceholder")}
                       value={newIssuer}
                       onChange={(e) => setNewIssuer(e.target.value)}
@@ -238,16 +308,45 @@ export default function TOTPPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("secret")}</Label>
+                  <Label htmlFor="totp-secret">{t("secret")}</Label>
                   <Input
+                    id="totp-secret"
                     placeholder={t("secretPlaceholder")}
                     value={newSecret}
-                    onChange={(e) => setNewSecret(e.target.value)}
+                    onChange={(e) => { setNewSecret(e.target.value); setAddError("") }}
+                    aria-invalid={addError ? true : undefined}
+                    aria-describedby={addError ? "totp-add-error" : undefined}
                     className="font-mono"
+                    autoComplete="off"
+                    spellCheck={false}
                   />
                 </div>
-                <Button onClick={addAccount}>{t("addAccount")}</Button>
-              </div>
+                <details className="rounded-lg border border-[var(--md-sys-color-outline-variant)] px-3 py-2">
+                  <summary className="cursor-pointer text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("advancedOptions")}</summary>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="totp-algorithm">{t("algorithm")}</Label>
+                      <select id="totp-algorithm" className={selectClassName} value={newAlgorithm} onChange={(e) => setNewAlgorithm(e.target.value as TotpAlgorithm)}>
+                        {TOTP_ALGORITHMS.map((algorithm) => <option key={algorithm} value={algorithm}>{algorithm}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="totp-digits">{t("digits")}</Label>
+                      <select id="totp-digits" className={selectClassName} value={newDigits} onChange={(e) => setNewDigits(Number(e.target.value))}>
+                        {TOTP_DIGITS.map((digits) => <option key={digits} value={digits}>{digits}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="totp-period">{t("period")}</Label>
+                      <Input id="totp-period" inputMode="numeric" value={newPeriod} onChange={(e) => { setNewPeriod(e.target.value); setAddError("") }} />
+                    </div>
+                  </div>
+                </details>
+                {addError && (
+                  <p id="totp-add-error" role="alert" className="text-sm text-[var(--md-sys-color-error)]">{addError}</p>
+                )}
+                <Button type="submit">{t("addAccount")}</Button>
+              </form>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -261,21 +360,35 @@ export default function TOTPPage() {
               </div>
 
               {/* URI 导入 */}
-              <div className="space-y-2">
-                <Label>{t("importFromUri")}</Label>
+              <form
+                className="space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  importFromUri()
+                }}
+              >
+                <Label htmlFor="totp-uri">{t("importFromUri")}</Label>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
+                    id="totp-uri"
                     placeholder="otpauth://totp/..."
                     value={importUri}
-                    onChange={(e) => setImportUri(e.target.value)}
+                    onChange={(e) => { setImportUri(e.target.value); setImportError("") }}
+                    aria-invalid={importError ? true : undefined}
+                    aria-describedby={importError ? "totp-import-error" : undefined}
                     className="font-mono text-sm"
+                    autoComplete="off"
+                    spellCheck={false}
                   />
-                  <Button onClick={importFromUri} variant="outline" className="shrink-0">
-                    <QrCode className="h-4 w-4 mr-2" />
+                  <Button type="submit" variant="outline" className="shrink-0">
+                    <Link2 className="h-4 w-4 mr-2" />
                     {t("import")}
                   </Button>
                 </div>
-              </div>
+                {importError && (
+                  <p id="totp-import-error" role="alert" className="text-sm text-[var(--md-sys-color-error)]">{importError}</p>
+                )}
+              </form>
             </CardContent>
           </Card>
         )}
@@ -310,6 +423,14 @@ export default function TOTPPage() {
                         <span className="text-[var(--md-sys-color-on-surface)]">
                           {account.name}
                         </span>
+                        {((account.algorithm ?? "SHA1") !== "SHA1" || account.digits !== 6 || account.period !== 30) && (
+                          <span className="rounded bg-[var(--md-sys-color-surface-container-high)] px-1.5 py-0.5 text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                            {t("settingsSummary")
+                              .replace("{algorithm}", account.algorithm ?? "SHA1")
+                              .replace("{digits}", String(account.digits))
+                              .replace("{period}", String(account.period))}
+                          </span>
+                        )}
                       </div>
                       
                       {/* 密钥显示 */}
@@ -371,7 +492,7 @@ export default function TOTPPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteAccount(account.id)}
+                          onClick={() => deleteAccount(account)}
                           className="text-[var(--md-sys-color-error)]"
                           aria-label={t("deleteAccount")}
                         >

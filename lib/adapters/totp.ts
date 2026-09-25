@@ -1,7 +1,7 @@
 import { Fingerprint } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
-import { generateTotp, getTotpTimeRemaining } from "../totp-tools"
+import { generateTotp, getTotpTimeRemaining, normalizeTotpAlgorithm, TOTP_ALGORITHMS } from "../totp-tools"
 
 export const totpAdapter: ToolAdapter = {
   type: "totp",
@@ -38,6 +38,15 @@ export const totpAdapter: ToolAdapter = {
       hasInput: false,
       hasOutput: false,
     },
+    {
+      id: "algorithm",
+      name: "Algorithm",
+      dataType: "string",
+      defaultValue: "SHA1",
+      options: TOTP_ALGORITHMS.map((algorithm) => ({ label: algorithm, value: algorithm })),
+      hasInput: false,
+      hasOutput: false,
+    },
   ],
   outputs: [
     { id: "code", name: "Code", dataType: "string" },
@@ -54,8 +63,10 @@ export const totpAdapter: ToolAdapter = {
     const periodValue = Number(config.period ?? 30)
     const period = Number.isFinite(periodValue) && periodValue > 0 ? Math.floor(periodValue) : 30
     const timestampSeconds = Math.floor(Date.now() / 1000)
+    const algorithm = normalizeTotpAlgorithm(String(config.algorithm ?? "SHA1"))
+    if (!algorithm) throw new Error(`Unsupported TOTP algorithm: ${String(config.algorithm)}`)
 
-    const code = await generateTotp(secret.replace(/\s/g, ""), period, digits, timestampSeconds)
+    const code = await generateTotp(secret.replace(/\s/g, ""), period, digits, timestampSeconds, algorithm)
 
     return {
       code,

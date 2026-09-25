@@ -1,9 +1,39 @@
+export type TotpAlgorithm = "SHA1" | "SHA256" | "SHA512"
+
+export const TOTP_ALGORITHMS: readonly TotpAlgorithm[] = ["SHA1", "SHA256", "SHA512"]
+
 export interface ParsedTotpAccount {
   name: string
   issuer: string
   secret: string
   digits: number
   period: number
+  algorithm: TotpAlgorithm
+}
+
+export type OtpauthParseError = "invalidUri" | "unsupportedType" | "missingSecret" | "invalidSecret" | "unsupportedAlgorithm"
+
+export type OtpauthParseResult =
+  | { ok: true; account: ParsedTotpAccount }
+  | { ok: false; error: OtpauthParseError; detail?: string }
+
+export type Base32SecretResult = { ok: true; secret: string } | { ok: false; invalidCharacters: string[] }
+
+/**
+ * 规范化用户粘贴的 Base32 密钥：去掉分组用的空格和连字符、末尾的 = 填充，并转成大写。
+ * 其余不在 A–Z / 2–7 里的字符原样报出来 —— 以前是静默删掉，
+ * 误输的 0/1/8 被吃掉后照样生成验证码，只是永远对不上。
+ */
+export function normalizeBase32Secret(input: string): Base32SecretResult {
+  const secret = input.replace(/[\s-]/g, "").replace(/=+$/, "").toUpperCase()
+  const invalidCharacters = [...new Set(secret.replace(/[A-Z2-7]/g, ""))]
+  if (invalidCharacters.length > 0) return { ok: false, invalidCharacters }
+  return { ok: true, secret }
+}
+
+export function normalizeTotpAlgorithm(value: string | null | undefined): TotpAlgorithm | null {
+  const normalized = (value ?? "SHA1").replace(/-/g, "").toUpperCase()
+  return TOTP_ALGORITHMS.find((algorithm) => algorithm === normalized) ?? null
 }
 
 export function decodeBase32(encoded: string): Uint8Array {
@@ -33,11 +63,14 @@ export function getTotpTimeRemaining(timestampSeconds: number, period = 30): num
   return normalizedPeriod - (elapsed < 0 ? elapsed + normalizedPeriod : elapsed)
 }
 
+const WEB_CRYPTO_HASH: Record<TotpAlgorithm, string> = { SHA1: "SHA-1", SHA256: "SHA-256", SHA512: "SHA-512" }
+
 export async function generateTotp(
   secret: string,
   period = 30,
   digits = 6,
   timestampSeconds = Math.floor(Date.now() / 1000),
+  algorithm: TotpAlgorithm = "SHA1",
   subtleCrypto: SubtleCrypto = globalThis.crypto.subtle,
 ): Promise<string> {
   const normalizedPeriod = normalizePositiveInteger(period, 30)
@@ -56,7 +89,7 @@ export async function generateTotp(
   const cryptoKey = await subtleCrypto.importKey(
     "raw",
     keyBytes.slice().buffer,
-    { name: "HMAC", hash: "SHA-1" },
+    { name: "HMAC", hash: WEB_CRYPTO_HASH[algorithm] ?? "SHA-1" },
     false,
     ["sign"],
   )
@@ -73,29 +106,46 @@ export async function generateTotp(
   return otp.toString().padStart(normalizedDigits, "0")
 }
 
-export function parseOtpauthUri(uri: string): ParsedTotpAccount | null {
+export function parseOtpauthUri(uri: string): OtpauthParseResult {
+  let url: URL
   try {
-    const url = new URL(uri)
-    if (url.protocol !== "otpauth:" || url.host !== "totp") return null
+    url = new URL(uri.trim())
+  } catch {
+    return { ok: false, error: "invalidUri" }
+  }
+  if (url.protocol !== "otpauth:") return { ok: false, error: "invalidUri" }
+  if (url.host !== "totp") return { ok: false, error: "unsupportedType", detail: url.host }
 
-    const path = decodeURIComponent(url.pathname.slice(1))
-    const secret = url.searchParams.get("secret")?.toUpperCase().replace(/[^A-Z2-7]/g, "") ?? ""
-    if (!path || !secret) return null
+  let path: string
+  try {
+    path = decodeURIComponent(url.pathname.slice(1))
+  } catch {
+    return { ok: false, error: "invalidUri" }
+  }
 
-    const separatorIndex = path.indexOf(":")
-    const pathIssuer = separatorIndex >= 0 ? path.slice(0, separatorIndex) : ""
-    const name = separatorIndex >= 0 ? path.slice(separatorIndex + 1) : path
-    const digits = normalizePositiveInteger(Number.parseInt(url.searchParams.get("digits") ?? "6", 10), 6)
-    const period = normalizePositiveInteger(Number.parseInt(url.searchParams.get("period") ?? "30", 10), 30)
+  const rawSecret = url.searchParams.get("secret") ?? ""
+  if (!rawSecret.trim()) return { ok: false, error: "missingSecret" }
+  const secret = normalizeBase32Secret(rawSecret)
+  if (!secret.ok) return { ok: false, error: "invalidSecret", detail: secret.invalidCharacters.join(" ") }
 
-    return {
-      name,
-      issuer: url.searchParams.get("issuer") || pathIssuer,
-      secret,
+  const algorithm = normalizeTotpAlgorithm(url.searchParams.get("algorithm"))
+  if (!algorithm) return { ok: false, error: "unsupportedAlgorithm", detail: url.searchParams.get("algorithm") ?? "" }
+
+  const separatorIndex = path.indexOf(":")
+  const pathIssuer = separatorIndex >= 0 ? path.slice(0, separatorIndex) : ""
+  const name = separatorIndex >= 0 ? path.slice(separatorIndex + 1) : path
+  const digits = normalizePositiveInteger(Number.parseInt(url.searchParams.get("digits") ?? "6", 10), 6)
+  const period = normalizePositiveInteger(Number.parseInt(url.searchParams.get("period") ?? "30", 10), 30)
+
+  return {
+    ok: true,
+    account: {
+      name: name.trim(),
+      issuer: url.searchParams.get("issuer") || pathIssuer.trim(),
+      secret: secret.secret,
       digits,
       period,
-    }
-  } catch {
-    return null
+      algorithm,
+    },
   }
 }
