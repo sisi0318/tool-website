@@ -108,6 +108,23 @@ describe("canvas store history", () => {
     expect(useCanvasStore.getState().nodes[0].position).toEqual(originalPosition)
   })
 
+  it("撤销、重做直接换回原来的节点对象，不再深拷贝整张图", async () => {
+    const { useCanvasStore } = await createTestHarness()
+    useCanvasStore.getState().addNode(node("a", "test", { x: 10, y: 20 }))
+    useCanvasStore.getState().addNode(node("b", "test", { x: 300, y: 20 }))
+    const [a, b] = useCanvasStore.getState().nodes
+
+    useCanvasStore.getState().updateNodePosition("a", { x: 200, y: 300 })
+    const moved = useCanvasStore.getState().nodes[0]
+    useCanvasStore.getState().undo()
+    expect(useCanvasStore.getState().nodes[0]).toBe(a)
+    expect(useCanvasStore.getState().nodes[1]).toBe(b)
+
+    useCanvasStore.getState().redo()
+    expect(useCanvasStore.getState().nodes[0]).toBe(moved)
+    expect(useCanvasStore.getState().nodes[1]).toBe(b)
+  })
+
   it("新增节点会立即选中，方便直接编辑", async () => {
     const { useCanvasStore } = await createTestHarness()
 

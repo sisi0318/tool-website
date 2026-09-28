@@ -33,7 +33,7 @@ import {
   instantiateClipboardPayload,
   type CanvasClipboardPayload,
 } from "@/lib/canvas/clipboard"
-import type { DataType } from "@/lib/canvas/types"
+import type { DataType, Edge as CanvasEdge, NodeInstance } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
 import { BaseNode } from "./nodes/BaseNode"
 import { ToolNode } from "./nodes/ToolNode"
@@ -173,30 +173,49 @@ export function Canvas() {
     [t]
   )
 
-  const flowNodes = useMemo(
-    () =>
-      storeNodes.map((node) => {
-        const definition = getNodeDefinition(node.type)
-        // 用注册表的类别判断,新增基础节点不必再来这里补名单
-        const isBasic = definition?.category === "basic"
-        return {
-          id: node.id,
-          type: isBasic ? "base" : "tool",
-          position: node.position,
-          selected: selectedNodeIds.includes(node.id),
-          data: {
-            ...node,
-            definition,
-            selected: selectedNodeIds.includes(node.id),
-          },
-        }
-      }),
-    [storeNodes, selectedNodeIds]
-  )
+  // 按节点缓存：存储里的节点对象和选中状态都没变，就沿用上一次的对象，data 的引用不变，
+  // 已 memo 的节点组件不必重渲染。以前任何一个节点有变化（比如拖动）都会给所有节点新建 data
+  const flowNodeCache = useRef(new Map<string, { source: NodeInstance; selected: boolean; flow: FlowNode }>())
+  const flowNodes = useMemo(() => {
+    const previous = flowNodeCache.current
+    const next = new Map<string, { source: NodeInstance; selected: boolean; flow: FlowNode }>()
+    const selectedIds = new Set(selectedNodeIds)
+    const result = storeNodes.map((node) => {
+      const selected = selectedIds.has(node.id)
+      const cached = previous.get(node.id)
+      if (cached && cached.source === node && cached.selected === selected) {
+        next.set(node.id, cached)
+        return cached.flow
+      }
+      const definition = getNodeDefinition(node.type)
+      // 用注册表的类别判断,新增基础节点不必再来这里补名单
+      const isBasic = definition?.category === "basic"
+      const flow: FlowNode = {
+        id: node.id,
+        type: isBasic ? "base" : "tool",
+        position: node.position,
+        selected,
+        data: {
+          ...node,
+          definition,
+          selected,
+        },
+      }
+      next.set(node.id, { source: node, selected, flow })
+      return flow
+    })
+    flowNodeCache.current = next
+    return result
+  }, [storeNodes, selectedNodeIds])
 
-  const flowEdges = useMemo(
-    () => storeEdges.map((edge) => {
-      const sourceNode = storeNodes.find((node) => node.id === edge.source)
+  // 边也按同样的办法缓存；运行状态只影响两端在跑的那几条
+  const flowEdgeCache = useRef(new Map<string, { source: CanvasEdge; animated: boolean; stroke: string; flow: FlowEdge }>())
+  const flowEdges = useMemo(() => {
+    const previous = flowEdgeCache.current
+    const next = new Map<string, { source: CanvasEdge; animated: boolean; stroke: string; flow: FlowEdge }>()
+    const nodesById = new Map(storeNodes.map((node) => [node.id, node]))
+    const result = storeEdges.map((edge) => {
+      const sourceNode = nodesById.get(edge.source)
       const definition = sourceNode ? getNodeDefinition(sourceNode.type) : undefined
       const sourcePort = definition
         ? [
@@ -204,23 +223,31 @@ export function Canvas() {
             ...definition.outputs,
           ].find((port) => port.id === edge.sourcePort)
         : undefined
-      const isRunning = Boolean(nodeRunning[edge.source] || nodeRunning[edge.target])
-
-      return {
+      const animated = Boolean(nodeRunning[edge.source] || nodeRunning[edge.target])
+      const stroke = TYPE_COLORS[sourcePort?.dataType ?? "string"]
+      const cached = previous.get(edge.id)
+      if (cached && cached.source === edge && cached.animated === animated && cached.stroke === stroke) {
+        next.set(edge.id, cached)
+        return cached.flow
+      }
+      const flow: FlowEdge = {
         id: edge.id,
         source: edge.source,
         sourceHandle: edge.sourcePort,
         target: edge.target,
         targetHandle: edge.targetPort,
-        animated: isRunning,
+        animated,
         style: {
-          stroke: TYPE_COLORS[sourcePort?.dataType ?? "string"],
+          stroke,
           strokeWidth: 2,
         },
       }
-    }),
-    [storeEdges, storeNodes, nodeRunning]
-  )
+      next.set(edge.id, { source: edge, animated, stroke, flow })
+      return flow
+    })
+    flowEdgeCache.current = next
+    return result
+  }, [storeEdges, storeNodes, nodeRunning])
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flowNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(flowEdges)

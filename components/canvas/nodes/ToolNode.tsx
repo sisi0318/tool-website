@@ -6,6 +6,7 @@ import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
 import { useNodeLabel } from "@/hooks/use-node-label"
+import { useShallow } from "zustand/react/shallow"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import { previewCanvasValue } from "@/lib/canvas/format-value"
@@ -47,7 +48,6 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   const isSelected = Boolean(data.selected || isPrimarySelected)
   const updateConfig = useCanvasStore((s) => s.updateNodeConfig)
   const executeNode = useCanvasStore((s) => s.executeNode)
-  const edges = useCanvasStore((s) => s.edges)
   const autoRun = useCanvasStore((s) => s.autoRun)
   const autoExecutedRef = useRef(false)
   const previewSource = (
@@ -57,7 +57,8 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   )
   const previewUrl = useObjectUrl(previewSource)
 
-  const incomingEdges = useMemo(() => edges.filter((e) => e.target === data.id), [edges, data.id])
+  // 只订阅连到本节点的边：以前订阅整个 edges，任何一条边变了所有节点都要重渲染
+  const incomingEdges = useCanvasStore(useShallow((s) => s.edges.filter((e) => e.target === data.id)))
   const connectedPorts = useMemo(
     () => new Map(incomingEdges.map((e) => [e.targetPort, e])),
     [incomingEdges]

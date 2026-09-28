@@ -537,9 +537,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   pushHistory: (options) => {
     const { nodes, edges } = get()
+    // 节点和边都按不可变的方式更新，快照直接留引用；以前每次都 structuredClone 整张图
     undoStack.push({
-      nodes: structuredClone(nodes),
-      edges: structuredClone(edges),
+      nodes,
+      edges,
       preserveExecutionState: options?.preserveExecutionState,
     })
     if (undoStack.length > MAX_HISTORY) undoStack.shift()
@@ -559,8 +560,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
     const { nodes, edges } = get()
     redoStack.push({
-      nodes: structuredClone(nodes),
-      edges: structuredClone(edges),
+      nodes,
+      edges,
       preserveExecutionState: snapshot.preserveExecutionState,
     })
     set((state) => {
@@ -604,8 +605,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
     const { nodes, edges } = get()
     undoStack.push({
-      nodes: structuredClone(nodes),
-      edges: structuredClone(edges),
+      nodes,
+      edges,
       preserveExecutionState: snapshot.preserveExecutionState,
     })
     set((state) => {
