@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useI18n } from "@/components/i18n-provider"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhDevice } from "@/lib/translations/zh-namespaces/device"
 import type { DeviceFingerprint, FingerprintSignal, FingerprintSignalStatus } from "@/lib/device-fingerprint"
 
 interface DeviceFingerprintPanelProps {
@@ -59,7 +60,7 @@ interface SignalCardProps {
 }
 
 function SignalCard({ id, title, icon, signal, copied, showDetails, onCopy, children, details }: SignalCardProps) {
-  const t = useTranslations("device")
+  const t = useTranslations("device", zhDevice)
   const status = STATUS_META[signal.status]
   const noteKey = `fingerprintNotes.${signal.note}`
   const translatedNote = t(noteKey)
@@ -125,7 +126,7 @@ function SignalCard({ id, title, icon, signal, copied, showDetails, onCopy, chil
 }
 
 export function DeviceFingerprintPanel({ fingerprint, copied, showDetails, onCopy }: DeviceFingerprintPanelProps) {
-  const t = useTranslations("device")
+  const t = useTranslations("device", zhDevice)
   const { locale } = useI18n()
   const { signals } = fingerprint
   const collectedTime = Number.isNaN(Date.parse(fingerprint.collectedAt))

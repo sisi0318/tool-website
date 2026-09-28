@@ -7,19 +7,20 @@ import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmente
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCompressionFiles } from "@/lib/translations/zh-namespaces/compressionFiles"
 import { createHexdump } from "@/lib/hex-binary-tools"
 import { detectFileSignature } from "@/lib/file-signature"
 
 export const formatBinarySize = (size: number) => size < 1024 ? size + " B" : size < 1024 * 1024 ? (size / 1024).toFixed(1) + " KB" : (size / (1024 * 1024)).toFixed(1) + " MB"
 
 export function BinaryFileDownload({ file, label, compact = false }: { file: File; label?: string; compact?: boolean }) {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const url = useObjectUrl(file)
   return url ? <Button asChild size={compact ? "icon" : "sm"} variant={compact ? "ghost" : "default"}><a href={url} download={file.name} aria-label={label ?? t("downloadFile")}><Download />{!compact && t("downloadFile")}</a></Button> : <Button disabled size={compact ? "icon" : "sm"}><Download />{!compact && t("downloadFile")}</Button>
 }
 
 export function BinaryFileResult({ file, source }: { file: File; source?: string }) {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const [prefix, setPrefix] = useState<Uint8Array | null>(null)
   const [mode, setMode] = useState("text")
   useEffect(() => {

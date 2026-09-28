@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 
 interface SaveDialogProps {
   onSave: (name: string) => void
@@ -13,7 +14,7 @@ interface SaveDialogProps {
 }
 
 export function SaveDialog({ onSave, onCancel, existingNames, initialName = "" }: SaveDialogProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const [name, setName] = useState(initialName)
   const [showOverwrite, setShowOverwrite] = useState(false)
   const [error, setError] = useState("")

@@ -37,6 +37,7 @@ import {
 import { locationAt, type TextLocation } from "@/lib/text-location"
 import { ErrorLocation } from "@/components/tools/error-location"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhEncoding } from "@/lib/translations/zh-namespaces/encoding"
 import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { transferText } from "@/lib/tool-transfer"
 import { SendToMenu } from "@/components/tools/send-to-menu"
@@ -61,7 +62,7 @@ function encodingErrorLocation(error: EncodingError, value: string): TextLocatio
 
 export default function EncodingPage() {
   const params = useToolRuntimeParams()
-  const t = useTranslations("encoding")
+  const t = useTranslations("encoding", zhEncoding)
   const [encodingType, setEncodingType] = useState<EncodingType>("base64")
   const [direction, setDirection] = useState<EncodingDirection>("encode")
   const [input, setInput] = useState("")

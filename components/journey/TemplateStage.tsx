@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { FileImage, Loader2, Play, Upload, Workflow } from "lucide-react"
 import { type JourneyTemplate, validateTemplateImage } from "@/lib/journey/templates"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
+import { zhWorkflowTemplates } from "@/lib/translations/zh-namespaces/workflowTemplates"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,7 +15,7 @@ export function TemplateStage({ template, starting, progress, hasDraft, onStart,
   template: JourneyTemplate; starting: boolean; progress: TemplateRunProgress | null; hasDraft: boolean
   onStart: (value: unknown) => void; onCancel: () => void; onExit: () => void; onOpenTemplates: () => void
 }) {
-  const t = useTranslations("workflowTemplates"), ot = useTranslations("ocrTools")
+  const t = useTranslations("workflowTemplates", zhWorkflowTemplates), ot = useTranslations("ocrTools", zhOcrTools)
   const [text, setText] = useState(template.sampleText ?? ""), [file, setFile] = useState<File | null>(null), [loading, setLoading] = useState(false), [notice, setNotice] = useState("")
   const input = useRef<HTMLInputElement>(null), version = useRef(0), preview = useObjectUrl(file), busy = starting || loading
   useEffect(() => () => { version.current++ }, [])

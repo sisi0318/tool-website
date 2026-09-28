@@ -8,6 +8,7 @@ import { previewCanvasValue } from "@/lib/canvas/format-value"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
 import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface BranchDrawerProps {
@@ -19,7 +20,7 @@ interface BranchDrawerProps {
 }
 
 export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }: BranchDrawerProps) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const nodeLabel = useNodeLabel()
   const root = journey.nodes[journey.rootId]
 

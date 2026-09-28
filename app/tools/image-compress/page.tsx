@@ -27,6 +27,9 @@ import {
 } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageBatch } from "@/lib/translations/zh-namespaces/imageBatch"
+import { zhImageCompress } from "@/lib/translations/zh-namespaces/imageCompress"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
 
 /**
  * 一张图片与它当前的压缩结果。压缩在批处理的 Worker 管线里逐张进行：
@@ -56,9 +59,9 @@ const MAX_SIDE = 32768
 
 export default function ImageCompressPage() {
   const { toast } = useToast()
-  const t = useTranslations("imageCompress")
-  const bt = useTranslations("imageBatch")
-  const ot = useTranslations("ocrTools")
+  const t = useTranslations("imageCompress", zhImageCompress)
+  const bt = useTranslations("imageBatch", zhImageBatch)
+  const ot = useTranslations("ocrTools", zhOcrTools)
 
   // 状态管理
   const [images, setImages] = useState<CompressJob[]>([])

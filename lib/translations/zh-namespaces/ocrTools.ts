@@ -1,0 +1,21 @@
+/** 「ocrTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("ocrTools", zhOcrTools) */
+export const zhOcrTools = {
+  staleResult: "识别参数已改动，下面仍是上次的结果；点击“开始识别”按新设置重新识别。", confirmRerun: "重新识别会丢弃你对识别文字做的修改。", rerunAnyway: "仍然重新识别", keepEdits: "保留修改",
+  imageMode: "图片识别", pdfMode: "PDF OCR", batchMode: "批量处理",
+  title: "OCR 图片文字识别", description: "把图片里的中英文变成可编辑文本。保留小字细节，分段处理长截图，识别后可对照原图逐行核对。",
+  local: "浏览器本地识别 · 图片不上传", chooseFile: "选择图片", fileHint: "拖入图片，或在此页面粘贴截图", clear: "清除图片",
+  sample: "试试示例", sample_document: "中英混排", sample_small: "小字截图", sample_dark: "深色背景", sample_long: "长截图",
+  limits: "支持 PNG、JPEG、WebP，单张不超过 20 MB / 2000 万像素。动态图片只识别首帧。",
+  rotation: "顺时针旋转", rotationNone: "保持原方向", enhance: "增强小字（推荐）",
+  accuracyHint: "尽量使用清晰原图；横向文字效果更好。竖排、多栏排版、手写字或模糊图片可能需要人工整理。旋转选项适用于侧转或倒置的图片。",
+  recognize: "开始识别", working: "正在识别", cancel: "取消", downloadHint: "首次识别需加载约 70 MB 模型与运行文件，之后可复用缓存。",
+  stage_reading: "读取图片", stage_runtime: "加载识别运行环境", stage_models: "加载模型并初始化", stage_recognizing: "识别图片分段", stage_finishing: "整理识别结果",
+  preview: "原图与识别框", previewAlt: "待识别图片；识别后显示按所选方向旋转的图片", boxes: "显示识别框", zoom: "预览缩放", fit: "适应宽度", inputEmpty: "导入一张图片，开始提取文字",
+  output: "识别文本", editable: "可以直接编辑", outputEmpty: "识别出的文字会显示在这里", copy: "复制文本", copied: "文本已复制", copyFailed: "复制失败，请下载 TXT 文件。",
+  noText: "没有识别到文字。可以尝试旋转图片，或换用更清晰的原图。", exportHint: "TXT 和复制使用编辑后的文本；JSON 同时保留原始识别文字、识别框和置信度。",
+  lines: "行文字", tiles: "个分段", firstFrame: "仅识别首帧", review: "逐行核对", lowCount: "行需重点核对", onlyLow: "只看低置信度", noLow: "没有低于 90% 置信度的行，相似字符仍建议核对。",
+  confidenceHint: "橙色框表示置信度低于 90%。置信度是模型评分，不等于正确率；0/O、1/l/I 和金额等请对照原图。这里保留原始结果，不会随上方文本编辑而改变。",
+  error_fileLimit: "图片不能为空且不能超过 20 MB。", error_imageLimit: "图片超过 2000 万像素或边长 32768 像素，请先裁剪。", error_format: "请选择 PNG、JPEG 或 WebP 图片。", error_decode: "无法读取图片，文件可能损坏。",
+  error_options: "识别参数无效，请检查旋转设置。", error_unsupported: "浏览器不支持本地识别所需的功能，请使用较新的浏览器。", error_model: "模型加载失败，请检查网络后重试。首次加载可能需要一些时间。", error_engine: "识别失败，请重试或裁剪图片后识别。",
+  error_cancelled: "已取消识别。", error_timeout: "识别超时，请裁剪图片后重试。", error_outputLimit: "识别出的文字行数过多，请将图片分成几张后识别。",
+}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { ConfigField } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { SelectInput } from "./SelectInput"
 import { SliderInput } from "./SliderInput"
 import { SwitchInput } from "./SwitchInput"
@@ -16,7 +17,7 @@ interface ConfigInputProps {
 }
 
 export function ConfigInput({ field, value, onChange, disabled, allConfig }: ConfigInputProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const dependentValue = field.dependsOn ? allConfig[field.dependsOn] : undefined
   const dynamicOpts = field.dependsOn && field.dynamicOptions
     ? field.dynamicOptions(String(dependentValue ?? ""))

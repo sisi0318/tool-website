@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJwt } from "@/lib/translations/zh-namespaces/jwt"
 import { Copy, Check, AlertCircle, CheckCircle, Clock, Key } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -159,7 +160,7 @@ function getExpiryStatus(exp?: number): { status: "valid" | "expired" | "none"; 
 }
 
 export default function JWTPage() {
-  const t = useTranslations("jwt")
+  const t = useTranslations("jwt", zhJwt)
 
   const [token, setToken] = useState("")
   // 其它工具“在工具中打开”发来的文本

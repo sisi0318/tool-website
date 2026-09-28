@@ -22,6 +22,7 @@ import { useObjectUrlRegistry } from "@/hooks/use-object-url"
 import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhExifViewer } from "@/lib/translations/zh-namespaces/exifViewer"
 import { formatExifDate } from "@/lib/exif-date"
 import { downloadBlob } from "@/lib/object-url"
 import {
@@ -64,7 +65,7 @@ interface ExifCategory {
 
 export default function ExifViewerPage() {
   const { toast } = useToast()
-  const t = useTranslations("exifViewer")
+  const t = useTranslations("exifViewer", zhExifViewer)
 
   // 状态管理
   const [images, setImages] = useState<ProcessedImage[]>([])

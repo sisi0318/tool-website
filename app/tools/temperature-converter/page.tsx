@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhTemperatureConverter } from "@/lib/translations/zh-namespaces/temperatureConverter"
 
 type TemperatureScaleId =
   | "kelvin"
@@ -151,7 +152,7 @@ function parseTemperatureInput(value: string): number | null {
 }
 
 export default function TemperatureConverterPage() {
-  const t = useTranslations("temperatureConverter")
+  const t = useTranslations("temperatureConverter", zhTemperatureConverter)
   const { toast } = useToast()
   const [showSettings, setShowSettings] = useState(false)
   const [autoFormat, setAutoFormat] = useState(true)
@@ -397,7 +398,7 @@ function TemperatureCard({
   showDescription,
   compactDisplay,
 }: TemperatureCardProps) {
-  const t = useTranslations("temperatureConverter")
+  const t = useTranslations("temperatureConverter", zhTemperatureConverter)
   const copyKey = `temp-${scale.id}`
   const focusedRef = useRef(false)
   const [draft, setDraft] = useState(() => formatTemperature(value))

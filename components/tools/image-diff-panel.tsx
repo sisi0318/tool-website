@@ -7,6 +7,8 @@ import { ArrowLeftRight, Download, GitCompareArrows, Loader2, Upload, X } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageDiff } from "@/lib/translations/zh-namespaces/imageDiff"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { OcrError } from "@/lib/ocr-shared"
@@ -18,7 +20,7 @@ const frame = "rounded-2xl border border-md-outline-variant bg-md-surface-contai
 const checker = { backgroundColor: "#fff", backgroundImage: "conic-gradient(#e2e5e9 25%, transparent 0 50%, #e2e5e9 0 75%, transparent 0)", backgroundSize: "20px 20px" }
 type Item = { file: File; source: DiffSource }
 export default function ImageDiffPanel() {
-  const t = useTranslations("imageDiff"), ot = useTranslations("ocrTools"), clipId = useId().replace(/:/g, "")
+  const t = useTranslations("imageDiff", zhImageDiff), ot = useTranslations("ocrTools", zhOcrTools), clipId = useId().replace(/:/g, "")
   const [items, setItems] = useState<[Item | null, Item | null]>([null, null]), [options, setOptions] = useState<ImageDiffOptions>({ ...DEFAULT_IMAGE_DIFF_OPTIONS })
   const diffBase = `${fileBaseName(items[0]?.file.name, "a")}_vs_${fileBaseName(items[1]?.file.name, "b")}`
   const [result, setResult] = useState<ImageDiffResult | null>(null), [busy, setBusy] = useState(false), [stage, setStage] = useState<ImageDiffStage | "prepare" | null>(null), [notice, setNotice] = useState("")

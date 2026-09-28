@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhProtobuf } from "@/lib/translations/zh-namespaces/protobuf"
 import { bytesToHex } from "@/lib/binary"
 import { downloadBlob } from "@/lib/object-url"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
@@ -44,7 +45,7 @@ function collectMessageTypes(pb: typeof Protobuf, namespace: Protobuf.NamespaceB
 const PROTO_CONTENT_ID = "proto-content"
 
 export default function ProtobufTool() {
-  const t = useTranslations("protobuf")
+  const t = useTranslations("protobuf", zhProtobuf)
   
   // 原有状态
   const [mode, setMode] = useState<"decode" | "encode">("decode")

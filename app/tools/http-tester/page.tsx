@@ -11,6 +11,7 @@ import { JsonTreeView } from "@/components/json-tree-view"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhHttpTester } from "@/lib/translations/zh-namespaces/httpTester"
 import {
   Copy, Check, Plus, Trash2, Send, FileJson, Code, Database, Binary, X, ExternalLink,
   Globe, Settings, Clock, History, Bookmark, Download, Upload, Zap,
@@ -271,7 +272,7 @@ function getStatusColor(status: number): string {
 }
 
 export default function HTTPTester() {
-  const t = useTranslations("httpTester")
+  const t = useTranslations("httpTester", zhHttpTester)
   const { toast } = useToast()
 
   // 基本请求状态

@@ -13,6 +13,7 @@ import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
 import { DEFAULT_OCR_OPTIONS, OCR_LIMITS, OCR_LOW_CONFIDENCE, OcrError, ocrExport, ocrFileName, ocrImageHeader, type OcrOptions, type OcrProgress, type OcrResult } from "@/lib/ocr-shared"
 import { recognizeImage } from "@/lib/ocr-worker-client"
 import { createOcrSample, type OcrSample } from "@/lib/ocr-samples"
@@ -20,7 +21,7 @@ import { createOcrSample, type OcrSample } from "@/lib/ocr-samples"
 const frame = "rounded-2xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]"
 const muted = "text-[var(--md-sys-color-on-surface-variant)]"
 export default function ImageOcrPanel({ onBusyChange }: { onBusyChange?: (busy: boolean) => void }) {
-  const t = useTranslations("ocrTools"), { toast } = useToast()
+  const t = useTranslations("ocrTools", zhOcrTools), { toast } = useToast()
   const [file, setFile] = useState<File | null>(null), [validated, setValidated] = useState<File | null>(null)
   const [options, setOptions] = useState<OcrOptions>(DEFAULT_OCR_OPTIONS), [result, setResult] = useState<OcrResult | null>(null)
   const [text, setText] = useState(""), [error, setError] = useState("")

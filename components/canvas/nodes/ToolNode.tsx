@@ -5,6 +5,7 @@ import { Handle, Position } from "@xyflow/react"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { useShallow } from "zustand/react/shallow"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
@@ -34,7 +35,7 @@ interface ToolNodeProps {
 }
 
 function ToolNodeComponent({ data }: ToolNodeProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const nodeLabel = useNodeLabel()
   const definition = getNodeDefinition(data.type)
   const nodeOutputs = useCanvasStore((s) => s.nodeOutputs[data.id])

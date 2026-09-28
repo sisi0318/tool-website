@@ -26,6 +26,7 @@ import {
   type TotpAlgorithm,
 } from "@/lib/totp-tools"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhTotp } from "@/lib/translations/zh-namespaces/totp"
 
 interface TOTPAccount {
   id: string
@@ -43,7 +44,7 @@ const selectClassName = "h-10 w-full rounded-lg border border-[var(--md-sys-colo
 
 export default function TOTPPage() {
   const { toast } = useToast()
-  const t = useTranslations("totp")
+  const t = useTranslations("totp", zhTotp)
   const isToolActive = useToolActivity()
   const [accounts, setAccounts] = useState<TOTPAccount[]>([])
   const [codes, setCodes] = useState<Record<string, string>>({})

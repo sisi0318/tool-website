@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Copy, Check, RefreshCw, Globe, Monitor, Cpu, Shield, Fingerprint, Battery, Smartphone, Settings, ChevronUp, ChevronDown, Zap, Eye, Wifi } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhDevice } from "@/lib/translations/zh-namespaces/device"
 import { useToolActivity } from "@/components/tool-activity"
 import { collectDeviceFingerprint, type DeviceFingerprint } from "@/lib/device-fingerprint"
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
@@ -128,7 +129,7 @@ function canUseStorage(storageName: "localStorage" | "sessionStorage"): boolean 
 }
 
 export default function DeviceInfoPage() {
-  const t = useTranslations("device")
+  const t = useTranslations("device", zhDevice)
   const isToolActive = useToolActivity()
   
   const [showDeviceSettings, setShowDeviceSettings] = useState(false)

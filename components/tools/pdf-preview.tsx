@@ -5,9 +5,10 @@ import { Loader2, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhPdfTools } from "@/lib/translations/zh-namespaces/pdfTools"
 import { loadPdfJs, pdfJsOptions } from "@/lib/pdfjs-runtime"
 export default function PdfPreview({ file, page = 0, rotation = 0 }: { file: File | null; page?: number; rotation?: number }) {
-  const t = useTranslations("pdfTools")
+  const t = useTranslations("pdfTools", zhPdfTools)
   const canvas = useRef<HTMLCanvasElement | null>(null)
   const [loaded, setLoaded] = useState<{ file: File; document: PDFDocumentProxy; worker: PDFWorker } | null>(null)
   const [busy, setBusy] = useState(false)

@@ -2,6 +2,7 @@
 
 import { Copy, CopyPlus, Trash2 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 
 interface SelectionToolbarProps {
   count: number
@@ -16,7 +17,7 @@ export function SelectionToolbar({
   onDuplicate,
   onDelete,
 }: SelectionToolbarProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
 
   if (count < 2) return null
 

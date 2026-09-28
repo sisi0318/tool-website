@@ -7,11 +7,12 @@ import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhSubnetTools } from "@/lib/translations/zh-namespaces/subnetTools"
 import { calculateSubnet, type SubnetResult } from "@/lib/subnet-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
 export default function SubnetPage() {
-  const t = useTranslations("subnetTools")
+  const t = useTranslations("subnetTools", zhSubnetTools)
   const [input, setInput] = useToolDraft("subnet")
   const [probe, setProbe] = useState("")
   const [output, setOutput] = useState("")

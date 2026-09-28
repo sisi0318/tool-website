@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhPdfTools } from "@/lib/translations/zh-namespaces/pdfTools"
 import { PdfToolError, type PdfProgress } from "@/lib/pdf-shared"
 import type { PdfTaskContext } from "@/lib/pdf-worker-client"
 
 export function usePdfTask() {
-  const t = useTranslations("pdfTools")
+  const t = useTranslations("pdfTools", zhPdfTools)
   const [running, setRunning] = useState(false), [error, setError] = useState(""), [progress, setProgress] = useState<PdfProgress | null>(null)
   const controller = useRef<AbortController | null>(null), version = useRef(0)
   const cancel = useCallback(() => { version.current++; controller.current?.abort(); controller.current = null; setRunning(false); setProgress(null) }, [])

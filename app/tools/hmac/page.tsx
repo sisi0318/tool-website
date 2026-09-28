@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhHmac } from "@/lib/translations/zh-namespaces/hmac"
 import { useToast } from "@/hooks/use-toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { base64ToBytes, bytesToBase64, bytesToHex } from "@/lib/binary"
@@ -120,7 +121,7 @@ function generateSecureRandomString(length: number, alphabet: string): string {
 }
 
 export default function HmacPage() {
-  const t = useTranslations("hmac")
+  const t = useTranslations("hmac", zhHmac)
   const { toast } = useToast()
   const [algorithm, setAlgorithm] = useState("sha256")
   const [showSettings, setShowSettings] = useState(false)

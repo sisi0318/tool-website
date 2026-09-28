@@ -35,6 +35,7 @@ import {
 } from "@/lib/canvas/clipboard"
 import type { DataType, Edge as CanvasEdge, NodeInstance } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { BaseNode } from "./nodes/BaseNode"
 import { ToolNode } from "./nodes/ToolNode"
 import { CanvasToolbar } from "./CanvasToolbar"
@@ -67,7 +68,7 @@ function getEventClientPosition(event: MouseEvent | TouchEvent) {
 }
 
 export function Canvas() {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   // 只订阅画布真正用到的切片。整个 store 解构会让每次节点输出、日志、进度更新
   // 都重渲染整张画布(含 flowNodes / flowEdges 的重新映射)。
   const {

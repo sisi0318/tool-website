@@ -12,6 +12,7 @@ import { JsonTreeView } from "@/components/json-tree-view"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhTabular } from "@/lib/translations/zh-namespaces/tabular"
 import { exportTabular, parseTabular, queryTabular, tabularCellText, TabularError, type FilterOperator, type TabularData, type TabularFilter, type TabularFormat, type TabularResult, type TabularRow } from "@/lib/tabular-tools"
 
 const SAMPLE = '{"time":"10:00","service":"api","status":200,"id":"0001"}\n{"time":"10:01","service":"api","status":500,"id":"0002"}\n{"time":"10:02","service":"web","status":502,"id":"0003"}\n{"time":"10:03","service":"api","status":503,"id":"0004"}\n{"broken":\n{"time":"10:04","service":"web","status":200,"id":"0006"}'
@@ -21,7 +22,7 @@ function Choice({ label, value, items, onChange }: { label: string; value: strin
 }
 
 export default function TabularPanel() {
-  const t = useTranslations("tabular")
+  const t = useTranslations("tabular", zhTabular)
   const [input, setInput] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [format, setFormat] = useState<TabularFormat>("jsonl")

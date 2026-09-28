@@ -13,6 +13,9 @@ import { useToast } from "@/hooks/use-toast"
 import { downloadBlob } from "@/lib/object-url"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
+import { zhPdfOcr } from "@/lib/translations/zh-namespaces/pdfOcr"
+import { zhPdfTools } from "@/lib/translations/zh-namespaces/pdfTools"
 import { OcrError, OCR_LOW_CONFIDENCE, type OcrOptions } from "@/lib/ocr-shared"
 import { PDF_LIMITS, PdfToolError, parsePdfSelection, type PdfInfo } from "@/lib/pdf-shared"
 import { inspectPdfFiles } from "@/lib/pdf-worker-client"
@@ -22,7 +25,7 @@ import { PDF_OCR_LIMITS, pdfOcrJson, pdfOcrText, type PdfOcrPage, type PdfOcrPro
 const frame = "rounded-2xl border border-md-outline-variant bg-md-surface-container-lowest p-4 sm:p-5"
 export default function PdfOcrPanel({ isActive = true, headingLevel = "h2", onBusyChange }: { isActive?: boolean; headingLevel?: "h1" | "h2"; onBusyChange?: (busy: boolean) => void }) {
   const Heading = headingLevel
-  const t = useTranslations("pdfOcr"), pt = useTranslations("pdfTools"), ot = useTranslations("ocrTools"), { toast } = useToast(), id = useId()
+  const t = useTranslations("pdfOcr", zhPdfOcr), pt = useTranslations("pdfTools", zhPdfTools), ot = useTranslations("ocrTools", zhOcrTools), { toast } = useToast(), id = useId()
   const [file, setFile] = useState<File | null>(null), [info, setInfo] = useState<PdfInfo | null>(null)
   const [selection, setSelection] = useState(""), [dpi, setDpi] = useState(200), [rotation, setRotation] = useState<OcrOptions["rotation"]>(0)
   const [pages, setPages] = useState<PdfOcrPage[]>([]), [index, setIndex] = useState(0), [lineIndex, setLineIndex] = useState<number | null>(null)

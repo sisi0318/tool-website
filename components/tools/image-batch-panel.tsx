@@ -12,6 +12,8 @@ import { useObjectUrl } from "@/hooks/use-object-url"
 import { usePasteFiles } from "@/hooks/use-paste-files"
 import { matchesAccept } from "@/components/tools/file-drop-zone"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageBatch } from "@/lib/translations/zh-namespaces/imageBatch"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
 import { useToast } from "@/hooks/use-toast"
 import { downloadBlob } from "@/lib/object-url"
 import { copyTextToClipboard } from "@/lib/clipboard"
@@ -32,7 +34,7 @@ function DownloadFile({ file }: { file: File }) {
 const BATCH_ACCEPT = "image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
 
 export default function ImageBatchPanel({ headingLevel = "h1", onBusyChange }: { headingLevel?: "h1" | "h2"; onBusyChange?: (busy: boolean) => void }) {
-  const t = useTranslations("imageBatch"), ot = useTranslations("ocrTools"), { toast } = useToast(), id = useId(), Heading = headingLevel
+  const t = useTranslations("imageBatch", zhImageBatch), ot = useTranslations("ocrTools", zhOcrTools), { toast } = useToast(), id = useId(), Heading = headingLevel
   const [jobs, setJobs] = useState<BatchImageJob[]>([]), [options, setOptions] = useState<ImageBatchOptions>(DEFAULT_BATCH_OPTIONS)
   const [selectedId, setSelectedId] = useState(""), [phase, setPhase] = useState<"run" | "zip" | "sample" | null>(null)
   const [progress, setProgress] = useState<{ current: number; total: number; name: string; ocr?: OcrProgress } | null>(null), [notice, setNotice] = useState("")

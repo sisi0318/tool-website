@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageConvert } from "@/lib/translations/zh-namespaces/imageConvert"
 import { usePasteFiles } from "@/hooks/use-paste-files"
 import { convertImageFile, type ImageOutputFormat } from "@/lib/image-convert"
 import { mapWithConcurrency } from "@/lib/async-pool"
@@ -49,7 +50,7 @@ function releaseImageItem(item: ImageItem): void {
 }
 
 export default function ImageConvertPage() {
-  const t = useTranslations("imageConvert")
+  const t = useTranslations("imageConvert", zhImageConvert)
   const inputRef = useRef<HTMLInputElement>(null)
   const itemsRef = useRef<ImageItem[]>([])
   const mountedRef = useRef(true)

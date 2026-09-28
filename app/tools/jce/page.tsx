@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJce } from "@/lib/translations/zh-namespaces/jce"
 import {
   Copy, FileUp, X, Download, RefreshCw, Upload, Settings,
   ChevronUp, ChevronDown, Code, FileText, Database, Check,
@@ -488,7 +489,7 @@ const EXAMPLE_HEX = "0001160568656c6c6f213039320001869f"
 // ==================== Component ====================
 
 export default function JceTool() {
-  const t = useTranslations("jce")
+  const t = useTranslations("jce", zhJce)
 
   const [showSettings, setShowSettings] = useState(false)
   const [autoFormat, setAutoFormat] = useState(true)

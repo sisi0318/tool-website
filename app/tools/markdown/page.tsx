@@ -5,6 +5,7 @@ import { FileText } from "lucide-react"
 
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhMarkdownTools } from "@/lib/translations/zh-namespaces/markdownTools"
 import { processMarkdown, type MarkdownOperation } from "@/lib/markdown-tools"
 import { sanitizeDocumentHtml } from "@/lib/sanitize-document-html"
 import { useToolDraft } from "@/hooks/use-tool-draft"
@@ -20,7 +21,7 @@ const SAMPLE = `# Release notes
 > Paste Markdown on the left and choose the result you need.`
 
 export default function MarkdownPage() {
-  const t = useTranslations("markdownTools")
+  const t = useTranslations("markdownTools", zhMarkdownTools)
   const [input, setInput] = useToolDraft("markdown")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<MarkdownOperation>("to-html")

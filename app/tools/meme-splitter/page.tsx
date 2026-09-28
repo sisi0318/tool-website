@@ -39,6 +39,7 @@ import { useToolActivity } from "@/components/tool-activity"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhMemeSplitter } from "@/lib/translations/zh-namespaces/memeSplitter"
 import {
   FILE_SIZE_LIMITS,
   formatFileSizeLimit,
@@ -130,7 +131,7 @@ function BlobPreview({
 }
 
 export default function MemeSplitterPage() {
-  const t = useTranslations("memeSplitter")
+  const t = useTranslations("memeSplitter", zhMemeSplitter)
   const isToolActive = useToolActivity()
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const imageUrl = useObjectUrl(sourceFile)

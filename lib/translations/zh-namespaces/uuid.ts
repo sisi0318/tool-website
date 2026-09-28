@@ -1,0 +1,21 @@
+/** 「uuid」的中文文案：只随用到它的页面加载，调用处写 useTranslations("uuid", zhUuid) */
+export const zhUuid = {
+  title: "UUID生成器",
+  description: "生成各种版本的UUID",
+  version: "版本",
+  random: "随机",
+  timeBased: "基于时间",
+  count: "生成数量",
+  formatOptions: "格式选项",
+  uppercase: "大写",
+  withHyphens: "带连字符",
+  withBraces: "带花括号",
+  withQuotes: "带引号",
+  generate: "生成",
+  result: "结果",
+  copy: "复制",
+  copied: "已复制",
+  copyAll: "复制全部",
+  clear: "清空",
+  batchOutput: "批量输出",
+}

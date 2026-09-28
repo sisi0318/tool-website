@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhBaseConverter } from "@/lib/translations/zh-namespaces/baseConverter"
 import { useToast } from "@/hooks/use-toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import {
@@ -100,7 +101,7 @@ function formatNumber(value: string, base: number): string {
 }
 
 export default function BaseConverterPage() {
-  const t = useTranslations("baseConverter")
+  const t = useTranslations("baseConverter", zhBaseConverter)
   const { toast } = useToast()
   const [showSettings, setShowSettings] = useState(false)
   const [autoFormat, setAutoFormat] = useState(true)
@@ -420,7 +421,7 @@ interface BaseValueControlProps {
 }
 
 function BaseValueControl({ id, value, onValueChange, label }: BaseValueControlProps) {
-  const t = useTranslations("baseConverter")
+  const t = useTranslations("baseConverter", zhBaseConverter)
   const [draft, setDraft] = useState(value.toString())
 
   useEffect(() => {
@@ -481,7 +482,7 @@ interface ResultGridProps {
 }
 
 function ResultGrid(props: ResultGridProps) {
-  const t = useTranslations("baseConverter")
+  const t = useTranslations("baseConverter", zhBaseConverter)
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
       {props.definitions.map((definition) => {
@@ -528,7 +529,7 @@ function ResultCard({
   copied,
   icon,
 }: ResultCardProps) {
-  const t = useTranslations("baseConverter")
+  const t = useTranslations("baseConverter", zhBaseConverter)
   const copyKey = `base-${base}`
   return (
     <Card className="card-modern min-w-0">
@@ -561,7 +562,7 @@ interface ResultValueProps {
 }
 
 function ResultValue({ value, base, autoFormat, compactDisplay }: ResultValueProps) {
-  const t = useTranslations("baseConverter")
+  const t = useTranslations("baseConverter", zhBaseConverter)
   const displayValue = autoFormat ? formatNumber(value, base) : value
   const digitCount = value.replace(/^[+-]/, "").length
 
@@ -588,7 +589,7 @@ interface ResultActionsProps {
 }
 
 function ResultActions({ value, copyKey, copied, showLength, onCopy }: ResultActionsProps) {
-  const t = useTranslations("baseConverter")
+  const t = useTranslations("baseConverter", zhBaseConverter)
   const digitCount = value.replace(/^[+-]/, "").length
   return (
     <div className="flex items-center justify-between gap-2">

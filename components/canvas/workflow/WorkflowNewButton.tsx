@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { FilePlus } from "lucide-react"
 import { hasUnsavedCanvasChanges, useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { SaveDialog } from "./SaveDialog"
@@ -18,7 +19,7 @@ function NewCanvasConfirm({
   onDiscard: () => void
   onSave: () => void
 }) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -67,7 +68,7 @@ function NewCanvasConfirm({
 }
 
 export function WorkflowNewButton() {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const { toast } = useToast()
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)

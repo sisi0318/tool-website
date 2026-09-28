@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCompression } from "@/lib/translations/zh-namespaces/compression"
+import { zhCompressionFiles } from "@/lib/translations/zh-namespaces/compressionFiles"
 import { bytesToBase64, transformCompression, type BinaryEncoding, type CompressionFormat, type CompressionOperation, type CompressionResult } from "@/lib/compression"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 import {
@@ -25,7 +27,7 @@ const SAMPLE = "Compression works best when text contains repeated text. ".repea
 const FileCompressionPanel = dynamic(() => import("@/components/tools/file-compression-panel"), { ssr: false })
 
 function CompressionTextPage() {
-  const t = useTranslations("compression")
+  const t = useTranslations("compression", zhCompression)
   const [input, setInput] = useToolDraft("compression")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<CompressionOperation>("compress")
@@ -145,7 +147,7 @@ function CompressionTextPage() {
 }
 
 export default function CompressionPage() {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const params = useToolRuntimeParams()
   const [mode, setMode] = useState("files")
   const booted = useRef(false)

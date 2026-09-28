@@ -7,6 +7,7 @@ import { Download, Loader2, Network, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhHarTools } from "@/lib/translations/zh-namespaces/harTools"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { createHarSample, createHarSession } from "@/lib/har-client"
 import { HAR_PHASES, HarError, harDisplayUrl, harSummary, type HarData, type HarDetail, type HarPair, type HarRow } from "@/lib/har-shared"
@@ -18,7 +19,7 @@ const ms = (value: number | null) => value === null ? "—" : `${value.toLocaleS
 const size = (value: number | null) => value === null ? "—" : value < 1024 ? `${value} B` : value < 1048576 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1048576).toFixed(2)} MB`
 
 export default function HarPanel() {
-  const t = useTranslations("harTools")
+  const t = useTranslations("harTools", zhHarTools)
   const [file, setFile] = useState<File | null>(null), [data, setData] = useState<HarData | null>(null), [phase, setPhase] = useState<"load" | "export" | null>(null), [notice, setNotice] = useState("")
   const [search, setSearch] = useState(""), [host, setHost] = useState("all"), [pageFilter, setPageFilter] = useState("all"), [kind, setKind] = useState("all"), [method, setMethod] = useState("all"), [slow, setSlow] = useState(1000)
   const [sort, setSort] = useState<"start" | "duration" | "transfer" | "status">("start"), [descending, setDescending] = useState(false), [page, setPage] = useState(0), [reveal, setReveal] = useState(false)

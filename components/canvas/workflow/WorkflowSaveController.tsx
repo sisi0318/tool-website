@@ -5,6 +5,7 @@ import { useCanvasStore } from "@/lib/canvas/store"
 import { getWorkflowList, saveWorkflow } from "@/lib/canvas/workflow"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { SaveDialog } from "./SaveDialog"
 
 /** 工作流面板的“保存 / 另存为”发出这个事件；面板可以折叠卸载，保存逻辑放在常驻的控制器里 */
@@ -19,7 +20,7 @@ export function requestWorkflowSave(saveAs = false) {
  * 以前每次保存都要重新输入名字，保存成功也没有任何反馈。
  */
 export function WorkflowSaveController() {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const { toast } = useToast()
   const [naming, setNaming] = useState(false)
   const currentName = useCanvasStore((state) => state.currentWorkflow?.name ?? "")

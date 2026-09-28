@@ -7,6 +7,7 @@ import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhTime } from "@/lib/translations/zh-namespaces/time"
 import { useI18n } from "@/components/i18n-provider"
 import {
   formatRelativeTime,
@@ -88,7 +89,7 @@ const SHOW_SECONDS_STORAGE_KEY = "time_show_seconds"
 const ACTIVE_TAB_STORAGE_KEY = "time_active_tab"
 
 export default function TimePage() {
-  const t = useTranslations("time")
+  const t = useTranslations("time", zhTime)
   const isToolActive = useToolActivity()
 
   // 基础状态

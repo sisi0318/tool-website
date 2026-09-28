@@ -6,6 +6,7 @@ import Link from "next/link"
 
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhDataDetector } from "@/lib/translations/zh-namespaces/dataDetector"
 import { detectData, type DetectionResult } from "@/lib/data-detector"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 import { useOpenInTool } from "@/hooks/use-open-in-tool"
@@ -14,7 +15,7 @@ import { getToolEntry, toolAccepts } from "@/lib/tools/catalog"
 const SAMPLE = '{"name":"tool-website","features":["canvas","detector"]}'
 
 export default function DataDetectorPage() {
-  const t = useTranslations("dataDetector")
+  const t = useTranslations("dataDetector", zhDataDetector)
   const [input, setInput] = useToolDraft("data-detector")
   const openInTool = useOpenInTool()
   const [result, setResult] = useState<DetectionResult | null>(null)

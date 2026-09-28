@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhBinaryCodecTools } from "@/lib/translations/zh-namespaces/binaryCodecTools"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { bytesToBase64, bytesToHex } from "@/lib/binary"
 import { BINARY_CODEC_LIMITS, BinaryCodecError, encodeBinaryJson, type BinaryCodecFormat, type BinaryJson } from "@/lib/binary-codecs"
@@ -17,7 +18,7 @@ import { processBinaryCodec, type BinaryCodecResult } from "@/lib/binary-codec-t
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
 export default function BinaryCodecPage() {
-  const t = useTranslations("binaryCodecTools")
+  const t = useTranslations("binaryCodecTools", zhBinaryCodecTools)
   const [input, setInput] = useToolDraft("binary-codec")
   const [file, setFile] = useState<File | null>(null)
   const [format, setFormat] = useState<BinaryCodecFormat>("msgpack")

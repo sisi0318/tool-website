@@ -6,6 +6,8 @@ import { Download, Loader2, ScanText, Table2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageTable } from "@/lib/translations/zh-namespaces/imageTable"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
 import { downloadBlob } from "@/lib/object-url"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
@@ -17,7 +19,7 @@ import { SendToMenu } from "./send-to-menu"
 
 const frame = "rounded-2xl border border-md-outline-variant bg-md-surface-container-lowest p-4 sm:p-5"
 export default function ImageTablePanel() {
-  const t = useTranslations("imageTable"), ot = useTranslations("ocrTools")
+  const t = useTranslations("imageTable", zhImageTable), ot = useTranslations("ocrTools", zhOcrTools)
   const [file, setFile] = useState<File | null>(null), [source, setSource] = useState<TableImage | null>(null), [lines, setLines] = useState<OcrLine[] | null>(null)
   const [grid, setGrid] = useState<TableGrid | null>(null), [draftX, setDraftX] = useState(""), [draftY, setDraftY] = useState("")
   const [data, setData] = useState<TableData | null>(null), [selected, setSelected] = useState<[number, number]>([0, 0])

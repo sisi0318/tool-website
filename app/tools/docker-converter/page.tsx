@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhDockerConverter } from "@/lib/translations/zh-namespaces/dockerConverter"
 import { Copy, Check, ArrowRight, Plus, Trash2, RefreshCw, AlertCircle, Info, Zap, Settings } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -70,7 +71,7 @@ interface ParseResult {
 }
 
 export default function DockerConverterPage() {
-  const t = useTranslations("dockerConverter")
+  const t = useTranslations("dockerConverter", zhDockerConverter)
   const [dockerRunCommand, setDockerRunCommand] = useState("")
   const [dockerComposeYaml, setDockerComposeYaml] = useState("")
   // 自定义配置项状态

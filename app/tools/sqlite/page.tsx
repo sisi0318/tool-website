@@ -11,6 +11,7 @@ import { BinaryFileResult } from "@/components/tools/binary-file-result"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { JsonTreeView } from "@/components/json-tree-view"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhSqliteTools } from "@/lib/translations/zh-namespaces/sqliteTools"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { base64ToBytes } from "@/lib/binary"
 import { createBinaryFile } from "@/lib/file-signature"
@@ -18,7 +19,7 @@ import { exportSqliteResult, quoteSqliteIdentifier, sqliteCellText, SqliteToolEr
 import { SqliteWorkerClient } from "@/lib/sqlite-worker-client"
 
 export default function SqlitePage() {
-  const t = useTranslations("sqliteTools")
+  const t = useTranslations("sqliteTools", zhSqliteTools)
   const client = useRef<SqliteWorkerClient | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
   const controller = useRef<AbortController | null>(null)

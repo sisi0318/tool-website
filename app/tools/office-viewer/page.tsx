@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhOfficeViewer } from "@/lib/translations/zh-namespaces/officeViewer"
 import {
   FILE_SIZE_LIMITS,
   formatFileSizeLimit,
@@ -43,7 +44,7 @@ interface ExcelSheet {
 }
 
 export default function OfficeViewerPage() {
-  const t = useTranslations("officeViewer")
+  const t = useTranslations("officeViewer", zhOfficeViewer)
 
   // 文件状态
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null)

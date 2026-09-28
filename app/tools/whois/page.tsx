@@ -42,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhWhois } from "@/lib/translations/zh-namespaces/whois"
 import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { createClientId } from "@/lib/client-id"
 import { copyTextToClipboard } from "@/lib/clipboard"
@@ -141,7 +142,7 @@ function InfoRow({
 }
 
 export default function RdapQueryPage() {
-  const t = useTranslations("whois")
+  const t = useTranslations("whois", zhWhois)
   const { locale } = useI18n()
   const params = useToolRuntimeParams()
   const isToolActive = useToolActivity()

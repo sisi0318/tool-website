@@ -1,0 +1,22 @@
+/** 「csvTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("csvTools", zhCsvTools) */
+export const zhCsvTools = {
+  title: "CSV / TSV 工具",
+  description: "在分隔文本与 JSON 之间转换，自动识别分隔符并预览表格结构。",
+  toJson: "CSV 转 JSON",
+  fromJson: "JSON 转 CSV",
+  normalize: "规范化 CSV",
+  toTsv: "转为 TSV",
+  failed: "表格数据处理失败",
+  delimiter: "分隔符",
+  autoDetect: "自动识别",
+  comma: "逗号",
+  tab: "制表符",
+  semicolon: "分号",
+  pipe: "竖线",
+  header: "首行是表头",
+  rows: "{count} 行",
+  columns: "{count} 列",
+  detectedDelimiter: "识别到的分隔符",
+  jsonPlaceholder: "粘贴 JSON 对象数组...",
+  csvPlaceholder: "粘贴 CSV 或 TSV 数据...",
+}

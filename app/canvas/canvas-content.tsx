@@ -9,6 +9,7 @@ import { PropertyPanel } from "@/components/canvas/PropertyPanel"
 import { WorkflowSaveController } from "@/components/canvas/workflow/WorkflowSaveController"
 import { stopPendingCanvasWork, useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { registerAllAdapters } from "@/lib/adapters"
 
 registerAllAdapters()
@@ -19,7 +20,7 @@ if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_E2E === "true") {
 }
 
 export default function CanvasContent() {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const loadFromLocalStorage = useCanvasStore((s) => s.loadFromLocalStorage)
   const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)

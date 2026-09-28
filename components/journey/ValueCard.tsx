@@ -9,6 +9,7 @@ import { formatCanvasValue } from "@/lib/canvas/format-value"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -35,7 +36,7 @@ interface ValueCardProps {
 }
 
 export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onEditInput, inputMissing = false }: ValueCardProps) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const { toast } = useToast()
 
   const isRoot = node.parentId === null

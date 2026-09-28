@@ -7,6 +7,7 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { formatCanvasValue, previewCanvasValue } from "@/lib/canvas/format-value"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { Check, CircleSlash2, Copy, LoaderCircle, Play, Power, RotateCcw, Trash2, X, Download } from "lucide-react"
@@ -18,7 +19,7 @@ import { ConfirmDialog } from "./workflow/ConfirmDialog"
 const PANEL_PREVIEW_CHARS = 20_000
 
 function OutputField({ label, value, nodeName }: { label: string; value: unknown; nodeName: string }) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const [copied, setCopied] = useState(false)
   // 只展示前一段;完整文本在点击复制时才序列化
   const preview = useMemo(() => previewCanvasValue(value, PANEL_PREVIEW_CHARS, true), [value])
@@ -86,7 +87,7 @@ interface PropertyPanelProps {
 }
 
 export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const nodeLabel = useNodeLabel()
   const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
   const nodes = useCanvasStore((s) => s.nodes)

@@ -13,13 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhUrlTools } from "@/lib/translations/zh-namespaces/urlTools"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { buildUrl, inspectUrl, UrlToolError, URL_PROTOCOLS, URL_TOOL_LIMITS, type UrlParameter, type UrlParts } from "@/lib/url-tools"
 
 const SAMPLE = "https://例子.测试:8443/a%2Fb/%E4%B8%AD?tag=one&tag=two&q=hello+world&flag&empty=&symbol=%2B#part%202"
 export default function UrlPage() {
-  const t = useTranslations("urlTools")
+  const t = useTranslations("urlTools", zhUrlTools)
   const params = useToolRuntimeParams()
   const booted = useRef(false)
   const [input, setInput] = useState("")

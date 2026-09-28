@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageCoordinates } from "@/lib/translations/zh-namespaces/imageCoordinates"
 import {
   FILE_SIZE_LIMITS,
   formatFileSizeLimit,
@@ -60,7 +61,7 @@ const COORDINATE_CARD_CLASS =
 const COORDINATE_ICON_CLASS = "text-[var(--md-sys-color-primary)]"
 
 export default function ImageCoordinatesPage() {
-  const t = useTranslations("imageCoordinates")
+  const t = useTranslations("imageCoordinates", zhImageCoordinates)
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const imageUrl = useObjectUrl(sourceFile)
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)

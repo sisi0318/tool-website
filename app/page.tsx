@@ -18,6 +18,7 @@ import Header from "@/components/header"
 import { HomeMascot } from "@/components/home-mascot"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhHome } from "@/lib/translations/zh-namespaces/home"
 
 interface FeaturedTool {
   id: string
@@ -59,7 +60,7 @@ const featuredTools: FeaturedTool[] = [
 ]
 
 export default function HomePage() {
-  const t = useTranslations("home")
+  const t = useTranslations("home", zhHome)
   const toolsT = useTranslations("tools")
 
   return (

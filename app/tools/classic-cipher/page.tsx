@@ -7,6 +7,7 @@ import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmente
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhClassicCipher } from "@/lib/translations/zh-namespaces/classicCipher"
 import { getModularInverse } from "@/lib/classic-cipher-tools"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,7 +45,7 @@ const classicAlgorithms = [
 ]
 
 export default function ClassicCipherPage() {
-  const t = useTranslations("classicCipher")
+  const t = useTranslations("classicCipher", zhClassicCipher)
 
   // 基础状态
   const [algorithm, setAlgorithm] = useState("caesar")

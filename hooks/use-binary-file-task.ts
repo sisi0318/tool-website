@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { BinaryFileError } from "@/lib/compression-files"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCompressionFiles } from "@/lib/translations/zh-namespaces/compressionFiles"
 
 export function useBinaryFileTask() {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState("")
   const [progress, setProgress] = useState("")

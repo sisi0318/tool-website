@@ -34,11 +34,23 @@ export async function loadDictionary(locale: Locale): Promise<Dictionary> {
   return dictionary
 }
 
+/**
+ * 各页面自己的中文文案（zh-namespaces/ 下）。随页面模块加载，经 useTranslations 的第二个参数登记；
+ * 以前全部中文都在 zh.ts 里，随根布局进了每个页面的首屏。
+ */
+const zhNamespaces: Record<string, unknown> = {}
+
+export function registerZhNamespace(namespace: string, strings: Record<string, unknown>): void {
+  if (!(namespace in zhNamespaces)) zhNamespaces[namespace] = strings
+}
+
 /** 按 "a.b.c" 取值；取不到时返回键本身，便于在界面上看出缺哪条 */
 export function resolveTranslation(dictionary: Dictionary, key: string): string {
-  let value: unknown = dictionary
+  const segments = key.split(".")
+  // 中文的公共部分里没有这个命名空间，就到各页面登记的文案里找
+  let value: unknown = dictionary === zh && !(segments[0] in zh) ? zhNamespaces : dictionary
 
-  for (const segment of key.split(".")) {
+  for (const segment of segments) {
     if (value && typeof value === "object" && segment in value) {
       value = (value as Record<string, unknown>)[segment]
     } else {

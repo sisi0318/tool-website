@@ -44,6 +44,7 @@ import { useObjectUrl } from "@/hooks/use-object-url"
 import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhQrcodeDecoder } from "@/lib/translations/zh-namespaces/qrcodeDecoder"
 import { createClientId } from "@/lib/client-id"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import {
@@ -188,7 +189,7 @@ function detailText(details: Record<string, unknown>, key: string): string {
 }
 
 export default function QRCodeDecoder() {
-  const t = useTranslations("qrcodeDecoder")
+  const t = useTranslations("qrcodeDecoder", zhQrcodeDecoder)
   const { locale } = useI18n()
   const { toast } = useToast()
   const isToolActive = useToolActivity()

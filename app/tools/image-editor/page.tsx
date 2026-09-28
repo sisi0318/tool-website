@@ -50,6 +50,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageEditor } from "@/lib/translations/zh-namespaces/imageEditor"
 import {
   FILE_SIZE_LIMITS,
   formatFileSizeLimit,
@@ -197,7 +198,7 @@ function canvasToBlob(
 }
 
 export default function ImageEditorPage() {
-  const t = useTranslations("imageEditor")
+  const t = useTranslations("imageEditor", zhImageEditor)
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const imageUrl = useObjectUrl(sourceFile)
   const [imageMeta, setImageMeta] = useState<{

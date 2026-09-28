@@ -2,6 +2,7 @@
 
 import { LoaderCircle, Play, RotateCcw } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useCanvasStore } from "@/lib/canvas/store"
 
 interface NodeRunButtonProps {
@@ -11,7 +12,7 @@ interface NodeRunButtonProps {
 }
 
 export function NodeRunButton({ nodeId, running, hasError }: NodeRunButtonProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const executeToNode = useCanvasStore((state) => state.executeToNode)
   const label = hasError ? t("retryToNode") : t("runToNode")
 

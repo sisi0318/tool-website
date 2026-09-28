@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { ArrowRight, Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import {
   filterCompatibleNodeOptions,
@@ -46,7 +47,7 @@ export function CompatibleNodePicker({
   onSelect,
   onClose,
 }: CompatibleNodePickerProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const nodeLabel = useNodeLabel()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const closeRequestedRef = useRef(false)

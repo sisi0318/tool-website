@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageToBase64 } from "@/lib/translations/zh-namespaces/imageToBase64"
 import { withObjectUrl } from "@/lib/object-url"
 import { createClientId } from "@/lib/client-id"
 import { copyTextToClipboard as writeClipboardText } from "@/lib/clipboard"
@@ -114,7 +115,7 @@ function VirtualizedTextArea({
   showFullBase64: boolean
   onToggleFull: () => void
 }) {
-  const t = useTranslations("imageToBase64")
+  const t = useTranslations("imageToBase64", zhImageToBase64)
 
   const displayValue = useMemo(() => {
     if (!virtualizeText || !isLarge || value.length < 50000 || showFullBase64) {
@@ -156,7 +157,7 @@ function VirtualizedTextArea({
 
 export default function ImageToBase64() {
   const { toast } = useToast()
-  const t = useTranslations("imageToBase64")
+  const t = useTranslations("imageToBase64", zhImageToBase64)
 
   // 状态管理
   const [activeTab, setActiveTab] = useState("image-to-base64")

@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhDiff } from "@/lib/translations/zh-namespaces/diff"
 import { useTextFileInput } from "@/hooks/use-text-file-input"
 import { useUndoToast } from "@/hooks/use-undo-toast"
 import {
@@ -40,7 +41,7 @@ import { StructuredDiffPanel } from "@/components/tools/structured-diff-panel"
 const MAX_RENDERED_DIFF_LINES = 2_000
 
 export default function DiffPage() {
-  const t = useTranslations("diff")
+  const t = useTranslations("diff", zhDiff)
 
   const [oldText, setOldText] = useState("")
   const [comparisonMode, setComparisonMode] = useState("text")

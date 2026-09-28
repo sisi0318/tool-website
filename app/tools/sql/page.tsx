@@ -7,6 +7,7 @@ import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/compone
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhSqlTools } from "@/lib/translations/zh-namespaces/sqlTools"
 import type { SqlDialect, SqlOperation } from "@/lib/sql-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
@@ -20,7 +21,7 @@ const DIALECTS: Array<[SqlDialect, string]> = [
 ]
 
 export default function SqlPage() {
-  const t = useTranslations("sqlTools")
+  const t = useTranslations("sqlTools", zhSqlTools)
   const [input, setInput] = useToolDraft("sql")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<SqlOperation>("format")

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhSettings } from "@/lib/translations/zh-namespaces/settings"
 import { clearAppCaches, readAppCacheUsage, type AppCacheUsage } from "@/lib/storage/cache-storage"
 import {
   STORAGE_ENTRIES,
@@ -42,7 +43,7 @@ function describeGroup(group: StorageGroupId): string[] {
 }
 
 export function SettingsContent() {
-  const t = useTranslations("settings")
+  const t = useTranslations("settings", zhSettings)
   const { toast } = useToast()
   const [usage, setUsage] = useState<StorageGroupUsage[] | null>(null)
   const [pending, setPending] = useState<StorageGroupId | "all" | "cache" | null>(null)

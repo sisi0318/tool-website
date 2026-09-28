@@ -5,6 +5,7 @@ import { ChevronRight, GitBranch } from "lucide-react"
 import type { Journey } from "@/lib/journey/types"
 import { getBranchPoints, getChildren, getPath } from "@/lib/journey/tree"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
 import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface JourneyTrailProps {
@@ -16,7 +17,7 @@ interface JourneyTrailProps {
 }
 
 export function JourneyTrail({ journey, onSelect, onOpenActiveStep, onOpenBranches }: JourneyTrailProps) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const nodeLabel = useNodeLabel()
   const activeChipRef = useRef<HTMLButtonElement>(null)
   const path = getPath(journey, journey.activeId)

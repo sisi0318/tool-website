@@ -17,6 +17,7 @@ import {
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { toUnicodeSentenceCase, toUnicodeTitleCase } from "@/lib/case-converter-tools"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCaseConverter } from "@/lib/translations/zh-namespaces/caseConverter"
 
 type CaseType = 
   | 'uppercase' 
@@ -53,7 +54,7 @@ const CASE_OPTIONS: CaseOption[] = [
 
 export default function CaseConverterPage() {
   const { toast } = useToast()
-  const t = useTranslations("caseConverter")
+  const t = useTranslations("caseConverter", zhCaseConverter)
   const tc = useTranslations("common")
   const showUndo = useUndoToast()
   const [inputText, setInputText] = useState("")

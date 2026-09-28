@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCrontab } from "@/lib/translations/zh-namespaces/crontab"
 import { useI18n } from "@/components/i18n-provider"
 import { Copy, Trash2, Clock, Calendar, Play, AlertCircle, Info, Zap, Settings, ChevronDown, ChevronUp, Download, History, Check } from "lucide-react"
 import {
@@ -271,7 +272,7 @@ function CronTimeline({ times, use24HourFormat, translate, locale }: TimelinePro
 }
 
 export default function CrontabPage() {
-  const t = useTranslations("crontab")
+  const t = useTranslations("crontab", zhCrontab)
   const { locale } = useI18n()
   const { toast } = useToast()
 

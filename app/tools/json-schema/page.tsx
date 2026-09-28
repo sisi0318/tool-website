@@ -7,6 +7,7 @@ import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/compone
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJsonSchemaTools } from "@/lib/translations/zh-namespaces/jsonSchemaTools"
 import type { JsonSchemaOperation } from "@/lib/json-schema-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
@@ -20,7 +21,7 @@ const SAMPLE_SCHEMA = JSON.stringify({
 const SCHEMA_FIELD_ID = "json-schema-input"
 
 export default function JsonSchemaPage() {
-  const t = useTranslations("jsonSchemaTools")
+  const t = useTranslations("jsonSchemaTools", zhJsonSchemaTools)
   const [input, setInput] = useToolDraft("json-schema")
   const [schema, setSchema] = useState("")
   const [output, setOutput] = useState("")

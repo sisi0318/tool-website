@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { calculateImperialBmi, calculateMetricBmi, clampFiniteNumber } from "@/lib/bmi-tools"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhBmi } from "@/lib/translations/zh-namespaces/bmi"
 
 type BmiCategoryKey = "underweight" | "normal" | "overweight" | "obese1" | "obese2" | "obese3"
 
@@ -73,7 +74,7 @@ function getBmiCategory(bmi: number): BmiCategory {
 }
 
 export default function BMICalculator() {
-  const t = useTranslations("bmi")
+  const t = useTranslations("bmi", zhBmi)
   const [activeTab, setActiveTab] = useState("metric")
   const [heightCm, setHeightCm] = useState(170)
   const [weightKg, setWeightKg] = useState(70)

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhHash } from "@/lib/translations/zh-namespaces/hash"
 import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { transferText } from "@/lib/tool-transfer"
 import { Buffer } from "buffer"
@@ -164,7 +165,7 @@ const algorithmDescriptions: Record<string, string> = {
 
 
 export default function HashPage() {
-  const t = useTranslations("hash")
+  const t = useTranslations("hash", zhHash)
   const tc = useTranslations("common")
   const params = useToolRuntimeParams()
   const isToolActive = useToolActivity()

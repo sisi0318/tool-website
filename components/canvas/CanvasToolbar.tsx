@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { ConfirmDialog } from "./workflow/ConfirmDialog"
 
@@ -75,7 +76,7 @@ export function CanvasToolbar({
   onToggleExecutionLog,
   executionLogOpen = false,
 }: CanvasToolbarProps = {}) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const { fitView } = useReactFlow()
   const nodes = useCanvasStore((state) => state.nodes)
   const nodeRunning = useCanvasStore((state) => state.nodeRunning)

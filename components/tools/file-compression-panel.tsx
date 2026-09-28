@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BinaryFileDownload, BinaryFileResult, formatBinarySize } from "@/components/tools/binary-file-result"
 import { useBinaryFileTask } from "@/hooks/use-binary-file-task"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCompressionFiles } from "@/lib/translations/zh-namespaces/compressionFiles"
 import { BinaryFileError, MAX_BINARY_FILE_BYTES, MAX_EXPANDED_BYTES, transformFileBytes, type FileCompressionFormat } from "@/lib/compression-files"
 import { browseZipFolder, createZip, extractZipEntries, extractZipEntry, inspectZip, MAX_ZIP_ENTRIES, type ZipArchive, type ZipNameEncoding, type ZipSource } from "@/lib/zip-tools"
 import { createBinaryFile } from "@/lib/file-signature"
@@ -29,18 +30,18 @@ function Picker({ label, onFiles, disabled = false, multiple = false, directory 
 }
 
 function TaskStatus({ task }: { task: ReturnType<typeof useBinaryFileTask> }) {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   return <>{task.running && <div role="status" className="flex items-center gap-2 text-sm text-md-on-surface-variant"><Loader2 className="h-4 w-4 animate-spin" />{task.progress || t("processing")}<Button variant="ghost" size="sm" onClick={task.cancel}><X />{t("cancel")}</Button></div>}{task.error && <div role="alert" className="break-all rounded-xl bg-md-error-container p-3 text-sm text-md-on-error-container">{task.error}</div>}</>
 }
 
 function Pager({ page, count, onPage }: { page: number; count: number; onPage: (page: number) => void }) {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const pages = Math.max(1, Math.ceil(count / PAGE_SIZE))
   return pages > 1 ? <div className="flex items-center justify-end gap-2 text-xs text-md-on-surface-variant"><Button variant="ghost" size="icon" aria-label={t("previousPage")} disabled={page === 0} onClick={() => onPage(page - 1)}><ChevronLeft /></Button><span>{page + 1} / {pages}</span><Button variant="ghost" size="icon" aria-label={t("nextPage")} disabled={page + 1 >= pages} onClick={() => onPage(page + 1)}><ChevronRight /></Button></div> : null
 }
 
 function ZipBrowser() {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const task = useBinaryFileTask()
   const [source, setSource] = useState<File | null>(null)
   const [archive, setArchive] = useState<ZipArchive | null>(null)
@@ -114,7 +115,7 @@ function ZipBrowser() {
 }
 
 function ZipBuilder() {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const task = useBinaryFileTask()
   const [files, setFiles] = useState<Array<{ id: string; file: File; path: string }>>([])
   const [filename, setFilename] = useState("archive.zip")
@@ -151,7 +152,7 @@ function ZipBuilder() {
 }
 
 function FileCodec() {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const task = useBinaryFileTask()
   const [file, setFile] = useState<File | null>(null)
   const [operation, setOperation] = useState("compress")
@@ -177,7 +178,7 @@ function FileCodec() {
 }
 
 export default function FileCompressionPanel() {
-  const t = useTranslations("compressionFiles")
+  const t = useTranslations("compressionFiles", zhCompressionFiles)
   const [mode, setMode] = useState("browse")
   return <div className="mx-auto max-w-6xl space-y-5 px-1 py-2 sm:px-3"><div className="space-y-2"><h1 className="flex items-center gap-2 text-2xl font-bold"><Archive className="h-6 w-6 text-md-primary" />{t("title")}</h1><p className="text-sm text-md-on-surface-variant">{t("description")}</p></div><Tabs value={mode} onValueChange={setMode}><TabsList className="mb-4 grid h-auto w-full grid-cols-3"><TabsTrigger value="browse" className="py-2 text-xs sm:text-sm">{t("browseZip")}</TabsTrigger><TabsTrigger value="create" className="py-2 text-xs sm:text-sm">{t("createZip")}</TabsTrigger><TabsTrigger value="codec" className="py-2 text-xs sm:text-sm">{t("fileCodec")}</TabsTrigger></TabsList><TabsContent value="browse" forceMount className="data-[state=inactive]:hidden"><ZipBrowser /></TabsContent><TabsContent value="create" forceMount className="data-[state=inactive]:hidden"><ZipBuilder /></TabsContent><TabsContent value="codec" forceMount className="data-[state=inactive]:hidden"><FileCodec /></TabsContent></Tabs></div>
 }

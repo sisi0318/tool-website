@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhHexBinaryTools } from "@/lib/translations/zh-namespaces/hexBinaryTools"
 import { decodeBinaryInput, type BinaryEncoding } from "@/lib/compression"
 import {
   FILE_SIZE_LIMITS,
@@ -24,7 +25,7 @@ import { useToolDraft } from "@/hooks/use-tool-draft"
 const SAMPLE_PNG = "89504e470d0a1a0a0000000d49484452"
 
 export default function HexBinaryPage() {
-  const t = useTranslations("hexBinaryTools")
+  const t = useTranslations("hexBinaryTools", zhHexBinaryTools)
   const [input, setInput] = useToolDraft("hex-binary")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<HexBinaryOperation>("hexdump")

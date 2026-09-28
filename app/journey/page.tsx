@@ -57,6 +57,8 @@ import { Input } from "@/components/ui/input"
 import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
+import { zhWorkflowTemplates } from "@/lib/translations/zh-namespaces/workflowTemplates"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { useUndoToast } from "@/hooks/use-undo-toast"
 import { MISSING_FILE_ERROR } from "@/lib/canvas/node-errors"
@@ -100,8 +102,8 @@ function buildJourneyFromOutcomes(
 type DialogKind = "share" | "open" | "replay" | "editInput" | "confirmNew" | "confirmOverwrite" | "restoreInput"
 
 export default function JourneyPage() {
-  const t = useTranslations("journey")
-  const wt = useTranslations("workflowTemplates")
+  const t = useTranslations("journey", zhJourney)
+  const wt = useTranslations("workflowTemplates", zhWorkflowTemplates)
   const nodeLabel = useNodeLabel()
   const showUndo = useUndoToast()
   // 提示里的工具名用当前语言；写进节点的 label 仍是英文名，显示时按 type 再查

@@ -2,6 +2,7 @@
 
 import { CircleSlash2, Power } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useCanvasStore } from "@/lib/canvas/store"
 
 interface NodeBypassButtonProps {
@@ -10,7 +11,7 @@ interface NodeBypassButtonProps {
 }
 
 export function NodeBypassButton({ nodeId, disabled }: NodeBypassButtonProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const setNodeDisabled = useCanvasStore((state) => state.setNodeDisabled)
   const label = disabled ? t("enableNode") : t("disableNode")
 

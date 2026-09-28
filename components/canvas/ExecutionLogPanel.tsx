@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { UPSTREAM_PENDING, useCanvasStore } from "@/lib/canvas/store"
@@ -48,7 +49,7 @@ export function ExecutionLogPanel({
   onClose,
   onSelectNode,
 }: ExecutionLogPanelProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const nodeLabel = useNodeLabel()
   const executionLog = useCanvasStore((state) => state.executionLog)
   const nodes = useCanvasStore((state) => state.nodes)

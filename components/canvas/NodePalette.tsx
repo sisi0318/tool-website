@@ -26,6 +26,7 @@ import {
 } from "@/lib/canvas/node-library"
 import type { NodeDefinition } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -79,7 +80,7 @@ export function NodePalette({
   onRequestClose,
   onRequestOpen,
 }: NodePaletteProps = {}) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const tCommon = useTranslations("common")
   const nodeLabel = useNodeLabel()
   const currentWorkflowName = useCanvasStore((state) => state.currentWorkflow?.name)

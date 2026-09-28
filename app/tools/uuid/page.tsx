@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhUuid } from "@/lib/translations/zh-namespaces/uuid"
 import { Copy, Check, RefreshCw, Trash2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -19,7 +20,7 @@ import { generateUuidV1, generateUuidV4 } from "@/lib/uuid-tools"
 const NIL_UUID = "00000000-0000-0000-0000-000000000000"
 
 export default function UUIDPage() {
-  const t = useTranslations("uuid")
+  const t = useTranslations("uuid", zhUuid)
 
   const [version, setVersion] = useState<"v4" | "v1" | "nil">("v4")
   const [count, setCount] = useState(1)

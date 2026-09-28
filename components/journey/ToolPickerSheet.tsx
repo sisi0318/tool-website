@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
 import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface ToolPickerSheetProps {
@@ -20,7 +21,7 @@ interface ToolPickerSheetProps {
 }
 
 export function ToolPickerSheet({ open, onOpenChange, valueType, running, onPick }: ToolPickerSheetProps) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const nodeLabel = useNodeLabel()
   const [query, setQuery] = useState("")
 

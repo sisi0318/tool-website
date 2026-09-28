@@ -11,6 +11,7 @@ import { usePdfTask } from "@/hooks/use-pdf-task"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { usePasteFiles } from "@/hooks/use-paste-files"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhPdfTools } from "@/lib/translations/zh-namespaces/pdfTools"
 import { PDF_LIMITS, PdfToolError, pdfImageDimensions, type PdfImageOptions, type PdfNumbering } from "@/lib/pdf-shared"
 import { imageFilesToPdf, type PdfFileResult } from "@/lib/pdf-worker-client"
 
@@ -42,7 +43,7 @@ function ImageThumbnail({ file }: { file: File }) {
   return url ? <img src={url} alt={file.name} className="h-14 w-20 rounded-lg bg-white object-contain" /> : <span className="h-14 w-20 rounded-lg bg-md-surface-container-high" />
 }
 export default function PdfImagesPanel() {
-  const t = useTranslations("pdfTools"), task = usePdfTask()
+  const t = useTranslations("pdfTools", zhPdfTools), task = usePdfTask()
   const [files, setFiles] = useState<File[]>([]), [pageSize, setPageSize] = useState<NonNullable<PdfImageOptions["pageSize"]>>("a4"), [margin, setMargin] = useState("36")
   const [numbering, setNumbering] = useState<PdfNumbering>({ enabled: false, position: "bottom-center", margin: 18, fontSize: 10, total: true })
   const [result, setResult] = useState<PdfFileResult | null>(null), [page, setPage] = useState(0)

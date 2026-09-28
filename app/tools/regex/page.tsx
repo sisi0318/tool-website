@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhRegex } from "@/lib/translations/zh-namespaces/regex"
 import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { useTextFileInput } from "@/hooks/use-text-file-input"
 import { useIncomingInput } from "@/hooks/use-incoming-input"
@@ -246,7 +247,7 @@ const REFERENCE_SECTIONS = [
 
 export default function RegexTester() {
   const { toast } = useToast()
-  const t = useTranslations("regex")
+  const t = useTranslations("regex", zhRegex)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 基本状态

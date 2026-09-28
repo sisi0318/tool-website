@@ -8,6 +8,7 @@ import type React from "react"
 
 import { useState, useRef, useEffect, useCallback, useReducer } from "react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhQrcode } from "@/lib/translations/zh-namespaces/qrcode"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -182,7 +183,7 @@ const INITIAL_APPEARANCE_STATE: QrAppearanceState = {
 }
 
 export default function QRCodePage() {
-  const t = useTranslations("qrcode")
+  const t = useTranslations("qrcode", zhQrcode)
   const [uiState, dispatchUi] = useReducer(uiReducer, INITIAL_UI_STATE)
   const [contentState, dispatchContent] = useReducer(contentReducer, INITIAL_CONTENT_STATE)
   const [appearance, dispatchAppearance] = useReducer(appearanceReducer, INITIAL_APPEARANCE_STATE)

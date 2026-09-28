@@ -48,6 +48,7 @@ import {
 import { useToolActivity } from "@/components/tool-activity"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCrypto } from "@/lib/translations/zh-namespaces/crypto"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import {
   CryptoInputError,
@@ -216,7 +217,7 @@ function readFileWithProgress(
 }
 
 export default function CryptoPage() {
-  const t = useTranslations("crypto")
+  const t = useTranslations("crypto", zhCrypto)
   const tc = useTranslations("common")
   const params = useToolRuntimeParams()
   const isToolActive = useToolActivity()

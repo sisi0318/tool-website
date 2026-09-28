@@ -3,6 +3,7 @@
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 
 interface ConfirmDialogProps {
   title: string
@@ -13,7 +14,7 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel }: ConfirmDialogProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
 
   return (
     <AlertDialogPrimitive.Root open>

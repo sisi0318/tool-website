@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/switch"
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { useToolRuntimeParams } from "@/components/tool-runtime-params"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCsvTools } from "@/lib/translations/zh-namespaces/csvTools"
+import { zhTabular } from "@/lib/translations/zh-namespaces/tabular"
 import { processCsv, type CsvOperation, type CsvResult } from "@/lib/csv-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
@@ -19,7 +21,7 @@ const SAMPLE = "name,language,stars\nTool Website,TypeScript,5\nCyberChef,JavaSc
 const TabularPanel = dynamic(() => import("@/components/tools/tabular-panel"), { ssr: false })
 
 export default function CsvToolsPage() {
-  const t = useTranslations("tabular")
+  const t = useTranslations("tabular", zhTabular)
   const params = useToolRuntimeParams()
   const [mode, setMode] = useState("logs")
   const booted = useRef(false)
@@ -37,7 +39,7 @@ export default function CsvToolsPage() {
 }
 
 function CsvConvertPage() {
-  const t = useTranslations("csvTools")
+  const t = useTranslations("csvTools", zhCsvTools)
   const [input, setInput] = useToolDraft("csv")
   const [output, setOutput] = useState("")
   const [operation, setOperation] = useState<CsvOperation>("to-json")

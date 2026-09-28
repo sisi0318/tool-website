@@ -6,6 +6,8 @@ import type { SharedStepReview } from "@/lib/journey/serialize"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
+import { zhWorkflowTemplates } from "@/lib/translations/zh-namespaces/workflowTemplates"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { RunStatus } from "./RunStatus"
 import type { TemplateRunProgress } from "./TemplateStage"
@@ -54,8 +56,8 @@ export function InputStage({
   onRestoreDraft,
   onOpenTemplates,
 }: InputStageProps) {
-  const t = useTranslations("journey")
-  const wt = useTranslations("workflowTemplates")
+  const t = useTranslations("journey", zhJourney)
+  const wt = useTranslations("workflowTemplates", zhWorkflowTemplates)
   const nodeLabel = useNodeLabel()
   const [text, setText] = useState("")
   const [dragOver, setDragOver] = useState(false)

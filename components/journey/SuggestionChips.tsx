@@ -5,6 +5,8 @@ import { LayoutGrid, LoaderCircle } from "lucide-react"
 import type { JourneyNode, JourneySuggestion } from "@/lib/journey/types"
 import { suggestNext } from "@/lib/journey/suggest"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
+import { zhJourneySuggestions } from "@/lib/translations/zh-namespaces/journeySuggestions"
 import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface SuggestionChipsProps {
@@ -15,8 +17,8 @@ interface SuggestionChipsProps {
 }
 
 export function SuggestionChips({ node, running, onApply, onMoreTools }: SuggestionChipsProps) {
-  const t = useTranslations("journey")
-  const st = useTranslations("journeySuggestions")
+  const t = useTranslations("journey", zhJourney)
+  const st = useTranslations("journeySuggestions", zhJourneySuggestions)
   const nodeLabel = useNodeLabel()
   // 精选建议有自己的动作短语；类型兼容的兜底建议显示工具名
   const labelOf = (suggestion: JourneySuggestion) =>

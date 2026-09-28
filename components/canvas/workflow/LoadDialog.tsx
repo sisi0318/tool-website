@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { Trash2 } from "lucide-react"
 
 interface LoadDialogProps {
@@ -13,7 +14,7 @@ interface LoadDialogProps {
 }
 
 export function LoadDialog({ workflows, onLoad, onDelete, onClose }: LoadDialogProps) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

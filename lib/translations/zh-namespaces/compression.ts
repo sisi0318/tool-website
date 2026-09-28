@@ -1,0 +1,21 @@
+/** 「compression」的中文文案：只随用到它的页面加载，调用处写 useTranslations("compression", zhCompression) */
+export const zhCompression = {
+  title: "压缩与解压",
+  description: "在本地处理 GZip、Zlib、Deflate、Brotli 和 ZIP 数据。",
+  compress: "压缩",
+  decompress: "解压",
+  failed: "压缩处理失败",
+  format: "格式",
+  inputEncoding: "输入编码",
+  outputEncoding: "输出编码",
+  text: "文本",
+  filename: "ZIP 内文件名",
+  level: "压缩级别",
+  chooseFile: "选择文件",
+  fileTooLarge: "文件过大，最大支持 {size}。",
+  inputBytes: "输入字节",
+  outputBytes: "输出字节",
+  ratio: "体积比例",
+  textPlaceholder: "输入要压缩的文本，或选择文件...",
+  encodedPlaceholder: "粘贴 Base64 或十六进制压缩数据...",
+}

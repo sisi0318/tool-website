@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import { FolderOpen } from "lucide-react"
 import { hasUnsavedCanvasChanges, useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { LoadDialog } from "./LoadDialog"
@@ -11,7 +12,7 @@ import { ConfirmDialog } from "./ConfirmDialog"
 import { getWorkflowList, loadWorkflow, restoreWorkflow, takeWorkflow } from "@/lib/canvas/workflow"
 
 export function WorkflowLoadButton() {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const { toast } = useToast()
   const [showDialog, setShowDialog] = useState(false)
   const [workflows, setWorkflows] = useState<string[]>([])

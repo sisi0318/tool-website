@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
 import { useToast } from "@/hooks/use-toast"
 import { RunStatus } from "./RunStatus"
 import type { TemplateRunProgress } from "./TemplateStage"
@@ -59,7 +60,7 @@ function InputDialog({
   onCancel,
   onRun,
 }: InputDialogProps & { title: string; hint: string; runLabel: string; placeholder?: string; initialText?: string }) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const [text, setText] = useState("")
   const [file, setFile] = useState<File | null>(null)
 
@@ -107,7 +108,7 @@ function InputDialog({
 
 /** 输入（文件、超过 64K 的文本）不随保存恢复时，让用户重新提供同一份输入 */
 export function RestoreInputDialog(props: InputDialogProps) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   return <InputDialog {...props} title={t("restoreInputTitle")} hint={t("restoreInputHint")} runLabel={t("restoreInputRun")} />
 }
 
@@ -121,7 +122,7 @@ export function ReplayDialog({
   initialText = "",
   ...props
 }: InputDialogProps & { stepCount: number; editing?: boolean; initialText?: string }) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   return (
     <InputDialog
       {...props}
@@ -146,7 +147,7 @@ function ReplaceCurrentConfirm({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
 
   return (
     <div role="alert" className="space-y-4">
@@ -170,7 +171,7 @@ function ReplaceCurrentConfirm({
 }
 
 export function ShareDialog({ open, onOpenChange, journey }: DialogBaseProps & { journey: Journey }) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const { toast } = useToast()
   const [includeInput, setIncludeInput] = useState(false)
 
@@ -240,7 +241,7 @@ export function OpenJourneyDialog({
   onLoad,
   isCurrentSaved,
 }: DialogBaseProps & { onLoad: (name: string) => void; isCurrentSaved: () => boolean }) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const { toast } = useToast()
   const [names, setNames] = useState<string[]>([])
   // 待确认覆盖的存档名;null 时显示列表
@@ -326,7 +327,7 @@ export function ConfirmOverwriteDialog({
   name,
   onConfirm,
 }: DialogBaseProps & { name: string; onConfirm: () => void }) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -359,7 +360,7 @@ export function ConfirmNewDialog({
   onOpenChange,
   onConfirm,
 }: DialogBaseProps & { onConfirm: () => void }) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

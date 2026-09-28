@@ -1,6 +1,7 @@
 "use client"
 
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { CYCLE_ERROR, UPSTREAM_ERROR, UPSTREAM_PENDING } from "@/lib/canvas/store"
 import { MISSING_FILE_ERROR } from "@/lib/canvas/node-errors"
 import { NODE_INTERACTIVE_CLASS } from "./interactive"
@@ -16,7 +17,7 @@ export function nodeStatusText(error: string, t: (key: string) => string): strin
 
 /** 节点底部的错误或"等待上游"提示,BaseNode 与 ToolNode 共用 */
 export function NodeStatusMessage({ error }: { error: string }) {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const pending = error === UPSTREAM_PENDING
 
   return (

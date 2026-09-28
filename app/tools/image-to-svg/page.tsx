@@ -13,6 +13,7 @@ import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { useToast } from "@/hooks/use-toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageVectorTools } from "@/lib/translations/zh-namespaces/imageVectorTools"
 import { DEFAULT_VECTOR_OPTIONS, ImageVectorError, VECTOR_LIMITS, rasterHeader, type ImageVectorOptions, type ImageVectorResult, type VectorStage, type VectorErrorCode } from "@/lib/image-vector-shared"
 import { vectorizeImage } from "@/lib/image-vector-worker-client"
 import { createVectorSample, type VectorSample } from "@/lib/image-vector-samples"
@@ -26,7 +27,7 @@ function Option({ id, label, value, onChange, choices, disabled }: { id: string;
 }
 
 export default function ImageToSvgPage() {
-  const t = useTranslations("imageVectorTools"), { toast } = useToast()
+  const t = useTranslations("imageVectorTools", zhImageVectorTools), { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
   const [validatedFile, setValidatedFile] = useState<File | null>(null)
   const [validationError, setValidationError] = useState<VectorErrorCode | null>(null)

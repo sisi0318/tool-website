@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhTextStats } from "@/lib/translations/zh-namespaces/textStats"
 import { Check, Copy, FileText, Loader2, Trash2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -24,7 +25,7 @@ import {
 } from "@/lib/text-statistics"
 
 export default function TextStatsPage() {
-  const t = useTranslations("textStats")
+  const t = useTranslations("textStats", zhTextStats)
 
   const [text, setText] = useState("")
   // 其它工具“在工具中打开”发来的文本

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhImageRedact } from "@/lib/translations/zh-namespaces/imageRedact"
+import { zhOcrTools } from "@/lib/translations/zh-namespaces/ocrTools"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { preferImage, usePasteFiles } from "@/hooks/use-paste-files"
 import { createClientId } from "@/lib/client-id"
@@ -22,7 +24,7 @@ const selectClass = "h-10 rounded-lg border border-md-outline-variant bg-md-surf
 const kinds: SensitiveKind[] = ["phone", "email", "identity"]
 
 export default function ImageRedactPanel() {
-  const t = useTranslations("imageRedact"), ot = useTranslations("ocrTools"), id = useId()
+  const t = useTranslations("imageRedact", zhImageRedact), ot = useTranslations("ocrTools", zhOcrTools), id = useId()
   const [file, setFile] = useState<File | null>(null), [source, setSource] = useState<RedactImage | null>(null)
   const [regions, setRegions] = useState<RedactRegion[]>([]), [activeId, setActiveId] = useState("")
   const [enabled, setEnabled] = useState<SensitiveKind[]>(kinds), [color, setColor] = useState<"black" | "white">("black"), [format, setFormat] = useState<"png" | "jpeg">("png")

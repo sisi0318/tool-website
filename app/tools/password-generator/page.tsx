@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhPasswordGenerator } from "@/lib/translations/zh-namespaces/passwordGenerator"
 import {
   calculatePassphraseEntropy,
   calculatePasswordEntropy,
@@ -48,7 +49,7 @@ const STRENGTH_COLOR: Record<PasswordStrength, string> = {
 }
 
 export default function PasswordGeneratorPage() {
-  const t = useTranslations("passwordGenerator")
+  const t = useTranslations("passwordGenerator", zhPasswordGenerator)
   const params = useToolRuntimeParams()
   const [mode, setMode] = useState<Mode>(params?.feature?.toLowerCase().includes("passphrase") ? "passphrase" : "password")
   // 独立页的地址栏参数在挂载后才读到，初值赶不上

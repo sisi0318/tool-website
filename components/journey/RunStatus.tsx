@@ -5,6 +5,8 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { Button } from "@/components/ui/button"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
+import { zhWorkflowTemplates } from "@/lib/translations/zh-namespaces/workflowTemplates"
 import type { TemplateRunProgress } from "./TemplateStage"
 
 /**
@@ -12,8 +14,8 @@ import type { TemplateRunProgress } from "./TemplateStage"
  * OCR 这类慢步骤会让整页禁用好几分钟；对话框和步骤面板是模态的，所以它们里面各放一份。
  */
 export function RunStatus({ progress, onCancel }: { progress: TemplateRunProgress; onCancel: () => void }) {
-  const t = useTranslations("journey")
-  const wt = useTranslations("workflowTemplates")
+  const t = useTranslations("journey", zhJourney)
+  const wt = useTranslations("workflowTemplates", zhWorkflowTemplates)
   const nodeLabel = useNodeLabel()
   const definition = getNodeDefinition(progress.tool)
   const tool = definition ? nodeLabel(definition) : progress.tool

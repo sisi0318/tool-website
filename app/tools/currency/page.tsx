@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCurrency } from "@/lib/translations/zh-namespaces/currency"
 import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/components/i18n-provider"
@@ -191,7 +192,7 @@ function sortCnyFirst(codes: readonly string[]): string[] {
 }
 
 export default function CurrencyConverterPage() {
-  const t = useTranslations("currency")
+  const t = useTranslations("currency", zhCurrency)
   const { locale } = useI18n()
   const { toast } = useToast()
   const [autoMode, setAutoMode] = useState(true)

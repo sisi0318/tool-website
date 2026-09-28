@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { Download, Upload } from "lucide-react"
 
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { hasUnsavedCanvasChanges, useCanvasStore } from "@/lib/canvas/store"
 import { ConfirmDialog } from "./ConfirmDialog"
 import { parseWorkflowFile, serializeWorkflow } from "@/lib/canvas/workflow"
@@ -16,7 +17,7 @@ function safeFileName(value: string): string {
 }
 
 export function WorkflowTransferButtons() {
-  const t = useTranslations("canvas")
+  const t = useTranslations("canvas", zhCanvas)
   const nodes = useCanvasStore((state) => state.nodes)
   const edges = useCanvasStore((state) => state.edges)
   const replaceWorkflow = useCanvasStore((state) => state.replaceWorkflow)

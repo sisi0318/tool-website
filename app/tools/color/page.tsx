@@ -6,6 +6,7 @@ import type React from "react"
 
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhColor } from "@/lib/translations/zh-namespaces/color"
 import { parseColorInput, rgbToLch, type ColorInputFormat } from "@/lib/color-conversion"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -187,7 +188,7 @@ function parseFormatValue(label: ColorFormat["label"], value: string): string | 
 }
 
 export default function ColorPickerPage() {
-  const t = useTranslations("color")
+  const t = useTranslations("color", zhColor)
 
   // Base state
   const [showColorSettings, setShowColorSettings] = useState(false)

@@ -7,6 +7,7 @@ import { FileUp, ShieldCheck } from "lucide-react"
 import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/components/tools/utility-workbench"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhCertificateTools } from "@/lib/translations/zh-namespaces/certificateTools"
 import { inspectCryptoMaterial } from "@/lib/certificate-tools"
 import { bytesToBase64 } from "@/lib/compression"
 import {
@@ -18,7 +19,7 @@ import {
 const SAMPLE = JSON.stringify({ kty: "EC", crv: "P-256", kid: "signing-key", use: "sig", alg: "ES256", x: "f83OJ3D2xF4", y: "x_FEzRu9m36" }, null, 2)
 
 export default function CertificatePage() {
-  const t = useTranslations("certificateTools")
+  const t = useTranslations("certificateTools", zhCertificateTools)
   const [input, setInput] = useState("")
   const [output, setOutput] = useState("")
   const [error, setError] = useState<string | WorkbenchError>("")

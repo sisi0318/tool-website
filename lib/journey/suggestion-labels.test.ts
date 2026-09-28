@@ -3,7 +3,9 @@ import { beforeAll, describe, expect, it } from "vitest"
 import { registerAllAdapters } from "../adapters"
 import type { DataType } from "../canvas/types"
 import { en } from "../translations/en"
-import { zh } from "../translations/zh"
+import { zhJourneySuggestions } from "../translations/zh-namespaces/journeySuggestions"
+
+const zh = { journeySuggestions: zhJourneySuggestions }
 import { CURATED_MATRIX, suggestNext } from "./suggest"
 
 beforeAll(() => {

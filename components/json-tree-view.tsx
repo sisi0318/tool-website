@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { SendToMenu } from "@/components/tools/send-to-menu"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJsonTree } from "@/lib/translations/zh-namespaces/jsonTree"
 import { cn } from "@/lib/utils"
 import { copyTextToClipboard } from "@/lib/clipboard"
 import { expandJsonTreeToDepth, indexJsonTree, jsonTreePreview, visibleJsonTreeEntries, type JsonTreeEntry, type JsonTreeIndex, type JsonTreeValue } from "@/lib/json-tree"
@@ -28,7 +29,7 @@ interface JsonTreeViewProps {
 }
 
 export function JsonTreeView({ className, emptyMessage, emphasizeIndentation = false, indentSize = 2, jsonText, rootLabel, defaultView = "compact" }: JsonTreeViewProps) {
-  const t = useTranslations("jsonTree")
+  const t = useTranslations("jsonTree", zhJsonTree)
   const parsed = useMemo(() => {
     if (jsonText.length > MAX_INPUT_CHARS) return { index: null, tooLarge: true }
     try { return { index: indexJsonTree(JSON.parse(jsonText) as JsonTreeValue), tooLarge: false } }

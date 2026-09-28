@@ -2,12 +2,12 @@ import React from "react"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { JsonTreeView } from "./json-tree-view"
-import { zh } from "@/lib/translations/zh"
+import { zhJsonTree } from "@/lib/translations/zh-namespaces/jsonTree"
 
 const clipboard = vi.hoisted(() => vi.fn(async () => true))
 vi.mock("@/lib/clipboard", () => ({ copyTextToClipboard: clipboard }))
 vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
-vi.mock("@/hooks/use-translations", () => ({ useTranslations: () => (key: string) => (zh.jsonTree as Record<string, string>)[key] ?? key }))
+vi.mock("@/hooks/use-translations", () => ({ useTranslations: () => (key: string) => (zhJsonTree as Record<string, string>)[key] ?? key }))
 beforeEach(() => clipboard.mockClear())
 
 function openNodeActions(path: string) {

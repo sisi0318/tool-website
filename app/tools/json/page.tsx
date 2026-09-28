@@ -9,6 +9,7 @@ import { JsonTreeView } from "@/components/json-tree-view"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJson } from "@/lib/translations/zh-namespaces/json"
 import { Clipboard, Download, Upload, AlertCircle, Check, ChevronDown, ChevronUp, Trash2, Settings, Palette, FileText, Zap, RefreshCw, Copy, Code, Undo2, Redo2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -66,7 +67,7 @@ function yamlErrorLocation(error: unknown): TextLocation | null {
 }
 
 export default function JsonTool() {
-  const t = useTranslations("json")
+  const t = useTranslations("json", zhJson)
   const tc = useTranslations("common")
   const params = useToolRuntimeParams()
   

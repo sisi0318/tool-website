@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { PdfChoice, PdfFilePicker, PdfNumberControls, PdfResults, PdfTaskStatus } from "@/components/tools/pdf-controls"
 import { usePdfTask } from "@/hooks/use-pdf-task"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhPdfTools } from "@/lib/translations/zh-namespaces/pdfTools"
 import { parsePdfSelection, PDF_LIMITS, PdfToolError, type PdfInfo, type PdfNumbering, type PdfPageReference } from "@/lib/pdf-shared"
 import { composePdfFiles, inspectPdfFiles, samplePdfFile, type PdfFileResult } from "@/lib/pdf-worker-client"
 
@@ -16,7 +17,7 @@ const PdfPreview = dynamic(() => import("./pdf-preview"), { ssr: false })
 interface Source { file: File; info: PdfInfo }
 interface PageItem extends PdfPageReference { id: number; included: boolean; rotation: number }
 export default function PdfDocumentPanel() {
-  const t = useTranslations("pdfTools"), task = usePdfTask(), counter = useRef(0)
+  const t = useTranslations("pdfTools", zhPdfTools), task = usePdfTask(), counter = useRef(0)
   const [sources, setSources] = useState<Source[]>([]), [plan, setPlan] = useState<PageItem[]>([])
   const [order, setOrder] = useState(""), [mode, setMode] = useState("merge"), [splitEvery, setSplitEvery] = useState("1")
   const [numbering, setNumbering] = useState<PdfNumbering>({ enabled: false, position: "bottom-center", fontSize: 10, margin: 18, total: true })

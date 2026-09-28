@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { RunStatus } from "./RunStatus"
 import type { TemplateRunProgress } from "./TemplateStage"
@@ -37,7 +38,7 @@ interface StepSheetProps {
 }
 
 export function StepSheet({ open, onOpenChange, node, running, progress, onCancel, onRerun, onDelete, creating = false }: StepSheetProps) {
-  const t = useTranslations("journey")
+  const t = useTranslations("journey", zhJourney)
   const nodeLabel = useNodeLabel()
   const via = node?.via ?? null
   const [draft, setDraft] = useState<Record<string, unknown>>({})

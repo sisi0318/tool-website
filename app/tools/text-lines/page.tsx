@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
+import { zhTextLinesTools } from "@/lib/translations/zh-namespaces/textLinesTools"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { processTextLines, SET_LINE_OPERATIONS, TextLineError, type TextLineOperation, type TextLineOptions, type TextLineResult } from "@/lib/text-line-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
@@ -17,7 +18,7 @@ import { useUndoToast } from "@/hooks/use-undo-toast"
 
 const OPERATIONS: TextLineOperation[] = ["dedupe", "clean", "sort", "affix", "columns", ...SET_LINE_OPERATIONS]
 export default function TextLinesPage() {
-  const t = useTranslations("textLinesTools")
+  const t = useTranslations("textLinesTools", zhTextLinesTools)
   const tc = useTranslations("common")
   const showUndo = useUndoToast()
   const [input, setInput] = useToolDraft("text-lines")
