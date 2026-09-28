@@ -57,6 +57,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { useUndoToast } from "@/hooks/use-undo-toast"
+import { MISSING_FILE_ERROR } from "@/lib/canvas/node-errors"
 
 registerAllAdapters()
 
@@ -103,6 +104,8 @@ export default function JourneyPage() {
     const definition = getNodeDefinition(tool)
     return definition ? nodeLabel(definition) : tool
   }
+  // 适配器的错误码按当前语言显示（例如没有选文件），其余是原文
+  const errorText = (message: string) => (message === MISSING_FILE_ERROR ? t("missingFile") : message)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -137,7 +140,7 @@ export default function JourneyPage() {
     toast({
       title: t("replayFailedAt")
         .replace("{index}", String(failedIndex + 1))
-        .replace("{error}", failed?.error ?? t("unknownError")),
+        .replace("{error}", failed?.error ? errorText(failed.error) : t("unknownError")),
       variant: "destructive",
     })
   }
@@ -366,7 +369,7 @@ export default function JourneyPage() {
     } catch (error) {
       toast({
         title: t("stepFailed"),
-        description: error instanceof Error ? error.message : t("unknownError"),
+        description: error instanceof Error ? errorText(error.message) : t("unknownError"),
         variant: "destructive",
       })
       return false
@@ -446,7 +449,7 @@ export default function JourneyPage() {
           title: t("dependentReplayFailedTitle"),
           description: t("dependentReplayFailedDescription")
             .replace("{count}", String(descendants.failures.length))
-            .replace("{error}", `${toolName(firstFailure.tool)}: ${firstFailure.error}`),
+            .replace("{error}", `${toolName(firstFailure.tool)}: ${errorText(firstFailure.error)}`),
           variant: "destructive",
         })
       }
@@ -508,14 +511,14 @@ export default function JourneyPage() {
           title: t("dependentReplayFailedTitle"),
           description: t("dependentReplayFailedDescription")
             .replace("{count}", String(descendants.failures.length))
-            .replace("{error}", `${toolName(firstFailure.tool)}: ${firstFailure.error}`),
+            .replace("{error}", `${toolName(firstFailure.tool)}: ${errorText(firstFailure.error)}`),
           variant: "destructive",
         })
       }
     } catch (error) {
       toast({
         title: t("stepFailed"),
-        description: error instanceof Error ? error.message : t("unknownError"),
+        description: error instanceof Error ? errorText(error.message) : t("unknownError"),
         variant: "destructive",
       })
     } finally {
@@ -597,7 +600,7 @@ export default function JourneyPage() {
       if (ticket !== runVersion.current) return
       setDialog(null)
       await runSharedPath(value, { v: 1, name, steps })
-    } catch (error) { if (ticket === runVersion.current) toast({ title: t("stepFailed"), description: error instanceof Error ? error.message : t("unknownError"), variant: "destructive" }) }
+    } catch (error) { if (ticket === runVersion.current) toast({ title: t("stepFailed"), description: error instanceof Error ? errorText(error.message) : t("unknownError"), variant: "destructive" }) }
     finally { if (ticket === runVersion.current) setRunning(false) }
   }
 

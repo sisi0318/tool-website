@@ -3,6 +3,7 @@ import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
 import { withObjectUrl } from "../object-url"
+import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
 async function decodeQRFromImage(file: File): Promise<string> {
   return withObjectUrl(file, (url) => new Promise((resolve, reject) => {
@@ -168,7 +169,7 @@ export const qrcodeDecodeAdapter: ToolAdapter = {
   async execute(inputs, config) {
     const file = asFile(inputs.file ?? config.file)
     if (!file) {
-      throw new Error("No file provided")
+      throw new Error(MISSING_FILE_ERROR)
     }
 
     try {

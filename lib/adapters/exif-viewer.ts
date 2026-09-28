@@ -2,6 +2,7 @@ import { Eye } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
+import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
 export const exifViewerAdapter: ToolAdapter = {
   type: "exif-viewer",
@@ -39,7 +40,7 @@ export const exifViewerAdapter: ToolAdapter = {
   async execute(inputs, config) {
     const file = asFile(inputs.file ?? config.file)
     if (!file) {
-      throw new Error("No file provided")
+      throw new Error(MISSING_FILE_ERROR)
     }
 
     const arrayBuffer = await file.arrayBuffer()

@@ -1,12 +1,12 @@
 "use client"
 
 import { useMemo } from "react"
+import { downloadValue } from "@/lib/value-download"
 import { AlertTriangle, Copy, Download, RotateCcw, Settings2 } from "lucide-react"
 import type { JourneyNode } from "@/lib/journey/types"
 import { detectData } from "@/lib/data-detector"
 import { formatCanvasValue } from "@/lib/canvas/format-value"
 import { copyTextToClipboard } from "@/lib/clipboard"
-import { downloadBlob } from "@/lib/object-url"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
@@ -57,18 +57,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, inp
     toast(ok ? { title: t("copied") } : { title: t("copyFailed"), variant: "destructive" })
   }
 
-  const handleDownload = () => {
-    if (blobValue) {
-      const name = blobValue instanceof File && blobValue.name ? blobValue.name : "journey-file"
-      downloadBlob(blobValue, name)
-      return
-    }
-    if (isString) {
-      downloadBlob(new Blob([node.value as string], { type: "text/plain;charset=utf-8" }), "journey-value.txt")
-      return
-    }
-    downloadBlob(new Blob([formatCanvasValue(node.value, true)], { type: "application/json" }), "journey-value.json")
-  }
+  const handleDownload = () => downloadValue(node.value, blobValue ? "journey-file" : "journey-value")
 
   const renderPreview = () => {
     if (isString) {

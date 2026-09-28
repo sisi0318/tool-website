@@ -4,6 +4,7 @@ import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
 import { convertImageFile, type ImageOutputFormat } from "../image-convert"
 import type { ToolAdapter } from "./types"
+import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
 export const imageConvertAdapter: ToolAdapter = {
   type: "image-convert",
@@ -37,7 +38,7 @@ export const imageConvertAdapter: ToolAdapter = {
   ],
   async execute(inputs, config) {
     const file = asFile(inputs.file ?? config.file)
-    if (!file) throw new Error("No file provided")
+    if (!file) throw new Error(MISSING_FILE_ERROR)
 
     const result = await convertImageFile(file, {
       format: String(inputs.format ?? config.format ?? "webp") as ImageOutputFormat,

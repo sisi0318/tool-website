@@ -2,6 +2,7 @@ import { Crop } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
+import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
 export const imageEditorAdapter: ToolAdapter = {
   type: "image-editor",
@@ -59,7 +60,7 @@ export const imageEditorAdapter: ToolAdapter = {
   async execute(inputs, config, context) {
     const file = asFile(inputs.file ?? config.file)
     if (!file) {
-      throw new Error("No file provided")
+      throw new Error(MISSING_FILE_ERROR)
     }
 
     const { adjustImageFile } = await import("../image-adjust")

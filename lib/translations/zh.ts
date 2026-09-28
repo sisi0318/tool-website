@@ -240,6 +240,7 @@ workflowTemplates: {
   "json-yaml_title": "JSON 配置转 YAML", "json-yaml_description": "把 JSON 对象转成 YAML 配置，保留结构并生成配置文件。", "json-yaml_hint": "最多 100 万字符，文件最多 4 MB。JSON 中需要精确保留的长编号应使用字符串。", "json-yaml_step1": "JSON 转 YAML", "json-yaml_step2": "生成 config.yaml",
 },
 journey: {
+  missingFile: "请先选择文件",
   stepsDeleted: "已删除 {count} 个步骤", savedDeleted: "已删除存档“{name}”", undo: "撤销",
   transferExpired: "传入的数据已过期或不在当前标签页中，请从原工具重新发送。",
   configureNewStep: "确认本步参数和输出，点击运行后应用到当前数据。",
@@ -4187,6 +4188,8 @@ hexBinaryTools: {
   },
 },
 canvas: {
+  downloadOutput: "下载输出",
+  nodeMissingFile: "请先选择文件（文件不随工作流保存）",
   deleteWorkflow: "删除工作流", workflowDeleted: "已删除工作流“{name}”",
   workflow: "工作流",
   nodes: "节点",

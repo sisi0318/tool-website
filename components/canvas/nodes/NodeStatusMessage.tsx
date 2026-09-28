@@ -2,6 +2,7 @@
 
 import { useTranslations } from "@/hooks/use-translations"
 import { CYCLE_ERROR, UPSTREAM_ERROR, UPSTREAM_PENDING } from "@/lib/canvas/store"
+import { MISSING_FILE_ERROR } from "@/lib/canvas/node-errors"
 import { NODE_INTERACTIVE_CLASS } from "./interactive"
 
 /** 节点状态码转成可读文案;其余错误是适配器抛出的原文 */
@@ -9,6 +10,7 @@ export function nodeStatusText(error: string, t: (key: string) => string): strin
   if (error === CYCLE_ERROR) return t("nodeInCycle")
   if (error === UPSTREAM_ERROR) return t("nodeUpstreamFailed")
   if (error === UPSTREAM_PENDING) return t("nodeWaitingForUpstream")
+  if (error === MISSING_FILE_ERROR) return t("nodeMissingFile")
   return error
 }
 

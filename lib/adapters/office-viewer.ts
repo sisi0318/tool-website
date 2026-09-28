@@ -2,6 +2,7 @@ import { FileSpreadsheet } from "lucide-react"
 import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
+import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 
@@ -32,7 +33,7 @@ export const officeViewerAdapter: ToolAdapter = {
   async execute(inputs, config) {
     const file = asFile(inputs.file ?? config.file)
     if (!file || !(file instanceof Blob)) {
-      throw new Error("No file provided")
+      throw new Error(MISSING_FILE_ERROR)
     }
     if (file.size > MAX_FILE_SIZE) {
       throw new Error("File is too large (max 20MB)")

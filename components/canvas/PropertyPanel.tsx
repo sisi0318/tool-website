@@ -1,13 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { canDownloadValue, downloadValue, isOpaqueValue } from "@/lib/value-download"
+import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { formatCanvasValue, previewCanvasValue } from "@/lib/canvas/format-value"
 import { useTranslations } from "@/hooks/use-translations"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { copyTextToClipboard } from "@/lib/clipboard"
-import { Check, CircleSlash2, Copy, LoaderCircle, Play, Power, RotateCcw, Trash2, X } from "lucide-react"
+import { Check, CircleSlash2, Copy, LoaderCircle, Play, Power, RotateCcw, Trash2, X, Download } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { ConfigInput } from "./nodes/ConfigInput"
 import { ConfirmDialog } from "./workflow/ConfirmDialog"
@@ -15,11 +17,15 @@ import { ConfirmDialog } from "./workflow/ConfirmDialog"
 /** 面板展示上限;超过的部分靠复制拿完整内容 */
 const PANEL_PREVIEW_CHARS = 20_000
 
-function OutputField({ label, value }: { label: string; value: unknown }) {
+function OutputField({ label, value, nodeName }: { label: string; value: unknown; nodeName: string }) {
   const t = useTranslations("canvas")
   const [copied, setCopied] = useState(false)
   // 只展示前一段;完整文本在点击复制时才序列化
   const preview = useMemo(() => previewCanvasValue(value, PANEL_PREVIEW_CHARS, true), [value])
+  // 文件只能下载：复制出来只是“文件名 (大小)”；图片再给一张缩略图
+  const opaque = isOpaqueValue(value)
+  const image = typeof Blob !== "undefined" && value instanceof Blob && value.type.startsWith("image/") ? value : null
+  const imageUrl = useObjectUrl(image)
 
   const handleCopy = async () => {
     try {
@@ -35,6 +41,19 @@ function OutputField({ label, value }: { label: string; value: unknown }) {
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <Label className="text-xs text-md-on-surface-variant">{label}</Label>
+        <span className="flex items-center gap-0.5">
+        {canDownloadValue(value) && (
+          <button
+            type="button"
+            onClick={() => downloadValue(value, `${nodeName}-${label}`.replace(/\s+/g, "-"))}
+            aria-label={`${t("downloadOutput")}: ${label}`}
+            title={t("downloadOutput")}
+            className="rounded p-0.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+          >
+            <Download className="h-3 w-3" />
+          </button>
+        )}
+        {!opaque && (
         <button
           type="button"
           onClick={handleCopy}
@@ -46,7 +65,10 @@ function OutputField({ label, value }: { label: string; value: unknown }) {
             ? <Check className="h-3 w-3 text-md-success" />
             : <Copy className="h-3 w-3" />}
         </button>
+        )}
+        </span>
       </div>
+      {imageUrl && <img src={imageUrl} alt={label} className="max-h-32 w-full rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container-high object-contain" />}
       <div className="max-h-40 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container-high px-2 py-1.5 font-mono text-xs text-md-on-surface break-all">
         {preview.text}
       </div>
@@ -225,7 +247,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
               const outputLabel = definition.outputs.find((output) => output.id === key)?.name
                 ?? definition.config.find((field) => field.id === key)?.name
                 ?? key
-              return <OutputField key={key} label={outputLabel} value={value} />
+              return <OutputField nodeName={nodeLabel(definition)} key={key} label={outputLabel} value={value} />
             })}
           </div>
         )}

@@ -3,6 +3,7 @@ import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
 import { createMemeGrid, safeMemeFileBase } from "../meme-grid-tools"
+import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
 const MAX_PIXELS = 64_000_000 // 约 8000×8000，防止画布内存爆掉
 
@@ -45,7 +46,7 @@ export const memeSplitterAdapter: ToolAdapter = {
   async execute(inputs, config) {
     const file = asFile(inputs.file ?? config.file)
     if (!file || !(file instanceof Blob)) {
-      throw new Error("No file provided")
+      throw new Error(MISSING_FILE_ERROR)
     }
 
     const rows = Number(inputs.rows ?? config.rows ?? 4)

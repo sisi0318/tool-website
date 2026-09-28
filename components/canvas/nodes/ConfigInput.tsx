@@ -153,6 +153,10 @@ export function ConfigInput({ field, value, onChange, disabled, allConfig }: Con
           aria-describedby={fileError ? `${field.name}-file-error` : undefined}
           className="w-full text-[10px] disabled:opacity-50"
         />
+        {/* 当前选中的文件：原生控件在重新渲染、导入工作流后不再显示文件名 */}
+        {typeof File !== "undefined" && value instanceof File && (
+          <p className="break-all text-[10px] text-md-on-surface-variant">{value.name} · {(value.size / 1024).toFixed(1)} KB</p>
+        )}
         {fileError && (
           <p id={`${field.name}-file-error`} role="alert" className="text-[10px] text-md-error">
             {fileError}

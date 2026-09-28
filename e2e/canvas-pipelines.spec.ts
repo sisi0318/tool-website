@@ -724,7 +724,7 @@ test.describe("Phase 4: New Nodes", () => {
       const store = (window as any).__ZUSTAND_STORE__
       return store.getState().nodeErrors[nodeId]
     }, { nodeId: f2b64 })
-    expect(error).toContain("No file provided")
+    expect(error).toBe("canvas:missing-file")
   })
 
   test("String To File: converts string to file", async ({ page }) => {
@@ -750,7 +750,7 @@ test.describe("Phase 4: New Nodes", () => {
       const store = (window as any).__ZUSTAND_STORE__
       return store.getState().nodeErrors[nodeId]
     }, { nodeId: f2s })
-    expect(error).toContain("No file provided")
+    expect(error).toBe("canvas:missing-file")
   })
 
   test("String Preview: shows content", async ({ page }) => {

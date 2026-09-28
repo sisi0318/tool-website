@@ -46,6 +46,7 @@ import { registerJsonPreviewAdapter } from "../adapters/json-preview"
 import { registerImagePreviewAdapter } from "../adapters/image-preview"
 import { registerPasswordGeneratorAdapter } from "../adapters/password-generator"
 import { registerImageConvertAdapter } from "../adapters/image-convert"
+import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
 beforeEach(() => {
   clearRegistry()
@@ -715,7 +716,7 @@ describe("Adapter Execute Functions", () => {
 
     it("image-to-base64: throws when no file", async () => {
       const def = getNodeDefinition("image-to-base64")!
-      await expect(def.execute({}, {})).rejects.toThrow("No file provided")
+      await expect(def.execute({}, {})).rejects.toThrow(MISSING_FILE_ERROR)
     })
 
     it("exif-viewer: uses config.file fallback", async () => {
@@ -984,7 +985,7 @@ describe("Adapter Execute Functions", () => {
 
       it("file-to-base64: throws when no file", async () => {
         const def = getNodeDefinition("file-to-base64")!
-        await expect(def.execute({}, {})).rejects.toThrow("No file provided")
+        await expect(def.execute({}, {})).rejects.toThrow(MISSING_FILE_ERROR)
       })
 
       it("file-to-string: converts file to string", async () => {
@@ -997,7 +998,7 @@ describe("Adapter Execute Functions", () => {
 
       it("file-to-string: throws when no file", async () => {
         const def = getNodeDefinition("file-to-string")!
-        await expect(def.execute({}, {})).rejects.toThrow("No file provided")
+        await expect(def.execute({}, {})).rejects.toThrow(MISSING_FILE_ERROR)
       })
 
       it("string-to-file: converts string to file", async () => {
@@ -1053,7 +1054,7 @@ describe("Adapter Execute Functions", () => {
 
       it("image-preview: throws when no file", async () => {
         const def = getNodeDefinition("image-preview")!
-        await expect(def.execute({}, {})).rejects.toThrow("No file provided")
+        await expect(def.execute({}, {})).rejects.toThrow(MISSING_FILE_ERROR)
       })
 
       it("image-preview: throws for non-image file", async () => {
