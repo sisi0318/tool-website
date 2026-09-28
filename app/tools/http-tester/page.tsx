@@ -4,7 +4,8 @@ import { Card, CardContent, CardTitle, CardHeader } from "@/components/ui/card"
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { readLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
+import { usePersistedHistory } from "@/hooks/use-persisted-history"
 import { Button } from "@/components/ui/button"
 import { JsonTreeView } from "@/components/json-tree-view"
 import { Input } from "@/components/ui/input"
@@ -60,12 +61,16 @@ interface ResponseHeader {
   value: string
 }
 
+/**
+ * 历史里存的是编辑器里的原样内容（URL、请求头、请求体可以带 {{变量}}），重发时按当前的环境变量替换。
+ * 以前存的是替换后的值：从历史重发会带上旧 token；失败的请求干脆把请求头存成空的，重试时 Authorization 丢了。
+ */
 interface RequestHistory {
   id: string
   timestamp: number
   method: string
   url: string
-  headers: Record<string, string>
+  headers: RequestParam[]
   params: RequestParam[]
   body: string
   bodyType: string
@@ -73,10 +78,25 @@ interface RequestHistory {
   status?: number
   duration?: number
   formDataParams?: RequestParam[]
-  binaryFile?: File | null
 }
 
 const TEMPLATES_STORAGE_KEY = "http_tester_templates"
+/** 历史与环境变量此前只在内存里，刷新就丢；和模板一样写进本地存储（设置页可清除） */
+const HISTORY_STORAGE_KEY = "http_tester_history"
+const ENVIRONMENT_STORAGE_KEY = "http_tester_environment"
+const MAX_HISTORY_ITEMS = 50
+/** 每条历史只留响应的开头，50 条也不会把存储撑满 */
+const MAX_HISTORY_RESPONSE_CHARS = 8 * 1024
+
+function isRequestParamList(value: unknown): value is RequestParam[] {
+  return Array.isArray(value) && value.every((row) => Boolean(row) && typeof row === "object" && typeof (row as RequestParam).name === "string" && typeof (row as RequestParam).value === "string")
+}
+
+function isRequestHistory(value: unknown): value is RequestHistory {
+  if (!value || typeof value !== "object") return false
+  const item = value as Partial<RequestHistory>
+  return typeof item.id === "string" && typeof item.url === "string" && typeof item.method === "string" && typeof item.timestamp === "number" && isRequestParamList(item.headers) && isRequestParamList(item.params)
+}
 
 interface RequestTemplate {
   id: string
@@ -283,10 +303,13 @@ export default function HTTPTester() {
   const [responseTab, setResponseTab] = useState("response")
 
   // 新功能状态
-  const [history, setHistory] = useState<RequestHistory[]>([])
+  const [history, setHistory] = usePersistedHistory<RequestHistory>(HISTORY_STORAGE_KEY, MAX_HISTORY_ITEMS, isRequestHistory)
+  // 二进制请求体不能写进存储，只在本次打开期间按历史 id 记住，从历史重发时还能带上
+  const historyFilesRef = useRef(new Map<string, File>())
   const [environmentVariables, setEnvironmentVariables] = useState<RequestParam[]>([
     { id: "env_1", name: "", value: "", type: "String", enabled: true },
   ])
+  const environmentLoadedRef = useRef(false)
   const [templates, setTemplates] = useState<RequestTemplate[]>([])
   const templatesLoadedRef = useRef(false)
   const [showHistory, setShowHistory] = useState(false)
@@ -340,15 +363,17 @@ export default function HTTPTester() {
     setEnvironmentVariables((variables) => variables.filter((variable) => variable.id !== id))
   }
 
-  // 保存到历史记录
-  const saveToHistory = useCallback((requestData: Omit<RequestHistory, 'id' | 'timestamp'>) => {
+  // 保存到历史记录：原样保存编辑器内容，响应只留开头
+  const saveToHistory = useCallback((requestData: Omit<RequestHistory, 'id' | 'timestamp'>, file: File | null) => {
     const historyItem: RequestHistory = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
-      ...requestData
+      ...requestData,
+      response: requestData.response?.slice(0, MAX_HISTORY_RESPONSE_CHARS),
     }
-    setHistory(prev => [historyItem, ...prev].slice(0, 50)) // 保留最近50条记录
-  }, [])
+    if (file) historyFilesRef.current.set(historyItem.id, file)
+    setHistory(prev => [historyItem, ...prev])
+  }, [setHistory])
 
   // 从历史记录加载请求
   const loadFromHistory = useCallback((historyItem: RequestHistory) => {
@@ -357,25 +382,36 @@ export default function HTTPTester() {
     setMethod(historyItem.method)
     setUrl(historyItem.url)
     setRequestParams(historyItem.params)
-    setCustomHeaders(Object.entries(historyItem.headers).map(([name, value], index) => ({
-      id: `header_${index}`,
-      name,
-      value,
-      type: "String",
-      enabled: true
-    })))
+    setCustomHeaders(historyItem.headers.map((header, index) => ({ ...header, id: `header_${index}` })))
     setBody(historyItem.body)
     setBodyType(historyItem.bodyType as any)
     if (historyItem.formDataParams) {
       setFormDataParams(historyItem.formDataParams)
     }
-    setBinaryFile(historyItem.binaryFile ?? null)
+    setBinaryFile(historyFilesRef.current.get(historyItem.id) ?? null)
 
     toast({
       title: t("historyLoaded"),
       description: `${historyItem.method} ${historyItem.url}`
     })
   }, [t, toast])
+
+  useEffect(() => {
+    try {
+      const parsed: unknown = JSON.parse(readLocalStorage(ENVIRONMENT_STORAGE_KEY) ?? "null")
+      if (isRequestParamList(parsed) && parsed.length) setEnvironmentVariables(parsed)
+    } catch {
+      // 存储损坏时保留默认的空行
+    }
+    environmentLoadedRef.current = true
+  }, [])
+
+  useEffect(() => {
+    if (!environmentLoadedRef.current) return
+    const filled = environmentVariables.filter((variable) => variable.name.trim() || variable.value)
+    if (filled.length) writeLocalStorage(ENVIRONMENT_STORAGE_KEY, JSON.stringify(environmentVariables))
+    else removeLocalStorage(ENVIRONMENT_STORAGE_KEY)
+  }, [environmentVariables])
 
   // 模板此前只存在内存里,刷新即丢,而"另存为模板"的措辞让人以为会保留。
   // binaryFile 无法序列化,不进本地存储。
@@ -750,17 +786,16 @@ export default function HTTPTester() {
       // 保存到历史记录
       saveToHistory({
         method,
-        url: processedUrl,
-        headers: headersObj,
+        url,
+        headers: customHeaders,
         params: queryRowsCurrent.current ? requestParams : [],
-        body: typeof requestBody === 'string' ? requestBody : body,
+        body,
         bodyType,
         formDataParams,
-        binaryFile,
         response: res.text,
         status: targetStatusCode,
         duration
-      })
+      }, binaryFile)
 
       // Show success toast
       toast({
@@ -781,20 +816,19 @@ export default function HTTPTester() {
       setFormattedResponse(errorMessage)
       setIsJsonResponse(false)
 
-      // 保存失败的请求到历史记录
+      // 保存失败的请求到历史记录（请求头照样保留，重试时不会丢掉 Authorization）
       saveToHistory({
         method,
         url,
-        headers: {},
+        headers: customHeaders,
         params: queryRowsCurrent.current ? requestParams : [],
         body,
         bodyType,
         formDataParams,
-        binaryFile,
         response: errorMessage,
         status: 0,
         duration
-      })
+      }, binaryFile)
 
       // Show error toast
       toast({
@@ -1103,6 +1137,11 @@ export default function HTTPTester() {
                 <CardTitle className="text-sm flex items-center gap-2">
                   <History className="h-4 w-4" />
                   {t("recentRequests")}
+                  {history.length > 0 && (
+                    <Button type="button" variant="ghost" size="sm" className="ml-auto h-7 px-2 text-xs" onClick={() => { historyFilesRef.current.clear(); setHistory([]) }}>
+                      {t("clearHistory")}
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">

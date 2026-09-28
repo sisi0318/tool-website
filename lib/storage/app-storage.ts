@@ -59,6 +59,8 @@ export const STORAGE_ENTRIES: readonly StorageEntry[] = [
   // 各工具
   { key: "totp_accounts", group: "tools", descriptionKey: "storageTotp", sensitive: true },
   { key: "http_tester_templates", group: "tools", descriptionKey: "storageHttpTemplates", sensitive: true },
+  { key: "http_tester_history", group: "tools", descriptionKey: "storageHttpHistory", sensitive: true },
+  { key: "http_tester_environment", group: "tools", descriptionKey: "storageHttpEnvironment", sensitive: true },
   // 各工具记住的选项（格式、长度、质量等），见 hooks/use-tool-pref.ts
   { prefix: "tool-prefs:", group: "tools", descriptionKey: "storageToolPrefs" },
   // 工作台类工具的输入草稿，见 hooks/use-tool-draft.ts

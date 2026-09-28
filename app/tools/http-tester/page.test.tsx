@@ -67,3 +67,35 @@ describe("cURL import errors", () => {
     expect(mocks.toast).toHaveBeenLastCalledWith(expect.objectContaining({ description: "curlErrors.UNCLOSED_QUOTE" }))
   })
 })
+
+describe("HTTP request history and environment", () => {
+  it("keeps requests as written, with headers even when they fail, across a reload", async () => {
+    localStorage.setItem("http_tester_environment", JSON.stringify([{ id: "env_1", name: "TOKEN", value: "old-token", type: "String", enabled: true }]))
+    const first = render(<HTTPTester />)
+    fireEvent.change(requestUrl(), { target: { value: "https://example.com/items" } })
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "headers" }), { button: 0 })
+    fireEvent.click(await screen.findByRole("button", { name: "addHeader" }))
+    const names = screen.getAllByPlaceholderText("headerName")
+    const values = screen.getAllByPlaceholderText("headerValue")
+    fireEvent.change(names[names.length - 1], { target: { value: "Authorization" } })
+    fireEvent.change(values[values.length - 1], { target: { value: "Bearer {{TOKEN}}" } })
+
+    fetchMock.mockRejectedValueOnce(new Error("offline"))
+    fireEvent.click(screen.getByRole("button", { name: "submit" }))
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("http_tester_history") ?? "[]")).toHaveLength(1))
+    const [failed] = JSON.parse(localStorage.getItem("http_tester_history")!)
+    expect(failed.status).toBe(0)
+    // 存的是写下的模板，不是替换后的旧 token；失败的请求也保留请求头
+    expect(failed.headers).toEqual(expect.arrayContaining([expect.objectContaining({ name: "Authorization", value: "Bearer {{TOKEN}}" })]))
+    first.unmount()
+
+    render(<HTTPTester />)
+    fireEvent.click(screen.getByRole("button", { name: /history/ }))
+    fireEvent.click(await screen.findByRole("button", { name: /https:\/\/example.com\/items/ }))
+    expect(requestUrl()).toHaveValue("https://example.com/items")
+    fireEvent.click(screen.getByRole("button", { name: "submit" }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    const sentHeaders = JSON.stringify(fetchMock.mock.calls[1][1].headers)
+    expect(sentHeaders).toContain("old-token")
+  })
+})
