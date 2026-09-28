@@ -43,9 +43,13 @@ export function xmlToJson(input: string): string {
 
 export function jsonToXml(input: string): string {
   const parsed = parseJsonLocated(input)
+  // XML 只能有一个根元素：对象恰好一个键（值不是数组）时它就是根，否则外面包一层 root。
+  // 以前多个顶层键会生成多个并列的根元素，不是合法的 XML
+  const keys = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.keys(parsed) : []
+  const singleRoot = keys.length === 1 && !keys[0].startsWith("@") && !Array.isArray((parsed as Record<string, unknown>)[keys[0]])
   const normalized = Array.isArray(parsed)
     ? { root: { item: parsed } }
-    : parsed && typeof parsed === "object"
+    : singleRoot
       ? parsed
       : { root: parsed }
   const builder = new XMLBuilder({

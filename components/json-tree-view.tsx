@@ -49,15 +49,30 @@ export function JsonTreeView({ className, emptyMessage, emphasizeIndentation = f
   const scrollArea = useRef<HTMLDivElement>(null)
   const root = index?.byId.get(scope) ?? index?.entries[0]
 
+  // 编辑同一份数据时保留还在的节点的展开、聚焦和搜索；以前每按一个键都回到默认状态。
+  // 解析失败（边打字边改的中间状态）不动这些状态，换成另一份数据才回到默认
+  const lastIndex = useRef<JsonTreeIndex | null>(null)
+  const expandedRef = useRef(expanded)
+  expandedRef.current = expanded
   useEffect(() => {
-    setScope("")
-    setQuery("")
-    setExpanded(index ? expandJsonTreeToDepth(index, 2) : new Set())
-    setSearchCollapsed(new Set())
-    setLevel("2")
-    setPage(0)
     setCopied(null)
     setCopyFailed(false)
+    if (!index) return
+    const previous = lastIndex.current
+    lastIndex.current = index
+    const kept = previous ? [...expandedRef.current].filter((id) => index.byId.has(id)) : []
+    if (!kept.some((id) => id !== "")) {
+      setScope("")
+      setQuery("")
+      setExpanded(expandJsonTreeToDepth(index, 2))
+      setSearchCollapsed(new Set())
+      setLevel("2")
+      setPage(0)
+      return
+    }
+    setExpanded(new Set(kept))
+    setScope((current) => (index.byId.has(current) ? current : ""))
+    setSearchCollapsed((current) => new Set([...current].filter((id) => index.byId.has(id))))
   }, [index])
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current) }, [])

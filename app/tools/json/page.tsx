@@ -24,8 +24,40 @@ import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { transferText } from "@/lib/tool-transfer"
 import { ErrorLocation } from "@/components/tools/error-location"
 import { jsonErrorLocation, type TextLocation } from "@/lib/text-location"
+import { jsonToXml } from "@/lib/xml-tools"
+import { processCsv } from "@/lib/csv-tools"
 
 const JSON_EDITOR_ID = "json-editor"
+
+/**
+ * 编辑框里现在是什么内容。转换按钮会改它，键入时沿用，撤销、重做时跟着快照恢复。
+ * 以前转成 YAML 或转义之后，实时校验仍按 JSON 解析，马上报错；下载也一律叫 data.json
+ */
+type ContentKind = "json" | "yaml" | "xml" | "csv" | "text"
+
+const CONTENT_FILES: Record<ContentKind, { extension: string; mime: string }> = {
+  json: { extension: "json", mime: "application/json" },
+  yaml: { extension: "yaml", mime: "application/yaml" },
+  xml: { extension: "xml", mime: "application/xml" },
+  csv: { extension: "csv", mime: "text/csv" },
+  text: { extension: "txt", mime: "text/plain" },
+}
+
+/** 打开的文件按扩展名决定内容类型，其余按 JSON 处理 */
+function kindForFile(name: string): ContentKind {
+  const extension = name.toLowerCase().split(".").pop() ?? ""
+  return extension === "yaml" || extension === "yml" ? "yaml" : extension === "xml" ? "xml" : extension === "csv" ? "csv" : extension === "txt" ? "text" : "json"
+}
+
+/** 树视图不必跟着每次按键重新解析 */
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay)
+    return () => window.clearTimeout(timer)
+  }, [value, delay])
+  return debounced
+}
 
 /** js-yaml 的报错带 mark（从 0 开始的行列） */
 function yamlErrorLocation(error: unknown): TextLocation | null {
@@ -45,15 +77,18 @@ export default function JsonTool() {
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   
   // 格式化、转换、清空、导入都会整段替换编辑框，经 replaceText 留快照，可以撤销、重做
-  const history = useTextHistory(
+  const history = useTextHistory<ContentKind>(
     '{\n  "person": {\n    "name": "张三",\n    "age": 30,\n    "isStudent": false,\n    "hobbies": ["编程", "阅读", "旅行"],\n    "address": {\n      "city": "北京",\n      "zipCode": "100000"\n    }\n  },\n  "company": "示例公司",\n  "department": null\n}',
+    "json",
   )
   const jsonText = history.text
   const replaceText = history.replace
+  const kind = history.tag
+  const treeText = useDebouncedValue(jsonText, 300)
   // 其它工具“在工具中打开”发来的数据进快照栈，可以撤销
   useIncomingInput((transfer) => {
     const text = transferText(transfer.value)
-    if (text !== null) replaceText(text)
+    if (text !== null) replaceText(text, "json")
   })
   // 折叠时记下原文和折叠结果；编辑框内容还等于折叠结果才算折叠状态，改过就不会被“展开”覆盖
   const [collapsedFrom, setCollapsedFrom] = useState<{ original: string; collapsed: string } | null>(null)
@@ -77,9 +112,22 @@ export default function JsonTool() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      if (!jsonText.trim()) {
+      if (!jsonText.trim() || (kind !== "json" && kind !== "yaml")) {
         setError(null)
         setErrorPosition(null)
+        setRepairSuggestion(null)
+        return
+      }
+
+      if (kind === "yaml") {
+        try {
+          yaml.load(jsonText)
+          setError(null)
+          setErrorPosition(null)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : String(err))
+          setErrorPosition(yamlErrorLocation(err))
+        }
         setRepairSuggestion(null)
         return
       }
@@ -109,14 +157,14 @@ export default function JsonTool() {
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [indentSize, jsonText, realTimeValidation, sortKeys, useTab])
+  }, [indentSize, jsonText, kind, realTimeValidation, sortKeys, useTab])
 
   // 格式化JSON
   const formatJson = () => {
     try {
       const parsed = JSON.parse(jsonText)
       const formatted = JSON.stringify(sortKeys ? sortJsonKeys(parsed) : parsed, null, useTab ? "\t" : indentSize)
-      replaceText(formatted)
+      replaceText(formatted, "json")
       setError(null)
       setErrorPosition(null)
       setRepairSuggestion(null)
@@ -143,7 +191,7 @@ export default function JsonTool() {
   const compressJson = () => {
     try {
       const parsed = JSON.parse(jsonText)
-      replaceText(JSON.stringify(parsed))
+      replaceText(JSON.stringify(parsed), "json")
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -159,7 +207,7 @@ export default function JsonTool() {
     try {
       if (collapsedFrom && collapsed) {
         // 当前是折叠结果，恢复折叠前的原文
-        replaceText(collapsedFrom.original)
+        replaceText(collapsedFrom.original, "json")
       } else {
         const parsed = JSON.parse(jsonText)
 
@@ -178,7 +226,7 @@ export default function JsonTool() {
 
         const collapsedText = JSON.stringify(collapsedObj, null, useTab ? "\t" : indentSize)
         if (collapsedText !== jsonText) setCollapsedFrom({ original: jsonText, collapsed: collapsedText })
-        replaceText(collapsedText)
+        replaceText(collapsedText, "json")
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -192,7 +240,7 @@ export default function JsonTool() {
     try {
       const parsed = JSON.parse(jsonText)
       const yamlText = yaml.dump(parsed, { indent: indentSize })
-      replaceText(yamlText)
+      replaceText(yamlText, "yaml")
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -211,7 +259,7 @@ export default function JsonTool() {
         null,
         useTab ? "\t" : indentSize,
       )
-      replaceText(formatted)
+      replaceText(formatted, "json")
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -225,7 +273,7 @@ export default function JsonTool() {
   // 转义JSON
   const escapeJson = () => {
     try {
-      replaceText(escapeJsonText(jsonText))
+      replaceText(escapeJsonText(jsonText), "text")
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -238,7 +286,10 @@ export default function JsonTool() {
   // 去转义JSON
   const unescapeJson = () => {
     try {
-      replaceText(unescapeJsonText(jsonText))
+      const unescaped = unescapeJsonText(jsonText)
+      let unescapedKind: ContentKind = "text"
+      try { JSON.parse(unescaped); unescapedKind = "json" } catch { /* 去转义后不是 JSON，按文本处理 */ }
+      replaceText(unescaped, unescapedKind)
       setError(null)
       setErrorPosition(null)
     } catch (err) {
@@ -288,9 +339,24 @@ export default function JsonTool() {
     }
   }
 
+  // JSON 转 XML、CSV：复用 XML、CSV 工具里的转换
+  const jsonToOther = (target: "xml" | "csv") => {
+    try {
+      replaceText(target === "xml" ? jsonToXml(jsonText) : processCsv(jsonText, "from-json").output, target)
+      setError(null)
+      setErrorPosition(null)
+      setRepairSuggestion(null)
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message)
+        setErrorPosition(jsonErrorLocation(jsonText, err))
+      }
+    }
+  }
+
   // 清空
   const clearJson = () => {
-    replaceText("")
+    replaceText("", "json")
     setError(null)
     setErrorPosition(null)
     setRepairSuggestion(null)
@@ -315,9 +381,10 @@ export default function JsonTool() {
     copyToClipboard(jsonText, "json")
   }
 
-  // 下载JSON文件
+  // 下载：扩展名和类型跟着内容走
   const downloadJson = () => {
-    downloadBlob(new Blob([jsonText], { type: "application/json" }), "data.json")
+    const { extension, mime } = CONTENT_FILES[kind]
+    downloadBlob(new Blob([jsonText], { type: mime }), `data.${extension}`)
   }
 
   // 上传JSON文件
@@ -327,17 +394,20 @@ export default function JsonTool() {
     }
   }
 
-  // 处理文件上传
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
+  // 打开的文件进快照栈；.yaml 等按文件类型记下，校验由上面的实时校验按类型处理
+  const loadFile = (file: File) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
-      replaceText(content)
+      const fileKind = kindForFile(file.name)
+      replaceText(content, fileKind)
+      setRepairSuggestion(null)
+      if (fileKind !== "json") {
+        setError(null)
+        setErrorPosition(null)
+        return
+      }
       try {
-        // 尝试解析以验证是否为有效的JSON
         JSON.parse(content)
         setError(null)
         setErrorPosition(null)
@@ -349,6 +419,13 @@ export default function JsonTool() {
       }
     }
     reader.readAsText(file)
+  }
+
+  // 处理文件上传
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    loadFile(file)
 
     // 重置文件输入，以便可以再次上传相同的文件
     if (event.target) {
@@ -363,24 +440,7 @@ export default function JsonTool() {
 
     const file = event.dataTransfer.files?.[0]
     if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const content = e.target?.result as string
-      replaceText(content)
-      try {
-        // 尝试解析以验证是否为有效的JSON
-        JSON.parse(content)
-        setError(null)
-        setErrorPosition(null)
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message)
-          setErrorPosition(jsonErrorLocation(content, err))
-        }
-      }
-    }
-    reader.readAsText(file)
+    loadFile(file)
   }
 
   // 防止默认拖放行为
@@ -520,7 +580,7 @@ export default function JsonTool() {
             type="file"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            accept=".json,.yaml,.yml,application/json,text/yaml"
+            accept=".json,.yaml,.yml,.txt,application/json,text/yaml,text/plain"
             className="hidden"
           />
         </div>
@@ -546,7 +606,7 @@ export default function JsonTool() {
                   size="sm"
                   variant="secondary"
                   onClick={() => {
-                    replaceText(repairSuggestion)
+                    replaceText(repairSuggestion, "json")
                     setRepairSuggestion(null)
                     setError(null)
                     setErrorPosition(null)
@@ -572,6 +632,9 @@ export default function JsonTool() {
               <CardTitle className="text-base flex items-center gap-2">
                 <FileText className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
                 {t("editor")}
+                <Badge variant="outline" className="text-xs uppercase" title={t("contentKind")}>
+                  {kind === "text" ? t("kindText") : CONTENT_FILES[kind].extension}
+                </Badge>
                 {realTimeValidation && (
                   <Badge variant="secondary" className="text-xs">
                     <Zap className="h-3 w-3 mr-1" />
@@ -606,7 +669,7 @@ export default function JsonTool() {
                 }}
                 onKeyDown={history.onKeyDown}
                 onBlur={() => {
-                  if (autoFormat && jsonText.trim()) formatJson()
+                  if (autoFormat && kind === "json" && jsonText.trim()) formatJson()
                 }}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
@@ -636,7 +699,11 @@ export default function JsonTool() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <JsonTreeView jsonText={jsonText} indentSize={indentSize} />
+              {kind === "json" ? (
+                <JsonTreeView jsonText={treeText} indentSize={indentSize} />
+              ) : (
+                <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("treeJsonOnly")}</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -699,6 +766,14 @@ export default function JsonTool() {
                 <Button onClick={yamlToJson} variant="outline" size="sm" className="w-full h-10">
                   <Code className="h-4 w-4 mr-2" />
                   {t("yamlToJson")}
+                </Button>
+                <Button onClick={() => jsonToOther("xml")} variant="outline" size="sm" className="w-full h-10">
+                  <Code className="h-4 w-4 mr-2" />
+                  {t("jsonToXml")}
+                </Button>
+                <Button onClick={() => jsonToOther("csv")} variant="outline" size="sm" className="w-full h-10">
+                  <FileText className="h-4 w-4 mr-2" />
+                  {t("jsonToCsv")}
                 </Button>
                 <Button onClick={escapeJson} variant="outline" size="sm" className="w-full h-10">
                   <span className="mr-2 text-xs">{"\\'"}</span>

@@ -15,6 +15,24 @@ function openNodeActions(path: string) {
 }
 
 describe("JSON tree interaction", () => {
+  it("keeps expanded nodes and the search while the same document is edited, and resets for a different one", () => {
+    const doc = (age: number) => JSON.stringify({ users: [{ name: "Ada", profile: { age } }], other: 1 })
+    const { container, rerender } = render(<JsonTreeView jsonText={doc(30)} />)
+    fireEvent.click(container.querySelector('[data-tree-path="/users/0"] button')!)
+    fireEvent.click(container.querySelector('[data-tree-path="/users/0/profile"] button')!)
+    expect(container.querySelector('[data-tree-path="/users/0/profile/age"]')).toBeInTheDocument()
+
+    rerender(<JsonTreeView jsonText={doc(30).slice(0, -3)} />)
+    rerender(<JsonTreeView jsonText={doc(31)} />)
+    expect(container.querySelector('[data-tree-path="/users/0/profile/age"]')).toHaveTextContent("31")
+
+    fireEvent.change(screen.getByRole("textbox", { name: "搜索键或值…" }), { target: { value: "ada" } })
+    rerender(<JsonTreeView jsonText={doc(32)} />)
+    expect(screen.getByRole("textbox", { name: "搜索键或值…" })).toHaveValue("ada")
+
+    rerender(<JsonTreeView jsonText={JSON.stringify({ something: { else: true } })} />)
+    expect(screen.getByRole("textbox", { name: "搜索键或值…" })).toHaveValue("")
+  })
   it("searches collapsed descendants and can focus a subtree then return to the root", () => {
     const { container } = render(<JsonTreeView jsonText={JSON.stringify({ users: [{ name: "Ada" }], hidden: "other" })} />)
     expect(container.querySelector('[data-tree-path="/users/0/name"]')).not.toBeInTheDocument()

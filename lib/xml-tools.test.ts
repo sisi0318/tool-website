@@ -15,6 +15,13 @@ describe("XML tools", () => {
     expect(processXml(json, "from-json")).toContain('<root id="1">')
   })
 
+  it("gives JSON with several top-level keys a single root element", () => {
+    const xml = processXml('{"person":{"name":"Ada"},"company":"Acme","tags":["a","b"]}', "from-json")
+    expect(xml.startsWith("<root>")).toBe(true)
+    expect(xml.endsWith("</root>")).toBe(true)
+    expect(processXml('{"tags":["a","b"]}', "from-json")).toMatch(/^<root>\s*<tags>a<\/tags>/)
+  })
+
   it("wraps a root JSON array with valid XML element names", () => {
     const xml = processXml('[{"name":"Ada"},{"name":"Linus"}]', "from-json")
     expect(xml).toContain("<root>")

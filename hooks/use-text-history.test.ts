@@ -80,3 +80,22 @@ describe("useTextHistory", () => {
     expect(result.current.text).toBe("b")
   })
 })
+
+describe("useTextHistory tags", () => {
+  it("keeps a tag while typing and restores it with undo and redo", () => {
+    const { result } = renderHook(() => useTextHistory<"json" | "yaml">("{}", "json"))
+    act(() => result.current.replace("a: 1\n", "yaml"))
+    act(() => result.current.setText("a: 2\n"))
+    expect(result.current.tag).toBe("yaml")
+
+    act(() => result.current.undo())
+    expect(result.current).toMatchObject({ text: "{}", tag: "json" })
+    act(() => result.current.redo())
+    expect(result.current).toMatchObject({ text: "a: 2\n", tag: "yaml" })
+    // 不带标签的替换沿用当前标签；内容不变只改标签也算一次替换
+    act(() => result.current.replace("a: 3\n"))
+    expect(result.current.tag).toBe("yaml")
+    act(() => result.current.replace("a: 3\n", "json"))
+    expect(result.current).toMatchObject({ tag: "json", canUndo: true })
+  })
+})
