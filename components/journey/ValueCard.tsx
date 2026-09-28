@@ -28,9 +28,11 @@ interface ValueCardProps {
   running: boolean
   onOpenStepSheet: () => void
   onRerunFromRoot: () => void
+  /** 根节点（输入）本身没有随保存恢复：这时要请用户重新提供输入，而不是“从根节点重跑” */
+  inputMissing?: boolean
 }
 
-export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: ValueCardProps) {
+export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, inputMissing = false }: ValueCardProps) {
   const t = useTranslations("journey")
   const { toast } = useToast()
 
@@ -190,10 +192,10 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: V
           <div className="rounded-2xl bg-[var(--md-sys-color-error-container)] p-4">
             <div className="flex items-center gap-2 text-sm font-medium text-[var(--md-sys-color-on-error-container)]">
               <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-              {t("valueMissingTitle")}
+              {inputMissing ? t("inputMissingTitle") : t("valueMissingTitle")}
             </div>
             <p className="mt-1 text-xs leading-relaxed text-[var(--md-sys-color-on-error-container)]/80">
-              {t("valueMissingDescription")}
+              {inputMissing ? t("inputMissingDescription") : t("valueMissingDescription")}
             </p>
             <Button
               size="sm"
@@ -202,7 +204,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot }: V
               className="mt-3 rounded-full bg-[var(--md-sys-color-error)] px-4 text-[var(--md-sys-color-on-error)] hover:bg-[var(--md-sys-color-error)]/90"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              {t("rerunFromRoot")}
+              {inputMissing ? t("restoreInput") : t("rerunFromRoot")}
             </Button>
           </div>
         ) : (

@@ -1,10 +1,10 @@
-import React from "react"
+import React, { type ReactElement } from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import JourneyPage from "./page"
 import { clearRegistry, registerNode } from "@/lib/canvas/registry"
 import { createJourney } from "@/lib/journey/tree"
-import { loadDraft, saveDraft } from "@/lib/journey/serialize"
+import { loadDraft, loadJourney, saveDraft } from "@/lib/journey/serialize"
 import { toolTransfers, toolTransferUrl } from "@/lib/tool-transfer"
 import type { JourneyNode } from "@/lib/journey/types"
 
@@ -18,7 +18,7 @@ vi.mock("@/components/journey/InputStage", () => ({ InputStage: () => <div data-
 vi.mock("@/components/journey/JourneyTrail", () => ({ JourneyTrail: () => null }))
 vi.mock("@/components/journey/SuggestionChips", () => ({ SuggestionChips: () => null }))
 vi.mock("@/components/journey/ToolPickerSheet", () => ({ ToolPickerSheet: () => null }))
-vi.mock("@/components/journey/JourneyDialogs", () => ({ ConfirmNewDialog: () => null, ConfirmOverwriteDialog: () => null, OpenJourneyDialog: () => null, ReplayDialog: () => null, ShareDialog: () => null }))
+vi.mock("@/components/journey/JourneyDialogs", () => ({ ConfirmNewDialog: () => null, ConfirmOverwriteDialog: () => null, OpenJourneyDialog: () => null, ReplayDialog: () => null, RestoreInputDialog: () => null, ShareDialog: () => null }))
 vi.mock("@/components/journey/ValueCard", () => ({ ValueCard: ({ node }: { node: JourneyNode }) => <div data-testid="current-value">{node.valueType === "bytes" ? `bytes:${(node.value as File).size}` : JSON.stringify(node.value)}</div> }))
 vi.mock("@/components/journey/StepSheet", () => ({ StepSheet: ({ open, creating, onRerun }: { open: boolean; creating: boolean; onRerun: (config: Record<string, unknown>, port: string) => void }) => open ? <button onClick={() => onRerun({}, "output")}>{creating ? "Run new step" : "Rerun"}</button> : null }))
 
@@ -74,14 +74,21 @@ describe("journey tool transfer intake", () => {
     render(<JourneyPage />)
     expect(screen.getByTestId("current-value")).toHaveTextContent("bytes:3")
   })
-  it("preserves an unsaved draft until the user chooses to replace it", () => {
+  it("archives an unsaved journey before starting from incoming data, and undo brings it back", () => {
     saveDraft(createJourney("Existing", "keep me", "Original"))
     window.history.replaceState(null, "", toolTransferUrl(toolTransfers.put("incoming", "Source")))
     render(<JourneyPage />)
-    expect(screen.getByText("draftConflict")).toBeInTheDocument()
-    expect(loadDraft()?.name).toBe("Existing")
-    fireEvent.click(screen.getByRole("button", { name: "restoreDraft" }))
+    // 不再停在二选一的拦截页：原旅程存为“草稿 …”，直接用传入的数据开始
+    expect(screen.queryByText("draftConflict")).not.toBeInTheDocument()
+    expect(screen.getByTestId("current-value")).toHaveTextContent('"incoming"')
+    const archived = loadJourney("draftArchiveName")!
+    expect(archived.nodes[archived.rootId].value).toBe("keep me")
+    expect(calls.toast).toHaveBeenLastCalledWith(expect.objectContaining({ title: "draftArchived" }))
+
+    const undo = calls.toast.mock.calls.at(-1)![0].action as ReactElement<{ onClick: () => void }>
+    act(() => { undo.props.onClick() })
     expect(screen.getByTestId("current-value")).toHaveTextContent('"keep me"')
+    expect(loadJourney("draftArchiveName")).toBeNull()
   })
   it("handles an in-page transfer and an expired handle without replacing the draft", async () => {
     saveDraft(createJourney("Existing", "keep me", "Original"))
@@ -97,7 +104,7 @@ describe("journey tool transfer intake", () => {
       window.history.replaceState(null, "", toolTransferUrl(toolTransfers.put("new", "Source")))
       window.dispatchEvent(new HashChangeEvent("hashchange"))
     })
-    fireEvent.click(screen.getByRole("button", { name: "startNew" }))
     expect(screen.getByTestId("current-value")).toHaveTextContent('"new"')
+    expect(loadJourney("draftArchiveName")?.name).toBe("draftArchiveName")
   })
 })

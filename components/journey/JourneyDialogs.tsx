@@ -33,6 +33,59 @@ interface DialogBaseProps {
 
 const MAX_SHARED_INPUT_CHARS = 2048
 
+/**
+ * 输入（文件、超过 64K 的文本）不随保存恢复时，让用户重新提供同一份输入；
+ * 页面按原节点重算所有分支，而不是另建一份旅程。
+ */
+export function RestoreInputDialog({
+  open,
+  onOpenChange,
+  fileInput,
+  running,
+  onRun,
+}: DialogBaseProps & { fileInput: boolean; running: boolean; onRun: (value: string | File) => void }) {
+  const t = useTranslations("journey")
+  const [text, setText] = useState("")
+  const [file, setFile] = useState<File | null>(null)
+
+  useEffect(() => {
+    if (!open) {
+      setText("")
+      setFile(null)
+    }
+  }, [open])
+
+  const value = fileInput ? file : text
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={DIALOG_CLASS}>
+        <DialogHeader>
+          <DialogTitle className="text-[var(--md-sys-color-on-surface)]">{t("restoreInputTitle")}</DialogTitle>
+          <DialogDescription className="text-[var(--md-sys-color-on-surface-variant)]">{t("restoreInputHint")}</DialogDescription>
+        </DialogHeader>
+        {fileInput ? (
+          <label className="space-y-2 text-sm">
+            <span className="block">{t("uploadFile")}</span>
+            <input type="file" aria-label={t("uploadFile")} disabled={running} className="block max-w-full text-sm" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+          </label>
+        ) : (
+          <Textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            aria-label={t("restoreInputTitle")}
+            rows={6}
+            className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)]"
+          />
+        )}
+        <Button onClick={() => value && onRun(value)} disabled={!value || (typeof value === "string" && !value.trim()) || running} className={PRIMARY_BUTTON}>
+          {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+          {t("restoreInputRun")}
+        </Button>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /** 覆盖当前旅程前的二次确认;嵌在原对话框里,取消就回到原来的内容而不是关掉整个对话框 */
 function ReplaceCurrentConfirm({
   description,

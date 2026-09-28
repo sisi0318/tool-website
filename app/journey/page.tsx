@@ -11,19 +11,7 @@ import type { NodeDefinition } from "@/lib/canvas/types"
 import { applyStep, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
 import { isTypeCompatible } from "@/lib/canvas/validation"
 import { receiveTransfer as fetchTransfer, toolTransferIdFromHash, toolTransfers, type ToolTransfer } from "@/lib/tool-transfer"
-import {
-  decodeSharedPath,
-  deleteDraft,
-  hasSavedConflict,
-  isJourneySaved,
-  loadDraft,
-  loadJourney,
-  reviewSharedPath,
-  saveDraft,
-  saveJourney,
-  type SharedStepIssue,
-  type SharedStepReview,
-} from "@/lib/journey/serialize"
+import { decodeSharedPath, deleteDraft, hasSavedConflict, isJourneySaved, loadDraft, loadJourney, reviewSharedPath, saveDraft, saveJourney, type SharedStepIssue, type SharedStepReview, listSavedJourneys, takeSavedJourney } from "@/lib/journey/serialize"
 import { exportPathToCanvas } from "@/lib/journey/to-canvas"
 import { getJourneyTemplate, journeyTemplatePath, templateIdFromHash, validateTemplateImage, type JourneyTemplate } from "@/lib/journey/templates"
 import {
@@ -50,6 +38,7 @@ import {
   ConfirmOverwriteDialog,
   OpenJourneyDialog,
   ReplayDialog,
+  RestoreInputDialog,
   ShareDialog,
 } from "@/components/journey/JourneyDialogs"
 import { JourneyTrail } from "@/components/journey/JourneyTrail"
@@ -67,6 +56,7 @@ import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
 import { useNodeLabel } from "@/hooks/use-node-label"
+import { useUndoToast } from "@/hooks/use-undo-toast"
 
 registerAllAdapters()
 
@@ -101,12 +91,13 @@ function buildJourneyFromOutcomes(
   return journey
 }
 
-type DialogKind = "share" | "open" | "replay" | "confirmNew" | "confirmOverwrite"
+type DialogKind = "share" | "open" | "replay" | "confirmNew" | "confirmOverwrite" | "restoreInput"
 
 export default function JourneyPage() {
   const t = useTranslations("journey")
   const wt = useTranslations("workflowTemplates")
   const nodeLabel = useNodeLabel()
+  const showUndo = useUndoToast()
   // 提示里的工具名用当前语言；写进节点的 label 仍是英文名，显示时按 type 再查
   const toolName = (tool: string) => {
     const definition = getNodeDefinition(tool)
@@ -234,6 +225,17 @@ export default function JourneyPage() {
     else void fetchTransfer(id).then((transfer) => acceptTransfer(transfer, current))
   }
 
+  /** 把没保存的旅程存成“草稿 MM-DD HH:mm”（重名时加序号），返回存档名；存不下时返回 null */
+  const archiveUnsaved = (prior: Journey): string | null => {
+    const now = new Date()
+    const pad = (value: number) => String(value).padStart(2, "0")
+    const base = t("draftArchiveName").replace("{time}", `${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`)
+    const taken = new Set(listSavedJourneys())
+    let name = base
+    for (let index = 2; taken.has(name); index += 1) name = `${base} (${index})`
+    return saveJourney({ ...prior, name }) ? name : null
+  }
+
   const acceptTransfer = (transfer: ToolTransfer | null, current: Journey | null) => {
     if (!transfer) {
       toast({ title: t("transferExpired"), variant: "destructive" })
@@ -242,6 +244,20 @@ export default function JourneyPage() {
     }
     const prior = current ?? loadDraft()
     if (prior && !isJourneySaved(prior)) {
+      // 以前停在二选一的拦截页：返回原旅程会丢掉传入的数据，开始新旅程会覆盖草稿。
+      // 现在先把原来的旅程存档，再用传入的数据开始，提示里可以撤销（回到原旅程）
+      const archivedName = archiveUnsaved(prior)
+      if (archivedName) {
+        startTransfer(transfer)
+        showUndo(t("draftArchived").replace("{name}", archivedName), () => {
+          takeSavedJourney(archivedName)
+          setStepSheetOpen(false)
+          setPendingStep(null)
+          setJourney(prior)
+        })
+        return
+      }
+      // 存储写不进去时仍让用户自己选
       setIncomingTransfer(transfer)
       setDraftBehindImport(prior)
       setPendingSharedPath(null)
@@ -372,8 +388,10 @@ export default function JourneyPage() {
   const rerunFromRoot = async () => {
     if (!journey || running) return
     const root = journey.nodes[journey.rootId]
-    if (!root || root.valueMissing || root.value === undefined) {
-      toast({ title: t("stepFailed"), description: t("valueMissingDescription"), variant: "destructive" })
+    if (!root) return
+    // 输入本身没有保存下来：以前这里提示“从根节点重新执行”，而根节点正是缺值的那个，点多少次都一样
+    if (root.valueMissing || root.value === undefined) {
+      setDialog("restoreInput")
       return
     }
     const path = getPath(journey, journey.activeId)
@@ -399,13 +417,53 @@ export default function JourneyPage() {
     }
   }
 
+  // 重新提供的输入写回根节点，按原节点 id 重算所有分支（不另建旅程，不丢分支）
+  const restoreInput = async (provided: string | File) => {
+    if (!journey || running) return
+    const rootId = journey.rootId
+    const root = journey.nodes[rootId]
+    let value: unknown = provided
+    if (typeof provided === "string" && root?.valueType === "json") {
+      try { value = JSON.parse(provided) } catch { value = provided }
+    }
+    setRunning(true)
+    try {
+      const base = replaceNodeValue(journey, rootId, value)
+      const descendants = await replayDescendants(base, rootId, value)
+      setJourney((prev) => {
+        if (!prev || !prev.nodes[rootId]) return prev
+        const next = replaceNodeValue(prev, rootId, value)
+        const nodes = { ...next.nodes }
+        for (const [nodeId, update] of Object.entries(descendants.nodeUpdates)) {
+          if (nodes[nodeId]) nodes[nodeId] = update
+        }
+        return { ...next, nodes }
+      })
+      setDialog(null)
+      if (!descendants.ok) {
+        const firstFailure = descendants.failures[0]
+        toast({
+          title: t("dependentReplayFailedTitle"),
+          description: t("dependentReplayFailedDescription")
+            .replace("{count}", String(descendants.failures.length))
+            .replace("{error}", `${toolName(firstFailure.tool)}: ${firstFailure.error}`),
+          variant: "destructive",
+        })
+      }
+    } finally {
+      setRunning(false)
+    }
+  }
+
   const rerunActiveStep = async (config: Record<string, unknown>, outputPort: string) => {
     if (!journey || running) return
     const activeNode = journey.nodes[journey.activeId]
     const parent = activeNode?.parentId ? journey.nodes[activeNode.parentId] : null
     if (!activeNode?.via || !parent) return
     if (parent.valueMissing) {
-      toast({ title: t("stepFailed"), description: t("valueMissingDescription"), variant: "destructive" })
+      const root = journey.nodes[journey.rootId]
+      if (root?.valueMissing) setDialog("restoreInput")
+      else toast({ title: t("stepFailed"), description: t("valueMissingDescription"), variant: "destructive" })
       return
     }
     const step: JourneyStep = { tool: activeNode.via.tool, config, outputPort }
@@ -644,6 +702,7 @@ export default function JourneyPage() {
         running={running}
         onOpenStepSheet={() => { setPendingStep(null); setStepSheetOpen(true) }}
         onRerunFromRoot={() => void rerunFromRoot()}
+        inputMissing={Boolean(journey.nodes[journey.rootId]?.valueMissing)}
       />
 
       {!active.valueMissing && (
@@ -699,6 +758,13 @@ export default function JourneyPage() {
         fileInput={journey.nodes[journey.rootId]?.valueType === "bytes"}
         onRun={(value) => void handleReplayRun(value)}
         isCurrentSaved={() => isJourneySaved(journey)}
+      />
+      <RestoreInputDialog
+        open={dialog === "restoreInput"}
+        onOpenChange={(open) => setDialog(open ? "restoreInput" : null)}
+        fileInput={journey.nodes[journey.rootId]?.valueType === "bytes"}
+        running={running}
+        onRun={(value) => void restoreInput(value)}
       />
       <ConfirmOverwriteDialog
         open={dialog === "confirmOverwrite"}
