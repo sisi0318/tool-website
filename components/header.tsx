@@ -3,10 +3,11 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MoonIcon, Route, Settings, SunIcon, Workflow, Wrench } from "lucide-react"
+import { MoonIcon, Route, Search, Settings, SunIcon, Workflow, Wrench } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useTranslations } from "@/hooks/use-translations"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { requestToolSearch } from "@/components/command-palette"
 import { cn } from "@/lib/utils"
 
 /**
@@ -244,6 +245,10 @@ export default function Header() {
 
         {/* Trailing: Actions */}
         <div className="flex items-center gap-1">
+          {/* 全站搜索：工作台里聚焦它的搜索框，其它页面打开命令面板（Ctrl/⌘K） */}
+          <M3IconButton aria-label={t("searchTools")} title={`${t("searchTools")} (Ctrl+K)`} onClick={requestToolSearch}>
+            <Search className="h-5 w-5" />
+          </M3IconButton>
           {/* 本地数据一览与清除入口 */}
           <Link
             href="/settings"

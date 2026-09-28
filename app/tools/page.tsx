@@ -62,7 +62,7 @@ import {
   WandSparkles,
 } from "lucide-react"
 import dynamic from "next/dynamic"
-import { type SearchResult, type SearchableTool, createToolSearchIndex, searchTools } from "./search-utils"
+import { type SearchResult, type SearchableTool, createToolSearchIndex, searchTools } from "@/lib/tools/search"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { M3Tabs, type TabItem } from "@/components/m3/tabs"
 import { M3BottomSheet } from "@/components/m3/bottom-sheet"
@@ -71,6 +71,7 @@ import { useSwipe } from "@/hooks/use-swipe"
 import { ToolRuntimeParamsProvider, type ToolRuntimeParams } from "@/components/tool-runtime-params"
 import { ToolActivityProvider } from "@/components/tool-activity"
 import { WorkspaceProvider } from "@/components/workspace-context"
+import { OPEN_TOOL_SEARCH_EVENT } from "@/components/command-palette"
 import { useToolPreferences } from "@/hooks/use-tool-preferences"
 import { haveEqualToolParams, uniqueToolIds } from "@/lib/tool-workspace"
 import { TOOL_CATALOG, getToolEntry, type ToolCategoryId } from "@/lib/tools/catalog"
@@ -589,6 +590,8 @@ export default function ToolsPage() {
     [addTab],
   )
 
+  const activeToolId = tabs.find((tab) => tab.id === activeTab)?.toolId
+
   // 转换tabs为M3Tabs需要的格式
   const m3TabItems: TabItem[] = useMemo(() => {
     // 标题从当前 toolDefinitions 取,而不是标签创建时固化的 tab.title:
@@ -607,7 +610,10 @@ export default function ToolsPage() {
   // 处理M3Tabs的标签页切换
   const handleM3TabChange = useCallback((id: string) => {
     setActiveTab(id)
-  }, [])
+    // 切到哪个工具也算用过，记进“最近使用”
+    const toolId = tabs.find((tab) => tab.id === id)?.toolId
+    if (toolId) recordRecent(toolId)
+  }, [recordRecent, tabs])
 
   // Navigate to next tab
   const goToNextTab = useCallback(() => {
@@ -636,15 +642,23 @@ export default function ToolsPage() {
 
 
   useEffect(() => {
-    const focusSearch = (event: KeyboardEvent) => {
-      if (!(event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey))) return
-      event.preventDefault()
+    const focus = () => {
       searchInputRef.current?.focus()
       setIsSearchFocused(true)
     }
+    const focusSearch = (event: KeyboardEvent) => {
+      if (!(event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey))) return
+      event.preventDefault()
+      focus()
+    }
 
+    // 页头的搜索按钮在工作台里聚焦这里的搜索框（其它页面打开命令面板）
     window.addEventListener("keydown", focusSearch)
-    return () => window.removeEventListener("keydown", focusSearch)
+    window.addEventListener(OPEN_TOOL_SEARCH_EVENT, focus)
+    return () => {
+      window.removeEventListener("keydown", focusSearch)
+      window.removeEventListener(OPEN_TOOL_SEARCH_EVENT, focus)
+    }
   }, [])
 
   // 从URL参数或本地存储中恢复标签页状态
@@ -1092,6 +1106,26 @@ export default function ToolsPage() {
 
               {/* Action buttons */}
               <div className="flex-shrink-0 flex items-center gap-1 px-2 border-l border-[var(--md-sys-color-outline-variant)]">
+                {/* 当前工具的收藏开关：开了标签后收藏入口就看不到了 */}
+                {activeToolId && (
+                  <button
+                    type="button"
+                    aria-pressed={favoriteIds.includes(activeToolId)}
+                    aria-label={favoriteIds.includes(activeToolId) ? t("removeFavorite") : t("addFavorite")}
+                    title={favoriteIds.includes(activeToolId) ? t("removeFavorite") : t("addFavorite")}
+                    onClick={() => toggleFavorite(activeToolId)}
+                    className="
+                      p-2 rounded-full
+                      hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
+                      active:bg-[var(--md-sys-color-on-surface)]/[0.12]
+                      transition-colors duration-md-short-2
+                      text-[var(--md-sys-color-on-surface-variant)]
+                    "
+                  >
+                    <Star className={`h-5 w-5 ${favoriteIds.includes(activeToolId) ? "fill-current text-[var(--md-sys-color-primary)]" : ""}`} />
+                  </button>
+                )}
+
                 {/* Share multi-tab button */}
                 {tabs.length > 1 && (
                   <TooltipProvider>

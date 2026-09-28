@@ -2,6 +2,7 @@ import React, { type ReactElement } from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import ToolsPage from "./page"
+import { requestToolSearch } from "@/components/command-palette"
 
 const toast = vi.fn()
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
@@ -89,5 +90,30 @@ describe("opening another tool from a tab", () => {
     expect(screen.getAllByLabelText("stub tool input", { selector: "input" })[0]).toHaveValue("kept")
     expect(window.localStorage.getItem("tool_tabs_state")).not.toContain("handoff")
     expect(window.location.href).not.toContain("handoff")
+  })
+})
+
+describe("workspace search and recent tools", () => {
+  beforeEach(() => window.localStorage.clear())
+
+  it("focuses its own search box when the header search button is used", () => {
+    render(<ToolsPage />)
+    act(() => requestToolSearch())
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveFocus()
+  })
+
+  it("counts switching back to a tab as recent use", async () => {
+    render(<ToolsPage />)
+    const search = screen.getByRole("textbox", { name: /搜索/ })
+    for (const term of ["json", "sql"]) {
+      fireEvent.focus(search)
+      fireEvent.change(search, { target: { value: term } })
+      fireEvent.keyDown(search, { key: "Enter" })
+    }
+    await screen.findAllByLabelText("Close tab")
+    expect(JSON.parse(window.localStorage.getItem("tool_recent_ids")!)[0]).toBe("sql")
+
+    fireEvent.click(screen.getAllByRole("tab")[0])
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem("tool_recent_ids")!)[0]).toBe("json"))
   })
 })

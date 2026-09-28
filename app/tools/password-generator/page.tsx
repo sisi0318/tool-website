@@ -51,6 +51,10 @@ export default function PasswordGeneratorPage() {
   const t = useTranslations("passwordGenerator")
   const params = useToolRuntimeParams()
   const [mode, setMode] = useState<Mode>(params?.feature?.toLowerCase().includes("passphrase") ? "passphrase" : "password")
+  // 独立页的地址栏参数在挂载后才读到，初值赶不上
+  useEffect(() => {
+    if (params?.feature?.toLowerCase().includes("passphrase")) setMode("passphrase")
+  }, [params?.feature])
   const [length, setLength] = useToolPref("password-generator", "length", 20, (value) => Number.isInteger(value) && value >= 8 && value <= 128)
   const [lowercase, setLowercase] = useToolPref("password-generator", "lowercase", true)
   const [uppercase, setUppercase] = useToolPref("password-generator", "uppercase", true)

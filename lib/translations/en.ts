@@ -30,6 +30,7 @@ common: {
   notFoundBrowseTools: "Browse all tools",
   journey: "Journey",
   settings: "Settings",
+  searchTools: "Search tools",
   runningInBackground: "In progress",
   undo: "Undo",
   redo: "Redo",
@@ -49,6 +50,10 @@ common: {
   filesSkipped: "Skipped {count} files",
   skippedType: "unsupported format",
   skippedSize: "larger than {size}",
+},
+commandPalette: {
+  title: "Search tools", placeholder: "Search tools or features…", favorites: "Favorites", recents: "Recent",
+  noResults: "No matching tools", emptyHint: "Type a tool name, feature or keyword", hint: "↑↓ to select, Enter to open, Esc to close",
 },
 settings: {
   cacheTitle: "Offline resources and query caches", cacheHint: "Query data, website resources and models use separate caches. Visiting tools again will download any cleared resources as needed.", clearCaches: "Clear caches", cacheConfirm: "Clear this site's query, model and website caches. Preferences and workspace data stay saved; offline resources will need downloading again.", cacheReadFailed: "Cache information could not be read. Check browser storage permissions.", cacheClearFailed: "Cache clearing did not finish. Some preferences may already be cleared; check browser permissions and retry.", queryCache: "Legacy query data", ocrCache: "OCR models", pdfCache: "PDF rendering resources", vectorCache: "Image vectorizer resources", siteCache: "Website offline resources",

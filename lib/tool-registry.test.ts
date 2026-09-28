@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { createToolSearchIndex } from "@/app/tools/search-utils"
+import { createToolSearchIndex } from "@/lib/tools/search"
 import { TOOL_COMPONENTS } from "@/app/tools/tool-components"
 import { toolTranslationKeys } from "@/components/tool-route-bar"
 import { TOOL_SEO, toolPageMetadata } from "@/lib/tool-metadata"

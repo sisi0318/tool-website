@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { TOOL_CATALOG } from "@/lib/tools/catalog"
 import { zh } from "@/lib/translations/zh"
-import { createToolSearchIndex, searchTools } from "./search-utils"
+import { createToolSearchIndex, searchTools } from "./search"
 
 const toolNames = (zh as unknown as { tools: Record<string, { name?: string } | undefined> }).tools
 const index = createToolSearchIndex(
