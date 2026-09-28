@@ -17,6 +17,7 @@ import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { transferText } from "@/lib/tool-transfer"
 import { Buffer } from "buffer"
 import { createIncrementalHasher } from "@/lib/hash-algorithms"
+import { hashFile } from "@/lib/file-hash"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -59,29 +60,6 @@ interface FileInfo {
 interface VerifyResultType {
   isMatch: boolean
   matchedAlgorithm?: string
-}
-
-async function readFileInChunks(
-  file: File,
-  onChunk: (bytes: Uint8Array) => void,
-  onProgress: (progress: number) => void,
-  isCancelled: () => boolean,
-): Promise<void> {
-  const chunkSize = 2 * 1024 * 1024
-  if (file.size === 0) {
-    onProgress(100)
-    return
-  }
-
-  for (let offset = 0; offset < file.size; offset += chunkSize) {
-    if (isCancelled()) throw new DOMException("Hash calculation cancelled", "AbortError")
-    const chunk = new Uint8Array(
-      await file.slice(offset, Math.min(file.size, offset + chunkSize)).arrayBuffer(),
-    )
-    onChunk(chunk)
-    onProgress(Math.min(100, Math.round(((offset + chunk.byteLength) / file.size) * 100)))
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
-  }
 }
 
 // 格式化文件大小
@@ -191,7 +169,6 @@ export default function HashPage() {
   const [size, setSize] = useState<number>(256)
   const [calculationError, setCalculationError] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const cancelCalculationRef = useRef<boolean>(false)
   const calculationIdRef = useRef(0)
   const calculationAbortRef = useRef<AbortController | null>(null)
   // Add the hmacKey state after the other state declarations
@@ -200,7 +177,6 @@ export default function HashPage() {
   const copyTimeoutRef = useRef<{ [key: string]: ReturnType<typeof setTimeout> | null }>({})
 
   const stopActiveCalculation = useCallback(() => {
-    cancelCalculationRef.current = true
     calculationIdRef.current += 1
     calculationAbortRef.current?.abort()
     calculationAbortRef.current = null
@@ -370,25 +346,18 @@ export default function HashPage() {
     }
   }
 
-  // 计算文件哈希
+  // 计算文件哈希：在 Worker 里分块读、算，主线程只收进度
   const calculateFileHash = async (
     file: File,
     algorithmId: string,
     algorithmSize: number | undefined,
-    calculationId: number,
     signal: AbortSignal,
   ): Promise<string> => {
-    const hasher = await createIncrementalHasher(algorithmId, algorithmSize, size, outputFormat)
-    await readFileInChunks(
-      file,
-      (chunk) => hasher.update(chunk),
-      setFileProgress,
-      () =>
-        cancelCalculationRef.current ||
-        signal.aborted ||
-        calculationIdRef.current !== calculationId,
+    const [digest] = await hashFile(
+      { file, algorithms: [{ algorithm: algorithmId, size: algorithmSize }], fallbackSize: size, outputFormat },
+      { signal, onProgress: setFileProgress },
     )
-    return hasher.digest()
+    return digest
   }
 
   // 计算所有文件哈希
@@ -400,82 +369,67 @@ export default function HashPage() {
 
     setFileCalculating(true)
     setFileProgress(0)
-    cancelCalculationRef.current = false
 
-    try {
-      // 首先创建所有算法的结果数组，但值设为空，状态设为 pending
-      const results: HashResult[] = []
+    // 首先创建所有算法的结果数组，但值设为空，状态设为 pending
+    const results: HashResult[] = []
 
-      // 添加非可配置算法
-      allAlgorithms
-        .filter((algo) => !algo.configurable)
-        .forEach((algo) => {
-          results.push({
-            algorithm: algo.id,
-            displayName: algo.name,
-            value: "",
-            status: "pending",
-          })
+    // 添加非可配置算法
+    allAlgorithms
+      .filter((algo) => !algo.configurable)
+      .forEach((algo) => {
+        results.push({
+          algorithm: algo.id,
+          displayName: algo.name,
+          value: "",
+          status: "pending",
         })
-
-      // 添加可配置算法的所有大小
-      allAlgorithms
-        .filter((algo) => algo.configurable)
-        .forEach((algo) => {
-          if (algo.sizes) {
-            algo.sizes.forEach((s) => {
-            results.push({
-              algorithm: algo.id,
-              displayName: getAlgorithmDisplayName(algo.id, s),
-              value: "",
-              status: "pending",
-              algorithmSize: s,
-            })
-          })
-        }
       })
 
-      // 立即设置结果数组，这样用户可以看到将要计算的所有算法
+    // 添加可配置算法的所有大小
+    allAlgorithms
+      .filter((algo) => algo.configurable)
+      .forEach((algo) => {
+        algo.sizes?.forEach((s) => {
+          results.push({
+            algorithm: algo.id,
+            displayName: getAlgorithmDisplayName(algo.id, s),
+            value: "",
+            status: "pending",
+            algorithmSize: s,
+          })
+        })
+      })
+
+    try {
+      // 全部算法都能增量计算，在 Worker 里把文件读一遍、同时喂给每个算法
+      results.forEach((result) => {
+        result.status = "calculating"
+      })
       setAllHashResults([...results])
 
-      // 全部算法现在都能在本地增量计算,一次遍历文件即可。
-      const hashers = await Promise.all(
-        results.map(async (result, index) => {
-          results[index].status = "calculating"
-          return {
-            index,
-            hasher: await createIncrementalHasher(
-              result.algorithm,
-              result.algorithmSize,
-              size,
-              outputFormat,
-            ),
-          }
-        }),
-      )
-      setAllHashResults([...results])
-
-      await readFileInChunks(
-        selectedFile.file,
-        (chunk) => {
-          hashers.forEach(({ hasher }) => hasher.update(chunk))
+      const digests = await hashFile(
+        {
+          file: selectedFile.file,
+          algorithms: results.map((result) => ({ algorithm: result.algorithm, size: result.algorithmSize })),
+          fallbackSize: size,
+          outputFormat,
         },
-        setFileProgress,
-        () =>
-          cancelCalculationRef.current ||
-          signal.aborted ||
-          calculationIdRef.current !== calculationId,
+        { signal, onProgress: setFileProgress },
       )
-
-      hashers.forEach(({ index, hasher }) => {
-        results[index].value = hasher.digest()
-        results[index].status = "completed"
+      if (calculationIdRef.current !== calculationId) return
+      results.forEach((result, index) => {
+        result.value = digests[index]
+        result.status = "completed"
       })
       setAllHashResults([...results])
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
-        console.error("Error calculating file hashes:", error)
-      }
+      if (signal.aborted || calculationIdRef.current !== calculationId) return
+      console.error("Error calculating file hashes:", error)
+      results.forEach((result) => {
+        result.value = `${t("error")}: ${result.displayName}`
+        result.status = "error"
+      })
+      setAllHashResults([...results])
     } finally {
       if (calculationIdRef.current === calculationId) {
         setFileCalculating(false)
@@ -492,14 +446,12 @@ export default function HashPage() {
 
     setFileCalculating(true)
     setFileProgress(0)
-    cancelCalculationRef.current = false
 
     try {
       const result = await calculateFileHash(
         selectedFile.file,
         algorithm,
         isCurrentAlgorithmConfigurable() ? size : undefined,
-        calculationId,
         signal,
       )
       if (calculationIdRef.current !== calculationId) return
@@ -526,7 +478,6 @@ export default function HashPage() {
     const calculationId = ++calculationIdRef.current
     const controller = new AbortController()
     calculationAbortRef.current = controller
-    cancelCalculationRef.current = false
     setCalculationError("")
 
     if (inputMode === "text") {
@@ -727,7 +678,6 @@ export default function HashPage() {
   // 清理复制超时
   useEffect(() => {
     return () => {
-      cancelCalculationRef.current = true
       calculationIdRef.current += 1
       calculationAbortRef.current?.abort()
       // 卸载时要清掉“此刻挂着”的定时器，读的正是 cleanup 时刻的 .current，规则在这里是误报
