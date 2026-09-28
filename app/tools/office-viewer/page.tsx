@@ -16,6 +16,7 @@ import {
   isFileWithinLimit,
 } from "@/lib/file-limits"
 import { sanitizeDocumentHtml } from "@/lib/sanitize-document-html"
+import { readSpreadsheet, type SpreadsheetSheet } from "@/lib/spreadsheet"
 import {
   Upload,
   FileText,
@@ -38,10 +39,8 @@ interface FileInfo {
   type: "word" | "excel" | "ppt" | "unknown"
 }
 
-interface ExcelSheet {
-  name: string
-  data: string[][]
-}
+/** 表格一次渲染的行数；几万行一次全画出来，解析挪到 Worker 之后页面照样会卡 */
+const EXCEL_PAGE_ROWS = 500
 
 export default function OfficeViewerPage() {
   const t = useTranslations("officeViewer", zhOfficeViewer)
@@ -56,8 +55,10 @@ export default function OfficeViewerPage() {
   const [wordContent, setWordContent] = useState<string>("")
   
   // Excel 预览状态
-  const [excelSheets, setExcelSheets] = useState<ExcelSheet[]>([])
+  const [excelSheets, setExcelSheets] = useState<SpreadsheetSheet[]>([])
   const [activeSheet, setActiveSheet] = useState(0)
+  const [excelPage, setExcelPage] = useState(0)
+  const excelAbortRef = useRef<AbortController | null>(null)
   
   // PPT 预览状态
   const [pptReady, setPptReady] = useState(false)
@@ -108,20 +109,15 @@ export default function OfficeViewerPage() {
     }
   }, [t])
 
-  // 处理 Excel 文件
+  // 处理 Excel 文件：在 Worker 里解析，换文件或清除时终止上一次
   const processExcel = useCallback(async (file: File) => {
+    excelAbortRef.current?.abort()
+    const controller = new AbortController()
+    excelAbortRef.current = controller
     try {
-      const [XLSX, arrayBuffer] = await Promise.all([import("xlsx"), file.arrayBuffer()])
-      const workbook = XLSX.read(arrayBuffer, { type: "array" })
-      
-      const sheets: ExcelSheet[] = workbook.SheetNames.map((name) => {
-        const worksheet = workbook.Sheets[name]
-        const data = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 })
-        return { name, data: data as string[][] }
-      })
-      
-      return sheets
-    } catch {
+      return await readSpreadsheet(file, { signal: controller.signal })
+    } catch (error) {
+      if (controller.signal.aborted) throw error
       throw new Error(t("excelParseError"))
     }
   }, [t])
@@ -184,10 +180,13 @@ export default function OfficeViewerPage() {
   }, [fileInfo, isLoading, pptArrayBuffer, t])
 
   const resetPreview = useCallback(() => {
+    excelAbortRef.current?.abort()
+    excelAbortRef.current = null
     setFileInfo(null)
     setWordContent("")
     setExcelSheets([])
     setActiveSheet(0)
+    setExcelPage(0)
     setPptReady(false)
     setPptArrayBuffer(null)
     setProgress(0)
@@ -309,6 +308,12 @@ export default function OfficeViewerPage() {
     document.addEventListener("fullscreenchange", handleFullscreenChange)
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange)
   }, [])
+
+  const currentSheet = excelSheets[activeSheet]
+  const excelPageCount = currentSheet ? Math.max(1, Math.ceil(currentSheet.rows.length / EXCEL_PAGE_ROWS)) : 1
+  const currentExcelPage = Math.min(excelPage, excelPageCount - 1)
+  const excelRowOffset = currentExcelPage * EXCEL_PAGE_ROWS
+  const visibleExcelRows = currentSheet?.rows.slice(excelRowOffset, excelRowOffset + EXCEL_PAGE_ROWS) ?? []
 
   // 获取文件图标
   const getFileIcon = (type: string) => {
@@ -492,7 +497,7 @@ export default function OfficeViewerPage() {
                       <span className="shrink-0 text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("worksheet")}:</span>
                       <Select
                         value={activeSheet.toString()}
-                        onValueChange={(v) => setActiveSheet(parseInt(v))}
+                        onValueChange={(v) => { setActiveSheet(parseInt(v)); setExcelPage(0) }}
                       >
                         <SelectTrigger className="h-8 min-w-0 flex-1 sm:w-[180px]">
                           <SelectValue />
@@ -575,45 +580,68 @@ export default function OfficeViewerPage() {
 
               {/* Excel 预览 */}
               {fileInfo?.type === "excel" && excelSheets.length > 0 && !isLoading && !error && (
-                <div
-                  className="overflow-auto rounded-lg bg-[var(--md-sys-color-surface)]"
-                  style={{
-                    maxHeight: isFullscreen ? "calc(100vh - 2rem)" : "600px",
-                  }}
-                >
+                <>
                   <div
+                    className="overflow-auto rounded-lg bg-[var(--md-sys-color-surface)]"
                     style={{
-                      transform: `scale(${zoom / 100})`,
-                      transformOrigin: "top left",
+                      maxHeight: isFullscreen ? "calc(100vh - 2rem)" : "600px",
                     }}
                   >
-                    <table className="min-w-full border-collapse bg-[var(--md-sys-color-surface)]">
-                      <tbody>
-                        {excelSheets[activeSheet]?.data.map((row, rowIndex) => (
-                          <tr key={rowIndex} className={rowIndex === 0 ? "bg-[var(--md-sys-color-surface-container-high)] font-semibold" : "bg-[var(--md-sys-color-surface)]"}>
-                            {/* 行号 */}
-                            <td className="w-10 border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-2 py-1 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                              {rowIndex + 1}
-                            </td>
-                            {row.map((cell, cellIndex) => (
-                              <td
-                                key={cellIndex}
-                                className="whitespace-nowrap border border-[var(--md-sys-color-outline-variant)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
-                              >
-                                {cell?.toString() || ""}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {excelSheets[activeSheet]?.data.length === 0 && (
-                      <div className="py-8 text-center text-[var(--md-sys-color-on-surface-variant)]">
-                        {t("emptyWorksheet")}
-                      </div>
-                    )}
+                    <div
+                      style={{
+                        transform: `scale(${zoom / 100})`,
+                        transformOrigin: "top left",
+                      }}
+                    >
+                      <table className="min-w-full border-collapse bg-[var(--md-sys-color-surface)]">
+                        <tbody>
+                          {visibleExcelRows.map((row, index) => {
+                            const rowIndex = excelRowOffset + index
+                            return (
+                              <tr key={rowIndex} className={rowIndex === 0 ? "bg-[var(--md-sys-color-surface-container-high)] font-semibold" : "bg-[var(--md-sys-color-surface)]"}>
+                                {/* 行号 */}
+                                <td className="w-10 border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] px-2 py-1 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                                  {rowIndex + 1}
+                                </td>
+                                {row.map((cell, cellIndex) => (
+                                  <td
+                                    key={cellIndex}
+                                    className="whitespace-nowrap border border-[var(--md-sys-color-outline-variant)] px-3 py-2 text-sm text-[var(--md-sys-color-on-surface)]"
+                                  >
+                                    {cell}
+                                  </td>
+                                ))}
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                      {currentSheet?.rows.length === 0 && (
+                        <div className="py-8 text-center text-[var(--md-sys-color-on-surface-variant)]">
+                          {t("emptyWorksheet")}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                  {excelPageCount > 1 && currentSheet && (
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                      <span role="status">
+                        {t("rowsRange")
+                          .replace("{start}", (excelRowOffset + 1).toLocaleString())
+                          .replace("{end}", (excelRowOffset + visibleExcelRows.length).toLocaleString())
+                          .replace("{total}", currentSheet.rows.length.toLocaleString())}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={currentExcelPage === 0} onClick={() => setExcelPage(currentExcelPage - 1)}>
+                          {t("previousRows")}
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={currentExcelPage >= excelPageCount - 1} onClick={() => setExcelPage(currentExcelPage + 1)}>
+                          {t("nextRows")}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* PPT 预览 */}
@@ -655,11 +683,11 @@ export default function OfficeViewerPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{t("rowCount")}</Badge>
-                    <span>{excelSheets[activeSheet]?.data.length || 0}</span>
+                    <span>{currentSheet?.rows.length || 0}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{t("columnCount")}</Badge>
-                    <span>{Math.max(...(excelSheets[activeSheet]?.data.map(r => r.length) || [0]))}</span>
+                    <span>{currentSheet?.columnCount ?? 0}</span>
                   </div>
                 </div>
               </CardContent>

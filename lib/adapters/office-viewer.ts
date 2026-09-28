@@ -3,6 +3,7 @@ import type { ToolAdapter } from "./types"
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
 import { MISSING_FILE_ERROR } from "../canvas/node-errors"
+import { readSpreadsheetCsv } from "../spreadsheet"
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 
@@ -30,7 +31,7 @@ export const officeViewerAdapter: ToolAdapter = {
     { id: "text", name: "Text", dataType: "string" },
     { id: "info", name: "Info", dataType: "json" },
   ],
-  async execute(inputs, config) {
+  async execute(inputs, config, context) {
     const file = asFile(inputs.file ?? config.file)
     if (!file || !(file instanceof Blob)) {
       throw new Error(MISSING_FILE_ERROR)
@@ -58,14 +59,11 @@ export const officeViewerAdapter: ToolAdapter = {
     }
 
     if (ext === "xlsx" || ext === "xls" || ext === "csv") {
-      const [XLSX, arrayBuffer] = await Promise.all([import("xlsx"), file.arrayBuffer()])
-      const workbook = XLSX.read(arrayBuffer, { type: "array" })
-      const sheetName = workbook.SheetNames[0]
-      if (!sheetName) throw new Error("Workbook contains no sheets")
-      const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName])
+      // 在 Worker 里解析，大表格不再卡住画布
+      const { sheetNames, csv } = await readSpreadsheetCsv(file, { signal: context?.signal })
       return {
         text: csv,
-        info: { ...info, sheets: workbook.SheetNames, firstSheet: sheetName },
+        info: { ...info, sheets: sheetNames, firstSheet: sheetNames[0] },
       }
     }
 
