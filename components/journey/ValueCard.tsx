@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { downloadValue } from "@/lib/value-download"
-import { AlertTriangle, Copy, Download, RotateCcw, Settings2 } from "lucide-react"
+import { AlertTriangle, Copy, Download, PencilLine, RotateCcw, Settings2 } from "lucide-react"
 import type { JourneyNode } from "@/lib/journey/types"
 import { detectData } from "@/lib/data-detector"
 import { formatCanvasValue } from "@/lib/canvas/format-value"
@@ -28,11 +28,13 @@ interface ValueCardProps {
   running: boolean
   onOpenStepSheet: () => void
   onRerunFromRoot: () => void
+  /** 根节点上的“编辑输入”：换掉输入并按原来的步骤重算所有分支 */
+  onEditInput?: () => void
   /** 根节点（输入）本身没有随保存恢复：这时要请用户重新提供输入，而不是“从根节点重跑” */
   inputMissing?: boolean
 }
 
-export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, inputMissing = false }: ValueCardProps) {
+export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onEditInput, inputMissing = false }: ValueCardProps) {
   const t = useTranslations("journey")
   const { toast } = useToast()
 
@@ -134,6 +136,18 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, inp
               className={ICON_BUTTON}
             >
               <Download className="h-4 w-4" />
+            </button>
+          )}
+          {isRoot && onEditInput && !node.valueMissing && (
+            <button
+              type="button"
+              onClick={onEditInput}
+              disabled={running}
+              aria-label={t("editInput")}
+              title={t("editInput")}
+              className={ICON_BUTTON}
+            >
+              <PencilLine className="h-4 w-4" />
             </button>
           )}
           {!isRoot && (

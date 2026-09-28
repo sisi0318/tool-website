@@ -17,9 +17,10 @@ export function useUndoToast() {
   const t = useTranslations("common")
 
   return useCallback(
-    (title: string, undo: () => void) => {
+    (title: string, undo: () => void, description?: string) => {
       toast({
         title,
+        description,
         duration: UNDO_TOAST_MS,
         action: <ToastAction altText={t("undo")} onClick={undo}>{t("undo")}</ToastAction>,
       })

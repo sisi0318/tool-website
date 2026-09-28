@@ -13,10 +13,12 @@ import { isTypeCompatible } from "@/lib/canvas/validation"
 import { receiveTransfer as fetchTransfer, toolTransferIdFromHash, toolTransfers, type ToolTransfer } from "@/lib/tool-transfer"
 import { decodeSharedPath, deleteDraft, hasSavedConflict, isJourneySaved, loadDraft, loadJourney, reviewSharedPath, saveDraft, saveJourney, type SharedStepIssue, type SharedStepReview, listSavedJourneys, takeSavedJourney } from "@/lib/journey/serialize"
 import { exportPathToCanvas } from "@/lib/journey/to-canvas"
+import { formatCanvasValue } from "@/lib/canvas/format-value"
 import { getJourneyTemplate, journeyTemplatePath, templateIdFromHash, validateTemplateImage, type JourneyTemplate } from "@/lib/journey/templates"
 import {
   appendNode,
   createJourney,
+  getChildren,
   getPath,
   getPathSteps,
   removeSubtree,
@@ -70,6 +72,9 @@ const ISSUE_KEYS: Record<SharedStepIssue, string> = {
   "manual-tool": "issueManualTool",
 }
 
+/** 首步是这些工具时，换成文件前先按模板的限制检查图片 */
+const IMAGE_STEP_TOOLS = ["ocr", "image-convert"]
+
 function toolLabel(tool: string): string {
   return getNodeDefinition(tool)?.label ?? tool
 }
@@ -92,7 +97,7 @@ function buildJourneyFromOutcomes(
   return journey
 }
 
-type DialogKind = "share" | "open" | "replay" | "confirmNew" | "confirmOverwrite" | "restoreInput"
+type DialogKind = "share" | "open" | "replay" | "editInput" | "confirmNew" | "confirmOverwrite" | "restoreInput"
 
 export default function JourneyPage() {
   const t = useTranslations("journey")
@@ -436,9 +441,14 @@ export default function JourneyPage() {
     }
   }
 
-  // 重新提供的输入写回根节点，按原节点 id 重算所有分支（不另建旅程，不丢分支）
-  const restoreInput = async (provided: string | File) => {
+  /**
+   * 换输入：写回根节点，按原节点 id 重算所有分支（不另建旅程，不丢分支）。
+   * restore 是输入没随保存恢复时重新提供同一份；replace 是“应用到新数据”和“编辑输入”，
+   * 以前只回放当前路径并另建单链，其他分支全部丢失，现在原地重算，提示里可以撤销。
+   */
+  const replaceInput = async (provided: string | File, kind: "restore" | "replace") => {
     if (!journey || running) return
+    const prior = journey
     const rootId = journey.rootId
     const root = journey.nodes[rootId]
     let value: unknown = provided
@@ -447,6 +457,9 @@ export default function JourneyPage() {
     }
     const run = beginRun()
     try {
+      if (value instanceof File && getChildren(journey, rootId).some((child) => IMAGE_STEP_TOOLS.includes(child.via?.tool ?? ""))) {
+        await validateTemplateImage(value)
+      }
       const base = replaceNodeValue(journey, rootId, value)
       const descendants = await replayDescendants(base, rootId, value, { signal: run.signal, onStep: (index, total, step) => run.progress(index + 1, total, step.tool) })
       setJourney((prev) => {
@@ -459,16 +472,14 @@ export default function JourneyPage() {
         return { ...next, nodes }
       })
       setDialog(null)
-      if (!descendants.ok) {
-        const firstFailure = descendants.failures[0]
-        toast({
-          title: t("dependentReplayFailedTitle"),
-          description: t("dependentReplayFailedDescription")
-            .replace("{count}", String(descendants.failures.length))
-            .replace("{error}", `${toolName(firstFailure.tool)}: ${errorText(firstFailure.error)}`),
-          variant: "destructive",
-        })
-      }
+      const firstFailure = descendants.failures[0]
+      const failure = firstFailure
+        ? t("dependentReplayFailedDescription")
+          .replace("{count}", String(descendants.failures.length))
+          .replace("{error}", `${toolName(firstFailure.tool)}: ${errorText(firstFailure.error)}`)
+        : undefined
+      if (kind === "replace") showUndo(t("inputReplaced"), () => setJourney(prior), failure)
+      else if (failure) toast({ title: t("dependentReplayFailedTitle"), description: failure, variant: "destructive" })
     } catch (error) {
       // 取消时旅程保持原样，对话框和选好的输入都还在，可以直接再运行
       if (run.signal.aborted) toast({ title: t("runCancelled") })
@@ -614,21 +625,6 @@ export default function JourneyPage() {
     router.push("/canvas")
   }
 
-  const handleReplayRun = async (value: unknown) => {
-    if (!journey || running) return
-    const steps = getPathSteps(journey, journey.activeId)
-    const name = journey.name
-    const ticket = ++runVersion.current
-    setRunning(true)
-    try {
-      if (value instanceof File && ["ocr", "image-convert"].includes(steps[0]?.tool)) await validateTemplateImage(value)
-      if (ticket !== runVersion.current) return
-      setDialog(null)
-      await runSharedPath(value, { v: 1, name, steps })
-    } catch (error) { if (ticket === runVersion.current) toast({ title: t("stepFailed"), description: error instanceof Error ? errorText(error.message) : t("unknownError"), variant: "destructive" }) }
-    finally { if (ticket === runVersion.current) setRunning(false) }
-  }
-
   const handleNewJourney = () => {
     setDialog(null)
     setStepSheetOpen(false)
@@ -665,6 +661,10 @@ export default function JourneyPage() {
       </>
     )
   }
+
+  // “编辑输入”预填当前输入；文件没法预填
+  const rootValue = journey.nodes[journey.rootId]?.value
+  const rootText = typeof rootValue === "string" ? rootValue : rootValue == null || rootValue instanceof Blob ? "" : formatCanvasValue(rootValue, true)
 
   const headerActions: Array<{ key: string; label: string; icon: typeof Repeat2; onClick: () => void }> = [
     { key: "templates", label: wt("title"), icon: LayoutTemplate, onClick: () => setTemplatePickerOpen(true) },
@@ -732,6 +732,7 @@ export default function JourneyPage() {
         running={running}
         onOpenStepSheet={() => { setPendingStep(null); setStepSheetOpen(true) }}
         onRerunFromRoot={() => void rerunFromRoot()}
+        onEditInput={() => setDialog("editInput")}
         inputMissing={Boolean(journey.nodes[journey.rootId]?.valueMissing)}
       />
 
@@ -783,13 +784,16 @@ export default function JourneyPage() {
         isCurrentSaved={() => isJourneySaved(journey)}
       />
       <ReplayDialog
-        open={dialog === "replay"}
-        onOpenChange={(open) => setDialog(open ? "replay" : null)}
-        stepCount={getPathSteps(journey, journey.activeId).length}
+        open={dialog === "replay" || dialog === "editInput"}
+        onOpenChange={(open) => { if (!open) setDialog(null) }}
+        editing={dialog === "editInput"}
+        initialText={rootText}
+        stepCount={countDescendants(journey, journey.rootId)}
         running={running}
+        progress={runProgress}
+        onCancel={cancelRun}
         fileInput={journey.nodes[journey.rootId]?.valueType === "bytes"}
-        onRun={(value) => void handleReplayRun(value)}
-        isCurrentSaved={() => isJourneySaved(journey)}
+        onRun={(value) => void replaceInput(value, "replace")}
       />
       <RestoreInputDialog
         open={dialog === "restoreInput"}
@@ -798,7 +802,7 @@ export default function JourneyPage() {
         running={running}
         progress={runProgress}
         onCancel={cancelRun}
-        onRun={(value) => void restoreInput(value)}
+        onRun={(value) => void replaceInput(value, "restore")}
       />
       <ConfirmOverwriteDialog
         open={dialog === "confirmOverwrite"}

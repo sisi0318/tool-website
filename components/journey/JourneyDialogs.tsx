@@ -35,43 +35,50 @@ interface DialogBaseProps {
 
 const MAX_SHARED_INPUT_CHARS = 2048
 
-/**
- * 输入（文件、超过 64K 的文本）不随保存恢复时，让用户重新提供同一份输入；
- * 页面按原节点重算所有分支，而不是另建一份旅程。
- */
-export function RestoreInputDialog({
+interface InputDialogProps extends DialogBaseProps {
+  fileInput: boolean
+  running: boolean
+  /** 正在运行的步骤；对话框是模态的，页面上的取消按钮点不到，所以这里也放一份 */
+  progress?: TemplateRunProgress | null
+  onCancel?: () => void
+  onRun: (value: string | File) => void
+}
+
+/** 换输入的对话框：文本或文件，运行时显示进度与取消。页面按原节点重算所有分支 */
+function InputDialog({
   open,
   onOpenChange,
+  title,
+  hint,
+  runLabel,
+  placeholder,
+  initialText = "",
   fileInput,
   running,
   progress,
   onCancel,
   onRun,
-}: DialogBaseProps & {
-  fileInput: boolean
-  running: boolean
-  progress?: TemplateRunProgress | null
-  onCancel?: () => void
-  onRun: (value: string | File) => void
-}) {
+}: InputDialogProps & { title: string; hint: string; runLabel: string; placeholder?: string; initialText?: string }) {
   const t = useTranslations("journey")
   const [text, setText] = useState("")
   const [file, setFile] = useState<File | null>(null)
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setText(initialText)
+    } else {
       setText("")
       setFile(null)
     }
-  }, [open])
+  }, [open, initialText])
 
   const value = fileInput ? file : text
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={DIALOG_CLASS}>
         <DialogHeader>
-          <DialogTitle className="text-[var(--md-sys-color-on-surface)]">{t("restoreInputTitle")}</DialogTitle>
-          <DialogDescription className="text-[var(--md-sys-color-on-surface-variant)]">{t("restoreInputHint")}</DialogDescription>
+          <DialogTitle className="text-[var(--md-sys-color-on-surface)]">{title}</DialogTitle>
+          <DialogDescription className="text-[var(--md-sys-color-on-surface-variant)]">{hint}</DialogDescription>
         </DialogHeader>
         {fileInput ? (
           <label className="space-y-2 text-sm">
@@ -82,18 +89,48 @@ export function RestoreInputDialog({
           <Textarea
             value={text}
             onChange={(event) => setText(event.target.value)}
-            aria-label={t("restoreInputTitle")}
+            placeholder={placeholder}
+            aria-label={title}
             rows={6}
-            className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)]"
+            className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
           />
         )}
         {running && progress && onCancel && <RunStatus progress={progress} onCancel={onCancel} />}
         <Button onClick={() => value && onRun(value)} disabled={!value || (typeof value === "string" && !value.trim()) || running} className={PRIMARY_BUTTON}>
           {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          {t("restoreInputRun")}
+          {runLabel}
         </Button>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** 输入（文件、超过 64K 的文本）不随保存恢复时，让用户重新提供同一份输入 */
+export function RestoreInputDialog(props: InputDialogProps) {
+  const t = useTranslations("journey")
+  return <InputDialog {...props} title={t("restoreInputTitle")} hint={t("restoreInputHint")} runLabel={t("restoreInputRun")} />
+}
+
+/**
+ * “应用到新数据”与根节点的“编辑输入”：换掉输入，按原来的步骤重算整棵树。
+ * 以前只回放当前路径并另建一条单链，其他分支全部丢失。
+ */
+export function ReplayDialog({
+  stepCount,
+  editing = false,
+  initialText = "",
+  ...props
+}: InputDialogProps & { stepCount: number; editing?: boolean; initialText?: string }) {
+  const t = useTranslations("journey")
+  return (
+    <InputDialog
+      {...props}
+      title={t(editing ? "editInput" : "replayTitle")}
+      hint={t("replayHint").replace("{count}", String(stepCount))}
+      runLabel={t("replayRun")}
+      placeholder={t("replayPlaceholder")}
+      initialText={editing ? initialText : ""}
+    />
   )
 }
 
@@ -101,13 +138,11 @@ export function RestoreInputDialog({
 function ReplaceCurrentConfirm({
   description,
   confirmLabel,
-  running = false,
   onCancel,
   onConfirm,
 }: {
   description: string
   confirmLabel: string
-  running?: boolean
   onCancel: () => void
   onConfirm: () => void
 }) {
@@ -122,13 +157,11 @@ function ReplaceCurrentConfirm({
         <Button
           variant="outline"
           onClick={onCancel}
-          disabled={running}
           className="rounded-full border-[var(--md-sys-color-outline-variant)] px-6"
         >
           {t("cancel")}
         </Button>
-        <Button onClick={onConfirm} disabled={running} className={PRIMARY_BUTTON}>
-          {running && <LoaderCircle className="h-4 w-4 animate-spin" />}
+        <Button onClick={onConfirm} className={PRIMARY_BUTTON}>
           {confirmLabel}
         </Button>
       </div>
@@ -281,77 +314,6 @@ export function OpenJourneyDialog({
               </div>
             ))}
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-export function ReplayDialog({
-  open,
-  onOpenChange,
-  stepCount,
-  running,
-  onRun,
-  isCurrentSaved,
-  fileInput = false,
-}: DialogBaseProps & {
-  stepCount: number
-  running: boolean
-  onRun: (value: unknown) => void
-  isCurrentSaved: () => boolean
-  fileInput?: boolean
-}) {
-  const t = useTranslations("journey")
-  const [text, setText] = useState("")
-  const [file, setFile] = useState<File | null>(null)
-  const [confirming, setConfirming] = useState(false)
-
-  useEffect(() => {
-    if (!open) {
-      setText("")
-      setFile(null)
-      setConfirming(false)
-    }
-  }, [open])
-
-  const handleRun = () => {
-    if (isCurrentSaved()) onRun(fileInput ? file : text)
-    else setConfirming(true)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={DIALOG_CLASS}>
-        <DialogHeader>
-          <DialogTitle className="text-[var(--md-sys-color-on-surface)]">{t("replayTitle")}</DialogTitle>
-          <DialogDescription className="text-[var(--md-sys-color-on-surface-variant)]">
-            {t("replayHint").replace("{count}", String(stepCount))}
-          </DialogDescription>
-        </DialogHeader>
-        {confirming ? (
-          <ReplaceCurrentConfirm
-            description={t("confirmReplayDescription")}
-            confirmLabel={t("replaceAndRun")}
-            running={running}
-            onCancel={() => setConfirming(false)}
-            onConfirm={() => onRun(fileInput ? file : text)}
-          />
-        ) : (
-          <>
-            {fileInput ? <label className="space-y-2 text-sm"><span className="block">{t("uploadFile")}</span><input type="file" aria-label={t("uploadFile")} disabled={running} className="block max-w-full text-sm" onChange={event => setFile(event.target.files?.[0] ?? null)} /></label> : <Textarea
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder={t("replayPlaceholder")}
-              aria-label={t("replayTitle")}
-              rows={5}
-              className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
-            />}
-            <Button onClick={handleRun} disabled={(fileInput ? !file : !text.trim()) || running || stepCount === 0} className={PRIMARY_BUTTON}>
-              {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              {t("replayRun")}
-            </Button>
-          </>
         )}
       </DialogContent>
     </Dialog>
