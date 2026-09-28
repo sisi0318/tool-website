@@ -8,6 +8,7 @@ import { previewCanvasValue } from "@/lib/canvas/format-value"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface BranchDrawerProps {
   open: boolean
@@ -19,6 +20,7 @@ interface BranchDrawerProps {
 
 export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }: BranchDrawerProps) {
   const t = useTranslations("journey")
+  const nodeLabel = useNodeLabel()
   const root = journey.nodes[journey.rootId]
 
   const renderNode = (node: JourneyNode, depth: number): ReactNode => {
@@ -45,7 +47,7 @@ export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }
                   : "text-[var(--md-sys-color-on-surface)]"
               }`}
             >
-              {isRoot ? t("trailInput") : node.label}
+              {isRoot ? t("trailInput") : node.via ? nodeLabel({ type: node.via.tool, label: node.label }) : node.label}
             </span>
             {isActive && (
               <span className="shrink-0 rounded-full bg-[var(--md-sys-color-primary)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--md-sys-color-on-primary)]">

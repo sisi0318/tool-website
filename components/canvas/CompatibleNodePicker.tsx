@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { ArrowRight, Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 import {
   filterCompatibleNodeOptions,
   getCompatibleNodeOptions,
@@ -46,6 +47,7 @@ export function CompatibleNodePicker({
   onClose,
 }: CompatibleNodePickerProps) {
   const t = useTranslations("canvas")
+  const nodeLabel = useNodeLabel()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const closeRequestedRef = useRef(false)
   const [query, setQuery] = useState("")
@@ -65,9 +67,10 @@ export function CompatibleNodePicker({
     () => filterCompatibleNodeOptions(
       options,
       query,
-      (category) => t(CATEGORY_KEYS[category])
+      (category) => t(CATEGORY_KEYS[category]),
+      nodeLabel
     ),
-    [options, query, t]
+    [nodeLabel, options, query, t]
   )
 
   const safeX = Number.isFinite(position.x) ? position.x : 12
@@ -171,7 +174,7 @@ export function CompatibleNodePicker({
                         nodeType: definition.type,
                         targetPortId,
                       })}
-                      aria-label={`${t("addAndConnect")}: ${definition.label}`}
+                      aria-label={`${t("addAndConnect")}: ${nodeLabel(definition)}`}
                       aria-describedby={targetDescriptionId}
                       className="flex min-h-14 w-full touch-manipulation items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary active:bg-[var(--md-sys-color-on-surface)]/[0.1]"
                     >
@@ -180,7 +183,7 @@ export function CompatibleNodePicker({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium text-md-on-surface">
-                          {definition.label}
+                          {nodeLabel(definition)}
                         </span>
                         <span className="block truncate text-xs text-md-on-surface-variant">
                           {t(CATEGORY_KEYS[definition.category])} · {definition.type}
@@ -202,7 +205,7 @@ export function CompatibleNodePicker({
                               ...current,
                               [definition.type]: event.target.value,
                             }))}
-                            aria-label={`${t("targetInput")}: ${definition.label}`}
+                            aria-label={`${t("targetInput")}: ${nodeLabel(definition)}`}
                             className="h-11 min-w-0 flex-1 rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant bg-md-surface-container-lowest px-2 text-xs text-md-on-surface outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-9"
                           >
                             {compatibleInputs.map((input) => (

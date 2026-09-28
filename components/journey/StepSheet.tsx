@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 
 const SELECT_CLASS =
   "h-11 w-full rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] px-3 text-sm text-[var(--md-sys-color-on-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
@@ -32,6 +33,7 @@ interface StepSheetProps {
 
 export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete, creating = false }: StepSheetProps) {
   const t = useTranslations("journey")
+  const nodeLabel = useNodeLabel()
   const via = node?.via ?? null
   const [draft, setDraft] = useState<Record<string, unknown>>({})
   const [outputPort, setOutputPort] = useState("")
@@ -147,7 +149,7 @@ export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete
             {t("stepConfigTitle")}
             {definition && (
               <span className="ml-2 text-sm font-normal text-[var(--md-sys-color-on-surface-variant)]">
-                {definition.label}
+                {nodeLabel(definition)}
               </span>
             )}
           </DialogTitle>

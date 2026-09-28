@@ -63,13 +63,15 @@ export function getCompatibleNodeOptions(
 export function filterCompatibleNodeOptions(
   options: readonly CompatibleNodeOption[],
   query: string,
-  getCategoryLabel?: CategoryLabelResolver
+  getCategoryLabel?: CategoryLabelResolver,
+  getLabel?: (definition: CompatibleNodeOption["definition"]) => string
 ): CompatibleNodeOption[] {
   const normalizedQuery = normalizeSearchValue(query.trim())
   if (!normalizedQuery) return [...options]
 
   return options.filter(({ definition }) => {
     const searchableValues = [
+      getLabel?.(definition),
       definition.label,
       definition.description,
       definition.type,

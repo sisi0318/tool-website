@@ -22,21 +22,21 @@ test.describe("Canvas Page", () => {
   })
 
   test("should display basic nodes in palette", async ({ page }) => {
-    await expect(page.locator("span:text('String')").first()).toBeVisible()
-    await expect(page.locator("span:text('Number')").first()).toBeVisible()
+    await expect(page.locator("span:text('文本')").first()).toBeVisible()
+    await expect(page.locator("span:text('数字')").first()).toBeVisible()
     await expect(page.locator("span:text('JSON')").first()).toBeVisible()
-    await expect(page.locator("span:text('File')").first()).toBeVisible()
+    await expect(page.locator("span:text('文件')").first()).toBeVisible()
   })
 
   test("should display crypto nodes in palette", async ({ page }) => {
-    await expect(page.locator("span:text('Hash')").first()).toBeVisible()
-    await expect(page.locator("span:text('Encoding')").first()).toBeVisible()
+    await expect(page.locator("span:text('哈希计算')").first()).toBeVisible()
+    await expect(page.locator("span:text('编码解码')").first()).toBeVisible()
   })
 
   test("should display utility nodes in palette", async ({ page }) => {
-    await expect(page.locator("span:text('UUID')")).toBeVisible()
-    await expect(page.locator("span:text('Base Converter')")).toBeVisible()
-    await expect(page.locator("span:text('Temperature')")).toBeVisible()
+    await expect(page.locator("span:text('UUID 生成')")).toBeVisible()
+    await expect(page.locator("span:text('进制转换')")).toBeVisible()
+    await expect(page.locator("span:text('温度转换')")).toBeVisible()
   })
 
   test("should have ReactFlow canvas with controls", async ({ page }) => {
@@ -63,7 +63,7 @@ test.describe("Canvas Page", () => {
 
     const nodes = page.locator(".react-flow__node")
     await expect(nodes).toHaveCount(1, { timeout: 5000 })
-    await expect(nodes.first()).toContainText("String")
+    await expect(nodes.first()).toContainText("文本")
   })
 
   test("should connect two nodes via ports", async ({ page }) => {
@@ -147,7 +147,7 @@ test.describe("Canvas Page", () => {
     await page.waitForTimeout(1000)
 
     const node = page.locator('.react-flow__node[data-id="test-string-node"]')
-    await expect(node).toContainText("String")
+    await expect(node).toContainText("文本")
 
     const input = node.getByRole("textbox", { name: "Value" })
     await expect(input).toBeVisible()
@@ -187,7 +187,8 @@ test.describe("Canvas Page", () => {
       store.getState().addNode({ id: "panel-guard-node", type: "string", position: { x: 300, y: 200 }, config: { value: "keep" } })
       store.getState().selectNode("panel-guard-node")
     })
-    const heading = page.getByRole("heading", { name: "String" })
+    // 节点库里“文本”也是分类标题，限定在属性面板里
+    const heading = page.locator("section[aria-label='文本']").getByRole("heading", { name: "文本", exact: true })
     await expect(heading).toBeVisible()
     await heading.click()
     await page.keyboard.press("Backspace")
@@ -216,7 +217,7 @@ test.describe("Canvas Page", () => {
     await page.waitForTimeout(1000)
 
     const node = page.locator('.react-flow__node[data-id="test-number-node"]')
-    await expect(node).toContainText("Number")
+    await expect(node).toContainText("数字")
 
     const input = node.getByRole("spinbutton", { name: "Value" })
     await expect(input).toBeVisible()
@@ -281,16 +282,17 @@ test.describe("Canvas Page", () => {
   })
 
   test("should display all 34 tools in palette", async ({ page }) => {
+    // 中文界面里节点名也是中文（lib/translations 的 nodes.*）
     const expectedTools = [
-      "String", "Number", "JSON", "File",
-      "Hash", "HMAC", "Crypto", "Encoding", "Classic Cipher", "JWT",
-      "JSON Format", "Protobuf", "JCE",
-      "Image to Base64", "EXIF Viewer", "Image Compress", "Image Editor",
-      "QRCode", "QRCode Decode", "Meme Splitter", "Image Coordinates",
-      "Text Stats", "Case Converter", "Regex", "Diff",
-      "HTTP Tester", "Crontab", "Docker Converter", "Whois",
-      "UUID", "TOTP", "Color", "Base Converter", "Temperature", "Currency", "BMI",
-      "Device Info", "Office Viewer", "Time"
+      "文本", "数字", "JSON", "文件",
+      "哈希计算", "HMAC 计算", "加密解密", "编码解码", "经典密码", "JWT 解析",
+      "JSON 格式化", "Protobuf 解析", "JCE 解析",
+      "图片转 Base64", "EXIF 查看", "图片压缩", "图片编辑",
+      "二维码生成", "二维码解码", "智能切图", "坐标拾取",
+      "文本统计", "大小写转换", "正则表达式", "文本对比",
+      "HTTP 请求", "Crontab 表达式", "Docker 转换", "WHOIS 查询",
+      "UUID 生成", "TOTP 验证码", "颜色", "进制转换", "温度转换", "汇率转换", "BMI 计算",
+      "设备信息", "Office 预览", "时间"
     ]
 
     for (const tool of expectedTools) {
@@ -479,7 +481,7 @@ test.describe("Canvas Page", () => {
     })
 
     await page.getByRole("button", {
-      name: "添加到已选节点后并连接: Hash",
+      name: "添加到已选节点后并连接: 哈希计算",
       exact: true,
     }).click()
 
@@ -573,12 +575,12 @@ test.describe("Canvas Page", () => {
 
     await expect(palette).not.toBeVisible()
     await expect(page.locator(".react-flow__node")).toHaveCount(1, { timeout: 5000 })
-    await expect(page.getByRole("heading", { name: "Hash", exact: true })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "哈希计算", exact: true })).toBeVisible()
 
     const reopenPalette = page.getByRole("button", { name: "节点库" })
     await expect(reopenPalette).toBeVisible()
     await reopenPalette.click()
     await expect(palette).toBeVisible()
-    await expect(page.getByText(/从「Hash」继续/)).toBeVisible()
+    await expect(page.getByText(/从「哈希计算」继续/)).toBeVisible()
   })
 })

@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react"
 import { SearchX } from "lucide-react"
 import type { DataType, NodeDefinition } from "@/lib/canvas/types"
 import { getCompatibleTools } from "@/lib/journey/suggest"
+import { searchNodeDefinitions } from "@/lib/canvas/node-library"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { Input } from "@/components/ui/input"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface ToolPickerSheetProps {
   open: boolean
@@ -19,22 +21,19 @@ interface ToolPickerSheetProps {
 
 export function ToolPickerSheet({ open, onOpenChange, valueType, running, onPick }: ToolPickerSheetProps) {
   const t = useTranslations("journey")
+  const nodeLabel = useNodeLabel()
   const [query, setQuery] = useState("")
 
   useEffect(() => {
     if (!open) setQuery("")
   }, [open])
 
-  const tools = useMemo(() => (open ? getCompatibleTools(valueType) : []), [open, valueType])
-
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    if (!needle) return tools
-    return tools.filter(
-      (definition) =>
-        definition.label.toLowerCase().includes(needle) || definition.type.toLowerCase().includes(needle),
-    )
-  }, [tools, query])
+  // 按当前语言的名称排序；搜索同时匹配中文名、英文名和类型（以前只认英文，中文搜不到任何工具）
+  const tools = useMemo(
+    () => (open ? getCompatibleTools(valueType).sort((a, b) => nodeLabel(a).localeCompare(nodeLabel(b))) : []),
+    [nodeLabel, open, valueType],
+  )
+  const filtered = useMemo(() => searchNodeDefinitions(tools, query, undefined, nodeLabel), [nodeLabel, tools, query])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -67,7 +66,7 @@ export function ToolPickerSheet({ open, onOpenChange, valueType, running, onPick
                   className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--md-sys-color-outline-variant)] p-3 text-center text-xs text-[var(--md-sys-color-on-surface)] transition-colors hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="w-full truncate leading-tight">{definition.label}</span>
+                  <span className="w-full truncate leading-tight">{nodeLabel(definition)}</span>
                 </button>
               )
             })}

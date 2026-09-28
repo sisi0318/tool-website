@@ -18,6 +18,7 @@ export interface AutoConnectPlan {
 type ReadableStorage = Pick<Storage, "getItem">
 type WritableStorage = Pick<Storage, "setItem">
 type CategoryLabelResolver = (category: NodeDefinition["category"]) => string
+type NodeLabelResolver = (definition: NodeDefinition) => string
 
 function normalizeSearchValue(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase()
@@ -129,10 +130,12 @@ export function recordRecentNodeType(
  * description-only matches. Every query token must match somewhere, which
  * keeps multi-word searches predictable without requiring exact phrases.
  */
+/** getLabel 给出当前语言的节点名，与英文 label、type 一起参与匹配；否则用中文搜不到任何节点 */
 export function searchNodeDefinitions(
   definitions: readonly NodeDefinition[],
   query: string,
-  getCategoryLabel?: CategoryLabelResolver
+  getCategoryLabel?: CategoryLabelResolver,
+  getLabel?: NodeLabelResolver
 ): NodeDefinition[] {
   const normalizedQuery = normalizeSearchValue(query.trim())
   if (!normalizedQuery) return [...definitions]
@@ -141,14 +144,16 @@ export function searchNodeDefinitions(
   return definitions
     .map((definition, index) => {
       const label = normalizeSearchValue(definition.label)
+      const localized = normalizeSearchValue(getLabel?.(definition) ?? "")
       const type = normalizeSearchValue(definition.type)
       const category = normalizeSearchValue(definition.category)
       const categoryLabel = normalizeSearchValue(
         getCategoryLabel?.(definition.category) ?? ""
       )
       const description = normalizeSearchValue(definition.description ?? "")
-      const fields = [label, type, category, categoryLabel, description]
-      const fuzzyFields = [label, type, categoryLabel]
+      const labels = localized && localized !== label ? [localized, label] : [label]
+      const fields = [...labels, type, category, categoryLabel, description]
+      const fuzzyFields = [...labels, type, categoryLabel]
 
       if (!tokens.every((token) =>
         fields.some((field) => field.includes(token)) ||
@@ -158,15 +163,15 @@ export function searchNodeDefinitions(
       }
 
       let score = 0
-      if (label === normalizedQuery) score += 1_000
+      if (labels.includes(normalizedQuery)) score += 1_000
       if (type === normalizedQuery) score += 900
-      if (label.startsWith(normalizedQuery)) score += 500
+      if (labels.some((name) => name.startsWith(normalizedQuery))) score += 500
       if (type.startsWith(normalizedQuery)) score += 400
 
       for (const token of tokens) {
-        if (label === token) score += 160
-        else if (label.startsWith(token)) score += 120
-        else if (label.includes(token)) score += 90
+        if (labels.includes(token)) score += 160
+        else if (labels.some((name) => name.startsWith(token))) score += 120
+        else if (labels.some((name) => name.includes(token))) score += 90
         else if (type.includes(token)) score += 70
         else if (categoryLabel.includes(token) || category.includes(token)) score += 40
         else if (description.includes(token)) score += 20

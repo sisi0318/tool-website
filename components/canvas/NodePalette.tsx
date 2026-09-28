@@ -26,6 +26,7 @@ import {
 } from "@/lib/canvas/node-library"
 import type { NodeDefinition } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { WorkflowNewButton } from "./workflow/WorkflowNewButton"
@@ -80,6 +81,7 @@ export function NodePalette({
 }: NodePaletteProps = {}) {
   const t = useTranslations("canvas")
   const tCommon = useTranslations("common")
+  const nodeLabel = useNodeLabel()
   const addNode = useCanvasStore((state) => state.addNode)
   const addSubgraph = useCanvasStore((state) => state.addSubgraph)
   const canvasNodes = useCanvasStore((state) => state.nodes)
@@ -122,8 +124,8 @@ export function NodePalette({
   )
 
   const searchResults = useMemo(
-    () => searchNodeDefinitions(allNodes, searchQuery, getCategoryLabel),
-    [allNodes, getCategoryLabel, searchQuery]
+    () => searchNodeDefinitions(allNodes, searchQuery, getCategoryLabel, nodeLabel),
+    [allNodes, getCategoryLabel, nodeLabel, searchQuery]
   )
 
   const nodeGroups = useMemo<NodeGroup[]>(() => {
@@ -352,7 +354,7 @@ export function NodePalette({
                 <div className="mb-2 flex items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] bg-md-primary-container px-2.5 py-2 text-xs text-md-on-primary-container">
                   <GitBranchPlus aria-hidden="true" className="h-4 w-4 shrink-0" />
                   <span className="min-w-0 truncate">
-                    {t("appendFromNode").replace("{node}", selectedSourceDefinition.label)}
+                    {t("appendFromNode").replace("{node}", nodeLabel(selectedSourceDefinition))}
                   </span>
                 </div>
               )}
@@ -432,7 +434,7 @@ export function NodePalette({
                               onDragStart={(event) => handleDragStart(node.type, event)}
                               onDragEnd={(event) => handleDragEnd(node.type, event)}
                               onClick={() => handleNodeClick(node.type)}
-                              aria-label={`${t("addNode")}: ${node.label}`}
+                              aria-label={`${t("addNode")}: ${nodeLabel(node)}`}
                               title={node.description ?? t("nodeAddHint")}
                               className="flex min-w-0 flex-1 cursor-grab touch-manipulation items-center gap-2 px-2 py-2 text-left active:cursor-grabbing active:bg-[var(--md-sys-color-on-surface)]/[0.12] focus-visible:outline-none"
                             >
@@ -441,7 +443,7 @@ export function NodePalette({
                               </span>
                               <span className="min-w-0">
                                 <span className="block truncate text-sm text-md-on-surface">
-                                  {node.label}
+                                  {nodeLabel(node)}
                                 </span>
                                 {node.description && (
                                   <span className="block truncate text-xs text-md-on-surface-variant">
@@ -454,7 +456,7 @@ export function NodePalette({
                               <button
                                 type="button"
                                 onClick={() => handleAddAndConnect(node)}
-                                aria-label={`${t("addAndConnectAfter")}: ${node.label}`}
+                                aria-label={`${t("addAndConnectAfter")}: ${nodeLabel(node)}`}
                                 title={t("addAndConnectAfter")}
                                 className="flex w-11 shrink-0 items-center justify-center text-md-on-surface-variant transition-colors hover:bg-md-primary-container hover:text-md-on-primary-container focus-visible:outline-none"
                               >
@@ -464,7 +466,7 @@ export function NodePalette({
                             <button
                               type="button"
                               onClick={() => toggleFavorite(node.type)}
-                              aria-label={`${isFavorite ? t("removeFavoriteNode") : t("addFavoriteNode")}: ${node.label}`}
+                              aria-label={`${isFavorite ? t("removeFavoriteNode") : t("addFavoriteNode")}: ${nodeLabel(node)}`}
                               aria-pressed={isFavorite}
                               title={isFavorite ? t("removeFavoriteNode") : t("addFavoriteNode")}
                               className={`flex w-11 shrink-0 items-center justify-center transition-colors focus-visible:outline-none ${

@@ -83,6 +83,15 @@ describe("canvas node library", () => {
     ])
   })
 
+  it("matches the localized node name as well as the English one", () => {
+    const zhNames: Record<string, string> = { hash: "哈希计算", "json-format": "JSON 格式化" }
+    const getLabel = (item: NodeDefinition) => zhNames[item.type] ?? item.label
+    expect(searchNodeDefinitions(DEFINITIONS, "哈希", undefined, getLabel).map((item) => item.type)).toEqual(["hash"])
+    expect(searchNodeDefinitions(DEFINITIONS, "格式化", undefined, getLabel).map((item) => item.type)).toEqual(["json-format"])
+    expect(searchNodeDefinitions(DEFINITIONS, "hash", undefined, getLabel).map((item) => item.type)).toEqual(["hash"])
+    expect(searchNodeDefinitions(DEFINITIONS, "哈希").map((item) => item.type)).toEqual([])
+  })
+
   it("prefers exact data types when choosing an automatic connection", () => {
     const source: NodeDefinition = {
       ...definition("source", "Source", "", "string", "string"),

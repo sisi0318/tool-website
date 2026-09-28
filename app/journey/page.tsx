@@ -66,6 +66,7 @@ import { Button } from "@/components/ui/button"
 import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 
 registerAllAdapters()
 
@@ -105,6 +106,12 @@ type DialogKind = "share" | "open" | "replay" | "confirmNew" | "confirmOverwrite
 export default function JourneyPage() {
   const t = useTranslations("journey")
   const wt = useTranslations("workflowTemplates")
+  const nodeLabel = useNodeLabel()
+  // 提示里的工具名用当前语言；写进节点的 label 仍是英文名，显示时按 type 再查
+  const toolName = (tool: string) => {
+    const definition = getNodeDefinition(tool)
+    return definition ? nodeLabel(definition) : tool
+  }
   const { toast } = useToast()
   const router = useRouter()
 
@@ -172,7 +179,7 @@ export default function JourneyPage() {
       // A link is untrusted input: refuse paths that could run side-effecting tools.
       const offenders = review.steps
         .filter((entry) => entry.issue)
-        .map((entry) => `${entry.label}（${t(ISSUE_KEYS[entry.issue!])}）`)
+        .map((entry) => `${toolName(entry.step.tool)}（${t(ISSUE_KEYS[entry.issue!])}）`)
         .join("、")
       toast({
         title: t("importBlockedTitle"),
@@ -443,7 +450,7 @@ export default function JourneyPage() {
           title: t("dependentReplayFailedTitle"),
           description: t("dependentReplayFailedDescription")
             .replace("{count}", String(descendants.failures.length))
-            .replace("{error}", `${toolLabel(firstFailure.tool)}: ${firstFailure.error}`),
+            .replace("{error}", `${toolName(firstFailure.tool)}: ${firstFailure.error}`),
           variant: "destructive",
         })
       }
@@ -620,7 +627,7 @@ export default function JourneyPage() {
         </div>
       </header>
 
-      {running && runProgress && <div role="status" className="flex flex-wrap items-center gap-3 rounded-2xl bg-md-primary-container p-3 text-sm text-md-on-primary-container"><span>{wt("progress").replace("{current}", String(runProgress.current)).replace("{total}", String(runProgress.total))} · {toolLabel(runProgress.tool)}</span><Button variant="outline" size="sm" onClick={() => runController.current?.abort()}>{wt("cancel")}</Button></div>}
+      {running && runProgress && <div role="status" className="flex flex-wrap items-center gap-3 rounded-2xl bg-md-primary-container p-3 text-sm text-md-on-primary-container"><span>{wt("progress").replace("{current}", String(runProgress.current)).replace("{total}", String(runProgress.total))} · {toolName(runProgress.tool)}</span><Button variant="outline" size="sm" onClick={() => runController.current?.abort()}>{wt("cancel")}</Button></div>}
       <TemplatePicker open={templatePickerOpen} onOpenChange={setTemplatePickerOpen} onChoose={chooseTemplate} />
 
       <JourneyTrail

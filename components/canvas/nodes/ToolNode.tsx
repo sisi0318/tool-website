@@ -5,6 +5,7 @@ import { Handle, Position } from "@xyflow/react"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
 import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import { previewCanvasValue } from "@/lib/canvas/format-value"
@@ -33,6 +34,7 @@ interface ToolNodeProps {
 
 function ToolNodeComponent({ data }: ToolNodeProps) {
   const t = useTranslations("canvas")
+  const nodeLabel = useNodeLabel()
   const definition = getNodeDefinition(data.type)
   const nodeOutputs = useCanvasStore((s) => s.nodeOutputs[data.id])
   const contentPreview = useMemo(
@@ -103,7 +105,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       <div className="flex items-center gap-2 rounded-t-[calc(var(--md-sys-shape-corner-medium)-2px)] border-b border-md-outline-variant bg-md-surface-container px-3 py-2">
         <Icon className="h-4 w-4 text-md-on-surface-variant" />
         <span className={`text-sm font-medium text-md-on-surface ${data.disabled ? "line-through" : ""}`}>
-          {definition.label}
+          {nodeLabel(definition)}
         </span>
         <NodeBypassButton nodeId={data.id} disabled={Boolean(data.disabled)} />
         <NodeRunButton nodeId={data.id} running={Boolean(nodeRunning)} hasError={isBlockingNodeError(nodeErrors)} />

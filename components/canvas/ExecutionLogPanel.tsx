@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { UPSTREAM_PENDING, useCanvasStore } from "@/lib/canvas/store"
 import { nodeStatusText } from "./nodes/NodeStatusMessage"
@@ -48,6 +49,7 @@ export function ExecutionLogPanel({
   onSelectNode,
 }: ExecutionLogPanelProps) {
   const t = useTranslations("canvas")
+  const nodeLabel = useNodeLabel()
   const executionLog = useCanvasStore((state) => state.executionLog)
   const nodes = useCanvasStore((state) => state.nodes)
   const clearExecutionLog = useCanvasStore((state) => state.clearExecutionLog)
@@ -132,7 +134,7 @@ export function ExecutionLogPanel({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
                           <span className="min-w-0 flex-1 truncate text-xs font-medium text-md-on-surface">
-                            {definition?.label ?? entry.nodeType}
+                            {definition ? nodeLabel(definition) : entry.nodeType}
                           </span>
                           <time className="shrink-0 text-[10px] text-md-on-surface-variant">
                             {new Date(entry.startedAt).toLocaleTimeString()}

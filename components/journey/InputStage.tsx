@@ -6,6 +6,7 @@ import type { SharedStepReview } from "@/lib/journey/serialize"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 
 /** Classic decodable sample token (jwt.io demo token, HS256). */
 const SAMPLE_JWT =
@@ -48,6 +49,7 @@ export function InputStage({
 }: InputStageProps) {
   const t = useTranslations("journey")
   const wt = useTranslations("workflowTemplates")
+  const nodeLabel = useNodeLabel()
   const [text, setText] = useState("")
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -109,7 +111,7 @@ export function InputStage({
               {pendingSteps.map((entry, index) => (
                 <li key={index} className="flex gap-2 font-mono text-xs">
                   <span className="opacity-60">{index + 1}.</span>
-                  <span>{entry.label}</span>
+                  <span>{nodeLabel({ type: entry.step.tool, label: entry.label })}</span>
                 </li>
               ))}
             </ol>

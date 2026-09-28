@@ -5,6 +5,7 @@ import { ChevronRight, GitBranch } from "lucide-react"
 import type { Journey } from "@/lib/journey/types"
 import { getBranchPoints, getChildren, getPath } from "@/lib/journey/tree"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface JourneyTrailProps {
   journey: Journey
@@ -16,6 +17,7 @@ interface JourneyTrailProps {
 
 export function JourneyTrail({ journey, onSelect, onOpenActiveStep, onOpenBranches }: JourneyTrailProps) {
   const t = useTranslations("journey")
+  const nodeLabel = useNodeLabel()
   const activeChipRef = useRef<HTMLButtonElement>(null)
   const path = getPath(journey, journey.activeId)
   const branchPoints = getBranchPoints(journey)
@@ -29,7 +31,7 @@ export function JourneyTrail({ journey, onSelect, onOpenActiveStep, onOpenBranch
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1">
         {path.map((node, index) => {
           const isActive = node.id === journey.activeId
-          const label = node.parentId === null ? t("trailInput") : node.label
+          const label = node.parentId === null ? t("trailInput") : node.via ? nodeLabel({ type: node.via.tool, label: node.label }) : node.label
           return (
             <div key={node.id} className="flex shrink-0 items-center gap-1">
               {index > 0 && (
