@@ -9,11 +9,12 @@ import { TOOL_IDS } from "../lib/tools/catalog"
  * 它擅长的是缺少可访问名称、对比度、地标与 ARIA 属性用错这类批量问题。
  */
 /**
- * 按“减少动态效果”扫描：站点这时把过渡缩到 0.01ms（app/globals.css），axe 只看到定下来的样子。
- * 否则按钮从禁用恢复的淡入过程中被扫到，会报出实际不存在的对比度问题——汇率页在 CI 上
- * 就因为网络请求恰好在扫描时结束而偶发失败过。
+ * 扫描时关掉过渡和动画，axe 只看定下来的样子。按钮从禁用恢复时，opacity 要过渡一段时间：
+ * axe 已经把它当成可用按钮，读到的却还是禁用时 38% 的颜色，报出对比度 1.71 的误报。
+ * 汇率页的“刷新汇率”加载时禁用，CI 上请求恰好在扫描中结束就失败过；本地把请求延迟
+ * 270–340 ms 可以稳定复现，关掉过渡后不再出现。（“减少动态效果”不够：0.01ms 的过渡也要等下一帧才生效。）
  */
-test.use({ reducedMotion: "reduce" })
+const NO_MOTION = "*, *::before, *::after { transition: none !important; animation: none !important; }"
 
 const CORE_PAGES = ["/", "/tools", "/canvas", "/journey", "/settings"]
 const PAGES = [...CORE_PAGES, ...TOOL_IDS.map((id) => `/tools/${id}`)]
@@ -21,6 +22,7 @@ const PAGES = [...CORE_PAGES, ...TOOL_IDS.map((id) => `/tools/${id}`)]
 async function scan(page: Page, path: string) {
   await page.addInitScript(() => window.localStorage.setItem("locale", "zh"))
   await page.goto(path, { waitUntil: "domcontentloaded" })
+  await page.addStyleTag({ content: NO_MOTION })
   // 画布页没有标题元素,以 React Flow 的容器出现为准
   await expect(page.locator("h1, h2, .react-flow").first()).toBeVisible({ timeout: 30_000 })
   await page.waitForTimeout(300)
