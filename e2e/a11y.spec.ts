@@ -8,6 +8,13 @@ import { TOOL_IDS } from "../lib/tools/catalog"
  * 自动扫描抓不到键盘模型、焦点管理这类问题,那些由 components/m3 的单测与人工检查覆盖;
  * 它擅长的是缺少可访问名称、对比度、地标与 ARIA 属性用错这类批量问题。
  */
+/**
+ * 按“减少动态效果”扫描：站点这时把过渡缩到 0.01ms（app/globals.css），axe 只看到定下来的样子。
+ * 否则按钮从禁用恢复的淡入过程中被扫到，会报出实际不存在的对比度问题——汇率页在 CI 上
+ * 就因为网络请求恰好在扫描时结束而偶发失败过。
+ */
+test.use({ reducedMotion: "reduce" })
+
 const CORE_PAGES = ["/", "/tools", "/canvas", "/journey", "/settings"]
 const PAGES = [...CORE_PAGES, ...TOOL_IDS.map((id) => `/tools/${id}`)]
 
