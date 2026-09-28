@@ -20,7 +20,11 @@ export interface DiffOptions {
   maxPreciseLines?: number
   maxOperations?: number
   maxTraceEntries?: number
+  /** 比较时忽略空白的差异（行首行尾的空白、连续空白的多少），显示的仍是原文 */
+  ignoreWhitespace?: boolean
 }
+
+type DiffLimits = Required<Omit<DiffOptions, "ignoreWhitespace">>
 
 const DEFAULT_MAX_PRECISE_LINES = 20_000
 const DEFAULT_MAX_OPERATIONS = 1_000_000
@@ -168,7 +172,7 @@ function backtrackMyers(
 function preciseLineDiff(
   oldLines: string[],
   newLines: string[],
-  options: Required<DiffOptions>,
+  options: DiffLimits,
 ): { lines: DiffLine[] | null; fallbackReason: DiffFallbackReason | null } {
   const maxDistance = oldLines.length + newLines.length
   const frontier = new Map<number, number>([[1, 0]])
@@ -230,12 +234,40 @@ function preciseLineDiff(
   return { lines: null, fallbackReason: "work-limit" }
 }
 
+function normalizeWhitespace(line: string): string {
+  return line.trim().replace(/\s+/g, " ")
+}
+
+/** 按归一化后的行算出的差异换回原文：相同的行显示新文本里的写法 */
+function restoreContents(lines: DiffLine[], oldLines: string[], newLines: string[]): DiffLine[] {
+  let oldIndex = 0
+  let newIndex = 0
+  return lines.map((line) => {
+    if (line.type === "removed") return { type: "removed", content: oldLines[oldIndex++] }
+    if (line.type === "added") return { type: "added", content: newLines[newIndex++] }
+    oldIndex++
+    return { type: "unchanged", content: newLines[newIndex++] }
+  })
+}
+
 export function computeLineDiff(
   oldText: string,
   newText: string,
   mode: DiffMode = "precise",
   options: DiffOptions = {},
 ): DiffResult {
+  if (options.ignoreWhitespace) {
+    const oldLines = splitLines(oldText)
+    const newLines = splitLines(newText)
+    const result = computeLineDiff(
+      oldLines.map(normalizeWhitespace).join("\n"),
+      newLines.map(normalizeWhitespace).join("\n"),
+      mode,
+      { ...options, ignoreWhitespace: false },
+    )
+    return { ...result, lines: restoreContents(result.lines, oldLines, newLines) }
+  }
+
   if (mode === "quick") {
     return summarize(quickLineDiff(oldText, newText), "quick", null)
   }
@@ -251,7 +283,7 @@ export function computeLineDiff(
     )
   }
 
-  const resolvedOptions: Required<DiffOptions> = {
+  const resolvedOptions: DiffLimits = {
     maxPreciseLines: options.maxPreciseLines ?? DEFAULT_MAX_PRECISE_LINES,
     maxOperations: options.maxOperations ?? DEFAULT_MAX_OPERATIONS,
     maxTraceEntries: options.maxTraceEntries ?? DEFAULT_MAX_TRACE_ENTRIES,
@@ -271,4 +303,75 @@ export function computeLineDiff(
   }
 
   return summarize(precise.lines, "myers", null)
+}
+
+/** 每一行在原文和新文本里的行号（从 1 开始）；新增的行没有原文行号，删除的行没有新行号 */
+export function diffLineNumbers(lines: DiffLine[]): Array<{ old: number | null; new: number | null }> {
+  let oldLine = 0
+  let newLine = 0
+  return lines.map((line) => (
+    line.type === "added" ? { old: null, new: ++newLine }
+      : line.type === "removed" ? { old: ++oldLine, new: null }
+        : { old: ++oldLine, new: ++newLine }
+  ))
+}
+
+/** 每一处改动（连续的新增、删除）从第几行开始，用于上一处、下一处跳转 */
+export function diffChangeStarts(lines: DiffLine[]): number[] {
+  const starts: number[] = []
+  lines.forEach((line, index) => {
+    if (line.type !== "unchanged" && (index === 0 || lines[index - 1].type === "unchanged")) starts.push(index)
+  })
+  return starts
+}
+
+/** 标准的 unified diff（默认 3 行上下文），可以交给 git apply、patch 或代码评审工具；没有差异时返回空串 */
+export function unifiedDiff(
+  lines: DiffLine[],
+  { oldName = "original", newName = "modified", context = 3 }: { oldName?: string; newName?: string; context?: number } = {},
+): string {
+  const changed = (index: number) => lines[index].type !== "unchanged"
+  const output = [`--- ${oldName}`, `+++ ${newName}`]
+  let oldBefore = 0
+  let newBefore = 0
+  let position = 0
+
+  for (;;) {
+    let first = position
+    while (first < lines.length && !changed(first)) first++
+    if (first >= lines.length) break
+
+    const start = Math.max(position, first - context)
+    oldBefore += start - position
+    newBefore += start - position
+
+    // 两处改动之间的相同行不超过两倍上下文时并进同一段
+    let end = first
+    for (;;) {
+      while (end < lines.length && changed(end)) end++
+      let next = end
+      while (next < lines.length && !changed(next)) next++
+      if (next >= lines.length || next - end > context * 2) {
+        end = Math.min(lines.length, end + context)
+        break
+      }
+      end = next
+    }
+
+    let oldCount = 0
+    let newCount = 0
+    const body: string[] = []
+    for (let index = start; index < end; index++) {
+      const line = lines[index]
+      if (line.type !== "added") oldCount++
+      if (line.type !== "removed") newCount++
+      body.push(`${line.type === "added" ? "+" : line.type === "removed" ? "-" : " "}${line.content}`)
+    }
+    output.push(`@@ -${oldCount ? oldBefore + 1 : oldBefore},${oldCount} +${newCount ? newBefore + 1 : newBefore},${newCount} @@`, ...body)
+    oldBefore += oldCount
+    newBefore += newCount
+    position = end
+  }
+
+  return output.length > 2 ? `${output.join("\n")}\n` : ""
 }

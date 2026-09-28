@@ -20,7 +20,10 @@ import {
   AlertTriangle,
   ArrowRightLeft,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
+  Download,
   Eye,
   EyeOff,
   FileText,
@@ -29,7 +32,8 @@ import {
   Trash2,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { computeLineDiff, type DiffLine } from "@/lib/text-diff"
+import { computeLineDiff, diffChangeStarts, diffLineNumbers, unifiedDiff, type DiffLine } from "@/lib/text-diff"
+import { downloadBlob } from "@/lib/object-url"
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { StructuredDiffPanel } from "@/components/tools/structured-diff-panel"
 
@@ -52,7 +56,11 @@ export default function DiffPage() {
   const oldFile = useTextFileInput({ onText: loadInto(oldText, setOldText) })
   const newFile = useTextFileInput({ onText: loadInto(newText, setNewText) })
   const [algorithm, setAlgorithm] = useState<"simple" | "myers">("myers")
+  const [ignoreWhitespace, setIgnoreWhitespace] = useState(false)
   const [copied, setCopied] = useState(false)
+  // 当前停在第几处改动（diffChangeStarts 的下标）；-1 表示还没跳过
+  const [currentChange, setCurrentChange] = useState(-1)
+  const diffListRef = useRef<HTMLDivElement>(null)
   
   const oldTextareaRef = useRef<HTMLTextAreaElement>(null)
   const newTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -67,12 +75,31 @@ export default function DiffPage() {
       comparisonMode === "text" ? deferredOldText : "",
       comparisonMode === "text" ? deferredNewText : "",
       algorithm === "myers" ? "precise" : "quick",
+      { ignoreWhitespace },
     ),
-    [algorithm, comparisonMode, deferredNewText, deferredOldText],
+    [algorithm, comparisonMode, deferredNewText, deferredOldText, ignoreWhitespace],
   )
   const diff = diffResult.lines
   const renderedDiff = diff.slice(0, MAX_RENDERED_DIFF_LINES)
   const resultLimited = renderedDiff.length < diff.length
+  // 以前显示的是差异结果的行序号；现在是两边文件里真实的行号
+  const lineNumbers = useMemo(() => diffLineNumbers(renderedDiff), [renderedDiff])
+  const changeStarts = useMemo(() => diffChangeStarts(renderedDiff), [renderedDiff])
+  const activeChange = currentChange < changeStarts.length ? currentChange : -1
+
+  // 上一处、下一处：滚到那处改动的第一行
+  const goToChange = (step: 1 | -1) => {
+    if (!changeStarts.length) return
+    const next = activeChange < 0 ? (step > 0 ? 0 : changeStarts.length - 1) : (activeChange + step + changeStarts.length) % changeStarts.length
+    setCurrentChange(next)
+    diffListRef.current?.querySelector(`[data-diff-index="${changeStarts[next]}"]`)?.scrollIntoView?.({ block: "center" })
+  }
+
+  // 导出 unified diff，可以交给 git apply、patch 或代码评审工具
+  const exportUnified = () => {
+    const patch = unifiedDiff(diff)
+    if (patch) downloadBlob(new Blob([patch], { type: "text/x-diff" }), "changes.diff")
+  }
 
   // 复制差异结果
   const copyDiff = useCallback(() => {
@@ -142,7 +169,8 @@ function add(a, b) {
 
   // 渲染差异行
   const renderDiffLine = (line: DiffLine, index: number) => {
-    const lineNumber = index + 1
+    const numbers = lineNumbers[index]
+    const isCurrent = activeChange >= 0 && changeStarts[activeChange] === index
     let lineClass = ""
     let prefix = ""
     
@@ -162,16 +190,24 @@ function add(a, b) {
     }
     
     return (
-      <div 
-        key={index} 
-        className={`flex text-sm font-mono ${lineClass}`}
+      <div
+        key={index}
+        data-diff-index={index}
+        aria-current={isCurrent || undefined}
+        className={`flex text-sm font-mono ${lineClass} ${isCurrent ? "ring-2 ring-inset ring-[var(--md-sys-color-tertiary)]" : ""}`}
       >
         {showLineNumbers && (
-          <div className="w-12 text-right pr-3 text-[var(--md-sys-color-on-surface-variant)] select-none">
-            {lineNumber}
-          </div>
+          <>
+            <div className="w-10 shrink-0 text-right pr-2 text-[var(--md-sys-color-on-surface-variant)] select-none">
+              {numbers?.old ?? ""}
+            </div>
+            <div className="w-10 shrink-0 text-right pr-3 text-[var(--md-sys-color-on-surface-variant)] select-none">
+              {numbers?.new ?? ""}
+            </div>
+          </>
         )}
-        <div className="flex-1">
+        {/* 保留空白：只改了缩进的行以前看起来一模一样 */}
+        <div className="min-w-0 flex-1 whitespace-pre-wrap break-all">
           <span className="select-none">{prefix}</span>
           {line.content || <span className="text-[var(--md-sys-color-on-surface-variant)] italic">{' '}</span>}
         </div>
@@ -224,8 +260,16 @@ function add(a, b) {
             </div>
             
             <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant={ignoreWhitespace ? "default" : "outline"}
+                size="sm"
+                aria-pressed={ignoreWhitespace}
+                onClick={() => setIgnoreWhitespace(!ignoreWhitespace)}
+              >
+                {t("ignoreWhitespace")}
+              </Button>
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={() => setShowLineNumbers(!showLineNumbers)}
               >
@@ -252,6 +296,10 @@ function add(a, b) {
                   <TooltipContent>{t("copyTooltip")}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              <Button variant="outline" size="sm" onClick={exportUnified} disabled={diffResult.added + diffResult.removed === 0}>
+                <Download className="h-4 w-4 mr-1" />
+                {t("exportUnified")}
+              </Button>
             </div>
           </div>
         </div>
@@ -310,6 +358,19 @@ function add(a, b) {
               <span>
                 {diffResult.added + diffResult.removed} {t("changes")}
               </span>
+              {changeStarts.length > 0 && (
+                <>
+                  <span aria-live="polite">
+                    {t("changePosition").replace("{current}", activeChange >= 0 ? String(activeChange + 1) : "-").replace("{total}", String(changeStarts.length))}
+                  </span>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToChange(-1)} aria-label={t("previousChange")} title={t("previousChange")}>
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => goToChange(1)} aria-label={t("nextChange")} title={t("nextChange")}>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -331,7 +392,7 @@ function add(a, b) {
           
           <div className="border rounded-lg overflow-hidden bg-[var(--md-sys-color-surface)]">
             {diff.length > 0 ? (
-              <div className="max-h-96 overflow-y-auto">
+              <div ref={diffListRef} className="max-h-96 overflow-y-auto">
                 {renderedDiff.map((line, index) => renderDiffLine(line, index))}
               </div>
             ) : (
