@@ -21,6 +21,8 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
+import { RunStatus } from "./RunStatus"
+import type { TemplateRunProgress } from "./TemplateStage"
 
 const DIALOG_CLASS = `max-w-md ${JOURNEY_DIALOG_CLASS}`
 const PRIMARY_BUTTON =
@@ -42,8 +44,16 @@ export function RestoreInputDialog({
   onOpenChange,
   fileInput,
   running,
+  progress,
+  onCancel,
   onRun,
-}: DialogBaseProps & { fileInput: boolean; running: boolean; onRun: (value: string | File) => void }) {
+}: DialogBaseProps & {
+  fileInput: boolean
+  running: boolean
+  progress?: TemplateRunProgress | null
+  onCancel?: () => void
+  onRun: (value: string | File) => void
+}) {
   const t = useTranslations("journey")
   const [text, setText] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -77,6 +87,7 @@ export function RestoreInputDialog({
             className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)]"
           />
         )}
+        {running && progress && onCancel && <RunStatus progress={progress} onCancel={onCancel} />}
         <Button onClick={() => value && onRun(value)} disabled={!value || (typeof value === "string" && !value.trim()) || running} className={PRIMARY_BUTTON}>
           {running ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
           {t("restoreInputRun")}

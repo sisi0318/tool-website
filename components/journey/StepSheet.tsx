@@ -16,6 +16,8 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { useNodeLabel } from "@/hooks/use-node-label"
+import { RunStatus } from "./RunStatus"
+import type { TemplateRunProgress } from "./TemplateStage"
 
 const SELECT_CLASS =
   "h-11 w-full rounded-xl border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] px-3 text-sm text-[var(--md-sys-color-on-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
@@ -26,12 +28,15 @@ interface StepSheetProps {
   /** The active node whose `via` step is being inspected; null when not applicable. */
   node: JourneyNode | null
   running: boolean
+  /** 正在运行的步骤；面板是模态的，页面上的取消按钮点不到，所以面板里也放一份 */
+  progress?: TemplateRunProgress | null
+  onCancel?: () => void
   onRerun: (config: Record<string, unknown>, outputPort: string) => void
   onDelete: () => void
   creating?: boolean
 }
 
-export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete, creating = false }: StepSheetProps) {
+export function StepSheet({ open, onOpenChange, node, running, progress, onCancel, onRerun, onDelete, creating = false }: StepSheetProps) {
   const t = useTranslations("journey")
   const nodeLabel = useNodeLabel()
   const via = node?.via ?? null
@@ -183,6 +188,7 @@ export function StepSheet({ open, onOpenChange, node, running, onRerun, onDelete
             </div>
           )}
         </div>
+        {running && progress && onCancel && <RunStatus progress={progress} onCancel={onCancel} />}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           {!creating && <Button
             variant="outline"

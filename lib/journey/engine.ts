@@ -124,16 +124,37 @@ export async function replaySteps(rootValue: unknown, steps: JourneyStep[], cont
   return { outcomes, finalValue: current, finalValueType: inferDataType(current), ok: true }
 }
 
+/** nodeId 之下的节点数（不含它自己）：重算后代时进度的分母 */
+export function countDescendants(journey: Journey, nodeId: string): number {
+  let count = 0
+  const pending = [nodeId]
+  const visited = new Set<string>()
+  while (pending.length > 0) {
+    const currentId = pending.pop()!
+    if (visited.has(currentId)) continue
+    visited.add(currentId)
+    for (const child of getChildren(journey, currentId)) {
+      count += 1
+      pending.push(child.id)
+    }
+  }
+  return count
+}
+
 /**
  * Recompute every descendant branch from an already-updated parent value.
  * A failed node and its descendants are preserved as topology, but their stale
  * values are cleared and marked missing until that branch can be run again.
+ * Cancelling through `signal` rejects with an AbortError and returns no partial updates.
  */
 export async function replayDescendants(
   journey: Journey,
   parentId: string,
   parentValue: unknown,
+  context: { signal?: AbortSignal; onStep?: (index: number, total: number, step: JourneyStep) => void } = {},
 ): Promise<ReplayDescendantsResult> {
+  const total = context.onStep ? countDescendants(journey, parentId) : 0
+  let started = 0
   const nodeUpdates: Record<string, JourneyNode> = {}
   const failures: ReplayDescendantsResult["failures"] = []
 
@@ -162,7 +183,9 @@ export async function replayDescendants(
       }
 
       try {
-        const result = await applyStep(currentParentValue, child.via)
+        context.onStep?.(started, total, child.via)
+        started += 1
+        const result = await applyStep(currentParentValue, child.via, context)
         const { valueMissing: _cleared, ...rest } = child
         nodeUpdates[child.id] = {
           ...rest,
@@ -171,6 +194,8 @@ export async function replayDescendants(
         }
         await visitChildren(child.id, result.value)
       } catch (error) {
+        // 取消不是这一支的失败：整次重算作废，不把后代标成缺值
+        if (context.signal?.aborted) throw error
         failures.push({
           nodeId: child.id,
           tool: child.via.tool,

@@ -285,6 +285,7 @@ journey: {
   searchTools: "搜索工具…",
   noCompatibleTools: "没有与当前数据类型兼容的工具",
   applying: "执行中…",
+  runCancelled: "已取消，旅程没有改动。",
   stepFailed: "执行失败",
   dependentReplayFailedTitle: "部分后续分支重算失败",
   dependentReplayFailedDescription: "{count} 个分支已清除陈旧结果并标记为待恢复。首个错误：{error}",

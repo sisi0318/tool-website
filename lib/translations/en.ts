@@ -283,6 +283,7 @@ journey: {
   searchTools: "Search tools…",
   noCompatibleTools: "No tools are compatible with the current data type",
   applying: "Running…",
+  runCancelled: "Cancelled. The journey was left unchanged.",
   stepFailed: "Step failed",
   dependentReplayFailedTitle: "Some downstream branches failed to re-run",
   dependentReplayFailedDescription: "{count} branches had stale results cleared and were marked for recovery. First error: {error}",

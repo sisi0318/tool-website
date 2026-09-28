@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
 import { useNodeLabel } from "@/hooks/use-node-label"
+import { RunStatus } from "./RunStatus"
+import type { TemplateRunProgress } from "./TemplateStage"
 
 /** Classic decodable sample token (jwt.io demo token, HS256). */
 const SAMPLE_JWT =
@@ -30,6 +32,9 @@ interface InputStageProps {
   pendingText?: string
   /** True while an imported path is being replayed against the provided data. */
   starting: boolean
+  /** 分享路径正在运行的步骤，配合 onCancel 显示进度与取消 */
+  progress?: TemplateRunProgress | null
+  onCancel?: () => void
   onStart: (value: unknown) => void
   /** True when a local draft exists that starting the imported path would overwrite. */
   draftBehindImport?: boolean
@@ -42,6 +47,8 @@ export function InputStage({
   pendingSteps,
   pendingText,
   starting,
+  progress,
+  onCancel,
   onStart,
   draftBehindImport = false,
   onRestoreDraft,
@@ -167,6 +174,7 @@ export function InputStage({
             className="hidden"
           />
         </div>
+        {starting && progress && onCancel && <div className="mt-4"><RunStatus progress={progress} onCancel={onCancel} /></div>}
         <p className="mt-2 text-center text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("orDrop")}</p>
 
         <div className="mt-5 border-t border-[var(--md-sys-color-outline-variant)] pt-4">

@@ -284,6 +284,26 @@ describe("engine", () => {
     expect(replay.failures).toHaveLength(1)
     expect(replay.failures[0]).toMatchObject({ nodeId: failing.nodeId, tool: "json-format" })
   })
+
+  it("counts every descendant for progress and rejects instead of marking branches missing when cancelled", async () => {
+    const journey = createJourney("t", "aGVsbG8=", "输入")
+    const decoded = appendNode(journey, journey.rootId, BASE64_DECODE, "hello", "Encoding")
+    const hashed = appendNode(decoded.journey, decoded.nodeId, { tool: "hash", config: { algorithm: "md5" }, outputPort: "hash" }, "old", "Hash")
+    const sibling = appendNode(hashed.journey, journey.rootId, { tool: "hash", config: { algorithm: "md5" }, outputPort: "hash" }, "old", "Hash")
+    const controller = new AbortController()
+    const progress: string[] = []
+
+    const replay = replayDescendants(sibling.journey, journey.rootId, "aGVsbG8=", {
+      signal: controller.signal,
+      onStep: (index, total, step) => {
+        progress.push(`${index + 1}/${total} ${step.tool}`)
+        if (index === 1) controller.abort()
+      },
+    })
+
+    await expect(replay).rejects.toMatchObject({ name: "AbortError" })
+    expect(progress).toEqual(["1/3 encoding", "2/3 hash"])
+  })
 })
 
 describe("suggest", () => {

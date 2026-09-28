@@ -8,7 +8,7 @@ import { registerAllAdapters } from "@/lib/adapters"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { withDefaultConfig } from "@/lib/canvas/node-factory"
 import type { NodeDefinition } from "@/lib/canvas/types"
-import { applyStep, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
+import { applyStep, countDescendants, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
 import { isTypeCompatible } from "@/lib/canvas/validation"
 import { receiveTransfer as fetchTransfer, toolTransferIdFromHash, toolTransfers, type ToolTransfer } from "@/lib/tool-transfer"
 import { decodeSharedPath, deleteDraft, hasSavedConflict, isJourneySaved, loadDraft, loadJourney, reviewSharedPath, saveDraft, saveJourney, type SharedStepIssue, type SharedStepReview, listSavedJourneys, takeSavedJourney } from "@/lib/journey/serialize"
@@ -50,8 +50,8 @@ import { TransferIntake } from "@/components/journey/TransferIntake"
 import { TemplatePicker } from "@/components/journey/TemplatePicker"
 import { ConfirmDialog } from "@/components/canvas/workflow/ConfirmDialog"
 import { TemplateStage, type TemplateRunProgress } from "@/components/journey/TemplateStage"
+import { RunStatus } from "@/components/journey/RunStatus"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "@/hooks/use-translations"
@@ -145,21 +145,33 @@ export default function JourneyPage() {
     })
   }
 
-  const runSharedPath = async (value: unknown, shared: SharedJourneyPath) => {
+  /** 开始一次可取消的运行；页面、步骤面板和对话框里的“取消运行”都作用于当前这一次 */
+  const beginRun = () => {
     const ticket = ++runVersion.current, controller = new AbortController()
     runController.current = controller
     setRunning(true)
+    return {
+      signal: controller.signal,
+      live: () => ticket === runVersion.current,
+      progress: (current: number, total: number, tool: string) => { if (ticket === runVersion.current) setRunProgress({ current, total, tool }) },
+      finish: () => { if (ticket === runVersion.current) { setRunning(false); setRunProgress(null); runController.current = null } },
+    }
+  }
+  const cancelRun = () => runController.current?.abort()
+
+  const runSharedPath = async (value: unknown, shared: SharedJourneyPath) => {
+    const run = beginRun()
     try {
-      const result = await replaySteps(value, shared.steps, { signal: controller.signal, onStep: (index, total, step) => { if (ticket === runVersion.current) setRunProgress({ current: index + 1, total, tool: step.tool }) } })
-      if (ticket !== runVersion.current) return
+      const result = await replaySteps(value, shared.steps, { signal: run.signal, onStep: (index, total, step) => run.progress(index + 1, total, step.tool) })
+      if (!run.live()) return
       setJourney(
         buildJourneyFromOutcomes(shared.name || t("namePlaceholder"), value, t("trailInput"), result.outcomes),
       )
       setPendingTemplate(null)
-      if (controller.signal.aborted) toast({ title: wt("cancelled") })
+      if (run.signal.aborted) toast({ title: wt("cancelled") })
       else notifyReplayFailure(result)
     } finally {
-      if (ticket === runVersion.current) { setRunning(false); setRunProgress(null); runController.current = null }
+      run.finish()
     }
   }
 
@@ -357,9 +369,10 @@ export default function JourneyPage() {
     const parentValue = journey.nodes[parentId]?.value
     // 建议与工具选择器给的配置只含它们关心的字段;落成完整配置,步骤面板与分享才有据可依
     const step: JourneyStep = { tool, config: withDefaultConfig(tool, config), outputPort }
-    setRunning(true)
+    const run = beginRun()
+    run.progress(1, 1, tool)
     try {
-      const result = await applyStep(parentValue, step)
+      const result = await applyStep(parentValue, step, { signal: run.signal })
       setJourney((prev) =>
         prev && prev.nodes[parentId]
           ? appendNode(prev, parentId, step, result.value, toolLabel(tool)).journey
@@ -367,14 +380,15 @@ export default function JourneyPage() {
       )
       return true
     } catch (error) {
-      toast({
+      if (run.signal.aborted) toast({ title: t("runCancelled") })
+      else toast({
         title: t("stepFailed"),
         description: error instanceof Error ? errorText(error.message) : t("unknownError"),
         variant: "destructive",
       })
       return false
     } finally {
-      setRunning(false)
+      run.finish()
     }
   }
 
@@ -399,9 +413,10 @@ export default function JourneyPage() {
     }
     const path = getPath(journey, journey.activeId)
     const steps = getPathSteps(journey, journey.activeId)
-    setRunning(true)
+    const run = beginRun()
     try {
-      const result = await replaySteps(root.value, steps)
+      const result = await replaySteps(root.value, steps, { signal: run.signal, onStep: (index, total, step) => run.progress(index + 1, total, step.tool) })
+      // 输入没变，取消前已经算完的步骤仍然有效，照样写回
       setJourney((prev) => {
         if (!prev) return prev
         let next = prev
@@ -414,9 +429,10 @@ export default function JourneyPage() {
         })
         return next
       })
-      notifyReplayFailure(result)
+      if (run.signal.aborted) toast({ title: wt("cancelled") })
+      else notifyReplayFailure(result)
     } finally {
-      setRunning(false)
+      run.finish()
     }
   }
 
@@ -429,10 +445,10 @@ export default function JourneyPage() {
     if (typeof provided === "string" && root?.valueType === "json") {
       try { value = JSON.parse(provided) } catch { value = provided }
     }
-    setRunning(true)
+    const run = beginRun()
     try {
       const base = replaceNodeValue(journey, rootId, value)
-      const descendants = await replayDescendants(base, rootId, value)
+      const descendants = await replayDescendants(base, rootId, value, { signal: run.signal, onStep: (index, total, step) => run.progress(index + 1, total, step.tool) })
       setJourney((prev) => {
         if (!prev || !prev.nodes[rootId]) return prev
         const next = replaceNodeValue(prev, rootId, value)
@@ -453,8 +469,12 @@ export default function JourneyPage() {
           variant: "destructive",
         })
       }
+    } catch (error) {
+      // 取消时旅程保持原样，对话框和选好的输入都还在，可以直接再运行
+      if (run.signal.aborted) toast({ title: t("runCancelled") })
+      else toast({ title: t("stepFailed"), description: error instanceof Error ? errorText(error.message) : t("unknownError"), variant: "destructive" })
     } finally {
-      setRunning(false)
+      run.finish()
     }
   }
 
@@ -471,9 +491,12 @@ export default function JourneyPage() {
     }
     const step: JourneyStep = { tool: activeNode.via.tool, config, outputPort }
     const nodeId = activeNode.id
-    setRunning(true)
+    const run = beginRun()
+    // 这一步加上它之后的所有分支；取消时一个都不写回，否则后代会混着新旧两种参数的结果
+    const total = 1 + countDescendants(journey, nodeId)
+    run.progress(1, total, step.tool)
     try {
-      const result = await applyStep(parent.value, step)
+      const result = await applyStep(parent.value, step, { signal: run.signal })
       const replayBase = replaceNodeValue(journey, nodeId, result.value)
       const updatedActive = {
         ...replayBase.nodes[nodeId],
@@ -486,6 +509,7 @@ export default function JourneyPage() {
         },
         nodeId,
         result.value,
+        { signal: run.signal, onStep: (index, _total, next) => run.progress(index + 2, total, next.tool) },
       )
 
       setJourney((prev) => {
@@ -516,13 +540,14 @@ export default function JourneyPage() {
         })
       }
     } catch (error) {
-      toast({
+      if (run.signal.aborted) toast({ title: t("runCancelled") })
+      else toast({
         title: t("stepFailed"),
         description: error instanceof Error ? errorText(error.message) : t("unknownError"),
         variant: "destructive",
       })
     } finally {
-      setRunning(false)
+      run.finish()
     }
   }
 
@@ -625,10 +650,12 @@ export default function JourneyPage() {
   if (!journey || !active) {
     return (
       <>
-      {pendingTemplate ? <TemplateStage key={pendingTemplate.id} template={pendingTemplate} starting={running} progress={runProgress} hasDraft={draftBehindImport !== null} onStart={handleStart} onCancel={() => runController.current?.abort()} onExit={handleRestoreDraft} onOpenTemplates={() => setTemplatePickerOpen(true)} /> : <InputStage
+      {pendingTemplate ? <TemplateStage key={pendingTemplate.id} template={pendingTemplate} starting={running} progress={runProgress} hasDraft={draftBehindImport !== null} onStart={handleStart} onCancel={cancelRun} onExit={handleRestoreDraft} onOpenTemplates={() => setTemplatePickerOpen(true)} /> : <InputStage
         pendingSteps={pendingReview}
         pendingText={pendingSharedPath?.rootText}
         starting={running}
+        progress={runProgress}
+        onCancel={cancelRun}
         onStart={handleStart}
         draftBehindImport={draftBehindImport !== null}
         onRestoreDraft={handleRestoreDraft}
@@ -688,7 +715,7 @@ export default function JourneyPage() {
         </div>
       </header>
 
-      {running && runProgress && <div role="status" className="flex flex-wrap items-center gap-3 rounded-2xl bg-md-primary-container p-3 text-sm text-md-on-primary-container"><span>{wt("progress").replace("{current}", String(runProgress.current)).replace("{total}", String(runProgress.total))} · {toolName(runProgress.tool)}</span><Button variant="outline" size="sm" onClick={() => runController.current?.abort()}>{wt("cancel")}</Button></div>}
+      {running && runProgress && <RunStatus progress={runProgress} onCancel={cancelRun} />}
       <TemplatePicker open={templatePickerOpen} onOpenChange={setTemplatePickerOpen} onChoose={chooseTemplate} />
 
       <JourneyTrail
@@ -730,6 +757,8 @@ export default function JourneyPage() {
         node={pendingStep ? { ...active, via: pendingStep } : active.via ? active : null}
         creating={Boolean(pendingStep)}
         running={running}
+        progress={runProgress}
+        onCancel={cancelRun}
         onRerun={(config, outputPort) => {
           if (!pendingStep) { void rerunActiveStep(config, outputPort); return }
           void applyTool(pendingStep.tool, config, outputPort).then((success) => { if (success) { setPendingStep(null); setStepSheetOpen(false) } })
@@ -767,6 +796,8 @@ export default function JourneyPage() {
         onOpenChange={(open) => setDialog(open ? "restoreInput" : null)}
         fileInput={journey.nodes[journey.rootId]?.valueType === "bytes"}
         running={running}
+        progress={runProgress}
+        onCancel={cancelRun}
         onRun={(value) => void restoreInput(value)}
       />
       <ConfirmOverwriteDialog
