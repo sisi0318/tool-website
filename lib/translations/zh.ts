@@ -1958,6 +1958,7 @@ protobuf: {
   },
 },
 jce: {
+  autoParsePaused: "输入较长，已暂停自动解析，请点击“解析”。",
   title: "JCE 解析器",
   description: "解析和编码 JCE/Tars 二进制协议数据",
   decode: "解码 JCE",
@@ -4161,6 +4162,9 @@ hexBinaryTools: {
   rowWidth: "每行字节数",
   chooseFile: "选择文件",
   fileTooLarge: "文件过大，最大支持 {size}。",
+  removeFile: "移除文件",
+  previewTruncated: "结果较长，这里只显示前 {size}。",
+  downloadFull: "下载完整结果",
   bytes: "字节",
   signatures: {
     png: "PNG 图片",

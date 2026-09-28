@@ -2,20 +2,23 @@
 
 import { useState } from "react"
 import { takeInputFiles } from "@/lib/file-input"
-import { Binary, FileUp } from "lucide-react"
+import { Binary, Download, FileUp, X } from "lucide-react"
 
 import { UtilityWorkbench } from "@/components/tools/utility-workbench"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
-import { bytesToBase64, type BinaryEncoding } from "@/lib/compression"
+import { decodeBinaryInput, type BinaryEncoding } from "@/lib/compression"
 import {
   FILE_SIZE_LIMITS,
   formatFileSizeLimit,
   isFileWithinLimit,
 } from "@/lib/file-limits"
-import { processHexBinary, type HexBinaryOperation, type HexBinaryResult } from "@/lib/hex-binary-tools"
+import { HEX_PREVIEW_BYTES, hexBinaryOutputBlob, processHexBinaryBytes, type HexBinaryOperation, type HexBinaryResult } from "@/lib/hex-binary-tools"
+import { downloadBlob } from "@/lib/object-url"
+import { fileBaseName } from "@/lib/output-name"
+import { formatBinarySize } from "@/components/tools/binary-file-result"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE_PNG = "89504e470d0a1a0a0000000d49484452"
@@ -29,10 +32,18 @@ export default function HexBinaryPage() {
   const [width, setWidth] = useState("16")
   const [result, setResult] = useState<HexBinaryResult | null>(null)
   const [error, setError] = useState("")
+  // 选中的文件原样保留，不再先转成 Base64 塞进输入框（10 MB 的文件是约 1400 万字符）
+  const [file, setFile] = useState<File | null>(null)
+  // 输出只放前 64 KB 的结果；完整结果按需生成、下载
+  const [fullBytes, setFullBytes] = useState<Uint8Array | null>(null)
 
-  const run = () => {
+  const reset = () => { setOutput(""); setResult(null); setFullBytes(null); setError("") }
+
+  const run = async () => {
     try {
-      const next = processHexBinary(input, operation, encoding, Number(width))
+      const bytes = file ? new Uint8Array(await file.arrayBuffer()) : decodeBinaryInput(input, encoding)
+      const next = processHexBinaryBytes(bytes, operation, Number(width))
+      setFullBytes(next.truncated ? bytes : null)
       const localizedSignature = {
         ...next.signature,
         name: t(`signatures.${next.signature.id}`),
@@ -43,8 +54,15 @@ export default function HexBinaryPage() {
     } catch {
       setResult(null)
       setOutput("")
+      setFullBytes(null)
       setError(t("failed"))
     }
+  }
+
+  const downloadFull = () => {
+    if (!fullBytes || operation === "signature") return
+    const suffix = operation === "hexdump" ? "hexdump.txt" : operation === "to-hex" ? "hex.txt" : operation === "to-base64" ? "base64.txt" : "txt"
+    downloadBlob(hexBinaryOutputBlob(fullBytes, operation, Number(width)), `${fileBaseName(file?.name, "binary")}.${suffix}`)
   }
 
   const loadFile = async (file: File) => {
@@ -56,12 +74,10 @@ export default function HexBinaryPage() {
       return
     }
 
-    setInput(bytesToBase64(new Uint8Array(await file.arrayBuffer())))
-    setEncoding("base64")
+    setFile(file)
+    setInput("")
     setOperation("hexdump")
-    setOutput("")
-    setResult(null)
-    setError("")
+    reset()
   }
 
   return (
@@ -77,10 +93,18 @@ export default function HexBinaryPage() {
         { value: "to-text", label: t("toText") }, { value: "to-hex", label: t("toHex") }, { value: "to-base64", label: t("toBase64") },
       ]}
       onInputChange={setInput}
-      onOperationChange={(value) => { setOperation(value as HexBinaryOperation); setOutput("") }}
+      onOperationChange={(value) => { setOperation(value as HexBinaryOperation); setOutput(""); setFullBytes(null) }}
       onRun={run}
-      onClear={() => { setInput(""); setOutput(""); setResult(null); setError("") }}
-      onSample={() => { setInput(SAMPLE_PNG); setEncoding("hex"); setOperation("signature"); setOutput(""); setResult(null) }}
+      onClear={() => { setInput(""); setFile(null); reset() }}
+      onSample={() => { setFile(null); setInput(SAMPLE_PNG); setEncoding("hex"); setOperation("signature"); reset() }}
+      inputDisabled={file !== null}
+      canRun={file !== null || input.trim().length > 0}
+      additionalInput={file && (
+        <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] px-3 py-2 text-xs">
+          <span className="min-w-0 flex-1 break-all font-mono">{file.name} · {formatBinarySize(file.size)}</span>
+          <Button type="button" variant="ghost" size="icon" aria-label={t("removeFile")} onClick={() => { setFile(null); reset() }}><X className="h-4 w-4" /></Button>
+        </div>
+      )}
       error={error}
       inputPlaceholder={encoding === "text" ? t("textPlaceholder") : t("encodedPlaceholder")}
       controls={(
@@ -110,6 +134,12 @@ export default function HexBinaryPage() {
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-[var(--md-sys-color-surface-container-high)] px-3 py-1.5">{result.byteLength} {t("bytes")}</span>
           <span className="rounded-full bg-[var(--md-sys-color-primary-container)] px-3 py-1.5 text-[var(--md-sys-color-on-primary-container)]">{result.signature.name}</span>
+          {fullBytes && (
+            <>
+              <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("previewTruncated").replace("{size}", formatBinarySize(HEX_PREVIEW_BYTES))}</span>
+              <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadFull}><Download className="h-4 w-4" />{t("downloadFull")}</Button>
+            </>
+          )}
         </div>
       )}
     />

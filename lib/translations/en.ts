@@ -1956,6 +1956,7 @@ protobuf: {
   },
 },
 jce: {
+  autoParsePaused: "The input is long, so automatic parsing is paused; press Parse.",
   title: "JCE Parser",
   description: "Parse and encode JCE/Tars binary protocol data",
   decode: "Decode JCE",
@@ -4160,6 +4161,9 @@ hexBinaryTools: {
   rowWidth: "Bytes per row",
   chooseFile: "Choose file",
   fileTooLarge: "File is too large. Maximum size: {size}.",
+  removeFile: "Remove file",
+  previewTruncated: "The result is long; only the first {size} is shown here.",
+  downloadFull: "Download full result",
   bytes: "bytes",
   signatures: {
     png: "PNG image",

@@ -500,6 +500,8 @@ export default function JceTool() {
   const [outputData, setOutputData] = useState("")
   const [detailedOutput, setDetailedOutput] = useState("")
   const [file, setFile] = useState<File | null>(null)
+  // 文件读成字节直接解析；以前先转成 Hex 写进文本框，10 MB 的文件就是 2000 万字符
+  const [fileBytes, setFileBytes] = useState<Uint8Array | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<Record<string, boolean>>({})
@@ -524,10 +526,8 @@ export default function JceTool() {
     )
   }, [outputData, mode])
 
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const [f] = takeInputFiles(e)
-      if (!f) return
+  const loadFile = useCallback(
+    (f: File) => {
       if (f.size > 10 * 1024 * 1024) {
         setError(t("fileTooBig"))
         return
@@ -536,16 +536,19 @@ export default function JceTool() {
       setError(null)
       const reader = new FileReader()
       reader.onload = (ev) => {
-        if (ev.target?.result) {
-          const hex = Array.from(new Uint8Array(ev.target.result as ArrayBuffer))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("")
-          setInputData(hex)
-        }
+        if (ev.target?.result) setFileBytes(new Uint8Array(ev.target.result as ArrayBuffer))
       }
       reader.readAsArrayBuffer(f)
     },
     [t],
+  )
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const [f] = takeInputFiles(e)
+      if (f) loadFile(f)
+    },
+    [loadFile],
   )
 
   const handleDrop = useCallback(
@@ -553,25 +556,9 @@ export default function JceTool() {
       e.preventDefault()
       e.stopPropagation()
       const f = e.dataTransfer.files?.[0]
-      if (!f) return
-      if (f.size > 10 * 1024 * 1024) {
-        setError(t("fileTooBig"))
-        return
-      }
-      setFile(f)
-      setError(null)
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          const hex = Array.from(new Uint8Array(ev.target.result as ArrayBuffer))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("")
-          setInputData(hex)
-        }
-      }
-      reader.readAsArrayBuffer(f)
+      if (f) loadFile(f)
     },
-    [t],
+    [loadFile],
   )
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -581,12 +568,12 @@ export default function JceTool() {
 
   const removeFile = useCallback(() => {
     setFile(null)
-    setInputData("")
+    setFileBytes(null)
     if (fileInputRef.current) fileInputRef.current.value = ""
   }, [])
 
   const parseJce = useCallback(() => {
-    const src = mode === "decode" ? inputData : jsonInput
+    const src = mode === "decode" ? (fileBytes ? "file" : inputData) : jsonInput
     if (!src) {
       setError(t("noInput"))
       return
@@ -596,7 +583,7 @@ export default function JceTool() {
 
     try {
       if (mode === "decode") {
-        const buffer = inputToBuffer(inputData)
+        const buffer = fileBytes ?? inputToBuffer(inputData)
         const parser = new JceParser(buffer)
         const parsed = parser.parseWithDetails()
         setOutputData(JSON.stringify(parsed.data, null, indentSize))
@@ -621,9 +608,10 @@ export default function JceTool() {
     } finally {
       setIsProcessing(false)
     }
-  }, [inputData, jsonInput, mode, indentSize, t])
+  }, [fileBytes, inputData, jsonInput, mode, indentSize, t])
 
   const clearAll = useCallback(() => {
+    setFileBytes(null)
     setInputData("")
     setJsonInput("")
     setOutputData("")
@@ -637,23 +625,27 @@ export default function JceTool() {
     setInputData(EXAMPLE_HEX)
   }, [])
 
+  // 超过这个长度（文件按 Hex 字符数折算）不自动解析，改为提示点“解析”
+  const autoParseSize = mode === "decode" ? (fileBytes ? fileBytes.length * 2 : inputData.length) : jsonInput.length
+  const autoParsePaused = autoFormat && autoParseSize >= 10000
+
   useEffect(() => {
     if (!autoFormat) return
-    const src = mode === "decode" ? inputData : jsonInput
+    const src = mode === "decode" ? (fileBytes ? "file" : inputData) : jsonInput
     if (!src) {
       setOutputData("")
       setDetailedOutput("")
       return
     }
 
-    if (src.length >= 10000) return
+    if (autoParseSize >= 10000) return
 
     const timeout = window.setTimeout(() => {
       void parseJce()
     }, 250)
 
     return () => window.clearTimeout(timeout)
-  }, [inputData, jsonInput, mode, autoFormat, parseJce])
+  }, [autoParseSize, fileBytes, inputData, jsonInput, mode, autoFormat, parseJce])
 
   return (
     <div className="container mx-auto px-4 py-4 max-w-7xl">
@@ -826,6 +818,7 @@ export default function JceTool() {
                 </Tabs>
 
                 {error && <div className="mt-2 text-sm text-[var(--md-sys-color-error)]">{error}</div>}
+                {autoParsePaused && !error && <p className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("autoParsePaused")}</p>}
 
                 <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-between">
                   <div className="contents sm:flex sm:gap-2">
@@ -837,7 +830,7 @@ export default function JceTool() {
                       {t("loadExample")}
                     </Button>
                   </div>
-                  <Button onClick={parseJce} disabled={isProcessing || !inputData} className="col-span-2 w-full sm:w-auto">
+                  <Button onClick={parseJce} disabled={isProcessing || !(fileBytes || inputData)} className="col-span-2 w-full sm:w-auto">
                     {isProcessing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
