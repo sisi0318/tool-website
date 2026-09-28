@@ -68,8 +68,10 @@ export interface ReplayDescendantsResult {
 /** 建议:一键可应用的下一步 */
 export interface JourneySuggestion {
   tool: string
-  /** 展示标题(i18n key 之外的动态部分由 UI 处理;此处为英文工具语义短语) */
+  /** 英文原文；界面按 labelKey 显示当前语言，兜底建议没有 labelKey，按工具名显示 */
   label: string
+  /** journeySuggestions.<labelKey> */
+  labelKey?: string
   config: Record<string, unknown>
   outputPort?: string
   /** 来源:识别驱动(带识别类型)或类型兼容兜底 */

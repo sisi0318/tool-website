@@ -7,6 +7,8 @@ import type { JourneySuggestion } from "./types"
 
 interface CuratedEntry {
   tool: string
+  /** 文案键：lib/translations 的 journeySuggestions.<key>；label 是英文原文 */
+  key: string
   label: string
   config?: Record<string, unknown>
   outputPort?: string
@@ -19,31 +21,31 @@ interface CuratedEntry {
  */
 const CURATED: Partial<Record<DetectedDataType, CuratedEntry[]>> = {
   base64: [
-    { tool: "encoding", label: "Base64 decode", config: { encoding: "base64", mode: "decode" }, score: 100 },
-    { tool: "base64-to-file", label: "Base64 to file", score: 70 },
+    { tool: "encoding", key: "base64Decode", label: "Base64 decode", config: { encoding: "base64", mode: "decode" }, score: 100 },
+    { tool: "base64-to-file", key: "base64ToFile", label: "Base64 to file", score: 70 },
   ],
-  jwt: [{ tool: "jwt", label: "Decode JWT", outputPort: "payload", score: 100 }],
+  jwt: [{ tool: "jwt", key: "decodeJwt", label: "Decode JWT", outputPort: "payload", score: 100 }],
   json: [
-    { tool: "json-format", label: "Format JSON", outputPort: "formatted", score: 100 },
-    { tool: "json-path", label: "Extract with JSON Path", score: 80 },
-    { tool: "json-to-yaml", label: "JSON to YAML", score: 70 },
+    { tool: "json-format", key: "formatJson", label: "Format JSON", outputPort: "formatted", score: 100 },
+    { tool: "json-path", key: "extractJsonPath", label: "Extract with JSON Path", score: 80 },
+    { tool: "json-to-yaml", key: "jsonToYaml", label: "JSON to YAML", score: 70 },
   ],
   "url-encoded": [
-    { tool: "encoding", label: "URL decode", config: { encoding: "url", mode: "decode" }, score: 100 },
+    { tool: "encoding", key: "urlDecode", label: "URL decode", config: { encoding: "url", mode: "decode" }, score: 100 },
   ],
   hex: [
-    { tool: "encoding", label: "Hex decode", config: { encoding: "hex", mode: "decode" }, score: 100 },
-    { tool: "base-converter", label: "Convert base", config: { fromBase: "16" }, score: 60 },
+    { tool: "encoding", key: "hexDecode", label: "Hex decode", config: { encoding: "hex", mode: "decode" }, score: 100 },
+    { tool: "base-converter", key: "convertBase", label: "Convert base", config: { fromBase: "16" }, score: 60 },
   ],
-  xml: [{ tool: "xml", label: "Format XML", score: 90 }],
-  timestamp: [{ tool: "time", label: "Convert timestamp", score: 90 }],
-  pem: [{ tool: "certificate", label: "Inspect certificate", score: 100 }],
-  csv: [{ tool: "tabular", label: "Query CSV rows", config: { format: "csv" }, outputPort: "rows", score: 95 }, { tool: "csv", label: "Parse CSV", score: 90 }],
+  xml: [{ tool: "xml", key: "formatXml", label: "Format XML", score: 90 }],
+  timestamp: [{ tool: "time", key: "convertTimestamp", label: "Convert timestamp", score: 90 }],
+  pem: [{ tool: "certificate", key: "inspectCertificate", label: "Inspect certificate", score: 100 }],
+  csv: [{ tool: "tabular", key: "queryCsvRows", label: "Query CSV rows", config: { format: "csv" }, outputPort: "rows", score: 95 }, { tool: "csv", key: "parseCsv", label: "Parse CSV", score: 90 }],
   uuid: [],
   gzip: [
     {
       tool: "compression",
-      label: "Decompress",
+      key: "decompress", label: "Decompress",
       // 识别器只在 base64 文本上判定 gzip,因此必须显式声明输入编码与格式。
       config: { operation: "decompress", format: "gzip", inputEncoding: "base64", outputEncoding: "text" },
       score: 90,
@@ -52,34 +54,34 @@ const CURATED: Partial<Record<DetectedDataType, CuratedEntry[]>> = {
   zip: [
     {
       tool: "compression",
-      label: "Extract archive",
+      key: "extractArchive", label: "Extract archive",
       config: { operation: "decompress", format: "zip", inputEncoding: "base64", outputEncoding: "text" },
       score: 90,
     },
   ],
   "plain-text": [
-    { tool: "hash", label: "Hash", score: 60 },
-    { tool: "encoding", label: "Base64 encode", config: { encoding: "base64", mode: "encode" }, score: 55 },
-    { tool: "case-converter", label: "Change case", score: 50 },
-    { tool: "text-stats", label: "Text statistics", score: 45 },
-    { tool: "qrcode", label: "Generate QR code", score: 40 },
+    { tool: "hash", key: "hashText", label: "Hash", score: 60 },
+    { tool: "encoding", key: "base64Encode", label: "Base64 encode", config: { encoding: "base64", mode: "encode" }, score: 55 },
+    { tool: "case-converter", key: "changeCase", label: "Change case", score: 50 },
+    { tool: "text-stats", key: "textStatistics", label: "Text statistics", score: 45 },
+    { tool: "qrcode", key: "generateQrCode", label: "Generate QR code", score: 40 },
   ],
 }
 
 const BYTES_CURATED: CuratedEntry[] = [
-  { tool: "exif-viewer", label: "Read EXIF", score: 90 },
-  { tool: "qrcode-decode", label: "Decode QR code", score: 85 },
-  { tool: "image-compress", label: "Compress image", score: 80 },
-  { tool: "image-convert", label: "Convert format", score: 75 },
-  { tool: "meme-splitter", label: "Split grid image", score: 70 },
-  { tool: "file-to-base64", label: "File to Base64", score: 60 },
-  { tool: "file-to-string", label: "File to text", score: 55 },
+  { tool: "exif-viewer", key: "readExif", label: "Read EXIF", score: 90 },
+  { tool: "qrcode-decode", key: "decodeQrCode", label: "Decode QR code", score: 85 },
+  { tool: "image-compress", key: "compressImage", label: "Compress image", score: 80 },
+  { tool: "image-convert", key: "convertImageFormat", label: "Convert format", score: 75 },
+  { tool: "meme-splitter", key: "splitGridImage", label: "Split grid image", score: 70 },
+  { tool: "file-to-base64", key: "fileToBase64", label: "File to Base64", score: 60 },
+  { tool: "file-to-string", key: "fileToText", label: "File to text", score: 55 },
 ]
 
 // hash 的主输入是 string,bytes 无法直接喂进去;要哈希文件先经 file-to-string / file-to-base64。
 const GENERIC_BYTES: CuratedEntry[] = [
-  { tool: "file-to-base64", label: "File to Base64", score: 60 },
-  { tool: "file-to-string", label: "File to text", score: 55 },
+  { tool: "file-to-base64", key: "fileToBase64", label: "File to Base64", score: 60 },
+  { tool: "file-to-string", key: "fileToText", label: "File to text", score: 55 },
 ]
 
 /** 供测试遍历:每条精选建议都应能在真实注册表下通过校验并成功执行。 */
@@ -102,6 +104,7 @@ function validateEntry(entry: CuratedEntry, valueType: DataType): JourneySuggest
   return {
     tool: entry.tool,
     label: entry.label,
+    labelKey: entry.key,
     config: entry.config ?? {},
     outputPort: entry.outputPort ?? resolveOutputPort(definition),
     reason: "detection",
@@ -133,34 +136,34 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
   if (valueType === "bytes") {
     const mime = typeof Blob !== "undefined" && value instanceof Blob ? value.type : ""
     const filename = typeof File !== "undefined" && value instanceof File ? value.name : ""
-    if (/\.pdf$/i.test(filename) || mime === "application/pdf") pushEntry({ tool: "pdf", label: "Inspect PDF pages", config: { operation: "inspect" }, outputPort: "info", score: 110 })
-    if (["image/png", "image/jpeg"].includes(mime)) pushEntry({ tool: "images-to-pdf", label: "Image to PDF", outputPort: "file", score: 65 })
-    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry({ tool: "ocr", label: "Recognize image text", outputPort: "text", score: 95 })
-    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry({ tool: "image-to-svg", label: "Trace image to SVG", outputPort: "file", score: 75 })
-    if (/\.(sqlite|sqlite3|db|db3|s3db)$/i.test(filename) || mime === "application/vnd.sqlite3") pushEntry({ tool: "sqlite", label: "Inspect SQLite database", config: { operation: "inspect" }, outputPort: "result", score: 110 })
+    if (/\.pdf$/i.test(filename) || mime === "application/pdf") pushEntry({ tool: "pdf", key: "inspectPdfPages", label: "Inspect PDF pages", config: { operation: "inspect" }, outputPort: "info", score: 110 })
+    if (["image/png", "image/jpeg"].includes(mime)) pushEntry({ tool: "images-to-pdf", key: "imageToPdf", label: "Image to PDF", outputPort: "file", score: 65 })
+    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry({ tool: "ocr", key: "recognizeImageText", label: "Recognize image text", outputPort: "text", score: 95 })
+    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry({ tool: "image-to-svg", key: "traceImageToSvg", label: "Trace image to SVG", outputPort: "file", score: 75 })
+    if (/\.(sqlite|sqlite3|db|db3|s3db)$/i.test(filename) || mime === "application/vnd.sqlite3") pushEntry({ tool: "sqlite", key: "inspectSqlite", label: "Inspect SQLite database", config: { operation: "inspect" }, outputPort: "result", score: 110 })
     if (/\.(cbor|msgpack|mpk)$/i.test(filename) || ["application/cbor", "application/msgpack", "application/x-msgpack"].includes(mime)) {
-      pushEntry({ tool: "binary-codec-file", label: "Decode MessagePack / CBOR file", config: { format: /\.cbor$/i.test(filename) || mime === "application/cbor" ? "cbor" : "msgpack" }, outputPort: "value", score: 110 })
+      pushEntry({ tool: "binary-codec-file", key: "decodeBinaryFile", label: "Decode MessagePack / CBOR file", config: { format: /\.cbor$/i.test(filename) || mime === "application/cbor" ? "cbor" : "msgpack" }, outputPort: "value", score: 110 })
     }
     if (/\.(csv|tsv|jsonl|ndjson)$/i.test(filename) || ["text/csv", "text/tab-separated-values", "application/x-ndjson"].includes(mime)) {
-      pushEntry({ tool: "tabular-file", label: "Query CSV / JSONL file", config: { format: /\.(jsonl|ndjson)$/i.test(filename) || mime === "application/x-ndjson" ? "jsonl" : "csv" }, outputPort: "rows", score: 110 })
+      pushEntry({ tool: "tabular-file", key: "queryTabularFile", label: "Query CSV / JSONL file", config: { format: /\.(jsonl|ndjson)$/i.test(filename) || mime === "application/x-ndjson" ? "jsonl" : "csv" }, outputPort: "rows", score: 110 })
     }
     if (mime === "application/zip" || /\.(zip|jar|apk|docx|xlsx|pptx)$/i.test(filename)) {
-      pushEntry({ tool: "zip-directory", label: "Browse ZIP directory", outputPort: "entries", score: 110 })
+      pushEntry({ tool: "zip-directory", key: "browseZip", label: "Browse ZIP directory", outputPort: "entries", score: 110 })
     }
     if (["application/gzip", "application/zip"].includes(mime) || /\.(gz|zip|br|zlib|deflate)$/i.test(filename)) {
-      pushEntry({ tool: "compression-file", label: "Decompress file", config: { operation: "decompress", format: "auto" }, outputPort: "file", score: 100 })
+      pushEntry({ tool: "compression-file", key: "decompressFile", label: "Decompress file", config: { operation: "decompress", format: "auto" }, outputPort: "file", score: 100 })
     }
     const curated = mime.startsWith("image/") ? BYTES_CURATED : GENERIC_BYTES
     curated.forEach((entry) => pushEntry(entry))
   } else if (typeof value === "string" && value.trim().length > 0) {
-    if (/^(?:https?|wss?|ftp|file):\/\//i.test(value.trim())) pushEntry({ tool: "url", label: "Inspect URL parameters", outputPort: "components", score: 2000 })
-    if (/[\r\n]/.test(value)) pushEntry({ tool: "text-lines", label: "Process text lines", config: { operation: "dedupe" }, outputPort: "output", score: 65 })
+    if (/^(?:https?|wss?|ftp|file):\/\//i.test(value.trim())) pushEntry({ tool: "url", key: "inspectUrl", label: "Inspect URL parameters", outputPort: "components", score: 2000 })
+    if (/[\r\n]/.test(value)) pushEntry({ tool: "text-lines", key: "processTextLines", label: "Process text lines", config: { operation: "dedupe" }, outputPort: "output", score: 65 })
     if (/[\u00a0\u0300-\u036f\u2000-\u200f\u2028-\u202f\u2060-\u206f\ufeff]/.test(value)) {
-      pushEntry({ tool: "unicode", label: "Inspect Unicode characters", config: { operation: "inspect" }, outputPort: "report", score: 70 })
+      pushEntry({ tool: "unicode", key: "inspectUnicode", label: "Inspect Unicode characters", config: { operation: "inspect" }, outputPort: "report", score: 70 })
     }
     const sampleLines = value.slice(0, 8192).trim().split(/\r?\n/)
     if (sampleLines.length >= 2 && sampleLines.slice(0, 2).every((line) => { try { const row: unknown = JSON.parse(line); return row !== null && typeof row === "object" && !Array.isArray(row) } catch { return false } })) {
-      pushEntry({ tool: "tabular", label: "Query JSONL logs", config: { format: "jsonl" }, outputPort: "rows", score: 2000 })
+      pushEntry({ tool: "tabular", key: "queryJsonlLogs", label: "Query JSONL logs", config: { format: "jsonl" }, outputPort: "rows", score: 2000 })
     }
     const detection = detectData(value)
     // 按识别置信度加权:同一识别矩阵内保持相对分,不同识别按 confidence 排先后

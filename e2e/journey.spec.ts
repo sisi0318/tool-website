@@ -24,7 +24,7 @@ test.describe("数据旅程", () => {
   test("替换当前旅程前区分已保存与未保存", async ({ page }) => {
     await page.goto("/journey", { waitUntil: "domcontentloaded" })
     await startJourney(page, "aGVsbG8gd29ybGQ=")
-    await page.getByRole("button", { name: /Base64 decode/ }).first().click()
+    await page.getByRole("button", { name: /Base64 解码/ }).first().click()
     await expect(valueCard(page, "hello world")).toBeVisible()
 
     // 未保存:新建要先确认

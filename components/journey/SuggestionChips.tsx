@@ -5,6 +5,7 @@ import { LayoutGrid, LoaderCircle } from "lucide-react"
 import type { JourneyNode, JourneySuggestion } from "@/lib/journey/types"
 import { suggestNext } from "@/lib/journey/suggest"
 import { useTranslations } from "@/hooks/use-translations"
+import { useNodeLabel } from "@/hooks/use-node-label"
 
 interface SuggestionChipsProps {
   node: JourneyNode
@@ -15,6 +16,11 @@ interface SuggestionChipsProps {
 
 export function SuggestionChips({ node, running, onApply, onMoreTools }: SuggestionChipsProps) {
   const t = useTranslations("journey")
+  const st = useTranslations("journeySuggestions")
+  const nodeLabel = useNodeLabel()
+  // 精选建议有自己的动作短语；类型兼容的兜底建议显示工具名
+  const labelOf = (suggestion: JourneySuggestion) =>
+    suggestion.labelKey ? st(suggestion.labelKey) : nodeLabel({ type: suggestion.tool, label: suggestion.label })
 
   const suggestions = useMemo(
     () => (node.valueMissing ? [] : suggestNext(node.value, node.valueType, 6)),
@@ -43,7 +49,7 @@ export function SuggestionChips({ node, running, onApply, onMoreTools }: Suggest
             onClick={() => onApply(suggestion)}
             className="inline-flex items-center gap-1.5 rounded-full bg-[var(--md-sys-color-secondary-container)] px-3.5 py-2 text-sm font-medium text-[var(--md-sys-color-on-secondary-container)] transition-all hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
           >
-            {suggestion.label}
+            {labelOf(suggestion)}
             {suggestion.reason === "detection" && suggestion.detectionType ? (
               <span className="rounded-full bg-[var(--md-sys-color-secondary)]/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide">
                 {suggestion.detectionType}
