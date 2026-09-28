@@ -264,11 +264,39 @@ const MAX_PARALLEL_NODES = 4
  * @param shouldSkip 返回 true 表示跳过该节点,其下游会被视为「依赖了被跳过的节点」
  * @returns 是否完整跑完(false 表示中途被更新的图取代)
  */
+/**
+ * shouldSkip 的返回值：true 跳过（下游随之跳过）；"reuse" 不执行，但沿用它现有的输出，
+ * 下游照常计算（手动节点已有结果时用）；false 正常执行。
+ */
+/**
+ * 把 nodeId 的下游按拓扑顺序重算一遍，nodeId 本身不重跑。下游的手动节点不替用户发请求：
+ * 有结果就沿用，没有就连同它的下游一起跳过。
+ */
+async function refreshDownstream(nodeId: string, planRevision: number): Promise<void> {
+  const state = useCanvasStore.getState()
+  const downstreamIds = collectReachableNodeIds(nodeId, state.edges, "downstream")
+  downstreamIds.delete(nodeId)
+  if (downstreamIds.size === 0) return
+  const nodes = state.nodes.filter((node) => downstreamIds.has(node.id))
+  const edges = state.edges.filter((edge) => downstreamIds.has(edge.source) && downstreamIds.has(edge.target))
+  const { sorted } = topologicalSort(nodes, edges)
+  await runGraphInWaves(
+    sorted,
+    edges,
+    planRevision,
+    (node, dependsOnSkipped) => {
+      if (isManualNode(node)) return useCanvasStore.getState().nodeOutputs[node.id] ? "reuse" : true
+      return dependsOnSkipped
+    },
+    (id) => useCanvasStore.getState().executeNode(id, undefined, false, false),
+  )
+}
+
 async function runGraphInWaves(
   sorted: NodeInstance[],
   edges: Edge[],
   planRevision: number,
-  shouldSkip: (node: NodeInstance, dependsOnSkipped: boolean) => boolean,
+  shouldSkip: (node: NodeInstance, dependsOnSkipped: boolean) => boolean | "reuse",
   runNode: (nodeId: string) => Promise<void>,
 ): Promise<boolean> {
   const nodeById = new Map(sorted.map((node) => [node.id, node]))
@@ -302,7 +330,9 @@ async function runGraphInWaves(
         continue
       }
       const dependsOnSkipped = sources.some((source) => skipped.has(source))
-      if (shouldSkip(node, dependsOnSkipped)) {
+      const decision = shouldSkip(node, dependsOnSkipped)
+      if (decision === "reuse") continue
+      if (decision) {
         skipped.add(id)
         continue
       }
@@ -1285,13 +1315,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       (node, dependsOnSkipped) => {
         // 点击某个节点的"运行"只对该节点表示同意。上游的手动节点(如 HTTP 请求)
         // 会真的发出带副作用的请求,不能因为它恰好在上游就替用户按下确认。
+        // 它已经有结果时下游沿用这个结果;以前连带把中间节点也跳过,末端拿到的是旧值。
         const isExplicitTarget = node.id === nodeId
-        if (!isExplicitTarget && isManualNode(node)) return true
+        if (!isExplicitTarget && isManualNode(node)) return get().nodeOutputs[node.id] ? "reuse" : true
         if (!includeManual && (isManualNode(node) || dependsOnSkipped)) return true
         return dependsOnSkipped && !isExplicitTarget
       },
       (id) => get().executeNode(id, undefined, false, includeManual),
     )
+
+    // 自动运行时，把这个节点的下游用新结果再算一遍（HTTP 这类手动节点跑完后下游以前不刷新）
+    if (get().autoRun && executionRevision === planRevision) await refreshDownstream(nodeId, planRevision)
   },
 
   executeStep: async (includeManual = true) => {

@@ -151,6 +151,36 @@ describe("execution safety across lifecycle and entry points", () => {
     expect(store.getState().nodeErrors.sink).toBe(UPSTREAM_PENDING)
   })
 
+  it("running a node below a finished manual request reuses its result instead of skipping the chain", async () => {
+    const { store, register } = await harness()
+    const request = vi.fn(async () => ({ out: "fresh request" }))
+    const middle = vi.fn(async (inputs: Record<string, unknown>) => ({ out: `m:${String(inputs.in)}` }))
+    const sink = vi.fn(async (inputs: Record<string, unknown>) => ({ out: `s:${String(inputs.in)}` }))
+    register("post", request, true); register("middle", middle); register("sink", sink)
+    store.setState({ nodes: [node("post"), node("middle"), node("sink")], edges: [edge("post", "middle"), edge("middle", "sink")], autoRun: false, nodeOutputs: { post: { out: "response" }, middle: { out: "m:stale" } } })
+    await store.getState().executeToNode("sink", true)
+    // 不替用户重发请求，但中间节点按现有结果重算；以前中间节点被跳过，末端拿到的是 m:stale
+    expect(request).not.toHaveBeenCalled()
+    expect(middle).toHaveBeenCalledTimes(1)
+    expect(store.getState().nodeOutputs.sink).toEqual({ out: "s:m:response" })
+  })
+
+  it("refreshes what is downstream of a manual request once it runs, when auto-run is on", async () => {
+    const { store, register } = await harness()
+    const request = vi.fn(async () => ({ out: "response" }))
+    const after = vi.fn(async (inputs: Record<string, unknown>) => ({ out: `after:${String(inputs.in)}` }))
+    register("post", request, true); register("after", after)
+    store.setState({ nodes: [node("post"), node("after")], edges: [edge("post", "after")], autoRun: true })
+    await store.getState().executeToNode("post", true)
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(store.getState().nodeOutputs.after).toEqual({ out: "after:response" })
+
+    after.mockClear()
+    store.setState({ autoRun: false })
+    await store.getState().executeToNode("post", true)
+    expect(after).not.toHaveBeenCalled()
+  })
+
   it("waiting passes down a cascade as waiting, not as an upstream failure", async () => {
     const { store, register, UPSTREAM_PENDING } = await harness()
     const middle = vi.fn(async () => ({ out: "b" }))
