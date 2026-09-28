@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest"
 import { imageBatchZip, runImageBatch, transformBatchImage } from "./image-batch"
-import { batchCombinedText, batchOcrResult, batchOptions, DEFAULT_BATCH_OPTIONS, uniqueImageBase, type BatchImageJob, type BatchImageResult } from "./image-batch-shared"
+import { batchCombinedText, batchOcrResult, batchOptions, convertBatchFormat, DEFAULT_BATCH_OPTIONS, uniqueImageBase, type BatchImageJob, type BatchImageResult } from "./image-batch-shared"
 import { unzipSync, strFromU8 } from "fflate"
 
 const makeJob = (id: string): BatchImageJob => ({ id, base: id, file: new File([id], `${id}.png`), status: "ready" })
@@ -54,5 +54,16 @@ describe("batch image processing", () => {
     expect(() => batchOptions({ maxWidth: Infinity })).toThrow("options")
     expect(() => batchOptions({ quality: NaN })).toThrow("options")
     expect(() => batchOptions({ maxHeight: -1 })).toThrow("options")
+    expect(batchOptions({ format: "auto" }).format).toBe("auto")
+  })
+  it("keeps JPEG and WebP as they are in auto mode, turns PNG into WebP, and falls back to PNG without a WebP encoder", async () => {
+    const encode = (format: string) => Promise.resolve(format)
+    expect(await Promise.all(["image/jpeg", "image/png", "image/webp"].map(mime => convertBatchFormat(mime, "auto", encode)))).toEqual(["jpeg", "webp", "webp"])
+    const noWebp = vi.fn(async (format: string) => { if (format === "webp") throw new Error("FORMAT_NOT_SUPPORTED"); return format })
+    expect(await convertBatchFormat("image/png", "auto", noWebp)).toBe("png")
+    expect(noWebp.mock.calls.map(([format]) => format)).toEqual(["webp", "png"])
+    // 用户明确选了 WebP 就照实报错，不偷偷换格式
+    await expect(convertBatchFormat("image/png", "webp", noWebp)).rejects.toThrow("FORMAT_NOT_SUPPORTED")
+    await expect(convertBatchFormat("image/png", "auto", async () => { throw new Error("CONVERSION_FAILED") })).rejects.toThrow("CONVERSION_FAILED")
   })
 })

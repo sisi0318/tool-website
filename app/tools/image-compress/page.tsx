@@ -1,100 +1,105 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { extensionForMime } from "@/lib/output-name"
 import { useToolPref } from "@/hooks/use-tool-pref"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileDropZone } from "@/components/tools/file-drop-zone"
+import { FileDropZone, matchesAccept } from "@/components/tools/file-drop-zone"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { useObjectUrlRegistry } from "@/hooks/use-object-url"
 import { useToast } from "@/hooks/use-toast"
 import { usePasteFiles } from "@/hooks/use-paste-files"
-import { mapWithConcurrency } from "@/lib/async-pool"
 import { createClientId } from "@/lib/client-id"
+import { downloadBlob, triggerDownload } from "@/lib/object-url"
+import { batchErrorCode, imageBatchZip, runImageBatch } from "@/lib/image-batch"
+import { DEFAULT_BATCH_OPTIONS, IMAGE_BATCH_LIMITS, uniqueImageBase, type BatchImageJob, type ImageBatchOptions } from "@/lib/image-batch-shared"
+import { OCR_LIMITS } from "@/lib/ocr-shared"
 import {
-  triggerDownload,
-  withObjectUrl,
-} from "@/lib/object-url"
-import { 
-  Upload, ImageIcon, Download, X, Trash2, 
+  ImageIcon, Download, X, Trash2,
   Settings, Zap, FileImage, CheckCircle2,
-  Minimize2, Maximize2
+  Maximize2, Upload, FileArchive, Loader2
 } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
 
-interface CompressedImage {
+/**
+ * 一张图片与它当前的压缩结果。压缩在批处理的 Worker 管线里逐张进行：
+ * 以前在主线程解码、编码，没有数量和大小上限，调一次质量就把所有图片同步重算一遍。
+ */
+interface CompressJob {
   id: string
   file: File
+  /** 输出文件名的主干（不含 _compressed 与扩展名），在队列内唯一 */
+  base: string
   originalUrl: string
-  compressedUrl: string | null
-  originalSize: number
-  compressedSize: number | null
-  isProcessing: boolean
-  error: string | null
-  quality: number
-  format: string
-  width: number
-  height: number
+  status: "ready" | "running" | "done" | "error"
+  /** 重算期间保留上一次的结果做预览，出结果或出错时再替换 */
+  output: File | null
+  outputUrl: string | null
+  width: number | null
+  height: number | null
   newWidth: number | null
   newHeight: number | null
+  error: string | null
+  /** 当前结果用的质量 */
+  quality: number
 }
 
-// 内部错误代码到翻译键的映射
-const COMPRESS_ERROR_KEYS: Record<string, string> = {
-  CANVAS_UNAVAILABLE: "errorCanvasUnavailable",
-  COMPRESS_FAILED: "errorCompressFailed",
-  LOAD_FAILED: "errorLoadFailed",
-}
+const ACCEPT = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+const MAX_SIDE = 32768
 
 export default function ImageCompressPage() {
   const { toast } = useToast()
   const t = useTranslations("imageCompress")
+  const bt = useTranslations("imageBatch")
+  const ot = useTranslations("ocrTools")
 
   // 状态管理
-  const [images, setImages] = useState<CompressedImage[]>([])
+  const [images, setImages] = useState<CompressJob[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [progress, setProgress] = useState<{ current: number; total: number; name: string } | null>(null)
+  const [zipping, setZipping] = useState(false)
 
   // 压缩设置
   const [quality, setQuality] = useToolPref("image-compress", "quality", 80, (value) => Number.isInteger(value) && value >= 1 && value <= 100)
   const [outputFormat, setOutputFormat] = useToolPref<string>("image-compress", "outputFormat", "original", (value) => ["original", "jpeg", "webp", "png"].includes(value))
   const [maxWidth, setMaxWidth] = useToolPref<string>("image-compress", "maxWidth", "", (value) => /^\d{0,5}$/.test(value))
   const [maxHeight, setMaxHeight] = useToolPref<string>("image-compress", "maxHeight", "", (value) => /^\d{0,5}$/.test(value))
-  
+
   // 图片预览弹窗
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [previewTitle, setPreviewTitle] = useState<string>("")
 
-  const imagesRef = useRef<CompressedImage[]>([])
-  const mountedRef = useRef(true)
+  const imagesRef = useRef<CompressJob[]>([])
+  const selectedRef = useRef<string | null>(null)
+  const active = useRef<AbortController | null>(null)
+  const version = useRef(0)
   const objectUrls = useObjectUrlRegistry()
-  const releaseImageUrls = useCallback((image: CompressedImage) => {
-    objectUrls.revoke(image.originalUrl)
-    objectUrls.revoke(image.compressedUrl)
-  }, [objectUrls])
+  const running = progress !== null
 
-  useEffect(() => {
-    imagesRef.current = images
-  }, [images])
-
-  useEffect(() => {
-    mountedRef.current = true
-
-    return () => {
-      mountedRef.current = false
-    }
+  // 状态更新同时写进 ref，Worker 回调和对象 URL 的创建、释放只执行一次
+  const updateImages = useCallback((fn: (list: CompressJob[]) => CompressJob[]) => {
+    imagesRef.current = fn(imagesRef.current)
+    setImages(imagesRef.current)
   }, [])
 
-  // 支持的图片格式
-  const supportedFormats = ['image/jpeg', 'image/png', 'image/webp']
+  useEffect(() => { selectedRef.current = selectedImageId }, [selectedImageId])
+  useEffect(() => () => { version.current++; active.current?.abort() }, [])
+
+  const options = useMemo<ImageBatchOptions>(() => ({
+    ...DEFAULT_BATCH_OPTIONS,
+    mode: "images",
+    format: outputFormat === "original" ? "auto" : outputFormat as ImageBatchOptions["format"],
+    quality: Math.min(100, Math.max(10, quality)),
+    maxWidth: Math.min(MAX_SIDE, Number(maxWidth) || 0),
+    maxHeight: Math.min(MAX_SIDE, Number(maxHeight) || 0),
+  }), [quality, outputFormat, maxWidth, maxHeight])
 
   // 格式化文件大小
   const formatFileSize = (bytes: number): string => {
@@ -114,376 +119,229 @@ export default function ImageCompressPage() {
     }
   }
 
-  // 将内部错误代码转换为可读文案
-  const describeError = (code: string): string => {
-    const key = COMPRESS_ERROR_KEYS[code]
-    return key ? t(key) : code
-  }
+  // 批处理管线的错误码（batch:… / ocr:…）转成可读文案
+  const describeError = useCallback((code: string): string => {
+    const [scope, key] = code.split(":")
+    return scope === "ocr" ? ot(`error_${key}`) : bt(`error_${key || "convert"}`)
+  }, [bt, ot])
 
-  // 压缩单个图片
-  const compressImage = useCallback(async (
-    file: File,
-    quality: number,
-    format: string,
-    maxW?: number,
-    maxH?: number
-  ): Promise<{ blob: Blob; width: number; height: number; actualFormat: string }> => {
-    return withObjectUrl(file, (sourceUrl) => new Promise((resolve, reject) => {
-      const img = new Image()
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          let width = img.width
-          let height = img.height
+  // 结果的实际格式（浏览器编不了 WebP 时“自动”会退回 PNG），以输出文件为准
+  const formatName = (file: File | null) => (file ? extensionForMime(file.type, "img") : "-")
 
-          // 调整尺寸
-          if (maxW && width > maxW) {
-            height = Math.round(height * (maxW / width))
-            width = maxW
-          }
-          if (maxH && height > maxH) {
-            width = Math.round(width * (maxH / height))
-            height = maxH
-          }
+  /**
+   * 压缩指定的图片。新一轮开始就取消上一轮：拖动滑块时只算最后的参数；
+   * 上一轮还没轮到的图片一起并进来，当前选中的排在最前，预览最先更新。
+   */
+  const runJobs = useCallback(async (ids: string[], settings: ImageBatchOptions) => {
+    // 要被这一轮取代的上一轮里还没算完的图片；没有在算的就是用户取消过的，“继续压缩”时 ids 为空，照样都带上
+    const pending = active.current || ids.length === 0
+      ? imagesRef.current.filter((image) => image.status === "ready" || image.status === "running").map((image) => image.id)
+      : []
+    const target = new Set([...ids, ...pending])
+    const list: BatchImageJob[] = imagesRef.current
+      .filter((image) => target.has(image.id))
+      .sort((a, b) => Number(b.id === selectedRef.current) - Number(a.id === selectedRef.current))
+      .map(({ id, file, base }) => ({ id, file, base: `${base}_compressed`, status: "ready" }))
+    if (list.length === 0) return
 
-          canvas.width = width
-          canvas.height = height
+    active.current?.abort()
+    const ticket = ++version.current
+    const controller = new AbortController()
+    active.current = controller
+    const kept = imagesRef.current.filter((image) => !target.has(image.id)).reduce((sum, image) => sum + (image.output?.size ?? 0), 0)
+    updateImages((list) => list.map((image) => (target.has(image.id) ? { ...image, status: "ready", error: null } : image)))
+    setProgress({ current: 0, total: list.length, name: "" })
 
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            reject(new Error('CANVAS_UNAVAILABLE'))
-            return
-          }
-
-          // 确定输出格式
-          let mimeType = file.type
-          if (format !== 'original') {
-            mimeType = `image/${format}`
-          }
-
-          // PNG 格式不支持质量压缩，自动转为 WebP 以获得更好的压缩
-          if (mimeType === 'image/png' && format === 'original') {
-            mimeType = 'image/webp'
-          }
-
-          // 提取实际格式名称
-          const actualFormat = mimeType.split('/')[1]
-
-          // 如果输出为 JPEG，需要填充白色背景
-          if (mimeType === 'image/jpeg') {
-            ctx.fillStyle = '#FFFFFF'
-            ctx.fillRect(0, 0, width, height)
-          }
-
-          ctx.drawImage(img, 0, 0, width, height)
-
-          // 对于 PNG 格式，quality 参数无效
-          // 对于 WebP/JPEG，使用用户设置的质量（注意：100% 可能导致文件变大）
-          const outputQuality = mimeType === 'image/png' ? undefined : quality / 100
-
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                // 浏览器不支持所选编码时会退回 PNG；扩展名和格式标签以实际结果为准
-                resolve({ blob, width, height, actualFormat: extensionForMime(blob.type || mimeType, actualFormat) })
-              } else {
-                reject(new Error('COMPRESS_FAILED'))
+    try {
+      await runImageBatch(list, settings, {
+        signal: controller.signal,
+        onProgress: (value) => { if (ticket === version.current) setProgress(value) },
+        onUpdate: (jobId, update) => {
+          if (ticket !== version.current) return
+          updateImages((all) => all.map((image) => {
+            if (image.id !== jobId) return image
+            if (update.status === "done" && update.result) {
+              objectUrls.revoke(image.outputUrl)
+              const output = update.result.files[0]
+              return {
+                ...image,
+                status: "done",
+                error: null,
+                output,
+                outputUrl: objectUrls.create(output),
+                width: update.result.sourceWidth ?? image.width,
+                height: update.result.sourceHeight ?? image.height,
+                newWidth: update.result.width,
+                newHeight: update.result.height,
+                quality: settings.quality,
               }
-            },
-            mimeType,
-            outputQuality
-          )
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error('COMPRESS_FAILED'))
-        }
-      }
-      img.onerror = () => reject(new Error('LOAD_FAILED'))
-      img.src = sourceUrl
-    }))
-  }, [])
-
-  // 处理单个文件
-  const processFile = useCallback(async (file: File): Promise<CompressedImage> => {
-    const imageId = createClientId("compress")
-    const originalUrl = objectUrls.create(file)
-
-    // 获取原始图片尺寸
-    const img = new Image()
-    const imageLoaded = await new Promise<boolean>((resolve) => {
-      img.onload = () => resolve(true)
-      img.onerror = () => resolve(false)
-      img.src = originalUrl
-    })
-
-    const processedImage: CompressedImage = {
-      id: imageId,
-      file,
-      originalUrl,
-      compressedUrl: null,
-      originalSize: file.size,
-      compressedSize: null,
-      isProcessing: true,
-      error: null,
-      quality,
-      format: outputFormat,
-      width: img.width,
-      height: img.height,
-      newWidth: null,
-      newHeight: null,
-    }
-
-    if (!imageLoaded) {
-      processedImage.error = 'LOAD_FAILED'
-      processedImage.isProcessing = false
-      return processedImage
-    }
-
-    try {
-      const maxW = maxWidth ? parseInt(maxWidth) : undefined
-      const maxH = maxHeight ? parseInt(maxHeight) : undefined
-      
-      const { blob, width, height, actualFormat } = await compressImage(file, quality, outputFormat, maxW, maxH)
-      if (!mountedRef.current) {
-        processedImage.isProcessing = false
-        return processedImage
-      }
-      
-      processedImage.compressedUrl = objectUrls.create(blob)
-      processedImage.compressedSize = blob.size
-      processedImage.newWidth = width
-      processedImage.newHeight = height
-      processedImage.format = actualFormat // 使用实际输出格式
-      processedImage.isProcessing = false
-      
-      return processedImage
+            }
+            if (update.status === "error") {
+              objectUrls.revoke(image.outputUrl)
+              return { ...image, status: "error", error: update.error ?? "batch:convert", output: null, outputUrl: null, newWidth: null, newHeight: null }
+            }
+            return { ...image, status: update.status ?? image.status }
+          }))
+        },
+      }, undefined, kept)
     } catch (error) {
-      processedImage.error = error instanceof Error ? error.message : 'COMPRESS_FAILED'
-      processedImage.isProcessing = false
-      return processedImage
-    }
-  }, [quality, outputFormat, maxWidth, maxHeight, compressImage, objectUrls])
-
-  // 选择、拖放、粘贴都走这里；不支持的格式跳过并提示（拖放以前会静默丢掉）
-  const addFiles = async (files: File[]) => {
-    if (files.length === 0) return
-
-    setIsProcessing(true)
-
-    try {
-      const validFiles = files.filter(file => supportedFormats.includes(file.type))
-
-      if (validFiles.length === 0) {
-        toast({
-          title: t("unsupportedFormatTitle"),
-          description: t("unsupportedFormatDescription"),
-          variant: "destructive"
-        })
-        return
+      if (ticket === version.current && !controller.signal.aborted) {
+        toast({ title: t("compressFailedTitle"), description: describeError(batchErrorCode(error)), variant: "destructive" })
       }
-
-      if (validFiles.length !== files.length) {
-        toast({
-          title: t("filesSkippedTitle"),
-          description: t("filesSkippedDescription").replace("{count}", String(files.length - validFiles.length)),
-        })
-      }
-
-      const processedImages = await mapWithConcurrency(validFiles, 3, processFile)
-
-      if (!mountedRef.current) {
-        return
-      }
-
-      setImages(prev => [...prev, ...processedImages])
-      
-      if (processedImages.length > 0) {
-        setSelectedImageId(processedImages[0].id)
-      }
-
-      const successCount = processedImages.filter(img => !img.error).length
-      toast({
-        title: t("processedTitle"),
-        description: t("processedDescription").replace("{count}", String(successCount)),
-      })
     } finally {
-      if (mountedRef.current) {
-        setIsProcessing(false)
+      if (ticket === version.current) {
+        active.current = null
+        setProgress(null)
       }
     }
+  }, [describeError, objectUrls, t, toast, updateImages])
+
+  // 取消：没算完的图片清掉旧参数的结果，标成待处理，点“继续压缩”再算
+  const cancel = () => {
+    version.current++
+    active.current?.abort()
+    active.current = null
+    setProgress(null)
+    updateImages((list) => list.map((image) => {
+      if (image.status !== "ready" && image.status !== "running") return image
+      objectUrls.revoke(image.outputUrl)
+      return { ...image, status: "ready", output: null, outputUrl: null, newWidth: null, newHeight: null }
+    }))
+    toast({ title: bt("cancelled") })
   }
 
-  usePasteFiles((files) => void addFiles(files), !isProcessing)
-  // 其它工具“在工具中打开”发来的图片
-  useIncomingInput((transfer) => { if (transfer.value instanceof File) void addFiles([transfer.value]) })
-
-  // 重新压缩选中的图片
-  const recompressImage = async (imageId: string) => {
-    const image = images.find(img => img.id === imageId)
-    if (!image) return
-
-    setImages(prev => prev.map(img => 
-      img.id === imageId ? { ...img, isProcessing: true, error: null } : img
-    ))
-
-    try {
-      const maxW = maxWidth ? parseInt(maxWidth) : undefined
-      const maxH = maxHeight ? parseInt(maxHeight) : undefined
-      
-      const { blob, width, height, actualFormat } = await compressImage(image.file, quality, outputFormat, maxW, maxH)
-      if (!mountedRef.current) return
-      
-      setImages(prev => prev.map(img => {
-        if (img.id !== imageId) return img
-
-        objectUrls.revoke(img.compressedUrl)
-        return {
-          ...img,
-          compressedUrl: objectUrls.create(blob),
-          compressedSize: blob.size,
-          newWidth: width,
-          newHeight: height,
-          quality,
-          format: actualFormat,
-          isProcessing: false,
-        }
-      }))
-
+  // 选择、拖放、粘贴都走这里；不支持的格式与超出上限的文件跳过并提示
+  const addFiles = (files: File[]) => {
+    if (files.length === 0) return
+    const validFiles = files.filter((file) => matchesAccept(file, ACCEPT))
+    if (validFiles.length === 0) {
       toast({
-        title: t("recompressedTitle"),
-        description: t("recompressedDescription").replace("{size}", formatFileSize(blob.size)),
+        title: t("unsupportedFormatTitle"),
+        description: t("unsupportedFormatDescription"),
+        variant: "destructive"
       })
-    } catch (error) {
-      setImages(prev => prev.map(img => 
-        img.id === imageId ? {
-          ...img,
-          error: error instanceof Error ? error.message : 'COMPRESS_FAILED',
-          isProcessing: false,
-        } : img
-      ))
+      return
     }
+
+    const used = new Set(imagesRef.current.map((image) => image.base.toLowerCase()))
+    let total = imagesRef.current.reduce((sum, image) => sum + image.file.size, 0)
+    let overLimit = 0
+    const next: CompressJob[] = []
+    for (const file of validFiles) {
+      if (imagesRef.current.length + next.length >= IMAGE_BATCH_LIMITS.files || total + file.size > IMAGE_BATCH_LIMITS.inputBytes || !file.size || file.size > OCR_LIMITS.fileBytes) {
+        overLimit += 1
+        continue
+      }
+      total += file.size
+      next.push({
+        id: createClientId("compress"),
+        file,
+        base: uniqueImageBase(file.name, used),
+        originalUrl: objectUrls.create(file),
+        status: "ready",
+        output: null,
+        outputUrl: null,
+        width: null,
+        height: null,
+        newWidth: null,
+        newHeight: null,
+        error: null,
+        quality: options.quality,
+      })
+    }
+
+    const skipped = [
+      validFiles.length !== files.length ? t("filesSkippedDescription").replace("{count}", String(files.length - validFiles.length)) : "",
+      overLimit ? bt("skipped") : "",
+    ].filter(Boolean)
+    if (skipped.length) toast({ title: t("filesSkippedTitle"), description: skipped.join(" ") })
+    if (next.length === 0) return
+
+    updateImages((list) => [...list, ...next])
+    setSelectedImageId(next[0].id)
+    selectedRef.current = next[0].id
+    void runJobs(next.map((image) => image.id), options)
   }
+
+  usePasteFiles(addFiles, !zipping)
+  // 其它工具“在工具中打开”发来的图片
+  useIncomingInput((transfer) => { if (transfer.value instanceof File) addFiles([transfer.value]) })
+
+  // 设置变化时重新压缩全部图片；防抖之外，新一轮会取消还在算的上一轮。
+  // 只跟着 options 走：runJobs 换了引用不能把排好的这次重算清掉
+  const runJobsRef = useRef(runJobs)
+  useEffect(() => { runJobsRef.current = runJobs }, [runJobs])
+  const appliedOptions = useRef(options)
+  useEffect(() => {
+    if (appliedOptions.current === options) return
+    appliedOptions.current = options
+    if (imagesRef.current.length === 0) return
+    const timer = window.setTimeout(() => void runJobsRef.current(imagesRef.current.map((image) => image.id), options), 300)
+    return () => window.clearTimeout(timer)
+  }, [options])
 
   // 下载压缩后的图片
-  const downloadImage = (image: CompressedImage) => {
-    if (!image.compressedUrl) return
-
-    // 使用实际输出格式作为扩展名
-    const ext = image.format || 'jpg'
-    const baseName = image.file.name.replace(/\.[^/.]+$/, '')
-    triggerDownload(image.compressedUrl, `${baseName}_compressed.${ext}`)
+  const downloadImage = (image: CompressJob) => {
+    if (!image.output || !image.outputUrl) return
+    triggerDownload(image.outputUrl, image.output.name)
   }
 
-  // 下载所有压缩后的图片
-  const downloadAll = () => {
-    const compressedImages = images.filter(img => img.compressedUrl && !img.error)
-    compressedImages.forEach(img => downloadImage(img))
-    
-    toast({
-      title: t("downloadedTitle"),
-      description: t("downloadedDescription").replace("{count}", String(compressedImages.length)),
-    })
+  // 全部打成一个 ZIP：以前是逐张触发下载，浏览器常会拦下后面的
+  const downloadAll = async () => {
+    const done = imagesRef.current.filter((image) => image.status === "done" && image.output)
+    if (done.length === 0 || zipping) return
+    setZipping(true)
+    try {
+      const jobs: BatchImageJob[] = done.map((image) => ({
+        id: image.id,
+        file: image.file,
+        base: image.base,
+        status: "done",
+        result: { files: [image.output!], width: image.newWidth ?? 0, height: image.newHeight ?? 0, animated: false },
+      }))
+      downloadBlob(await imageBatchZip(jobs, options), "compressed-images.zip")
+    } catch (error) {
+      toast({ title: t("compressFailedTitle"), description: describeError(batchErrorCode(error)), variant: "destructive" })
+    } finally {
+      setZipping(false)
+    }
   }
 
   // 删除图片
   const removeImage = (id: string) => {
-    setImages(prev => {
-      const image = prev.find(img => img.id === id)
-      if (image) {
-        releaseImageUrls(image)
-        if (
-          previewImage === image.originalUrl ||
-          previewImage === image.compressedUrl
-        ) {
-          setPreviewImage(null)
-        }
-      }
-      
-      const filtered = prev.filter(img => img.id !== id)
-      if (selectedImageId === id && filtered.length > 0) {
-        setSelectedImageId(filtered[0].id)
-      } else if (filtered.length === 0) {
-        setSelectedImageId(null)
-      }
-      return filtered
-    })
+    const image = imagesRef.current.find((item) => item.id === id)
+    if (!image) return
+    objectUrls.revoke(image.originalUrl)
+    objectUrls.revoke(image.outputUrl)
+    if (previewImage === image.originalUrl || previewImage === image.outputUrl) setPreviewImage(null)
+    updateImages((list) => list.filter((item) => item.id !== id))
+    if (selectedImageId === id) setSelectedImageId(imagesRef.current[0]?.id ?? null)
   }
 
   // 清空所有图片
   const clearAllImages = () => {
-    images.forEach(releaseImageUrls)
-    setImages([])
+    version.current++
+    active.current?.abort()
+    active.current = null
+    setProgress(null)
+    imagesRef.current.forEach((image) => {
+      objectUrls.revoke(image.originalUrl)
+      objectUrls.revoke(image.outputUrl)
+    })
+    updateImages(() => [])
     setSelectedImageId(null)
     setPreviewImage(null)
   }
 
-  // 当压缩设置变化时，自动重新压缩所有图片
-  useEffect(() => {
-    const currentImages = [...imagesRef.current]
-    if (currentImages.length === 0) return
-
-    let cancelled = false
-    
-    const recompressAll = async () => {
-      const maxW = maxWidth ? parseInt(maxWidth) : undefined
-      const maxH = maxHeight ? parseInt(maxHeight) : undefined
-
-      // 标记所有图片为处理中
-      const imageIds = new Set(currentImages.map((image) => image.id))
-      setImages(prev => prev.map(img => (
-        imageIds.has(img.id) ? { ...img, isProcessing: true } : img
-      )))
-      
-      // 逐个重新压缩
-      for (const image of currentImages) {
-        try {
-          const { blob, width, height, actualFormat } = await compressImage(image.file, quality, outputFormat, maxW, maxH)
-          if (cancelled) return
-          
-          setImages(prev => prev.map(img => {
-            if (img.id === image.id) {
-              // 释放旧的压缩URL
-              objectUrls.revoke(img.compressedUrl)
-              return {
-                ...img,
-                compressedUrl: objectUrls.create(blob),
-                compressedSize: blob.size,
-                newWidth: width,
-                newHeight: height,
-                quality,
-                format: actualFormat,
-                isProcessing: false,
-                error: null,
-              }
-            }
-            return img
-          }))
-        } catch (error) {
-          if (cancelled) return
-          setImages(prev => prev.map(img => 
-            img.id === image.id ? {
-              ...img,
-              error: error instanceof Error ? error.message : 'COMPRESS_FAILED',
-              isProcessing: false,
-            } : img
-          ))
-        }
-      }
-    }
-    
-    // 使用防抖，避免频繁重新压缩
-    const timeoutId = setTimeout(recompressAll, 300)
-    return () => {
-      cancelled = true
-      clearTimeout(timeoutId)
-    }
-  }, [quality, outputFormat, maxWidth, maxHeight, compressImage, objectUrls])
-
   // 选中的图片
   const selectedImage = images.find(img => img.id === selectedImageId)
+  const readyCount = images.filter((image) => image.status === "ready").length
+  const doneCount = images.filter((image) => image.status === "done").length
+  const isPending = (image: CompressJob) => image.status === "running" || (running && image.status === "ready")
 
   // 计算总体统计
-  const totalOriginalSize = images.reduce((sum, img) => sum + img.originalSize, 0)
-  const totalCompressedSize = images.reduce((sum, img) => sum + (img.compressedSize || 0), 0)
+  const totalOriginalSize = images.reduce((sum, img) => sum + img.file.size, 0)
+  const totalCompressedSize = images.reduce((sum, img) => sum + (img.output?.size || 0), 0)
 
   return (
     <div className="container mx-auto py-6 px-4 max-w-7xl">
@@ -511,21 +369,34 @@ export default function ImageCompressPage() {
             <CardContent>
               {/* 以前是只能用鼠标点的 div，键盘无法选择文件 */}
               <FileDropZone
-                onFiles={(files) => void addFiles(files)}
-                accept="image/jpeg,image/png,image/webp"
+                onFiles={addFiles}
+                accept={ACCEPT}
                 multiple
-                disabled={isProcessing}
+                disabled={zipping}
                 icon={<ImageIcon className="mx-auto mb-3 h-8 w-8 text-[var(--md-sys-color-on-surface-variant)]" aria-hidden="true" />}
                 title={t("dropHint")}
                 hint={t("supportedFormats")}
-              >
-                {isProcessing ? () => (
-                  <div role="status" className="space-y-3 rounded-[inherit] border-2 border-dashed border-[var(--md-sys-color-outline-variant)] p-6 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--md-sys-color-primary)] mx-auto"></div>
-                    <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">{t("compressing")}</div>
+              />
+              <p className="mt-2 text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">{bt("limits")}</p>
+
+              {progress && (
+                <div role="status" className="mt-4 space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 break-all">
+                      {bt("phase_run")}{progress.name ? ` · ${progress.current} / ${progress.total} · ${progress.name}` : ""}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={cancel}>{bt("cancel")}</Button>
                   </div>
-                ) : undefined}
-              </FileDropZone>
+                  <progress aria-label={bt("progress")} className="h-2 w-full accent-[var(--md-sys-color-primary)]" max={progress.total} value={Math.max(0, progress.current - 1)} />
+                </div>
+              )}
+              {!running && readyCount > 0 && (
+                <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => void runJobs([], options)}>
+                  <Zap className="h-4 w-4 mr-1" />
+                  {t("resume").replace("{count}", String(readyCount))}
+                </Button>
+              )}
 
               {images.length > 0 && (
                 <div className="mt-4 flex justify-between items-center">
@@ -598,7 +469,10 @@ export default function ImageCompressPage() {
                   <div>
                     <Input
                       type="number"
+                      min={1}
+                      max={MAX_SIDE}
                       placeholder={t("maxWidth")}
+                      aria-label={t("maxWidth")}
                       value={maxWidth}
                       onChange={(e) => setMaxWidth(e.target.value)}
                     />
@@ -606,7 +480,10 @@ export default function ImageCompressPage() {
                   <div>
                     <Input
                       type="number"
+                      min={1}
+                      max={MAX_SIDE}
                       placeholder={t("maxHeight")}
+                      aria-label={t("maxHeight")}
                       value={maxHeight}
                       onChange={(e) => setMaxHeight(e.target.value)}
                     />
@@ -620,12 +497,12 @@ export default function ImageCompressPage() {
               {/* 批量操作按钮 */}
               {images.length > 0 && (
                 <div className="space-y-2 pt-4 border-t border-[var(--md-sys-color-outline-variant)]">
-                  <Button 
+                  <Button
                     className="w-full"
-                    onClick={downloadAll}
-                    disabled={!images.some(img => img.compressedUrl)}
+                    onClick={() => void downloadAll()}
+                    disabled={doneCount === 0 || zipping}
                   >
-                    <Download className="h-4 w-4 mr-2" />
+                    {zipping ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileArchive className="h-4 w-4 mr-2" />}
                     {t("downloadAll")}
                   </Button>
                 </div>
@@ -683,11 +560,11 @@ export default function ImageCompressPage() {
               {/* 图片列表 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {images.map((image) => (
-                  <Card 
-                    key={image.id} 
+                  <Card
+                    key={image.id}
                     className={`card-elevated cursor-pointer transition-all ${
-                      selectedImageId === image.id 
-                        ? 'ring-2 ring-[var(--md-sys-color-primary)]' 
+                      selectedImageId === image.id
+                        ? 'ring-2 ring-[var(--md-sys-color-primary)]'
                         : 'hover:shadow-lg'
                     }`}
                     onClick={() => setSelectedImageId(image.id)}
@@ -696,11 +573,11 @@ export default function ImageCompressPage() {
                       {/* 图片预览 */}
                       <div className="relative aspect-video rounded-[var(--md-sys-shape-corner-medium)] overflow-hidden bg-[var(--md-sys-color-surface-variant)] mb-3">
                         <img
-                          src={image.compressedUrl || image.originalUrl}
+                          src={image.outputUrl || image.originalUrl}
                           alt={image.file.name}
                           className="w-full h-full object-contain"
                         />
-                        {image.isProcessing && (
+                        {isPending(image) && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                           </div>
@@ -708,6 +585,7 @@ export default function ImageCompressPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`${bt("remove")} ${image.file.name}`}
                           className="absolute top-2 right-2 h-8 w-8 p-0 bg-black/50 hover:bg-black/70 text-white"
                           onClick={(e) => {
                             e.stopPropagation()
@@ -723,24 +601,27 @@ export default function ImageCompressPage() {
                         <p className="font-medium text-sm truncate text-[var(--md-sys-color-on-surface)]">
                           {image.file.name}
                         </p>
-                        
+
                         <div className="flex items-center gap-2 text-xs">
                           <span className="text-[var(--md-sys-color-on-surface-variant)]">
-                            {formatFileSize(image.originalSize)}
+                            {formatFileSize(image.file.size)}
                           </span>
-                          {image.compressedSize && (
+                          {image.output && (
                             <>
                               <span className="text-[var(--md-sys-color-on-surface-variant)]">→</span>
-                              <span className={`font-medium ${image.compressedSize <= image.originalSize ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-error)]'}`}>
-                                {formatFileSize(image.compressedSize)}
+                              <span className={`font-medium ${image.output.size <= image.file.size ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-error)]'}`}>
+                                {formatFileSize(image.output.size)}
                               </span>
-                              <Badge 
-                                variant="secondary" 
-                                className={`text-xs ${image.compressedSize > image.originalSize ? 'bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]' : ''}`}
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs ${image.output.size > image.file.size ? 'bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]' : ''}`}
                               >
-                                {getCompressionRatio(image.originalSize, image.compressedSize)}
+                                {getCompressionRatio(image.file.size, image.output.size)}
                               </Badge>
                             </>
+                          )}
+                          {!image.output && image.status === "ready" && !running && (
+                            <span className="text-[var(--md-sys-color-on-surface-variant)]">{bt("status_ready")}</span>
                           )}
                         </div>
 
@@ -756,9 +637,9 @@ export default function ImageCompressPage() {
                             className="flex-1"
                             onClick={(e) => {
                               e.stopPropagation()
-                              recompressImage(image.id)
+                              void runJobs([image.id], options)
                             }}
-                            disabled={image.isProcessing}
+                            disabled={isPending(image)}
                           >
                             <Zap className="h-3 w-3 mr-1" />
                             {t("recompress")}
@@ -770,7 +651,7 @@ export default function ImageCompressPage() {
                               e.stopPropagation()
                               downloadImage(image)
                             }}
-                            disabled={!image.compressedUrl || image.isProcessing}
+                            disabled={!image.output || isPending(image)}
                           >
                             <Download className="h-3 w-3 mr-1" />
                             {t("download")}
@@ -819,16 +700,16 @@ export default function ImageCompressPage() {
                               </Button>
                             </div>
                             <p className="text-xs text-center text-[var(--md-sys-color-on-surface-variant)]">
-                              {formatFileSize(selectedImage.originalSize)}
+                              {formatFileSize(selectedImage.file.size)}
                             </p>
                           </div>
                           <div className="space-y-2">
                             <p className="text-xs text-center text-[var(--md-sys-color-on-surface-variant)]">{t("compressed")}</p>
                             <div className="relative aspect-square rounded-[var(--md-sys-shape-corner-medium)] overflow-hidden bg-[var(--md-sys-color-surface-variant)] group">
-                              {selectedImage.compressedUrl ? (
+                              {selectedImage.outputUrl ? (
                                 <>
                                   <img
-                                    src={selectedImage.compressedUrl}
+                                    src={selectedImage.outputUrl}
                                     alt={t("compressed")}
                                     className="w-full h-full object-contain"
                                   />
@@ -838,7 +719,7 @@ export default function ImageCompressPage() {
                                     aria-label={t("previewCompressedAria")}
                                     className="absolute right-2 top-2 h-8 w-8 p-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                                     onClick={() => {
-                                      setPreviewImage(selectedImage.compressedUrl)
+                                      setPreviewImage(selectedImage.outputUrl)
                                       setPreviewTitle(`${t("compressed")} - ${selectedImage.file.name}`)
                                     }}
                                   >
@@ -847,12 +728,14 @@ export default function ImageCompressPage() {
                                 </>
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">{t("processing")}</span>
+                                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                                    {selectedImage.status === "error" ? "-" : isPending(selectedImage) ? t("processing") : bt("status_ready")}
+                                  </span>
                                 </div>
                               )}
                             </div>
                             <p className="text-xs text-center text-[var(--md-sys-color-primary)]">
-                              {selectedImage.compressedSize ? formatFileSize(selectedImage.compressedSize) : '-'}
+                              {selectedImage.output ? formatFileSize(selectedImage.output.size) : '-'}
                             </p>
                           </div>
                         </div>
@@ -868,7 +751,7 @@ export default function ImageCompressPage() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("originalDimensions")}</span>
-                            <span className="text-[var(--md-sys-color-on-surface)]">{selectedImage.width} × {selectedImage.height}</span>
+                            <span className="text-[var(--md-sys-color-on-surface)]">{selectedImage.width && selectedImage.height ? `${selectedImage.width} × ${selectedImage.height}` : "-"}</span>
                           </div>
                           {selectedImage.newWidth && selectedImage.newHeight && (
                             <div className="flex justify-between">
@@ -878,20 +761,20 @@ export default function ImageCompressPage() {
                           )}
                           <div className="flex justify-between">
                             <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("originalSize")}</span>
-                            <span className="text-[var(--md-sys-color-on-surface)]">{formatFileSize(selectedImage.originalSize)}</span>
+                            <span className="text-[var(--md-sys-color-on-surface)]">{formatFileSize(selectedImage.file.size)}</span>
                           </div>
-                          {selectedImage.compressedSize && (
+                          {selectedImage.output && (
                             <>
                               <div className="flex justify-between">
                                 <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("compressedSize")}</span>
-                                <span className="text-[var(--md-sys-color-primary)]">{formatFileSize(selectedImage.compressedSize)}</span>
+                                <span className="text-[var(--md-sys-color-primary)]">{formatFileSize(selectedImage.output.size)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-[var(--md-sys-color-on-surface-variant)]">
-                                  {selectedImage.compressedSize <= selectedImage.originalSize ? t("savedSpace") : t("increasedSize")}
+                                  {selectedImage.output.size <= selectedImage.file.size ? t("savedSpace") : t("increasedSize")}
                                 </span>
-                                <span className={`font-medium ${selectedImage.compressedSize <= selectedImage.originalSize ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-error)]'}`}>
-                                  {getCompressionRatio(selectedImage.originalSize, selectedImage.compressedSize)}
+                                <span className={`font-medium ${selectedImage.output.size <= selectedImage.file.size ? 'text-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-error)]'}`}>
+                                  {getCompressionRatio(selectedImage.file.size, selectedImage.output.size)}
                                 </span>
                               </div>
                             </>
@@ -903,7 +786,7 @@ export default function ImageCompressPage() {
                           <div className="flex justify-between">
                             <span className="text-[var(--md-sys-color-on-surface-variant)]">{t("outputFormat")}</span>
                             <span className="text-[var(--md-sys-color-on-surface)] uppercase">
-                              {selectedImage.format}
+                              {formatName(selectedImage.output)}
                             </span>
                           </div>
                         </div>
