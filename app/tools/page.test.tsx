@@ -6,6 +6,8 @@ import { requestToolSearch } from "@/components/command-palette"
 
 const toast = vi.fn()
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
+// 设了 toolId 的那个工具渲染时直接抛错
+const crash = vi.hoisted(() => ({ toolId: "" }))
 // Every tool renders a stub that keeps its own state, so a remount would be visible
 vi.mock("./tool-components", async () => {
   const { useState } = await import("react")
@@ -18,8 +20,12 @@ vi.mock("./tool-components", async () => {
       <button type="button" onClick={() => workspace?.openTool("sql", { handoff: "transfer-test" })}>send to sql</button>
     </>
   }
+  function BrokenTool(): never {
+    throw new Error("tool exploded")
+  }
   const entry = { icon: () => null, load: StubTool }
-  return { TOOL_COMPONENTS: new Proxy({}, { get: () => entry }) }
+  const broken = { icon: () => null, load: BrokenTool }
+  return { TOOL_COMPONENTS: new Proxy({}, { get: (_target, id) => (id === crash.toolId ? broken : entry) }) }
 })
 
 vi.mock("next/navigation", () => ({
@@ -115,5 +121,53 @@ describe("workspace search and recent tools", () => {
 
     fireEvent.click(screen.getAllByRole("tab")[0])
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem("tool_recent_ids")!)[0]).toBe("json"))
+  })
+})
+
+describe("workspace tab mounting", () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    crash.toolId = ""
+  })
+
+  function restoreTabs(active: string) {
+    window.localStorage.setItem("tool_tabs_state", JSON.stringify([
+      { id: "tab-json", toolId: "json", params: {} },
+      { id: "tab-uuid", toolId: "uuid", params: {} },
+    ]))
+    window.localStorage.setItem("tool_active_tab", active)
+  }
+
+  it("mounts a restored tab only when it is first opened, and keeps it mounted afterwards", async () => {
+    restoreTabs("tab-uuid")
+    render(<ToolsPage />)
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2))
+    expect(screen.getAllByLabelText("stub tool input")).toHaveLength(1)
+
+    fireEvent.click(screen.getAllByRole("tab")[0])
+    await waitFor(() => expect(screen.getAllByLabelText("stub tool input")).toHaveLength(2))
+    fireEvent.click(screen.getAllByRole("tab")[1])
+    expect(screen.getAllByLabelText("stub tool input")).toHaveLength(2)
+  })
+
+  it("keeps the other tabs when one tool crashes and offers to close it", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      crash.toolId = "uuid"
+      restoreTabs("tab-json")
+      render(<ToolsPage />)
+      await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2))
+      fireEvent.click(screen.getAllByRole("tab")[1])
+
+      const alert = await screen.findByRole("alert")
+      expect(alert).toHaveTextContent("出错了")
+      expect(screen.getByRole("link", { name: "在独立页打开" })).toHaveAttribute("href", "/tools/uuid")
+      expect(screen.getAllByLabelText("stub tool input")).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole("button", { name: "关闭标签" }))
+      await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(1))
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })

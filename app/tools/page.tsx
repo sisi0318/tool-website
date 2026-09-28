@@ -76,6 +76,7 @@ import { useToolPreferences } from "@/hooks/use-tool-preferences"
 import { haveEqualToolParams, uniqueToolIds } from "@/lib/tool-workspace"
 import { TOOL_CATALOG, getToolEntry, type ToolCategoryId } from "@/lib/tools/catalog"
 import { TOOL_COMPONENTS } from "./tool-components"
+import { ToolErrorBoundary } from "@/components/tools/tool-error-boundary"
 import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 
 /** 交接句柄只用一次，不写进本地存储和地址栏 */
@@ -243,6 +244,11 @@ export default function ToolsPage() {
   const tabContentRef = useRef<HTMLDivElement>(null)
   // 刚关闭的标签：内容继续隐藏挂载，撤销提示过去后再卸载，撤销时输入和结果都还在
   const [closingTabs, setClosingTabs] = useState<ToolTabType[]>([])
+  // 标签第一次被激活时才挂载：恢复 N 个标签时不再同时下载、挂载 N 个工具
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<string>>(() => new Set())
+  useEffect(() => {
+    if (activeTab) setVisitedTabs((visited) => (visited.has(activeTab) ? visited : new Set(visited).add(activeTab)))
+  }, [activeTab])
   const closeTimersRef = useRef(new Map<string, number>())
   const showUndo = useUndoToast()
 
@@ -1378,7 +1384,15 @@ export default function ToolsPage() {
                 className={activeTab === tab.id ? "block" : "hidden"}
                 aria-hidden={activeTab !== tab.id}
               >
-                {tab.component}
+                {(activeTab === tab.id || visitedTabs.has(tab.id)) && (
+                  <ToolErrorBoundary
+                    toolTitle={toolDefinitions.find((tool) => tool.id === tab.toolId)?.title ?? tab.title}
+                    standaloneHref={`/tools/${tab.toolId}`}
+                    onClose={() => handleTabClose(tab.id)}
+                  >
+                    {tab.component}
+                  </ToolErrorBoundary>
+                )}
               </div>
             </ToolActivityProvider>
           ))}
