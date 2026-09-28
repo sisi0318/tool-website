@@ -7,7 +7,7 @@ import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/compone
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTranslations } from "@/hooks/use-translations"
-import { processSql, type SqlDialect, type SqlOperation } from "@/lib/sql-tools"
+import type { SqlDialect, SqlOperation } from "@/lib/sql-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE = "select u.id,u.name,count(o.id) as orders from users u left join orders o on o.user_id=u.id where u.active=true group by u.id,u.name order by orders desc;"
@@ -27,8 +27,10 @@ export default function SqlPage() {
   const [dialect, setDialect] = useState<SqlDialect>("sql")
   const [error, setError] = useState<string | WorkbenchError>("")
 
-  const run = () => {
+  // sql-formatter 较大，第一次运行时才加载，不进首屏
+  const run = async () => {
     try {
+      const { processSql } = await import("@/lib/sql-tools")
       setOutput(processSql(input, operation, { language: dialect, keywordCase: "upper", tabWidth: 2 }))
       setError("")
     } catch (cause) {

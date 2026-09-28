@@ -7,7 +7,7 @@ import { UtilityWorkbench, workbenchError, type WorkbenchError } from "@/compone
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useTranslations } from "@/hooks/use-translations"
-import { JsonSchemaInputError, processJsonSchema, type JsonSchemaOperation } from "@/lib/json-schema-tools"
+import type { JsonSchemaOperation } from "@/lib/json-schema-tools"
 import { useToolDraft } from "@/hooks/use-tool-draft"
 
 const SAMPLE_DATA = JSON.stringify({ id: 7, email: "dev@example.com", active: true, tags: ["tools", "local"] }, null, 2)
@@ -28,9 +28,12 @@ export default function JsonSchemaPage() {
   const [valid, setValid] = useState<boolean | null>(null)
   const [error, setError] = useState<string | WorkbenchError>("")
 
-  const run = () => {
+  // ajv 较大，第一次运行时才加载，不进首屏
+  const run = async () => {
+    let tools: typeof import("@/lib/json-schema-tools") | null = null
     try {
-      const result = processJsonSchema(input, operation, schema)
+      tools = await import("@/lib/json-schema-tools")
+      const result = tools.processJsonSchema(input, operation, schema)
       setValid(result.valid)
       setOutput(JSON.stringify(operation === "infer" ? result.schema : { valid: result.valid, errors: result.errors }, null, 2))
       setError("")
@@ -38,7 +41,7 @@ export default function JsonSchemaPage() {
       setOutput("")
       setValid(false)
       // schema 出错时定位到 schema 输入框，数据出错定位到主输入框
-      setError(workbenchError(t("failed"), cause, cause instanceof JsonSchemaInputError && cause.field === "schema" ? SCHEMA_FIELD_ID : undefined))
+      setError(workbenchError(t("failed"), cause, tools && cause instanceof tools.JsonSchemaInputError && cause.field === "schema" ? SCHEMA_FIELD_ID : undefined))
     }
   }
 

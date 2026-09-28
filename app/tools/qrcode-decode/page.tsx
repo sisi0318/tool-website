@@ -26,7 +26,6 @@ import {
   Wifi,
   X,
 } from "lucide-react"
-import jsQR from "jsqr"
 
 import { useI18n } from "@/components/i18n-provider"
 import { JsonTreeView } from "@/components/json-tree-view"
@@ -223,6 +222,8 @@ export default function QRCodeDecoder() {
   }, [isToolActive])
 
   const decodeImageFile = useCallback(async (file: File, runId: number): Promise<QRResult | null> => {
+    // jsQR 第一次识别时才加载，不进首屏
+    const { default: jsQR } = await import("jsqr")
     return withObjectUrl(file, async (url) => {
       const image = await loadImage(url, t("imageLoadError"))
       const strategies = [
