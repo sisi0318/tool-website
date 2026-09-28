@@ -2,6 +2,9 @@ import { encodeSingleFrameGif } from "./gif-encoder"
 
 export type ImageOutputFormat = "jpeg" | "png" | "webp" | "avif" | "gif"
 
+/** Worker 里画不了图（没有 OffscreenCanvas，部分较旧的 Safari）时的错误码，页面据此退回主线程转换 */
+export const WORKER_CANVAS_UNAVAILABLE = "WORKER_CANVAS_UNAVAILABLE"
+
 export interface ImageConvertOptions {
   format: ImageOutputFormat
   quality: number

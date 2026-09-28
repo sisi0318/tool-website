@@ -2,7 +2,8 @@ import { ImageDown } from "lucide-react"
 
 import { registerNode } from "../canvas/registry"
 import { asFile } from "../canvas/persist"
-import { convertImageFile, type ImageOutputFormat } from "../image-convert"
+import type { ImageOutputFormat } from "../image-convert"
+import { convertImageInWorker } from "../image-convert-client"
 import type { ToolAdapter } from "./types"
 import { MISSING_FILE_ERROR } from "../canvas/node-errors"
 
@@ -36,16 +37,17 @@ export const imageConvertAdapter: ToolAdapter = {
     { id: "file", name: "File", dataType: "bytes" },
     { id: "info", name: "Info", dataType: "json" },
   ],
-  async execute(inputs, config) {
+  async execute(inputs, config, context) {
     const file = asFile(inputs.file ?? config.file)
     if (!file) throw new Error(MISSING_FILE_ERROR)
 
-    const result = await convertImageFile(file, {
+    // 在 Worker 里转换，大图不再卡住画布
+    const result = await convertImageInWorker(file, {
       format: String(inputs.format ?? config.format ?? "webp") as ImageOutputFormat,
       quality: Number(inputs.quality ?? config.quality ?? 82) / 100,
       maxWidth: Number(inputs.maxWidth ?? config.maxWidth) || undefined,
       maxHeight: Number(inputs.maxHeight ?? config.maxHeight) || undefined,
-    })
+    }, { signal: context?.signal })
     return {
       file: result.file,
       info: {

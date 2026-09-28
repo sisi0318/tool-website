@@ -14,7 +14,8 @@ import { Slider } from "@/components/ui/slider"
 import { useTranslations } from "@/hooks/use-translations"
 import { zhImageConvert } from "@/lib/translations/zh-namespaces/imageConvert"
 import { usePasteFiles } from "@/hooks/use-paste-files"
-import { convertImageFile, type ImageOutputFormat } from "@/lib/image-convert"
+import type { ImageOutputFormat } from "@/lib/image-convert"
+import { convertImageInWorker } from "@/lib/image-convert-client"
 import { mapWithConcurrency } from "@/lib/async-pool"
 import { createClientId } from "@/lib/client-id"
 import {
@@ -54,6 +55,8 @@ export default function ImageConvertPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const itemsRef = useRef<ImageItem[]>([])
   const mountedRef = useRef(true)
+  // 离开页面时终止还在转换的 Worker
+  const abortRef = useRef<AbortController | null>(null)
   const [items, setItems] = useState<ImageItem[]>([])
   const [format, setFormat] = useState<ImageOutputFormat>("webp")
   const [quality, setQuality] = useState(82)
@@ -65,9 +68,11 @@ export default function ImageConvertPage() {
 
   useEffect(() => {
     mountedRef.current = true
+    abortRef.current = new AbortController()
 
     return () => {
       mountedRef.current = false
+      abortRef.current?.abort()
       itemsRef.current.forEach(releaseImageItem)
     }
   }, [])
@@ -131,12 +136,13 @@ export default function ImageConvertPage() {
         )))
 
         try {
-          const converted = await convertImageFile(item.source, {
+          // 在 Worker 里转换：大图的解码、缩放，尤其是 GIF 编码，不再卡住页面
+          const converted = await convertImageInWorker(item.source, {
             format,
             quality: quality / 100,
             maxWidth: Number(maxWidth) || undefined,
             maxHeight: Number(maxHeight) || undefined,
-          })
+          }, { signal: abortRef.current?.signal })
           if (!mountedRef.current) return
 
           updateItems((current) => current.map((entry) => {

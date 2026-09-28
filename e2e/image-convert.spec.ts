@@ -22,7 +22,10 @@ test("image converter creates a browser-decodable single-frame GIF", async ({ pa
   await page.locator('button[role="combobox"]').first().click()
   await page.getByRole("option", { name: "GIF（单帧）", exact: true }).click()
   await expect(page.getByText("输出为静态单帧 GIF", { exact: false })).toBeVisible()
+  // GIF 编码是纯 JavaScript，要在 Worker 里跑，不能占着主线程
+  const worker = page.waitForEvent("worker")
   await page.getByRole("button", { name: "转换全部图片" }).click()
+  await worker
 
   await expect(page.getByText("single-frame-source.gif", { exact: true })).toBeVisible()
   await expect.poll(() => preview.getAttribute("src")).not.toBe(sourceUrl)
