@@ -28,6 +28,7 @@ vi.mock("@/lib/canvas/registry", () => ({ getAllNodes, getNodeDefinition }))
 vi.mock("@/lib/canvas/store", () => ({
   useCanvasStore: (selector: (state: typeof storeState) => unknown) =>
     selector(storeState),
+  hasUnsavedCanvasChanges: () => false,
 }))
 
 vi.mock("@/hooks/use-translations", () => ({

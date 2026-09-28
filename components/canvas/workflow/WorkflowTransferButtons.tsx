@@ -4,7 +4,8 @@ import { useRef, useState } from "react"
 import { Download, Upload } from "lucide-react"
 
 import { useTranslations } from "@/hooks/use-translations"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { hasUnsavedCanvasChanges, useCanvasStore } from "@/lib/canvas/store"
+import { ConfirmDialog } from "./ConfirmDialog"
 import { parseWorkflowFile, serializeWorkflow } from "@/lib/canvas/workflow"
 import { downloadBlob } from "@/lib/object-url"
 
@@ -19,16 +20,26 @@ export function WorkflowTransferButtons() {
   const nodes = useCanvasStore((state) => state.nodes)
   const edges = useCanvasStore((state) => state.edges)
   const replaceWorkflow = useCanvasStore((state) => state.replaceWorkflow)
+  const currentName = useCanvasStore((state) => state.currentWorkflow?.name)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState("")
+  const [pendingImport, setPendingImport] = useState<File | null>(null)
 
+  // 文件名跟当前工作流走；以前一律叫 workflow.tool-workflow.json
   const exportWorkflow = () => {
-    const contents = serializeWorkflow("workflow", { nodes, edges })
+    const name = currentName ?? "workflow"
+    const contents = serializeWorkflow(name, { nodes, edges })
     downloadBlob(
       new Blob([contents], { type: "application/json" }),
-      `${safeFileName("workflow")}.tool-workflow.json`,
+      `${safeFileName(name)}.tool-workflow.json`,
     )
     setMessage(t("workflowExported"))
+  }
+
+  // 有未保存的改动时先确认，以前导入会直接替换当前画布
+  const requestImport = (file: File) => {
+    if (hasUnsavedCanvasChanges(useCanvasStore.getState())) setPendingImport(file)
+    else void importWorkflow(file)
   }
 
   const importWorkflow = async (file: File) => {
@@ -73,11 +84,20 @@ export function WorkflowTransferButtons() {
         aria-label={t("importWorkflow")}
         onChange={(event) => {
           const file = event.target.files?.[0]
-          if (file) void importWorkflow(file)
+          if (file) requestImport(file)
           event.target.value = ""
         }}
       />
       {message && <p role="status" className="px-2 pt-1 text-xs text-md-on-surface-variant">{message}</p>}
+      {pendingImport && (
+        <ConfirmDialog
+          title={t("replaceCanvasTitle")}
+          message={t("replaceCanvasMessage")}
+          confirmLabel={t("replaceCanvas")}
+          onConfirm={() => { const file = pendingImport; setPendingImport(null); void importWorkflow(file) }}
+          onCancel={() => setPendingImport(null)}
+        />
+      )}
     </div>
   )
 }

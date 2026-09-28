@@ -2,11 +2,12 @@
 
 import { useState, useCallback } from "react"
 import { FolderOpen } from "lucide-react"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { hasUnsavedCanvasChanges, useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { LoadDialog } from "./LoadDialog"
+import { ConfirmDialog } from "./ConfirmDialog"
 import { getWorkflowList, loadWorkflow, restoreWorkflow, takeWorkflow } from "@/lib/canvas/workflow"
 
 export function WorkflowLoadButton() {
@@ -37,13 +38,36 @@ export function WorkflowLoadButton() {
     })
   }, [t, toast])
 
-  const handleLoad = useCallback((name: string) => {
+  const [pendingLoad, setPendingLoad] = useState<string | null>(null)
+  const setCurrentWorkflow = useCanvasStore((state) => state.setCurrentWorkflow)
+
+  const loadNow = useCallback((name: string) => {
     const data = loadWorkflow(name)
     if (data) {
       replaceWorkflow(data)
+      setCurrentWorkflow(name)
       setShowDialog(false)
     }
-  }, [replaceWorkflow])
+    setPendingLoad(null)
+  }, [replaceWorkflow, setCurrentWorkflow])
+
+  // 以前读取会直接替换当前画布；有未保存的改动时先确认
+  const handleLoad = useCallback((name: string) => {
+    if (hasUnsavedCanvasChanges(useCanvasStore.getState())) setPendingLoad(name)
+    else loadNow(name)
+  }, [loadNow])
+
+  if (pendingLoad) {
+    return (
+      <ConfirmDialog
+        title={t("replaceCanvasTitle")}
+        message={t("replaceCanvasMessage")}
+        confirmLabel={t("replaceCanvas")}
+        onConfirm={() => loadNow(pendingLoad)}
+        onCancel={() => setPendingLoad(null)}
+      />
+    )
+  }
 
   if (showDialog) {
     return (

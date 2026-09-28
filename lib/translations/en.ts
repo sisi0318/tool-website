@@ -4187,6 +4187,12 @@ hexBinaryTools: {
   },
 },
 canvas: {
+  workflowSaved: "Saved \"{name}\"",
+  saveAs: "Save as",
+  unsavedChanges: "Unsaved changes",
+  replaceCanvasTitle: "Replace the current canvas?",
+  replaceCanvasMessage: "The canvas has unsaved changes that will be replaced.",
+  replaceCanvas: "Replace",
   downloadOutput: "Download output",
   nodeMissingFile: "Choose a file first (files are not saved with workflows)",
   deleteWorkflow: "Delete workflow", workflowDeleted: "Deleted workflow “{name}”",

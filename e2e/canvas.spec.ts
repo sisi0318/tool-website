@@ -555,6 +555,40 @@ test.describe("Canvas Page", () => {
     await expect(page.getByText("单步 2/2", { exact: true })).toBeVisible()
   })
 
+  test("should save the current workflow with Ctrl+S and flag later edits", async ({ page }) => {
+    await page.evaluate(() => {
+      (window as any).__ZUSTAND_STORE__.getState().addNode({
+        id: "save-node",
+        type: "string",
+        position: { x: 300, y: 200 },
+        config: { value: "hello" },
+      })
+    })
+    await expect(page.locator(".react-flow__node")).toHaveCount(1, { timeout: 5000 })
+
+    await page.keyboard.press("Control+s")
+    const dialog = page.getByRole("dialog", { name: "保存工作流" })
+    await dialog.getByPlaceholder("输入工作流名字").fill("日报")
+    await dialog.getByRole("button", { name: "确认" }).click()
+    await expect(dialog).not.toBeVisible()
+    await expect(page.getByText("已保存“日报”", { exact: true })).toBeVisible()
+
+    const header = page.getByRole("button", { name: /工作流 · 日报/ })
+    await expect(header).toBeVisible()
+    await expect(header).not.toContainText("有未保存的修改")
+
+    await page.evaluate(() => {
+      (window as any).__ZUSTAND_STORE__.getState().updateNodePosition("save-node", { x: 420, y: 200 })
+    })
+    await expect(header).toContainText("有未保存的修改")
+
+    await page.keyboard.press("Control+s")
+    await expect(dialog).not.toBeVisible()
+    await expect(header).not.toContainText("有未保存的修改")
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("WORKFLOW_日报") ?? "null"))
+    expect(saved?.nodes?.[0]?.position).toEqual({ x: 420, y: 200 })
+  })
+
   test("should keep the enhanced palette usable on a phone viewport", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.reload()

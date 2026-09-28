@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import { useReactFlow } from "@xyflow/react"
 import { getAllNodes, getNodeDefinition } from "@/lib/canvas/registry"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { useCanvasStore, hasUnsavedCanvasChanges } from "@/lib/canvas/store"
 import { createCanvasNode } from "@/lib/canvas/node-factory"
 import {
   getAutoConnectPlan,
@@ -82,6 +82,8 @@ export function NodePalette({
   const t = useTranslations("canvas")
   const tCommon = useTranslations("common")
   const nodeLabel = useNodeLabel()
+  const currentWorkflowName = useCanvasStore((state) => state.currentWorkflow?.name)
+  const workflowUnsaved = useCanvasStore(hasUnsavedCanvasChanges)
   const addNode = useCanvasStore((state) => state.addNode)
   const addSubgraph = useCanvasStore((state) => state.addSubgraph)
   const canvasNodes = useCanvasStore((state) => state.nodes)
@@ -322,7 +324,11 @@ export function NodePalette({
           {workflowExpanded
             ? <ChevronDown aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
             : <ChevronRight aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />}
-          <h3 className="text-sm font-semibold">{t("workflow")}</h3>
+          <h3 className="min-w-0 truncate text-sm font-semibold">
+            {t("workflow")}
+            {currentWorkflowName && <span className="font-normal text-md-on-surface-variant"> · {currentWorkflowName}</span>}
+          </h3>
+          {workflowUnsaved && <span className="ml-auto shrink-0 text-xs text-md-on-surface-variant" title={t("unsavedChanges")}>● <span className="sr-only">{t("unsavedChanges")}</span></span>}
         </button>
         {workflowExpanded && (
           <div id="canvas-workflow-actions" className="space-y-1 border-b border-md-outline-variant p-2">

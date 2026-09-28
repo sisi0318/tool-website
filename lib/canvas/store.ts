@@ -13,7 +13,7 @@ import { convertPortValue, resolveInputPortType, resolveOutputPortType } from ".
 import { validateConnectionStructure } from "./validation"
 import { decodeWorkflowData, encodeWorkflowData } from "./workflow"
 import { withDefaultConfig } from "./node-factory"
-import { readLocalStorage, writeLocalStorage } from "../safe-storage"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "../safe-storage"
 import { mapWithConcurrency } from "../async-pool"
 
 const nodeExecVersion = new Map<string, number>()
@@ -420,9 +420,49 @@ interface Snapshot {
   preserveExecutionState?: boolean
 }
 
+/** 当前编辑的已命名工作流：名字与上次保存/打开时的内容（encodeWorkflowData 的结果） */
+export interface CurrentWorkflow {
+  name: string
+  snapshot: string
+}
+
+/** 已在 lib/storage/app-storage.ts 登记 */
+const CURRENT_WORKFLOW_KEY = "canvas-current-workflow"
+
+function readCurrentWorkflow(): CurrentWorkflow | null {
+  try {
+    const parsed: unknown = JSON.parse(readLocalStorage(CURRENT_WORKFLOW_KEY) ?? "null")
+    if (!parsed || typeof parsed !== "object") return null
+    const { name, snapshot } = parsed as Partial<CurrentWorkflow>
+    return typeof name === "string" && typeof snapshot === "string" ? { name, snapshot } : null
+  } catch {
+    return null
+  }
+}
+
+// 这个判断直接用作 selector，运行时每次状态更新都会调用；nodes/edges 没换引用就不必重新序列化
+let lastEncoded: { nodes: NodeInstance[]; edges: Edge[]; encoded: string } | null = null
+
+function encodeCanvas(nodes: NodeInstance[], edges: Edge[]): string {
+  if (lastEncoded?.nodes !== nodes || lastEncoded.edges !== edges) {
+    lastEncoded = { nodes, edges, encoded: encodeWorkflowData({ nodes, edges }) }
+  }
+  return lastEncoded.encoded
+}
+
+/**
+ * 画布有没有未保存的改动：已命名的工作流与上次保存时比较，未命名的画布有节点就算。
+ * 以前没有“当前工作流”，刚保存完点“新建”仍提示有未保存的内容。
+ */
+export function hasUnsavedCanvasChanges(state: { nodes: NodeInstance[]; edges: Edge[]; currentWorkflow: CurrentWorkflow | null }): boolean {
+  if (!state.currentWorkflow) return state.nodes.length > 0
+  return encodeCanvas(state.nodes, state.edges) !== state.currentWorkflow.snapshot
+}
+
 interface CanvasState {
   nodes: NodeInstance[]
   edges: Edge[]
+  currentWorkflow: CurrentWorkflow | null
   nodeOutputs: Record<string, Record<string, unknown>>
   nodeErrors: Record<string, string | undefined>
   nodeRunning: Record<string, boolean>
@@ -473,6 +513,8 @@ interface CanvasState {
   loadFromLocalStorage: () => void
   replaceWorkflow: (data: { nodes: NodeInstance[]; edges: Edge[] }) => void
   clearCanvas: () => void
+  /** 记下当前工作流的名字与此刻的内容（保存、打开之后调用）；null 表示未命名画布 */
+  setCurrentWorkflow: (name: string | null) => void
 }
 
 const undoStack: Snapshot[] = []
@@ -491,6 +533,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   stepProgress: emptyStepProgress(),
   canUndo: false,
   canRedo: false,
+  currentWorkflow: null,
 
   pushHistory: (options) => {
     const { nodes, edges } = get()
@@ -1441,6 +1484,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           canUndo: false,
           canRedo: false,
           stepProgress: emptyStepProgress(),
+          currentWorkflow: readCurrentWorkflow(),
         }))
         if (get().autoRun) {
           scheduleGraphWork(() => {
@@ -1468,13 +1512,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       selectedNodeId: null,
       selectedNodeIds: [],
       stepProgress: emptyStepProgress(),
+      currentWorkflow: null,
     }))
+    removeLocalStorage(CURRENT_WORKFLOW_KEY)
     debouncedSave(() => get().saveToLocalStorage())
     if (get().autoRun) {
       scheduleGraphWork(() => {
         if (get().autoRun) get().executeAll(false)
       }, 0)
     }
+  },
+
+  setCurrentWorkflow: (name) => {
+    const state = get()
+    const currentWorkflow = name ? { name, snapshot: encodeCanvas(state.nodes, state.edges) } : null
+    set({ currentWorkflow })
+    if (currentWorkflow) writeLocalStorage(CURRENT_WORKFLOW_KEY, JSON.stringify(currentWorkflow))
+    else removeLocalStorage(CURRENT_WORKFLOW_KEY)
   },
 
   clearCanvas: () => {
@@ -1496,7 +1550,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       selectedNodeId: null,
       selectedNodeIds: [],
       stepProgress: emptyStepProgress(),
+      currentWorkflow: null,
     }))
+    removeLocalStorage(CURRENT_WORKFLOW_KEY)
     debouncedSave(() => get().saveToLocalStorage())
   },
 }))

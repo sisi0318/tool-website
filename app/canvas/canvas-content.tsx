@@ -6,6 +6,7 @@ import { Plus } from "lucide-react"
 import { Canvas } from "@/components/canvas/Canvas"
 import { NodePalette } from "@/components/canvas/NodePalette"
 import { PropertyPanel } from "@/components/canvas/PropertyPanel"
+import { WorkflowSaveController } from "@/components/canvas/workflow/WorkflowSaveController"
 import { stopPendingCanvasWork, useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
 import { registerAllAdapters } from "@/lib/adapters"
@@ -38,6 +39,7 @@ export default function CanvasContent() {
   return (
     <div className="canvas-shell flex h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)]">
       <ReactFlowProvider>
+        <WorkflowSaveController />
         {(showPalette || showPropertyPanel) && (
           <button
             type="button"

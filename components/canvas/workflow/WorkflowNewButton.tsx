@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { FilePlus } from "lucide-react"
-import { useCanvasStore } from "@/lib/canvas/store"
+import { hasUnsavedCanvasChanges, useCanvasStore } from "@/lib/canvas/store"
 import { useTranslations } from "@/hooks/use-translations"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -71,16 +71,32 @@ export function WorkflowNewButton() {
   const { toast } = useToast()
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
+  const currentWorkflow = useCanvasStore((s) => s.currentWorkflow)
   const clearCanvas = useCanvasStore((s) => s.clearCanvas)
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
   const handleClick = () => {
-    if (nodes.length > 0) {
+    if (hasUnsavedCanvasChanges(useCanvasStore.getState())) {
       setShowConfirm(true)
     } else {
       clearCanvas()
     }
+  }
+
+  // 确认框里点“保存”：已命名的工作流直接覆盖保存，不再让人重新起名
+  const handleConfirmSave = () => {
+    if (!currentWorkflow) {
+      setShowConfirm(false)
+      setShowSaveDialog(true)
+      return
+    }
+    if (saveWorkflow(currentWorkflow.name, { nodes, edges }) === "failed") {
+      toast({ title: t("workflowSaveFailed"), variant: "destructive" })
+      return
+    }
+    clearCanvas()
+    setShowConfirm(false)
   }
 
   const handleSave = (name: string) => {
@@ -114,7 +130,7 @@ export function WorkflowNewButton() {
       <NewCanvasConfirm
         onCancel={() => setShowConfirm(false)}
         onDiscard={handleDiscard}
-        onSave={() => { setShowConfirm(false); setShowSaveDialog(true) }}
+        onSave={handleConfirmSave}
       />
     )
   }

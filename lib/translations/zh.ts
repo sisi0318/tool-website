@@ -4188,6 +4188,12 @@ hexBinaryTools: {
   },
 },
 canvas: {
+  workflowSaved: "已保存“{name}”",
+  saveAs: "另存为",
+  unsavedChanges: "有未保存的修改",
+  replaceCanvasTitle: "替换当前画布？",
+  replaceCanvasMessage: "当前画布有未保存的修改，继续会被替换。",
+  replaceCanvas: "替换",
   downloadOutput: "下载输出",
   nodeMissingFile: "请先选择文件（文件不随工作流保存）",
   deleteWorkflow: "删除工作流", workflowDeleted: "已删除工作流“{name}”",

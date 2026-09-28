@@ -43,6 +43,7 @@ export const STORAGE_ENTRIES: readonly StorageEntry[] = [
     sensitive: true,
   },
   { key: "canvas-workflow-list", group: "canvas", descriptionKey: "storageCanvasWorkflows" },
+  { key: "canvas-current-workflow", group: "canvas", descriptionKey: "storageCanvasWorkflows" },
   {
     prefix: "WORKFLOW_",
     group: "canvas",

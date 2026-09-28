@@ -8,11 +8,13 @@ interface SaveDialogProps {
   onSave: (name: string) => void
   onCancel: () => void
   existingNames: string[]
+  /** 另存为时预填当前工作流的名字 */
+  initialName?: string
 }
 
-export function SaveDialog({ onSave, onCancel, existingNames }: SaveDialogProps) {
+export function SaveDialog({ onSave, onCancel, existingNames, initialName = "" }: SaveDialogProps) {
   const t = useTranslations("canvas")
-  const [name, setName] = useState("")
+  const [name, setName] = useState(initialName)
   const [showOverwrite, setShowOverwrite] = useState(false)
   const [error, setError] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
