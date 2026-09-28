@@ -14,6 +14,7 @@ describe("SQL formatter", () => {
     render(<SqlPage />)
     fireEvent.change(screen.getByRole("textbox", { name: "SQL" }), { target: { value: "select a from b" } })
     fireEvent.click(screen.getByRole("button", { name: "run" }))
-    await waitFor(() => expect(screen.getByPlaceholderText("outputPlaceholder")).toHaveValue("SELECT\n  a\nFROM\n  b"))
+    // 第一次运行要先加载格式化库，整套测试一起跑时可能超过默认的 1 秒
+    await waitFor(() => expect(screen.getByPlaceholderText("outputPlaceholder")).toHaveValue("SELECT\n  a\nFROM\n  b"), { timeout: 5000 })
   })
 })

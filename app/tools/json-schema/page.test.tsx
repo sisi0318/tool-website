@@ -15,7 +15,8 @@ describe("JSON Schema validation", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "jsonData" }), { target: { value: '{"id":"x"}' } })
     fireEvent.change(screen.getByLabelText("schema"), { target: { value: '{"type":"object","properties":{"id":{"type":"integer"}}}' } })
     fireEvent.click(screen.getByRole("button", { name: "run" }))
-    await waitFor(() => expect(screen.getByText("invalid")).toBeInTheDocument())
+    // 第一次运行要先加载校验库，整套测试一起跑时可能超过默认的 1 秒
+    await waitFor(() => expect(screen.getByText("invalid")).toBeInTheDocument(), { timeout: 5000 })
 
     fireEvent.change(screen.getByLabelText("schema"), { target: { value: "{" } })
     fireEvent.click(screen.getByRole("button", { name: "run" }))
