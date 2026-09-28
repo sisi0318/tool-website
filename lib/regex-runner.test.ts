@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import {
   DEFAULT_MAX_MATCHES,
@@ -89,5 +89,44 @@ describe("runRegex", () => {
     expect(error).toBeInstanceOf(Error)
     expect(error.name).toBe("RegexTimeoutError")
     expect(error.message).toMatch(/2000ms/)
+  })
+})
+
+describe("runRegex in a worker", () => {
+  it("fails only the run that timed out and reruns the ones queued behind it on a fresh worker", async () => {
+    vi.useFakeTimers()
+    const workers: Array<{ posted: Array<{ id: number; pattern: string }>; terminated: boolean; onmessage: ((event: MessageEvent) => void) | null }> = []
+    class FakeWorker {
+      posted: Array<{ id: number; pattern: string }> = []
+      terminated = false
+      onmessage: ((event: MessageEvent) => void) | null = null
+      onerror: ((event: ErrorEvent) => void) | null = null
+      constructor() { workers.push(this) }
+      postMessage(message: { id: number; pattern: string }) { this.posted.push(message) }
+      terminate() { this.terminated = true }
+    }
+    vi.stubGlobal("Worker", FakeWorker)
+    URL.createObjectURL = vi.fn(() => "blob:regex-worker")
+    vi.resetModules()
+    try {
+      const runner = await import("./regex-runner")
+      const stuck = runner.runRegex({ pattern: "(a+)+$", flags: "", text: "aaaa!", timeoutMs: 100 })
+      const fixed = runner.runRegex({ pattern: "a+", flags: "", text: "aaaa!", timeoutMs: 100 })
+      const stuckFailure = expect(stuck).rejects.toBeInstanceOf(runner.RegexTimeoutError)
+      expect(workers[0].posted.map((message) => message.pattern)).toEqual(["(a+)+$", "a+"])
+
+      await vi.advanceTimersByTimeAsync(100)
+      await stuckFailure
+      expect(workers[0].terminated).toBe(true)
+      expect(workers[1].posted.map((message) => message.pattern)).toEqual(["a+"])
+
+      const result = { matches: [], hitIterationLimit: false, durationMs: 1 }
+      workers[1].onmessage!({ data: { id: workers[1].posted[0].id, ok: true, result } } as MessageEvent)
+      await expect(fixed).resolves.toEqual(result)
+    } finally {
+      vi.unstubAllGlobals()
+      vi.useRealTimers()
+      vi.resetModules()
+    }
   })
 })

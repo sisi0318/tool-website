@@ -24,7 +24,7 @@ import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { transferText } from "@/lib/tool-transfer"
 import { useUndoToast } from "@/hooks/use-undo-toast"
 import { buildRegexHighlightSegments } from "@/lib/regex-highlight"
-import { RegexTimeoutError, runRegex } from "@/lib/regex-runner"
+import { DEFAULT_MAX_MATCHES, RegexTimeoutError, runRegex } from "@/lib/regex-runner"
 import { downloadBlob } from "@/lib/object-url"
 import { 
   Search, Replace, Copy, Download, Upload, History, 
@@ -280,6 +280,8 @@ export default function RegexTester() {
 
   // 结果状态
   const [matches, setMatches] = useState<RegexMatch[]>([])
+  // 匹配数到了上限：已经找到的照样显示，只提示后面还有
+  const [matchLimitReached, setMatchLimitReached] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isValid, setIsValid] = useState(true)
   const [replaceResult, setReplaceResult] = useState("")
@@ -323,9 +325,15 @@ export default function RegexTester() {
     ])
   }, [setHistory])
 
+  // 每次测试、替换领一个序号，结果回来时已经有更新的一次在算就作废，免得旧结果（或旧的超时）盖掉新的
+  const testRun = useRef(0)
+  const replaceRun = useRef(0)
+
   const testRegex = useCallback(async () => {
+    const ticket = ++testRun.current
     setError(null)
     setMatches([])
+    setMatchLimitReached(false)
     setIsValid(true)
     setExecutionTime(0)
 
@@ -335,17 +343,15 @@ export default function RegexTester() {
     try {
       const flagsStr = getFlagsString()
       const result = await runRegex({ pattern, flags: flagsStr, text: testText })
+      if (ticket !== testRun.current) return
 
-      if (result.hitIterationLimit) {
-        setError(t("iterationLimit"))
-        setIsValid(false)
-        return
-      }
-
+      // 到了上限也保留已经找到的匹配；以前整批结果都被丢掉，只剩一条错误
       setExecutionTime(result.durationMs)
       setMatches(result.matches)
+      setMatchLimitReached(result.hitIterationLimit)
       addToHistory(pattern, flagsStr, result.matches.length)
     } catch (err) {
+      if (ticket !== testRun.current) return
       setError(err instanceof RegexTimeoutError ? t("regexTimeout") : (err as Error).message)
       setIsValid(false)
     }
@@ -353,6 +359,7 @@ export default function RegexTester() {
 
   // 执行替换
   const performReplace = useCallback(async () => {
+    const ticket = ++replaceRun.current
     if (!pattern || !testText) {
       setReplaceResult("")
       return
@@ -365,8 +372,10 @@ export default function RegexTester() {
         text: testText,
         replacement: replaceText,
       })
+      if (ticket !== replaceRun.current) return
       setReplaceResult(result.replaced ?? "")
     } catch (err) {
+      if (ticket !== replaceRun.current) return
       const message = err instanceof RegexTimeoutError ? t("regexTimeout") : (err as Error).message
       setReplaceResult(`${t("replaceFailed")}: ${message}`)
     }
@@ -419,6 +428,17 @@ export default function RegexTester() {
       })
     })
   }, [t, toast])
+
+  // 导出匹配结果：位置、全文、分组；到上限时标明只含前面的部分
+  const exportMatches = () => {
+    const report = {
+      pattern,
+      flags: getFlagsString(),
+      truncated: matchLimitReached,
+      matches: matches.map(({ index, match, groups, namedGroups }) => ({ index, match, groups, ...(namedGroups ? { namedGroups } : {}) })),
+    }
+    downloadBlob(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }), "regex-matches.json")
+  }
 
   // 导出测试用例
   const exportTestCase = useCallback(() => {
@@ -479,10 +499,32 @@ export default function RegexTester() {
     setTestText("")
     setReplaceText("")
     setMatches([])
+    setMatchLimitReached(false)
     setError(null)
     setReplaceResult("")
     setSelectedMatch(null)
   }, [])
+
+  // 测试页和替换页共用同一组标志位；替换页以前改不了
+  const renderFlagSwitches = (idPrefix: string) => (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      {FLAG_OPTIONS.map(({ key, flag, labelKey }) => {
+        const id = `${idPrefix}-${key}`
+        return (
+          <div key={key} className="flex items-center space-x-2">
+            <Switch
+              id={id}
+              checked={flags[key]}
+              onCheckedChange={(checked) => setFlags((prev) => ({ ...prev, [key]: checked }))}
+            />
+            <Label htmlFor={id} className="text-sm">
+              <span className="font-mono">{flag}</span> {t(labelKey)}
+            </Label>
+          </div>
+        )
+      })}
+    </div>
+  )
 
   return (
     <TooltipProvider>
@@ -582,25 +624,7 @@ export default function RegexTester() {
                         </Button>
                       </div>
                       
-                      {showFlags && (
-                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                          {FLAG_OPTIONS.map(({ key, flag, labelKey }) => {
-                            const id = `regex-flag-${key}`
-                            return (
-                              <div key={key} className="flex items-center space-x-2">
-                                <Switch
-                                  id={id}
-                                  checked={flags[key]}
-                                  onCheckedChange={(checked) => setFlags((prev) => ({ ...prev, [key]: checked }))}
-                                />
-                                <Label htmlFor={id} className="text-sm">
-                                  <span className="font-mono">{flag}</span> {t(labelKey)}
-                                </Label>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
+                      {showFlags && renderFlagSwitches("regex-flag")}
                     </div>
 
                     {/* 状态指示器 */}
@@ -671,6 +695,13 @@ export default function RegexTester() {
                   </CardContent>
                 </Card>
 
+                {matchLimitReached && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>{t("matchLimitReached").replace("{count}", DEFAULT_MAX_MATCHES.toLocaleString())}</AlertDescription>
+                  </Alert>
+                )}
+
                 {/* 错误提示 */}
                 {error && (
                   <Alert variant="destructive">
@@ -708,7 +739,19 @@ export default function RegexTester() {
 
                     {matches.length > 0 && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">{t("matchList")}</Label>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <Label className="text-sm font-medium">{t("matchList")}</Label>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(matches.map((match) => match.match).join("\n"), t("matchList"))}>
+                              <Copy className="h-4 w-4 mr-1" />
+                              {t("copyAllMatches")}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={exportMatches}>
+                              <Download className="h-4 w-4 mr-1" />
+                              {t("exportMatches")}
+                            </Button>
+                          </div>
+                        </div>
                         <ScrollArea className="h-40">
                           <div className="space-y-1">
                             {matches.map((match, index) => (
@@ -864,6 +907,11 @@ export default function RegexTester() {
                       placeholder={t("patternPlaceholder")}
                       className="font-mono mt-1"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t("flagOptions")}</Label>
+                    {renderFlagSwitches("regex-replace-flag")}
                   </div>
 
                   <div>

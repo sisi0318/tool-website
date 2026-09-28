@@ -121,10 +121,20 @@ function buildWorkerSource(): string {
   ].join("\n")
 }
 
+interface WorkerRequest {
+  pattern: string
+  flags: string
+  text: string
+  replacement?: string
+  maxMatches: number
+}
+
 interface PendingRun {
   resolve: (result: RegexRunResult) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
+  request: WorkerRequest
+  timeoutMs: number
 }
 
 let worker: Worker | null = null
@@ -166,6 +176,28 @@ function ensureWorker(): Worker {
   return created
 }
 
+function dispatch(id: number, run: Omit<PendingRun, "timer">): void {
+  const timer = setTimeout(() => timeOut(id), run.timeoutMs)
+  pending.set(id, { ...run, timer })
+  ensureWorker().postMessage({ id, ...run.request })
+}
+
+/**
+ * 超时的那次失败，Worker 卡死救不回来，直接终止。排在它后面的调用和它无关：
+ * 换一个新 Worker 重新执行。以前它们一并按超时失败，改好的表达式也显示“超时”。
+ */
+function timeOut(id: number): void {
+  const entry = pending.get(id)
+  if (!entry) return
+  pending.delete(id)
+  const waiting = [...pending]
+  pending.clear()
+  for (const [, other] of waiting) clearTimeout(other.timer)
+  disposeWorker()
+  entry.reject(new RegexTimeoutError(entry.timeoutMs))
+  for (const [otherId, other] of waiting) dispatch(otherId, other)
+}
+
 function disposeWorker(): void {
   if (worker) {
     worker.terminate()
@@ -178,9 +210,8 @@ export function isRegexWorkerAvailable(): boolean {
 }
 
 /**
- * 在 Worker 里执行；超过 timeoutMs 就终止 Worker 并抛 RegexTimeoutError。
- * 终止后所有在飞的其它调用也会以超时失败 —— 它们共享同一个 Worker，
- * 而一个被卡死的 Worker 无法再处理任何消息。
+ * 在 Worker 里执行；超过 timeoutMs 就终止 Worker 并抛 RegexTimeoutError，
+ * 同一 Worker 上排队的其它调用会换到新 Worker 上重新执行。
  */
 export function runRegex(options: RegexRunOptions): Promise<RegexRunResult> {
   const maxMatches = options.maxMatches ?? DEFAULT_MAX_MATCHES
@@ -197,27 +228,17 @@ export function runRegex(options: RegexRunOptions): Promise<RegexRunResult> {
   }
 
   return new Promise((resolve, reject) => {
-    const id = ++nextId
-    const timer = setTimeout(() => {
-      pending.delete(id)
-      // 卡死的 Worker 救不回来，直接杀掉；其它等待者一并按超时处理
-      for (const [otherId, entry] of pending) {
-        clearTimeout(entry.timer)
-        entry.reject(new RegexTimeoutError(timeoutMs))
-        pending.delete(otherId)
-      }
-      disposeWorker()
-      reject(new RegexTimeoutError(timeoutMs))
-    }, timeoutMs)
-
-    pending.set(id, { resolve, reject, timer })
-    ensureWorker().postMessage({
-      id,
-      pattern: options.pattern,
-      flags: options.flags,
-      text: options.text,
-      replacement: options.replacement,
-      maxMatches,
+    dispatch(++nextId, {
+      resolve,
+      reject,
+      timeoutMs,
+      request: {
+        pattern: options.pattern,
+        flags: options.flags,
+        text: options.text,
+        replacement: options.replacement,
+        maxMatches,
+      },
     })
   })
 }
