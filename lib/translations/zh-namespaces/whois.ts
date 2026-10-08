@@ -1,7 +1,7 @@
 /** 「whois」的中文文案：只随用到它的页面加载，调用处写 useTranslations("whois", zhWhois) */
 export const zhWhois = {
   title: "WHOIS / RDAP 查询",
-  description: "按 IANA 引导规则查询域名、IPv4 与 IPv6 的权威注册数据",
+  description: "查询域名或网络地址的登记信息",
   domainPlaceholder: "输入域名（例如：example.com）",
   lookup: "查询",
   formattedView: "格式化",

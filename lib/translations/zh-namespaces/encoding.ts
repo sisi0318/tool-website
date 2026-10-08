@@ -19,7 +19,7 @@ export const zhEncoding = {
     asciiRange: "ASCII 码必须在 0–127",
   },
   title: "编码解码工具",
-  description: "选择格式和方向后直接输入；结果会实时生成，也可切换为手动转换。",
+  description: "把内容换一种写法，也能转换回来",
   direction: "转换方向",
   format: "编码格式",
   commonFormats: "常用格式",

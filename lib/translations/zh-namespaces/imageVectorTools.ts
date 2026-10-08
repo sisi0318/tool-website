@@ -1,7 +1,7 @@
 /** 「imageVectorTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageVectorTools", zhImageVectorTools) */
 export const zhImageVectorTools = {
   title: "图片转 SVG",
-  description: "在浏览器中将 PNG、JPEG、WebP 转成真正的 SVG 路径。可选择贴近原图的像素保真模式，或适合图标、Logo 与插画的平滑轮廓模式。",
+  description: "把图片转成可放大不模糊的图形",
   chooseFile: "选择图片", clear: "清除图片", fileHint: "支持 PNG / JPEG / WebP，也可以拖放或粘贴图片", limits: "最多 20 MB、2000 万像素；描摹最长边可选 512–2048 px，单份 SVG 上限 24 MB。",
   trySample: "试个示例：", sample_icon: "透明图标", sample_illustration: "平涂插画", sample_gradient: "渐变图形",
   tracing: "描摹方式", faithful: "像素保真 · 更接近原图", smooth: "平滑轮廓 · 文件更简洁",

@@ -1,7 +1,7 @@
 /** 「memeSplitter」的中文文案：只随用到它的页面加载，调用处写 useTranslations("memeSplitter", zhMemeSplitter) */
 export const zhMemeSplitter = {
   title: "智能切图",
-  description: "检测表情包网格并按原图精度批量切分，支持手动调整",
+  description: "把一张表情包合集切成多张图片",
   uploadImage: "上传图片",
   chooseImage: "选择图片",
   dropzoneAria: "点击、拖放或粘贴要切分的图片",

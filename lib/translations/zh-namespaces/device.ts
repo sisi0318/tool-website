@@ -1,7 +1,7 @@
 /** 「device」的中文文案：只随用到它的页面加载，调用处写 useTranslations("device", zhDevice) */
 export const zhDevice = {
   title: "设备与浏览器检测",
-  description: "在浏览器本地采集环境信息，并查看设备指纹信号",
+  description: "查看设备、浏览器和网络信息",
   refresh: "刷新",
   refreshing: "检测中",
   copy: "复制",

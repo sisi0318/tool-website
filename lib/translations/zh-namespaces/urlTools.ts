@@ -1,7 +1,7 @@
 /** 「urlTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("urlTools", zhUrlTools) */
 export const zhUrlTools = {
   "title": "URL 解析与参数编辑",
-  "description": "拆解 URL、逐条编辑查询参数并重新组装。保留重复参数及顺序，所有操作均在本地完成。",
+  "description": "拆开网址，逐项修改后重新组合",
   "input": "URL 输入",
   "base": "相对地址的基础 URL（可选）",
   "plusAsSpace": "输入中的 + 解码为空格",

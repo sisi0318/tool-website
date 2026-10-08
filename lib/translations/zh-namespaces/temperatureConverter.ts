@@ -1,7 +1,7 @@
 /** 「temperatureConverter」的中文文案：只随用到它的页面加载，调用处写 useTranslations("temperatureConverter", zhTemperatureConverter) */
 export const zhTemperatureConverter = {
   title: "温度转换器",
-  description: "开尔文、摄氏度、华氏度、兰金、德莱尔、牛顿、雷奥穆尔和罗默温度度数转换。",
+  description: "换算摄氏、华氏等不同温度单位",
   copy: "复制",
   copied: "已复制",
   copyFailed: "复制失败",

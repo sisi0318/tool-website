@@ -1,7 +1,7 @@
 /** 「imageCompress」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageCompress", zhImageCompress) */
 export const zhImageCompress = {
   title: "图片压缩工具",
-  description: "在线压缩图片，支持批量处理，可调节质量和尺寸",
+  description: "批量压缩图片，调整尺寸和清晰度",
   uploadTitle: "上传图片",
   dropHint: "拖拽、粘贴图片或点击上传",
   supportedFormats: "支持 JPEG、PNG、WebP 格式",

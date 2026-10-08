@@ -1,7 +1,7 @@
 /** 「uuid」的中文文案：只随用到它的页面加载，调用处写 useTranslations("uuid", zhUuid) */
 export const zhUuid = {
   title: "UUID生成器",
-  description: "生成各种版本的UUID",
+  description: "生成不易重复的编号，支持批量",
   version: "版本",
   random: "随机",
   timeBased: "基于时间",

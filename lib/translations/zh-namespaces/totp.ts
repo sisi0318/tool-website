@@ -1,7 +1,7 @@
 /** 「totp」的中文文案：只随用到它的页面加载，调用处写 useTranslations("totp", zhTotp) */
 export const zhTotp = {
   title: "TOTP 验证器",
-  description: "基于时间的一次性密码生成器",
+  description: "生成定时更新的一次性验证码",
   addAccount: "添加账户",
   addNewAccount: "添加新账户",
   accountName: "账户名称",

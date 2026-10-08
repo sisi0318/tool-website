@@ -1,6 +1,6 @@
 /** 「harTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("harTools", zhHarTools) */
 export const zhHarTools = {
-  title: "HAR 网络日志分析", description: "导入浏览器导出的 HAR 文件，查看请求瀑布图，定位慢请求、失败与重复请求，并检查单条请求详情。",
+  title: "HAR 网络日志分析", description: "查看网页加载记录，找出慢在哪里",
   upload: "选择 HAR 文件", sample: "加载网络日志示例", clear: "清空", cancel: "取消并清空", limits: "支持拖入 UTF-8 HAR / JSON，最大 64 MB、20000 条请求、2000 个页面。", localHint: "文件只在浏览器本地解析，不发送请求，也不加载日志中的资源。",
   phase_load: "正在读取并分析日志…", phase_export: "正在生成筛选摘要…", error_fileLimit: "文件为空或超过 64 MB，请重新导出较小范围的日志。", error_format: "无法读取 UTF-8 HAR：需要包含 log.entries 数组的 JSON 文件。", error_entryLimit: "日志超过 20000 条请求或 2000 个页面，请分段导出。", error_cancelled: "操作已取消，请重新导入文件。", error_timeout: "处理超时，请导入较小文件。", error_unsupported: "浏览器不支持后台解析，请使用较新的浏览器。", error_engine: "日志处理失败，请重新导入文件。", skipped: "跳过了 {count} 条缺少有效方法、URL 或 URL 过长的记录，其余请求已保留。",
   search: "搜索请求", searchHint: "URL、方法、状态码或 MIME 类型", host: "主机", allHosts: "全部主机", noHost: "无主机", page: "页面", allPages: "全部页面", noPage: "未分组", method: "方法", allMethods: "全部方法", slowThreshold: "慢请求阈值（ms）", sort: "排序", start: "开始时间", duration: "总耗时", transfer: "传输大小", status: "状态码", ascending: "升序 ↑", descending: "降序 ↓",

@@ -1,7 +1,7 @@
 /** 「jwt」的中文文案：只随用到它的页面加载，调用处写 useTranslations("jwt", zhJwt) */
 export const zhJwt = {
   title: "JWT解析器",
-  description: "解析和验证JWT Token",
+  description: "查看内容，检查是否过期",
   inputLabel: "输入JWT Token",
   inputPlaceholder: "粘贴你的JWT Token...",
   example: "示例",

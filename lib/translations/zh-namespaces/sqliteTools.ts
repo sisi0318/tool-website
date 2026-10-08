@@ -3,7 +3,7 @@ export const zhSqliteTools = {
   "selectFile": "选择文件",
   "noFile": "未选择文件",
   "title": "SQLite 文件查看器",
-  "description": "本地浏览数据库结构、执行只读 SQL，检查数据和 BLOB，并导出查询结果。",
+  "description": "打开文件，查看、查询和导出数据",
   "chooseFile": "选择 SQLite 数据库",
   "sample": "载入示例数据库",
   "close": "关闭数据库",

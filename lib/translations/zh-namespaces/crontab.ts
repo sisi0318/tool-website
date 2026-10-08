@@ -1,7 +1,7 @@
 /** 「crontab」的中文文案：只随用到它的页面加载，调用处写 useTranslations("crontab", zhCrontab) */
 export const zhCrontab = {
   title: "Crontab 表达式生成器",
-  description: "生成、验证和解释 Cron 表达式，并预览后续执行时间。",
+  description: "生成定时规则，预览执行时间",
   expression: "Crontab表达式",
   expressionPlaceholder: "输入crontab表达式，例如：0 0 * * *",
   clearInput: "清空",

@@ -1,7 +1,7 @@
 /** 「markdownTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("markdownTools", zhMarkdownTools) */
 export const zhMarkdownTools = {
   title: "Markdown 工具",
-  description: "安全预览 Markdown，或转换为 HTML、目录和纯文本。",
+  description: "边写边预览，也能转成网页或纯文字",
   toHtml: "转为 HTML",
   toc: "生成目录",
   plainText: "提取纯文本",

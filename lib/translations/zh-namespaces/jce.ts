@@ -2,7 +2,7 @@
 export const zhJce = {
   autoParsePaused: "输入较长，已暂停自动解析，请点击“解析”。",
   title: "JCE 解析器",
-  description: "解析和编码 JCE/Tars 二进制协议数据",
+  description: "把数据转成可读内容，也能转回",
   decode: "解码 JCE",
   encode: "编码 JSON",
   settings: "JCE 设置",

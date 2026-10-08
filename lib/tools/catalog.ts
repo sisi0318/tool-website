@@ -178,7 +178,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     category: "security",
     seo: {
       title: "古典密码",
-      description: "在线古典密码加解密工具，支持凯撒密码、ROT13、埃特巴什码、摩斯电码等经典算法。",
+      description: "把内容变成暗号，也能还原",
     },
     features: [
       ["凯撒密码", "Caesar cipher"],
@@ -319,7 +319,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     category: "text",
     seo: {
       title: "文本与结构化数据对比",
-      description: "对比文本、JSON 和 YAML，逐行高亮或按字段路径显示差异，支持忽略字段和数组按 id 对齐。",
+      description: "对照两份内容，标出增加、删除和改动",
     },
     keywords: ["对比", "比较", "compare", "差异"],
     features: [
@@ -640,7 +640,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     category: "image", accepts: ["text"],
     seo: {
       title: "二维码生成",
-      description: "在线二维码生成器，支持文本、网址、Wi-Fi、名片等类型，可自定义颜色与 Logo。",
+      description: "把文字、网址等内容做成二维码",
     },
     keywords: ["qr", "qr code", "二维码生成"],
     features: [
@@ -743,7 +743,7 @@ export const TOOL_CATALOG: readonly ToolCatalogEntry[] = [
     category: "life", accepts: ["text"],
     seo: {
       title: "时间工具",
-      description: "在线时间工具，世界时钟、时间戳转换、秒表与倒计时。",
+      description: "查各地时间、换算时间、计时和倒计时",
     },
     keywords: ["时间戳", "timestamp", "unix", "epoch", "时区", "timezone"],
     features: [

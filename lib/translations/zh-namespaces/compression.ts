@@ -1,7 +1,7 @@
 /** 「compression」的中文文案：只随用到它的页面加载，调用处写 useTranslations("compression", zhCompression) */
 export const zhCompression = {
   title: "压缩与解压",
-  description: "在本地处理 GZip、Zlib、Deflate、Brotli 和 ZIP 数据。",
+  description: "压缩、解压内容，也能打包多个文件",
   compress: "压缩",
   decompress: "解压",
   failed: "压缩处理失败",

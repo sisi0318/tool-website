@@ -1,7 +1,7 @@
 /** 「regex」的中文文案：只随用到它的页面加载，调用处写 useTranslations("regex", zhRegex) */
 export const zhRegex = {
   title: "正则表达式测试工具",
-  description: "测试、验证和调试正则表达式，实时查看匹配结果",
+  description: "按规则查找文字，预览替换结果",
   tabs: {
     test: "测试",
     tester: "测试器",

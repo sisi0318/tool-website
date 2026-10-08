@@ -1,7 +1,7 @@
 /** 「passwordGenerator」的中文文案：只随用到它的页面加载，调用处写 useTranslations("passwordGenerator", zhPasswordGenerator) */
 export const zhPasswordGenerator = {
   title: "安全密码生成器",
-  description: "使用浏览器安全随机源生成密码或易读口令，可批量复制，不保存历史。",
+  description: "批量生成随机密码或易记口令",
   localOnly: "仅在当前浏览器生成",
   settings: "生成设置",
   passwordMode: "随机密码",

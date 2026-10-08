@@ -1,7 +1,7 @@
 /** 「imageBatch」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageBatch", zhImageBatch) */
 export const zhImageBatch = {
   confirmOptionChange: "修改参数会清空已完成的 {count} 项结果，手动校对过的文字也会丢失。", applyChange: "仍然修改", keepResults: "保留结果",
-  title: "图片批量处理", description: "一次导入多张图片，批量识别文字，或压缩、缩放和转换格式。逐张处理、逐项查看结果，文件全程留在浏览器里。",
+  title: "图片批量处理", description: "多张图片一起转文字、压缩或换格式",
   add: "添加图片", samples: "试试三张示例", dropHint: "支持多选、拖放或粘贴图片", clear: "清空队列", limits: "支持 PNG / JPEG / WebP，最多 30 张、合计 120 MB；单张最多 20 MB / 2000 万像素。输出合计最多 120 MB。动态图片仅处理首帧。",
   skippedType: "已跳过 {count} 个不是 PNG / JPEG / WebP 的文件。", skipped: "部分文件超过限制，未加入队列。每张最多 20 MB，队列最多 30 张 / 120 MB。", ocrMode: "批量 OCR", imageMode: "压缩与格式转换", format: "输出格式", quality: "质量（10–100）", width: "最大宽度（px）", height: "最大高度（px）", keepSize: "保持原尺寸",
   imageHint: "按比例缩小，不放大。JPEG 透明区域铺白，PNG / WebP 保留透明度。PNG 为无损编码，质量参数不适用；重新编码后文件也可能变大。",

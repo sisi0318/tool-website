@@ -1,7 +1,7 @@
 /** 「officeViewer」的中文文案：只随用到它的页面加载，调用处写 useTranslations("officeViewer", zhOfficeViewer) */
 export const zhOfficeViewer = {
   title: "Office 文档预览",
-  description: "直接在浏览器中预览 Word、Excel 和 PowerPoint 文档",
+  description: "直接查看文档、表格和演示文稿",
   uploadDocument: "上传文档",
   selectDocument: "选择要预览的文档",
   dropPrompt: "点击选择或拖放文件",

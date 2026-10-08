@@ -1,7 +1,7 @@
 /** 「csvTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("csvTools", zhCsvTools) */
 export const zhCsvTools = {
   title: "CSV / TSV 工具",
-  description: "在分隔文本与 JSON 之间转换，自动识别分隔符并预览表格结构。",
+  description: "把文字整理成表格，或转换数据格式",
   toJson: "CSV 转 JSON",
   fromJson: "JSON 转 CSV",
   normalize: "规范化 CSV",

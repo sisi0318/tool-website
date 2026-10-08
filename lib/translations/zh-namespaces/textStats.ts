@@ -1,7 +1,7 @@
 /** 「textStats」的中文文案：只随用到它的页面加载，调用处写 useTranslations("textStats", zhTextStats) */
 export const zhTextStats = {
   title: "文本统计",
-  description: "统计文本的字数、词数、句子等信息",
+  description: "统计字数、词数、句子和行数",
   inputLabel: "输入文本",
   inputPlaceholder: "粘贴或输入要统计的文本...",
   example: "示例",

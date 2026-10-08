@@ -1,7 +1,7 @@
 /** 「currency」的中文文案：只随用到它的页面加载，调用处写 useTranslations("currency", zhCurrency) */
 export const zhCurrency = {
   title: "汇率转换",
-  description: "使用公开参考汇率进行单笔、多目标或多输入货币换算。",
+  description: "按参考汇率换算金额，支持多笔一起算",
   amount: "金额",
   fromCurrency: "原始货币",
   toCurrency: "目标货币",

@@ -1,7 +1,7 @@
 /** 「xmlTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("xmlTools", zhXmlTools) */
 export const zhXmlTools = {
   title: "XML 工具",
-  description: "格式化、压缩、校验 XML，并在 XML 与 JSON 之间转换或执行 XPath。",
+  description: "整理排版、检查错误、查找和转换内容",
   format: "格式化",
   minify: "压缩",
   toJson: "XML 转 JSON",

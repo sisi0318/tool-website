@@ -1,7 +1,7 @@
 /** 「tabular」的中文文案：只随用到它的页面加载，调用处写 useTranslations("tabular", zhTabular) */
 export const zhTabular = {
   "title": "CSV / JSONL 日志",
-  "description": "逐行解析日志，筛选与整理表格，并保留原始行号。数据仅在浏览器本地处理。",
+  "description": "筛选、排序和统计表格，导出处理结果",
   "mode": "CSV 工作区",
   "logsMode": "日志与表格",
   "convertMode": "格式转换",

@@ -1,7 +1,7 @@
 /** 「protobuf」的中文文案：只随用到它的页面加载，调用处写 useTranslations("protobuf", zhProtobuf) */
 export const zhProtobuf = {
   title: "Protobuf 解析器",
-  description: "无需模式定义即可解析和编码 Protocol Buffer 数据",
+  description: "把数据转成可读内容，也能转回",
   decode: "解析",
   encode: "编码",
   decodeProtobuf: "解码 Protobuf",

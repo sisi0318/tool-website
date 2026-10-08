@@ -1,7 +1,7 @@
 /** 「exifViewer」的中文文案：只随用到它的页面加载，调用处写 useTranslations("exifViewer", zhExifViewer) */
 export const zhExifViewer = {
   title: "图片 EXIF 数据查看器",
-  description: "专业的图片元数据分析工具，支持批量处理和详细的EXIF信息展示",
+  description: "查看照片的拍摄时间、设备和位置",
   dropImageHere: "将图片拖放到此处",
   orClickToUpload: "或点击上传",
   upload: "图片上传",

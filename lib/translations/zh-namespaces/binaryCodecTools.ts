@@ -1,7 +1,7 @@
 /** 「binaryCodecTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("binaryCodecTools", zhBinaryCodecTools) */
 export const zhBinaryCodecTools = {
   "title": "MessagePack / CBOR",
-  "description": "在二进制数据与扩展 JSON 之间转换，保留大整数、字节、映射键和特殊类型。",
+  "description": "把数据转成可读文字，也能转回",
   "decode": "解码 → 扩展 JSON",
   "encode": "扩展 JSON → 编码",
   "format": "二进制格式",

@@ -1,7 +1,7 @@
 /** 「jsonSchemaTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("jsonSchemaTools", zhJsonSchemaTools) */
 export const zhJsonSchemaTools = {
   title: "JSON Schema 工具",
-  description: "使用 JSON Schema 校验数据，或从示例 JSON 推导 Schema。",
+  description: "按规则检查数据，或从示例生成规则",
   validate: "校验数据",
   infer: "推导 Schema",
   failed: "JSON Schema 处理失败",

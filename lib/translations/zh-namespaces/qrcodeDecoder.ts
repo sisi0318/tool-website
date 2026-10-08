@@ -1,7 +1,7 @@
 /** 「qrcodeDecoder」的中文文案：只随用到它的页面加载，调用处写 useTranslations("qrcodeDecoder", zhQrcodeDecoder) */
 export const zhQrcodeDecoder = {
   title: "二维码解码器",
-  description: "上传或粘贴图片自动识别二维码，支持批量处理和内容解析",
+  description: "读取图片里的二维码，支持多张一起处理",
   uploadTab: "上传图片",
   cameraTab: "相机扫描",
   dropImageHere: "将图片拖放到此处",

@@ -1,6 +1,6 @@
 /** 「imageTable」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageTable", zhImageTable) */
 export const zhImageTable = {
-  title: "截图表格识别", description: "把表格截图恢复成可编辑的行列，对照原图校正，再导出 CSV 或 Excel。识别与导出都在浏览器本地完成。",
+  title: "截图表格识别", description: "把截图里的表格转成可编辑表格",
   upload: "选择图片", sample: "加载表格示例", clear: "清空", recognize: "识别表格", cancel: "取消", limits: "支持拖入、粘贴 PNG / JPEG / WebP，最大 20 MB、2000 万像素；表格最多 200 行、40 列、2000 个单元格。",
   phase_prepare: "读取图片与网格线…", phase_recognize: "识别表格文字…", phase_export: "正在导出…", error: "处理失败，请检查图片或重试。", limitError: "表格超出限制：最多 200 行、40 列、2000 格，每格 32767 字符，合计 200 万字符。请裁剪或拆分表格。",
   rulesFound: "已按可见网格线恢复行列，请核对文字与空白格。", inferred: "已按文字位置推测行列，无边框或合并单元格可能需要调整分隔线。", rebuilt: "已按当前分隔线重新分配原始识别文字。",

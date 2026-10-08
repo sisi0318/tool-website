@@ -1,7 +1,7 @@
 /** 「bmi」的中文文案：只随用到它的页面加载，调用处写 useTranslations("bmi", zhBmi) */
 export const zhBmi = {
   title: "BMI 计算器",
-  description: "计算成年人的身体质量指数（BMI）并查看对应的筛查分类。",
+  description: "输入成人身高体重，查看体重参考",
   metric: "公制",
   imperial: "英制",
   height: "身高",

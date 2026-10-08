@@ -1,7 +1,7 @@
 /** 「httpTester」的中文文案：只随用到它的页面加载，调用处写 useTranslations("httpTester", zhHttpTester) */
 export const zhHttpTester = {
   title: "HTTP 请求测试工具",
-  description: "构建 HTTP 请求、管理参数与环境变量，并查看响应内容、响应头和耗时。",
+  description: "发送请求，查看返回内容和耗时",
   submit: "发送请求",
   loading: "发送中...",
   addParameter: "添加参数",

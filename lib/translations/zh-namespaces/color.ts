@@ -1,7 +1,7 @@
 /** 「color」的中文文案：只随用到它的页面加载，调用处写 useTranslations("color", zhColor) */
 export const zhColor = {
   title: "颜色选择器",
-  description: "在不同格式（十六进制、rgb、hsl和css名称）之间转换颜色",
+  description: "选一种颜色，换成需要的颜色写法",
   colorPicker: "color picker",
   copy: "复制",
   copied: "已复制",

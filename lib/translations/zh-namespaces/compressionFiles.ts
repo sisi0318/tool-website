@@ -1,7 +1,7 @@
 /** 「compressionFiles」的中文文案：只随用到它的页面加载，调用处写 useTranslations("compressionFiles", zhCompressionFiles) */
 export const zhCompressionFiles = {
   exampleFiles: "添加示例文件", exampleFile: "载入示例文件", exampleZip: "载入示例 ZIP", reverseResult: "用结果反向处理",
-  title: "文件压缩与 ZIP", description: "浏览 ZIP 目录、选择性提取和多文件打包，也可直接压缩或解压文件。数据在当前浏览器本地处理。",
+  title: "文件压缩与 ZIP", description: "查看压缩包、提取文件，也能打包文件",
   panelMode: "工作模式", filesMode: "文件 / ZIP", textMode: "编码文本", browseZip: "浏览 ZIP", createZip: "打包 ZIP", fileCodec: "文件压缩 / 解压",
   dropZip: "拖入 ZIP 文件，先浏览目录", zipLimit: "归档输入最大 64 MB，最多 2,000 项；每项提取最大 64 MB。", chooseZip: "打开 ZIP",
   nameEncoding: "文件名编码", autoNames: "自动（UTF-8 / CP437）", archiveSize: "归档大小", unpackedSize: "原始大小", entries: "项", files: "个文件",

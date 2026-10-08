@@ -1,7 +1,7 @@
 /** 「hash」的中文文案：只随用到它的页面加载，调用处写 useTranslations("hash", zhHash) */
 export const zhHash = {
   title: "哈希计算器",
-  hashDescription: "计算文本的各种哈希值",
+  hashDescription: "为文字或文件生成核对码",
   inputPlaceholder: "请输入要计算哈希的文本...",
   calculate: "计算哈希",
   result: "计算结果",

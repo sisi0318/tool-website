@@ -1,7 +1,7 @@
 /** 「dockerConverter」的中文文案：只随用到它的页面加载，调用处写 useTranslations("dockerConverter", zhDockerConverter) */
 export const zhDockerConverter = {
   title: "Docker Run 转换器",
-  description: "将 Docker Run 命令转换为 Docker Compose 文件，支持常见参数、资源限制与健康检查。",
+  description: "把启动命令转换成设置文件",
   dockerRunCommand: "Docker Run 命令",
   commandPlaceholder: "粘贴或输入 docker run 命令，例如：docker run -p 80:80 -v /data:/data nginx",
   convert: "转换",

@@ -29,7 +29,7 @@ export const zhJson = {
   fileTooBig: "文件太大。最大大小为10MB。",
   invalidJson: "无效的JSON",
   lineCol: "行:列",
-  description: "格式化、压缩、验证和转换JSON数据",
+  description: "整理排版、检查错误、压缩和转换内容",
   indentSize: "缩进大小",
   useTab: "制表符",
   sortKeys: "排序键",

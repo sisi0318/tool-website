@@ -1,7 +1,7 @@
 /** 「unicodeTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("unicodeTools", zhUnicodeTools) */
 export const zhUnicodeTools = {
   "title": "Unicode 字符检查器",
-  "description": "检查码点、UTF-8 字节、不可见字符和字素簇，比较并规范化 Unicode 文本。",
+  "description": "找出看不见的字符，统一文字写法",
   "inspect": "检查字符",
   "placeholder": "粘贴文字、空白、组合字符或 Emoji…",
   "normalizationHelp": "NFC / NFD 处理规范等价形式；NFKC / NFKD 还会转换全角字、圈号和连字等兼容字符。最多检查 20,000 个码点、100,000 个 UTF-16 单元。",

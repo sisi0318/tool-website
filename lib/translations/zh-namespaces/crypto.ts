@@ -1,7 +1,7 @@
 /** 「crypto」的中文文案：只随用到它的页面加载，调用处写 useTranslations("crypto", zhCrypto) */
 export const zhCrypto = {
   title: "加密解密工具",
-  description: "按明确的字节格式和长度执行兼容性加密、解密或文件处理",
+  description: "加密文字或文件，也能解密还原",
   encrypt: "加密",
   decrypt: "解密",
   encryptNow: "立即加密",

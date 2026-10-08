@@ -1,7 +1,7 @@
 /** 「caseConverter」的中文文案：只随用到它的页面加载，调用处写 useTranslations("caseConverter", zhCaseConverter) */
 export const zhCaseConverter = {
   title: "大小写转换工具",
-  description: "快速转换文本大小写，支持多种命名格式",
+  description: "转换字母大小写，统一命名写法",
   conversionType: "转换类型",
   example: "示例",
   loadExample: "示例",

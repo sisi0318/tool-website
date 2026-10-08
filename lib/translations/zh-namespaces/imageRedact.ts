@@ -1,6 +1,6 @@
 /** 「imageRedact」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageRedact", zhImageRedact) */
 export const zhImageRedact = {
-  title: "图片隐私打码", description: "自动标出截图中的联系方式，手动画框补充，确认后导出已覆盖像素的图片。所有识别和图片处理都在浏览器本地完成。",
+  title: "图片隐私打码", description: "找出图片中的隐私信息，确认后遮住",
   upload: "选择图片", sample: "加载示例", clear: "清空", limits: "可拖入或粘贴 PNG / JPEG / WebP；最大 20 MB、2000 万像素。", firstFrame: "仅处理第一帧",
   kind_phone: "手机号 / 国际号码", kind_email: "邮箱", kind_identity: "中国大陆身份证号", detect: "检测敏感内容",
   detectHint: "检测依赖 OCR 和号码格式，可能漏检或误判。自动选区覆盖命中内容所在整行，请核对并补充姓名、头像、地址等区域。再次检测会替换自动选区，保留手动选区。",

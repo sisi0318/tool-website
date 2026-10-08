@@ -2,7 +2,7 @@
 export const zhOcrTools = {
   staleResult: "识别参数已改动，下面仍是上次的结果；点击“开始识别”按新设置重新识别。", confirmRerun: "重新识别会丢弃你对识别文字做的修改。", rerunAnyway: "仍然重新识别", keepEdits: "保留修改",
   imageMode: "图片识别", pdfMode: "PDF OCR", batchMode: "批量处理",
-  title: "OCR 图片文字识别", description: "把图片里的中英文变成可编辑文本。保留小字细节，分段处理长截图，识别后可对照原图逐行核对。",
+  title: "OCR 图片文字识别", description: "把图片里的文字转成可编辑文字",
   local: "浏览器本地识别 · 图片不上传", chooseFile: "选择图片", fileHint: "拖入图片，或在此页面粘贴截图", clear: "清除图片",
   sample: "试试示例", sample_document: "中英混排", sample_small: "小字截图", sample_dark: "深色背景", sample_long: "长截图",
   limits: "支持 PNG、JPEG、WebP，单张不超过 20 MB / 2000 万像素。动态图片只识别首帧。",

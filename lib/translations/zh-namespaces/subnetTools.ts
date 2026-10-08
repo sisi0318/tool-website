@@ -1,7 +1,7 @@
 /** 「subnetTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("subnetTools", zhSubnetTools) */
 export const zhSubnetTools = {
   title: "IP / CIDR 网段计算器",
-  description: "计算 IPv4 与 IPv6 的网络范围、掩码和地址数量，并检查地址是否属于网段。",
+  description: "算出一组网络地址的范围和数量",
   calculate: "计算网段",
   failed: "网段计算失败",
   cidr: "IP 地址或 CIDR",

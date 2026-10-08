@@ -1,7 +1,7 @@
 /** 「hexBinaryTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("hexBinaryTools", zhHexBinaryTools) */
 export const zhHexBinaryTools = {
   title: "Hex / 二进制查看器",
-  description: "查看标准十六进制转储、转换字节编码并识别常见文件头。",
+  description: "查看文件内部内容，识别文件类型",
   hexdump: "十六进制转储",
   signature: "识别文件类型",
   toText: "转为文本",

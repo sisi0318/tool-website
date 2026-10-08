@@ -1,7 +1,7 @@
 /** 「imageCoordinates」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageCoordinates", zhImageCoordinates) */
 export const zhImageCoordinates = {
   title: "图片坐标拾取",
-  description: "上传图片，通过鼠标、触控或手动输入精确标记坐标",
+  description: "点选图片位置，查看并记录坐标",
   uploadImage: "上传图片",
   chooseImage: "选择图片文件",
   dropzoneAria: "点击、拖放或粘贴图片文件",

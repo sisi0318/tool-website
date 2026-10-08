@@ -1,7 +1,7 @@
 /** 「pdfTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("pdfTools", zhPdfTools) */
 export const zhPdfTools = {
   "title": "PDF 页面工具",
-  "description": "本地合并、拆分、重排和旋转 PDF，图片转 PDF、添加页码，以及扫描件 OCR。",
+  "description": "合并拆分文档、调整页面、提取文字",
   "ocrMode": "扫描件 OCR",
   "pagesMode": "PDF 页面",
   "imagesMode": "图片转 PDF",

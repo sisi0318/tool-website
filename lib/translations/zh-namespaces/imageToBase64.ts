@@ -1,7 +1,7 @@
 /** 「imageToBase64」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageToBase64", zhImageToBase64) */
 export const zhImageToBase64 = {
   title: "图片 ⇄ Base64 转换器",
-  description: "支持图片转Base64编码和Base64解码显示图片，无压缩原图质量",
+  description: "把整张图片存成一段文字，也能还原",
   dropImageHere: "拖拽、粘贴图片或点击上传",
   uploadImage: "上传图片",
   imageInfo: "图片信息",

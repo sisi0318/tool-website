@@ -1,7 +1,7 @@
 /** 「baseConverter」的中文文案：只随用到它的页面加载，调用处写 useTranslations("baseConverter", zhBaseConverter) */
 export const zhBaseConverter = {
   title: "进制转换器",
-  description: "在 2–64 进制之间无精度损失地转换整数；Radix-64 是数值进制，不是文本 Base64 编码。",
+  description: "同一个整数，换一种记数方式",
   inputNumber: "输入数字",
   inputBase: "输入进制",
   binary: "二进制",

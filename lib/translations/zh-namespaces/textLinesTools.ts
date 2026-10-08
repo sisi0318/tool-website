@@ -1,7 +1,7 @@
 /** 「textLinesTools」的中文文案：只随用到它的页面加载，调用处写 useTranslations("textLinesTools", zhTextLinesTools) */
 export const zhTextLinesTools = {
   "title": "文本行处理",
-  "description": "去重、排序、整理空白、提取列，或比较两组文本。每个操作的结果都可继续作为下一步输入。",
+  "description": "删除重复行、排序、清理空白或提取列",
   "placeholder": "每行一项，粘贴待处理文本…",
   "textA": "文本 A",
   "textB": "文本 B",

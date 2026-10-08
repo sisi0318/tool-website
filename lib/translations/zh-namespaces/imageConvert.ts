@@ -1,7 +1,7 @@
 /** 「imageConvert」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageConvert", zhImageConvert) */
 export const zhImageConvert = {
   title: "图片格式转换",
-  description: "批量转换 PNG、JPEG、WebP、AVIF 和单帧 GIF，可同时缩放尺寸并打包下载。",
+  description: "批量换图片格式，调整大小后打包下载",
   settings: "转换设置",
   outputFormat: "输出格式",
   gifSingleFrame: "GIF（单帧）",

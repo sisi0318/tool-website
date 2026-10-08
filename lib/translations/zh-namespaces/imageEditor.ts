@@ -1,7 +1,7 @@
 /** 「imageEditor」的中文文案：只随用到它的页面加载，调用处写 useTranslations("imageEditor", zhImageEditor) */
 export const zhImageEditor = {
   title: "图片编辑器",
-  description: "裁剪、旋转、镜像和调整滤镜，预览与导出保持一致",
+  description: "裁剪、旋转、翻转图片，调整颜色",
   uploadImage: "上传图片",
   dropzoneAria: "点击、拖放或粘贴要编辑的图片",
   dropzone: "点击、拖放或粘贴图片",

@@ -1,7 +1,7 @@
 /** 「hmac」的中文文案：只随用到它的页面加载，调用处写 useTranslations("hmac", zhHmac) */
 export const zhHmac = {
   title: "HMAC计算器",
-  description: "使用密钥和消息计算或验证 HMAC，支持常见 SHA、SHA-3 与兼容算法。",
+  description: "生成内容核对码，检查是否与原值一致",
   algorithm: "算法",
   key: "密钥",
   keyPlaceholder: "输入密钥",
