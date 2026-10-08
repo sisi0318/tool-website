@@ -43,6 +43,11 @@ export const zhProtobuf = {
   inputEncoding: "输入编码",
   autoEncoding: "自动识别（优先 Hex）",
   autoEncodingShort: "自动识别",
+  textDisplayMode: "文字显示",
+  readableText: "自动推断",
+  utf8Text: "UTF-8 文本",
+  readableTextHint: "自动区分文字、消息和二进制数据",
+  utf8TextHint: "保留特殊字符和消息结构，原始字节不变",
   inspector: {
     title: "字段与 Hex 检查器",
     help: "无 Schema 时，字段类型只是推断。切换解释方式会更新上方 JSON，原始字节保持不变；大整数和非有限浮点数以字符串显示。",

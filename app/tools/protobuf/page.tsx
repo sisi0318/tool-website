@@ -25,7 +25,7 @@ import { bytesToHex } from "@/lib/binary"
 import { downloadBlob } from "@/lib/object-url"
 import { Loader2, Copy, FileUp, X, Download, RefreshCw, Upload, Zap, Code, FileText, Database, Shield, Check } from "lucide-react"
 import type * as Protobuf from "protobufjs"
-import { inspectProtobuf, decodeProtobufWithSchema, encodeProtobuf, encodeProtobufWithSchema, loadProtobuf, parseProtobufInput, ProtobufError, type ProtobufInspection } from "@/lib/protobuf-tools"
+import { inspectProtobuf, decodeProtobufWithSchema, encodeProtobuf, encodeProtobufWithSchema, loadProtobuf, parseProtobufInput, ProtobufError, type ProtobufInspection, type ProtobufTextMode } from "@/lib/protobuf-tools"
 
 function collectMessageTypes(pb: typeof Protobuf, namespace: Protobuf.NamespaceBase): string[] {
   const messageTypes: string[] = []
@@ -56,6 +56,8 @@ export default function ProtobufTool() {
   const [rawOutputData, setOutputData] = useState("")
   const [inspection, setInspection] = useState<{ data: ProtobufInspection; revision: number } | null>(null)
   const [inputEncoding, setInputEncoding] = useState<"auto" | "hex" | "base64">("auto")
+  const [textDisplayMode, setTextDisplayMode] = useState<ProtobufTextMode>("readable")
+  const previousTextDisplayModeRef = useRef<ProtobufTextMode>("readable")
   const [jsonInput, setJsonInput] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [protoFile, setProtoFile] = useState<File | null>(null)
@@ -313,7 +315,7 @@ export default function ProtobufTool() {
       if (mode === "decode") {
         // Convert input to buffer
         const buffer = parseProtobufInput(inputData, inputMode === "file" ? "hex" : inputEncoding)
-        const inspected = inspectProtobuf(buffer)
+        const inspected = inspectProtobuf(buffer, { textMode: schemaMode === "schemaless" ? textDisplayMode : "readable" })
 
         let decoded
         if (schemaMode === "schema" && root && selectedMessageType) {
@@ -355,6 +357,7 @@ export default function ProtobufTool() {
     inputData,
     inputMode,
     inputEncoding,
+    textDisplayMode,
     jsonInput,
     mode,
     schemaMode,
@@ -380,6 +383,8 @@ export default function ProtobufTool() {
 
   // Process when input changes
   useEffect(() => {
+    const textDisplayChanged = previousTextDisplayModeRef.current !== textDisplayMode
+    previousTextDisplayModeRef.current = textDisplayMode
     processingRequestRef.current += 1
     setIsProcessing(false)
     setInspection(null)
@@ -391,8 +396,8 @@ export default function ProtobufTool() {
       return
     }
 
-    // Don't auto-process large inputs, and wait until the user pauses typing.
-    if (source.length >= 10000) return
+    // Large inputs stay manual; explicitly changing their display mode refreshes the result.
+    if (source.length >= 10000 && !textDisplayChanged) return
 
     const timeout = window.setTimeout(() => {
       void parseProtobuf()
@@ -402,7 +407,7 @@ export default function ProtobufTool() {
       window.clearTimeout(timeout)
       processingRequestRef.current += 1
     }
-  }, [inputData, jsonInput, mode, parseProtobuf])
+  }, [inputData, jsonInput, mode, parseProtobuf, textDisplayMode])
 
   useEffect(() => {
     return () => {
@@ -787,6 +792,25 @@ export default function ProtobufTool() {
 
                 <div className="mt-4 space-y-4 rounded-xl bg-[var(--md-sys-color-surface-container-low)] p-4">
                   <Label className="text-sm font-medium">{t("options")}</Label>
+
+                  {schemaMode === "schemaless" && (
+                    <div className="space-y-2">
+                      <Label id="protobuf-text-display-label" className="text-sm">{t("textDisplayMode")}</Label>
+                      <SegmentedControl
+                        value={textDisplayMode}
+                        onValueChange={(value) => setTextDisplayMode(value as ProtobufTextMode)}
+                        aria-labelledby="protobuf-text-display-label"
+                        aria-describedby="protobuf-text-display-help"
+                        className="grid w-full grid-cols-2"
+                      >
+                        <SegmentedControlItem value="readable">{t("readableText")}</SegmentedControlItem>
+                        <SegmentedControlItem value="utf8">{t("utf8Text")}</SegmentedControlItem>
+                      </SegmentedControl>
+                      <p id="protobuf-text-display-help" className="text-xs text-md-on-surface-variant">
+                        {t(textDisplayMode === "utf8" ? "utf8TextHint" : "readableTextHint")}
+                      </p>
+                    </div>
+                  )}
                   
                   <div className="flex items-center space-x-2">
                     <Label htmlFor="indent-size" className="text-sm">{t("indentSize")}:</Label>

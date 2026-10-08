@@ -1910,6 +1910,11 @@ protobuf: {
   inputEncoding: "Input encoding",
   autoEncoding: "Auto (Hex first)",
   autoEncodingShort: "Auto-detect",
+  textDisplayMode: "Text display",
+  readableText: "Auto-detect",
+  utf8Text: "UTF-8 text",
+  readableTextHint: "Automatically distinguish text, messages and binary data.",
+  utf8TextHint: "Preserve control characters and message structure without changing the original bytes.",
   inspector: {
     title: "Field and Hex inspector",
     help: "Without a schema, field types are inferred. Changing an interpretation updates the JSON above and preserves the raw bytes. Large integers and non-finite floats appear as strings.",

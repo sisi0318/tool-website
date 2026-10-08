@@ -41,6 +41,12 @@ export interface ProtobufInspection {
   value: ProtobufObject
 }
 
+export type ProtobufTextMode = "readable" | "utf8"
+export interface ProtobufInspectOptions {
+  /** UTF-8 fallback is opt-in and preserves already inferred nested messages. */
+  textMode?: ProtobufTextMode
+}
+
 let protobufPromise: Promise<typeof Protobuf> | undefined
 export function loadProtobuf(): Promise<typeof Protobuf> {
   protobufPromise ??= import("protobufjs").catch((error) => {
@@ -101,9 +107,11 @@ export function protobufFieldsToObject(fields: readonly ProtobufField[]): Protob
 }
 
 /** Wire metadata uses absolute, half-open byte ranges. Only fully valid nested messages are inferred. */
-export function inspectProtobuf(bytes: Uint8Array): ProtobufInspection {
+export function inspectProtobuf(bytes: Uint8Array, options: ProtobufInspectOptions = {}): ProtobufInspection {
   if (bytes.byteLength > PROTOBUF_MAX_BYTES) throw new ProtobufError("limit")
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  // Preserve an actual U+FEFF in the payload instead of silently consuming its BOM.
+  const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
   let fieldCount = 0
   let work = 0
 
@@ -152,7 +160,7 @@ export function inspectProtobuf(bytes: Uint8Array): ProtobufInspection {
         if (length > BigInt(end - cursor.pos)) throw new ProtobufError("truncated", cursor.pos)
         cursor.pos += Number(length)
         const payload = bytes.subarray(dataOffset, cursor.pos)
-        try { text = new TextDecoder("utf-8", { fatal: true }).decode(payload) } catch { /* Binary payload. */ }
+        try { text = textDecoder.decode(payload) } catch { /* Binary payload. */ }
         if (payload.length > 0) {
           try {
             children = parseMessage(dataOffset, cursor.pos, depth + 1).fields
@@ -167,6 +175,9 @@ export function inspectProtobuf(bytes: Uint8Array): ProtobufInspection {
         } else if (children?.length) {
           kind = "message"
           value = protobufFieldsToObject(children)
+        } else if (options.textMode === "utf8" && text !== undefined) {
+          kind = "text"
+          value = text
         } else {
           kind = "bytes"
           value = bytesToBase64(payload)

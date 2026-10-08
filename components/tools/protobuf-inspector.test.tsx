@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 import { ProtobufInspector } from "./protobuf-inspector"
 import { inspectProtobuf } from "@/lib/protobuf-tools"
-import { hexToBytes } from "@/lib/binary"
+import { bytesToHex, hexToBytes } from "@/lib/binary"
 vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 
 vi.mock("@/hooks/use-translations", () => ({ useTranslations: () => (key: string) => key }))
@@ -43,5 +43,17 @@ describe("Protobuf inspector", () => {
   it("keeps schema-based JSON read-only", () => {
     render(<ProtobufInspector inspection={inspectProtobuf(hexToBytes("0801"))} readOnly onValueChange={vi.fn()} />)
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+  })
+
+  it("lets a UTF-8 text field switch back to bytes without changing its payload", () => {
+    const onValueChange = vi.fn()
+    const inspection = inspectProtobuf(hexToBytes("0a0668656c6c6f00"), { textMode: "utf8" })
+    render(<ProtobufInspector inspection={inspection} onValueChange={onValueChange} />)
+    expect(screen.getByRole("option", { name: "types.auto (kinds.text)" })).toBeInTheDocument()
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "bytes" } })
+    expect(onValueChange).toHaveBeenLastCalledWith({ "1": "aGVsbG8A" })
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "auto" } })
+    expect(onValueChange).toHaveBeenLastCalledWith({ "1": "hello\u0000" })
+    expect(bytesToHex(inspection.bytes)).toBe("0a0668656c6c6f00")
   })
 })

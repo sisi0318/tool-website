@@ -43,6 +43,77 @@ describe("Protobuf wire decoding", () => {
     expect(decodeProtobuf(hexToBytes("0a03080100"))).toEqual({ "1": "CAEA" })
   })
 
+  it.each([
+    "hello\u0000",
+    "hello\fworld",
+    "hello\b world",
+    "\u001b[32mhello\u001b[0m",
+    "你好，世界\u0000",
+    "hello\nworld\t🌍",
+    "aGVsbG8=",
+    "\ufeffhello",
+    "\u0000\u0000",
+  ])("preserves valid UTF-8 text %j when text display is requested", (text) => {
+    const payload = new TextEncoder().encode(text)
+    const bytes = Uint8Array.of(0x0a, payload.length, ...payload)
+    const inspection = inspectProtobuf(bytes, { textMode: "utf8" })
+    expect(inspection.fields[0].kind).toBe("text")
+    expect(inspection.value).toEqual({ "1": text })
+    expect(new TextEncoder().encode(inspection.fields[0].text)).toEqual(payload)
+    expect(JSON.parse(JSON.stringify(inspection.value))).toEqual({ "1": text })
+  })
+
+  it.each(["readable", "utf8"] as const)("preserves ordinary text and BOM bytes in %s mode", (textMode) => {
+    for (const text of ["hello", "你好", "hello\nworld\t🌍", "aGVsbG8=", "\ufeffhello"]) {
+      const payload = new TextEncoder().encode(text)
+      const inspection = inspectProtobuf(Uint8Array.of(0x0a, payload.length, ...payload), { textMode })
+      expect(inspection.fields[0].kind).toBe("text")
+      expect(inspection.value).toEqual({ "1": text })
+    }
+  })
+
+  it("keeps the default conservative and preserves the original bytes when the display mode changes", () => {
+    const bytes = hexToBytes("0a0668656c6c6f00")
+    const original = bytes.slice()
+    expect(inspectProtobuf(bytes).value).toEqual({ "1": "aGVsbG8A" })
+    expect(inspectProtobuf(bytes, { textMode: "readable" }).value).toEqual({ "1": "aGVsbG8A" })
+    expect(inspectProtobuf(bytes, { textMode: "utf8" }).value).toEqual({ "1": "hello\u0000" })
+    expect(bytes).toEqual(original)
+  })
+
+  it.each(["c328", "ff00", "efbb"])("never replaces invalid UTF-8 %s with lossy text", (hex) => {
+    const payload = hexToBytes(hex)
+    const inspection = inspectProtobuf(Uint8Array.of(0x0a, payload.length, ...payload), { textMode: "utf8" })
+    expect(inspection.fields[0].kind).toBe("bytes")
+    expect(inspection.value).toEqual({ "1": bytesToBase64(payload) })
+    expect(protobufInterpretationOptions(inspection.fields[0])).not.toContain("text")
+  })
+
+  it("reuses strict decoding without carrying an invalid field into the next field", () => {
+    const inspection = inspectProtobuf(hexToBytes("0a02ff001208efbbbf68656c6c6f"), { textMode: "utf8" })
+    expect(inspection.value).toEqual({ "1": "/wA=", "2": "\ufeffhello" })
+  })
+
+  it.each(["00000000", "01020304", "616200010203", "c328", "ff00"])("keeps binary payload %s as Base64", (hex) => {
+    const payload = hexToBytes(hex)
+    const inspection = inspectProtobuf(Uint8Array.of(0x0a, payload.length, ...payload))
+    expect(inspection.fields[0].kind).toBe("bytes")
+    expect(inspection.value).toEqual({ "1": bytesToBase64(payload) })
+  })
+
+  it.each(["readable", "utf8"] as const)("preserves complete nested messages in %s mode", (textMode) => {
+    const text = new TextEncoder().encode("a readable nested string")
+    const child = Uint8Array.of(0x0a, text.length, ...text)
+    const inspection = inspectProtobuf(Uint8Array.of(0x0a, child.length, ...child), { textMode })
+    expect(inspection.fields[0].kind).toBe("message")
+    expect(inspection.value).toEqual({ "1": { "1": "a readable nested string" } })
+  })
+
+  it("applies the display mode to nested and repeated fields without flattening messages", () => {
+    const inspection = inspectProtobuf(hexToBytes("0a080a0668656c6c6f000a040a020000"), { textMode: "utf8" })
+    expect(inspection.value).toEqual({ "1": [{ "1": "hello\u0000" }, { "1": "\u0000\u0000" }] })
+  })
+
   it("bounds field counts", () => {
     expect(() => decodeProtobuf(hexToBytes("0801".repeat(20_001)))).toThrow(/limit/)
   })
