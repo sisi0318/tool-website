@@ -45,6 +45,12 @@ export function ToolPickerSheet({ open, onOpenChange, valueType, running, onPick
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && filtered.length > 0 && !running) {
+              event.preventDefault()
+              onPick(filtered[0])
+            }
+          }}
           placeholder={t("searchTools")}
           aria-label={t("searchTools")}
           className="rounded-full"
@@ -66,8 +72,8 @@ export function ToolPickerSheet({ open, onOpenChange, valueType, running, onPick
                   onClick={() => onPick(definition)}
                   className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--md-sys-color-outline-variant)] p-3 text-center text-xs text-[var(--md-sys-color-on-surface)] transition-colors hover:bg-[var(--md-sys-color-secondary-container)] hover:text-[var(--md-sys-color-on-secondary-container)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
                 >
-                  <Icon className="h-5 w-5" />
-                  <span className="w-full truncate leading-tight">{nodeLabel(definition)}</span>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="line-clamp-2 w-full leading-tight">{nodeLabel(definition)}</span>
                 </button>
               )
             })}

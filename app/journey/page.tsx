@@ -8,7 +8,7 @@ import { registerAllAdapters } from "@/lib/adapters"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { withDefaultConfig } from "@/lib/canvas/node-factory"
 import type { NodeDefinition } from "@/lib/canvas/types"
-import { applyStep, countDescendants, getMainInputPort, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
+import { applyStep, countDescendants, getMainInputPort, getOutputPorts, replayDescendants, replaySteps, resolveOutputPort } from "@/lib/journey/engine"
 import { isTypeCompatible } from "@/lib/canvas/validation"
 import { receiveTransfer as fetchTransfer, toolTransferIdFromHash, toolTransfers, type ToolTransfer } from "@/lib/tool-transfer"
 import { decodeSharedPath, deleteDraft, hasSavedConflict, isJourneySaved, loadDraft, loadJourney, reviewSharedPath, saveDraft, saveJourney, type SharedStepIssue, type SharedStepReview, listSavedJourneys, takeSavedJourney } from "@/lib/journey/serialize"
@@ -48,6 +48,7 @@ import { StepSheet } from "@/components/journey/StepSheet"
 import { SuggestionChips } from "@/components/journey/SuggestionChips"
 import { ToolPickerSheet } from "@/components/journey/ToolPickerSheet"
 import { ValueCard } from "@/components/journey/ValueCard"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { TransferIntake } from "@/components/journey/TransferIntake"
 import { TemplatePicker } from "@/components/journey/TemplatePicker"
 import { ConfirmDialog } from "@/components/canvas/workflow/ConfirmDialog"
@@ -401,7 +402,16 @@ export default function JourneyPage() {
 
   const handlePickTool = (definition: NodeDefinition) => {
     setToolPickerOpen(false)
-    setPendingStep({ tool: definition.type, config: withDefaultConfig(definition.type, {}), outputPort: resolveOutputPort(definition) })
+    const defaultConfig = withDefaultConfig(definition.type, {})
+    const mainPortId = getMainInputPort(definition)?.id
+    const fields = definition.config.filter((field) => field.id !== mainPortId && (!field.visible || field.visible(defaultConfig)))
+    const ports = getOutputPorts(definition)
+    const outputPort = resolveOutputPort(definition)
+    if (fields.length === 0 && ports.length <= 1 && !definition.network && definition.executionMode !== "manual") {
+      void applyTool(definition.type, defaultConfig, outputPort)
+      return
+    }
+    setPendingStep({ tool: definition.type, config: defaultConfig, outputPort })
     setStepSheetOpen(true)
   }
 
@@ -736,6 +746,7 @@ export default function JourneyPage() {
         onRerunFromRoot={() => void rerunFromRoot()}
         onEditInput={() => setDialog("editInput")}
         inputMissing={Boolean(journey.nodes[journey.rootId]?.valueMissing)}
+        extraActions={!active.valueMissing ? <SendToMenu compact value={active.value} source={active.label} disabled={running} /> : null}
       />
 
       {!active.valueMissing && (

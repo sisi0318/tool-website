@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { downloadValue } from "@/lib/value-download"
-import { AlertTriangle, Copy, Download, PencilLine, RotateCcw, Settings2 } from "lucide-react"
+import { AlertTriangle, Check, ChevronDown, ChevronUp, Copy, Download, PencilLine, RotateCcw, Settings2 } from "lucide-react"
 import type { JourneyNode } from "@/lib/journey/types"
 import { detectData } from "@/lib/data-detector"
 import { formatCanvasValue } from "@/lib/canvas/format-value"
@@ -33,11 +33,15 @@ interface ValueCardProps {
   onEditInput?: () => void
   /** 根节点（输入）本身没有随保存恢复：这时要请用户重新提供输入，而不是“从根节点重跑” */
   inputMissing?: boolean
+  /** 附加动作插槽（例如发送到其它工具） */
+  extraActions?: ReactNode
 }
 
-export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onEditInput, inputMissing = false }: ValueCardProps) {
+export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onEditInput, inputMissing = false, extraActions }: ValueCardProps) {
   const t = useTranslations("journey", zhJourney)
   const { toast } = useToast()
+  const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const isRoot = node.parentId === null
   const isString = typeof node.value === "string"
@@ -57,6 +61,10 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
   const handleCopy = async () => {
     const text = isString ? (node.value as string) : formatCanvasValue(node.value, true)
     const ok = await copyTextToClipboard(text, { reportFailure: false })
+    if (ok) {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    }
     toast(ok ? { title: t("copied") } : { title: t("copyFailed"), variant: "destructive" })
   }
 
@@ -68,10 +76,39 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
       if (text.length === 0) {
         return <p className="text-sm italic text-[var(--md-sys-color-on-surface-variant)]">{t("emptyValue")}</p>
       }
+      const isLongText = text.length > 240 || text.split("\n").length > 8
       return (
-        <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-[var(--md-sys-color-surface-container-high)] p-3 font-mono text-xs leading-relaxed text-[var(--md-sys-color-on-surface)]">
-          {text}
-        </pre>
+        <div className="space-y-1.5">
+          <pre
+            className={`${
+              expanded ? "max-h-[32rem]" : "max-h-64"
+            } overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-[var(--md-sys-color-surface-container-high)] p-3 font-mono text-xs leading-relaxed text-[var(--md-sys-color-on-surface)] transition-[max-height]`}
+          >
+            {text}
+          </pre>
+          <div className="flex items-center justify-between px-1 text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+            <span className="font-mono">{text.length.toLocaleString()} chars</span>
+            {isLongText && (
+              <button
+                type="button"
+                onClick={() => setExpanded((prev) => !prev)}
+                className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-medium text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10"
+              >
+                {expanded ? (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    收起
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    展开预览
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
       )
     }
     if (blobValue) {
@@ -107,14 +144,15 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
 
   return (
     <section className="rounded-3xl bg-[var(--md-sys-color-surface-container-low)] p-4 shadow-sm sm:p-5">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-[var(--md-sys-color-on-surface-variant)]">
           {t("currentData")}
         </h2>
         <Badge className="border-transparent bg-[var(--md-sys-color-secondary-container)] font-mono text-[10px] text-[var(--md-sys-color-on-secondary-container)] hover:bg-[var(--md-sys-color-secondary-container)]">
           {node.valueType}
         </Badge>
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex flex-wrap items-center gap-0.5">
+          {extraActions}
           {canCopy && (
             <button
               type="button"
@@ -124,7 +162,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
               title={t("copy")}
               className={ICON_BUTTON}
             >
-              <Copy className="h-4 w-4" />
+              {copied ? <Check className="h-4 w-4 text-[var(--md-sys-color-primary)]" /> : <Copy className="h-4 w-4" />}
             </button>
           )}
           {canDownload && (
