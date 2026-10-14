@@ -630,7 +630,7 @@ export default function JsonTool() {
         <div className="lg:col-span-2">
           <Card className="card-modern">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+              <CardTitle className="text-base flex flex-wrap items-center gap-2">
                 <FileText className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
                 {t("editor")}
                 <Badge variant="outline" className="text-xs uppercase" title={t("contentKind")}>
@@ -662,7 +662,7 @@ export default function JsonTool() {
               <textarea
                 id={JSON_EDITOR_ID}
                 ref={textareaRef}
-                className="h-[62vh] min-h-96 max-h-[48rem] w-full resize-none border-0 bg-[var(--md-sys-color-surface-container-low)] p-4 font-mono text-sm leading-relaxed text-[var(--md-sys-color-on-surface)] outline-none transition-colors focus:bg-[var(--md-sys-color-surface-container-lowest)]"
+                className="h-[52vh] sm:h-[62vh] min-h-72 sm:min-h-96 max-h-[48rem] w-full resize-none border-0 bg-[var(--md-sys-color-surface-container-low)] p-4 font-mono text-sm leading-relaxed text-[var(--md-sys-color-on-surface)] outline-none transition-colors focus:bg-[var(--md-sys-color-surface-container-lowest)]"
                 value={jsonText}
                 onChange={(e) => {
                   history.setText(e.target.value)
@@ -681,6 +681,33 @@ export default function JsonTool() {
                   tabSize: indentSize,
                 }}
               />
+              <div className="grid grid-cols-2 gap-2 border-t border-[var(--md-sys-color-outline-variant)]/50 p-3 sm:grid-cols-4 lg:hidden">
+                <Button onClick={formatJson} variant="outline" size="sm" className="w-full">
+                  <Code className="h-4 w-4 mr-1.5" />
+                  {t("format")}
+                </Button>
+                <Button onClick={compressJson} variant="outline" size="sm" className="w-full">
+                  <RefreshCw className="h-4 w-4 mr-1.5" />
+                  {t("compress")}
+                </Button>
+                <Button onClick={toggleCollapse} variant="outline" size="sm" className="w-full">
+                  {collapsed ? (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-1.5" />
+                      {t("expand")}
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-1.5" />
+                      {t("collapse")}
+                    </>
+                  )}
+                </Button>
+                <Button onClick={clearJson} variant="destructive" size="sm" className="w-full">
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  {t("clear")}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

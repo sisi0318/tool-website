@@ -336,21 +336,21 @@ export default function JWTPage() {
                     <Label>{t("claims")}</Label>
                     <div className="grid gap-2">
                       {decoded.payload.iss && (
-                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">iss (Issuer)</span>
-                          <span className="font-mono">{decoded.payload.iss}</span>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="shrink-0 text-[var(--md-sys-color-on-surface-variant)]">iss (Issuer)</span>
+                          <span className="min-w-0 break-all font-mono text-right">{decoded.payload.iss}</span>
                         </div>
                       )}
                       {decoded.payload.sub && (
-                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">sub (Subject)</span>
-                          <span className="font-mono">{decoded.payload.sub}</span>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="shrink-0 text-[var(--md-sys-color-on-surface-variant)]">sub (Subject)</span>
+                          <span className="min-w-0 break-all font-mono text-right">{decoded.payload.sub}</span>
                         </div>
                       )}
                       {decoded.payload.aud && (
-                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">aud (Audience)</span>
-                          <span className="font-mono">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="shrink-0 text-[var(--md-sys-color-on-surface-variant)]">aud (Audience)</span>
+                          <span className="min-w-0 break-all font-mono text-right">
                             {Array.isArray(decoded.payload.aud)
                               ? decoded.payload.aud.join(", ")
                               : decoded.payload.aud}
@@ -358,27 +358,27 @@ export default function JWTPage() {
                         </div>
                       )}
                       {decoded.payload.exp && (
-                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">exp (Expiration)</span>
-                          <span className="font-mono">{formatTimestamp(decoded.payload.exp)}</span>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="shrink-0 text-[var(--md-sys-color-on-surface-variant)]">exp (Expiration)</span>
+                          <span className="min-w-0 break-all font-mono text-right">{formatTimestamp(decoded.payload.exp)}</span>
                         </div>
                       )}
                       {decoded.payload.iat && (
-                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">iat (Issued At)</span>
-                          <span className="font-mono">{formatTimestamp(decoded.payload.iat)}</span>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="shrink-0 text-[var(--md-sys-color-on-surface-variant)]">iat (Issued At)</span>
+                          <span className="min-w-0 break-all font-mono text-right">{formatTimestamp(decoded.payload.iat)}</span>
                         </div>
                       )}
                       {decoded.payload.nbf && (
-                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">nbf (Not Before)</span>
-                          <span className="font-mono">{formatTimestamp(decoded.payload.nbf)}</span>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="shrink-0 text-[var(--md-sys-color-on-surface-variant)]">nbf (Not Before)</span>
+                          <span className="min-w-0 break-all font-mono text-right">{formatTimestamp(decoded.payload.nbf)}</span>
                         </div>
                       )}
                       {decoded.payload.jti && (
-                        <div className="flex justify-between p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
-                          <span className="text-[var(--md-sys-color-on-surface-variant)]">jti (JWT ID)</span>
-                          <span className="font-mono">{decoded.payload.jti}</span>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2 p-2 bg-[var(--md-sys-color-surface-container-low)] rounded">
+                          <span className="shrink-0 text-[var(--md-sys-color-on-surface-variant)]">jti (JWT ID)</span>
+                          <span className="min-w-0 break-all font-mono text-right">{decoded.payload.jti}</span>
                         </div>
                       )}
                     </div>

@@ -712,11 +712,11 @@ export default function TimePage() {
             <CardContent>
               <div className="flex flex-col items-center justify-center space-y-8">
                 {/* 主时间显示 */}
-                <div className="bg-gradient-to-r from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-secondary-container)] rounded-2xl p-8 w-full max-w-2xl">
-                  <div className="text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight text-[var(--md-sys-color-on-surface)] mb-4">
+                <div className="bg-gradient-to-r from-[var(--md-sys-color-primary-container)] to-[var(--md-sys-color-secondary-container)] rounded-2xl p-4 sm:p-8 w-full max-w-2xl">
+                  <div className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight text-[var(--md-sys-color-on-surface)] mb-4">
                     {formatTime(currentTime)}
                   </div>
-                  <div className="text-lg md:text-xl lg:text-2xl text-[var(--md-sys-color-on-surface-variant)]">
+                  <div className="text-base sm:text-lg md:text-xl lg:text-2xl text-[var(--md-sys-color-on-surface-variant)]">
                     {formatDate(currentTime)}
                   </div>
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -860,19 +860,19 @@ export default function TimePage() {
                     return (
                       <div
                         key={tzId}
-                        className="flex justify-between items-center p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg"
+                        className="flex flex-wrap justify-between items-center gap-3 p-4 bg-[var(--md-sys-color-surface-container-low)] rounded-lg"
                       >
-                        <div>
-                          <div className="text-lg font-medium">{tzDetails.name}</div>
+                        <div className="min-w-0">
+                          <div className="text-base sm:text-lg font-medium">{tzDetails.name}</div>
                           <div className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
                             GMT{tzDetails.offset >= 0 ? "+" : ""}
                             {tzDetails.offset}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 ml-auto">
                           <div className="text-right">
-                            <div className="text-2xl font-bold font-mono">{formatTime(currentTime, tzId)}</div>
-                            <div className="text-sm">{formatDate(currentTime, tzId)}</div>
+                            <div className="text-xl sm:text-2xl font-bold font-mono">{formatTime(currentTime, tzId)}</div>
+                            <div className="text-xs sm:text-sm">{formatDate(currentTime, tzId)}</div>
                           </div>
                           <Button
                             variant="ghost"
@@ -914,8 +914,8 @@ export default function TimePage() {
             <CardContent>
               <div className="flex flex-col items-center justify-center space-y-8">
                 {/* 秒表显示 */}
-                <div className="bg-gradient-to-r from-[var(--md-sys-color-success-container)] to-[var(--md-sys-color-tertiary-container)] rounded-2xl p-8 w-full max-w-2xl text-center">
-                  <div className={`text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-4 ${
+                <div className="bg-gradient-to-r from-[var(--md-sys-color-success-container)] to-[var(--md-sys-color-tertiary-container)] rounded-2xl p-4 sm:p-8 w-full max-w-2xl text-center">
+                  <div className={`text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-4 ${
                     stopwatchRunning ? 'text-[var(--md-sys-color-success)]' : 'text-[var(--md-sys-color-on-surface)]'
                   }`}>
                     {formatStopwatchTime(stopwatchTime)}
@@ -1024,8 +1024,8 @@ export default function TimePage() {
             <CardContent>
               <div className="flex flex-col items-center justify-center space-y-8">
                 {/* 计时器显示 */}
-                <div className="bg-gradient-to-r from-[var(--md-sys-color-warning-container)] to-[var(--md-sys-color-error-container)] rounded-2xl p-8 w-full max-w-2xl text-center">
-                  <div className={`text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-4 ${
+                <div className="bg-gradient-to-r from-[var(--md-sys-color-warning-container)] to-[var(--md-sys-color-error-container)] rounded-2xl p-4 sm:p-8 w-full max-w-2xl text-center">
+                  <div className={`text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-4 ${
                     timerCompleted ? "text-[var(--md-sys-color-error)] animate-pulse" : 
                     timerRunning ? 'text-[var(--md-sys-color-warning)]' : 
                     'text-[var(--md-sys-color-on-surface)]'

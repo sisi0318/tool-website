@@ -260,7 +260,7 @@ function add(a, b) {
               </Button>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant={ignoreWhitespace ? "default" : "outline"}
                 size="sm"
@@ -323,7 +323,7 @@ function add(a, b) {
               value={oldText}
               onChange={(e) => setOldText(e.target.value)}
               {...oldFile.dropProps}
-              rows={15}
+              rows={10}
               className="font-mono text-sm"
             />
           </div>
@@ -344,7 +344,7 @@ function add(a, b) {
               value={newText}
               onChange={(e) => setNewText(e.target.value)}
               {...newFile.dropProps}
-              rows={15}
+              rows={10}
               className="font-mono text-sm"
             />
           </div>
@@ -352,9 +352,9 @@ function add(a, b) {
 
         {/* 差异显示区域 */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Label>{t("differences")}</Label>
-            <div className="flex items-center gap-2 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--md-sys-color-on-surface-variant)]">
               {isCalculating && <Loader2 className="h-4 w-4 animate-spin" />}
               <span>
                 {diffResult.added + diffResult.removed} {t("changes")}

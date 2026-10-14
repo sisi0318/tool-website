@@ -660,12 +660,12 @@ export default function RegexTester() {
                 {/* 测试文本输入 */}
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="flex items-center gap-2">
                         <FileText className="h-5 w-5" />
                         {t("testString")}
                       </CardTitle>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <div className="flex items-center space-x-2">
                           <Switch
                             id="highlight"
@@ -732,7 +732,7 @@ export default function RegexTester() {
                       </div>
                       <div className="rounded-xl bg-[var(--md-sys-color-success-container)] p-3 text-center">
                         <div className="text-2xl font-bold text-[var(--md-sys-color-on-success-container)]">
-                          {testText ? Math.round((matches.length / testText.split(/\r?\n/).length) * 100) : 0}%
+                          {testText ? Math.min(100, Math.round((matches.length / testText.split(/\r?\n/).length) * 100)) : 0}%
                         </div>
                         <div className="text-sm text-[var(--md-sys-color-on-success-container)]">{t("matchRate")}</div>
                       </div>
@@ -1082,7 +1082,7 @@ export default function RegexTester() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button onClick={exportTestCase} className="flex items-center gap-2">
                       <Download className="h-4 w-4" />
                       {t("exportTestCase")}
