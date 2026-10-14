@@ -7,6 +7,7 @@ import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { FileDropZone } from "@/components/tools/file-drop-zone"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { SegmentedControl, SegmentedControlItem } from "@/components/ui/segmented-control"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -166,8 +167,10 @@ export default function HashPage() {
   const [autoCalculate, setAutoCalculate] = useToolPref("hash", "autoCalculate", false)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [outputFormat, setOutputFormat] = useToolPref("hash", "outputFormat", "hex", (value) => value === "hex" || value === "base64")
+  const [uppercase, setUppercase] = useState(false)
   const [size, setSize] = useState<number>(256)
   const [calculationError, setCalculationError] = useState("")
+  const formatDisplayHash = (value: string) => (outputFormat === "hex" && uppercase ? value.toUpperCase() : value)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const calculationIdRef = useRef(0)
   const calculationAbortRef = useRef<AbortController | null>(null)
@@ -1040,6 +1043,193 @@ export default function HashPage() {
           </CardContent>
         </Card>
 
+        {calculationError && (
+          <div
+            className="rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
+            role="alert"
+          >
+            {calculationError}
+          </div>
+        )}
+
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <Button
+            onClick={() => void calculateHash()}
+            disabled={
+              (inputMode === "text" ? !input : !fileInfo) || isCalculating
+            }
+            className="min-h-11 w-full"
+          >
+            {isCalculating ? t("calculating") : t("calculate")}
+          </Button>
+          {isCalculating && (
+            <Button
+              variant="outline"
+              onClick={cancelCalculation}
+              className="min-h-11"
+            >
+              {t("cancel")}
+            </Button>
+          )}
+        </div>
+
+        {hashResult && !showAllResults && (
+          <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-base">{t("result")}</CardTitle>
+              {outputFormat === "hex" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUppercase((prev) => !prev)}
+                  className="h-8 px-2.5 font-mono text-xs"
+                >
+                  {uppercase ? "AA → aa" : "aa → AA"}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] p-4">
+                <div className="min-w-0 space-y-2">
+                  <span className="block font-medium">
+                    {getCurrentAlgorithmDisplayName()}
+                  </span>
+                  <code className="block min-w-0 break-all text-sm leading-6">
+                    {formatDisplayHash(hashResult)}
+                  </code>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <SendToMenu
+                    compact
+                    value={formatDisplayHash(hashResult)}
+                    source={getCurrentAlgorithmDisplayName()}
+                  />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          aria-label={copied.main ? t("copied") : t("copy")}
+                          onClick={() => copyToClipboard(formatDisplayHash(hashResult))}
+                        >
+                          {copied.main ? (
+                            <Check
+                              className="h-4 w-4 text-[var(--md-sys-color-primary)]"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Copy className="h-4 w-4" aria-hidden="true" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {copied.main ? t("copied") : t("copy")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {showAllResults && allHashResults.length > 0 && (
+          <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-base">{t("allResults")}</CardTitle>
+              {outputFormat === "hex" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUppercase((prev) => !prev)}
+                  className="h-8 px-2.5 font-mono text-xs"
+                >
+                  {uppercase ? "AA → aa" : "aa → AA"}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {allHashResults.map((result) => {
+                const copyKey = `${result.algorithm}-${result.algorithmSize ?? "default"}`
+                const displayValue = result.status === "completed" ? formatDisplayHash(result.value) : result.value
+                return (
+                  <div
+                    key={copyKey}
+                    className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-[var(--md-sys-shape-corner-medium)] p-3 ${
+                      result.status === "calculating"
+                        ? "bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]"
+                        : result.status === "error"
+                          ? "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]"
+                          : "bg-[var(--md-sys-color-surface-container)]"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{result.displayName}</span>
+                        {result.status === "pending" && (
+                          <span className="text-xs italic text-[var(--md-sys-color-on-surface-variant)]">
+                            {t("pending")}
+                          </span>
+                        )}
+                        {result.status === "calculating" && (
+                          <span className="text-xs italic">
+                            {t("calculating")}
+                          </span>
+                        )}
+                      </div>
+                      {(result.status === "completed" ||
+                        result.status === "error") && (
+                        <code className="mt-2 block break-all text-sm leading-6">
+                          {displayValue}
+                        </code>
+                      )}
+                    </div>
+                    {result.status === "completed" && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <SendToMenu
+                          compact
+                          value={displayValue}
+                          source={result.displayName}
+                        />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={copied[copyKey] ? t("copied") : t("copy")}
+                                onClick={() =>
+                                  copyToClipboard(displayValue, copyKey)
+                                }
+                              >
+                                {copied[copyKey] ? (
+                                  <Check
+                                    className="h-4 w-4 text-[var(--md-sys-color-primary)]"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <Copy className="h-4 w-4" aria-hidden="true" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {copied[copyKey] ? t("copied") : t("copy")}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
           <CardContent className="space-y-2 pt-5">
             <Label htmlFor="verify-hash">{t("verify")}</Label>
@@ -1075,156 +1265,6 @@ export default function HashPage() {
             </div>
           </CardContent>
         </Card>
-
-        {calculationError && (
-          <div
-            className="rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]"
-            role="alert"
-          >
-            {calculationError}
-          </div>
-        )}
-
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <Button
-            onClick={() => void calculateHash()}
-            disabled={
-              (inputMode === "text" ? !input : !fileInfo) || isCalculating
-            }
-            className="min-h-11 w-full"
-          >
-            {isCalculating ? t("calculating") : t("calculate")}
-          </Button>
-          {isCalculating && (
-            <Button
-              variant="outline"
-              onClick={cancelCalculation}
-              className="min-h-11"
-            >
-              {t("cancel")}
-            </Button>
-          )}
-        </div>
-
-        {hashResult && !showAllResults && (
-          <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("result")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-[var(--md-sys-shape-corner-medium)] bg-[var(--md-sys-color-surface-container)] p-4">
-                <div className="min-w-0 space-y-2">
-                  <span className="block font-medium">
-                    {getCurrentAlgorithmDisplayName()}
-                  </span>
-                  <code className="block min-w-0 break-all text-sm leading-6">
-                    {hashResult}
-                  </code>
-                </div>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0"
-                        aria-label={copied.main ? t("copied") : t("copy")}
-                        onClick={() => copyToClipboard(hashResult)}
-                      >
-                        {copied.main ? (
-                          <Check
-                            className="h-4 w-4 text-[var(--md-sys-color-primary)]"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <Copy className="h-4 w-4" aria-hidden="true" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {copied.main ? t("copied") : t("copy")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {showAllResults && allHashResults.length > 0 && (
-          <Card className="rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("allResults")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {allHashResults.map((result) => {
-                const copyKey = `${result.algorithm}-${result.algorithmSize ?? "default"}`
-                return (
-                  <div
-                    key={copyKey}
-                    className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-[var(--md-sys-shape-corner-medium)] p-3 ${
-                      result.status === "calculating"
-                        ? "bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]"
-                        : result.status === "error"
-                          ? "bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]"
-                          : "bg-[var(--md-sys-color-surface-container)]"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{result.displayName}</span>
-                        {result.status === "pending" && (
-                          <span className="text-xs italic text-[var(--md-sys-color-on-surface-variant)]">
-                            {t("pending")}
-                          </span>
-                        )}
-                        {result.status === "calculating" && (
-                          <span className="text-xs italic">
-                            {t("calculating")}
-                          </span>
-                        )}
-                      </div>
-                      {(result.status === "completed" ||
-                        result.status === "error") && (
-                        <code className="mt-2 block break-all text-sm leading-6">
-                          {result.value}
-                        </code>
-                      )}
-                    </div>
-                    {result.status === "completed" && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={copied[copyKey] ? t("copied") : t("copy")}
-                              onClick={() =>
-                                copyToClipboard(result.value, copyKey)
-                              }
-                            >
-                              {copied[copyKey] ? (
-                                <Check
-                                  className="h-4 w-4 text-[var(--md-sys-color-primary)]"
-                                  aria-hidden="true"
-                                />
-                              ) : (
-                                <Copy className="h-4 w-4" aria-hidden="true" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {copied[copyKey] ? t("copied") : t("copy")}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   )

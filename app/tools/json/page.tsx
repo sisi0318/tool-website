@@ -24,11 +24,14 @@ import { useTextHistory } from "@/hooks/use-text-history"
 import { useIncomingInput } from "@/hooks/use-incoming-input"
 import { transferText } from "@/lib/tool-transfer"
 import { ErrorLocation } from "@/components/tools/error-location"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { jsonErrorLocation, type TextLocation } from "@/lib/text-location"
 import { jsonToXml } from "@/lib/xml-tools"
 import { processCsv } from "@/lib/csv-tools"
 
 const JSON_EDITOR_ID = "json-editor"
+const SAMPLE_JSON =
+  '{\n  "person": {\n    "name": "张三",\n    "age": 30,\n    "isStudent": false,\n    "hobbies": ["编程", "阅读", "旅行"],\n    "address": {\n      "city": "北京",\n      "zipCode": "100000"\n    }\n  },\n  "company": "示例公司",\n  "department": null\n}'
 
 /**
  * 编辑框里现在是什么内容。转换按钮会改它，键入时沿用，撤销、重做时跟着快照恢复。
@@ -79,7 +82,7 @@ export default function JsonTool() {
   
   // 格式化、转换、清空、导入都会整段替换编辑框，经 replaceText 留快照，可以撤销、重做
   const history = useTextHistory<ContentKind>(
-    '{\n  "person": {\n    "name": "张三",\n    "age": 30,\n    "isStudent": false,\n    "hobbies": ["编程", "阅读", "旅行"],\n    "address": {\n      "city": "北京",\n      "zipCode": "100000"\n    }\n  },\n  "company": "示例公司",\n  "department": null\n}',
+    SAMPLE_JSON,
     "json",
   )
   const jsonText = history.text
@@ -565,18 +568,52 @@ export default function JsonTool() {
       {/* 工具栏 */}
       <div className="mb-6">
         <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const text = await navigator.clipboard.readText()
+                if (text) {
+                  replaceText(text, "json")
+                  setRepairSuggestion(null)
+                }
+              } catch {
+                // 剪贴板读取被拒绝或不可用时静默忽略
+              }
+            }}
+            className="min-w-0 px-2 sm:px-3"
+          >
+            <Clipboard className="h-4 w-4 mr-1 shrink-0" />
+            <span className="truncate">{tc("paste")}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              replaceText(SAMPLE_JSON, "json")
+              setError(null)
+              setErrorPosition(null)
+              setRepairSuggestion(null)
+            }}
+            className="min-w-0 px-2 sm:px-3"
+          >
+            <FileText className="h-4 w-4 mr-1 shrink-0" />
+            <span className="truncate">{tc("loadSample")}</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={uploadJson} className="min-w-0 px-2 sm:px-3">
-            <Upload className="h-4 w-4 mr-1" />
+            <Upload className="h-4 w-4 mr-1 shrink-0" />
             <span className="truncate">{t("uploadFile")}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={copyJsonContent} className="min-w-0 px-2 sm:px-3">
-            {copied.json ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+            {copied.json ? <Check className="h-4 w-4 mr-1 shrink-0" /> : <Copy className="h-4 w-4 mr-1 shrink-0" />}
             <span className="truncate">{copied.json ? t("copied") : t("copyContent")}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={downloadJson} className="min-w-0 px-2 sm:px-3">
-            <Download className="h-4 w-4 mr-1" />
+            <Download className="h-4 w-4 mr-1 shrink-0" />
             <span className="truncate">{t("downloadFile")}</span>
           </Button>
+          <SendToMenu value={jsonText} source="JSON" disabled={!jsonText.trim()} />
           <input
             type="file"
             ref={fileInputRef}

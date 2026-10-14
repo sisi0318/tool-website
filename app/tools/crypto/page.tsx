@@ -9,6 +9,7 @@ import {
 } from "react"
 import {
   AlertTriangle,
+  ArrowLeftRight,
   Check,
   Copy,
   Download,
@@ -25,6 +26,7 @@ import {
 import CryptoJS from "crypto-js"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileDropZone } from "@/components/tools/file-drop-zone"
+import { SendToMenu } from "@/components/tools/send-to-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -607,6 +609,20 @@ export default function CryptoPage() {
     clearResults()
   }, [cancelProcessing, clearResults])
 
+  const reverseWithOutput = useCallback(() => {
+    if (!output) return
+    cancelProcessing()
+    const nextOperation = operation === "encrypt" ? "decrypt" : "encrypt"
+    const prevInputFormat = inputFormat
+    const prevOutputFormat = outputFormat
+    setOperation(nextOperation)
+    setInputFormat(prevOutputFormat)
+    setOutputFormat(prevInputFormat)
+    setInput(output)
+    clearResults()
+    inputRef.current?.focus()
+  }, [cancelProcessing, clearResults, inputFormat, operation, output, outputFormat])
+
   const copyOutput = useCallback(() => {
     if (!output) return
     void copyTextToClipboard(output, { reportFailure: false }).then((success) => {
@@ -972,9 +988,27 @@ export default function CryptoPage() {
                       rows={10}
                       className="min-h-56 resize-y font-mono"
                     />
-                    <p className="text-right text-xs text-[var(--md-sys-color-on-surface-variant)]">
-                      {input.length} {t("characters")}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void processText()}
+                        disabled={processing || !input}
+                        className="md:hidden"
+                      >
+                        {processing ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        ) : operation === "encrypt" ? (
+                          <Lock className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                        ) : (
+                          <Unlock className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                        {processing ? t("processing") : processLabel}
+                      </Button>
+                      <p className="ml-auto text-right text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                        {input.length} {t("characters")}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="min-w-0 space-y-2">
@@ -1004,10 +1038,26 @@ export default function CryptoPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={reverseWithOutput}
+                          disabled={!output || processing}
+                          title={operation === "encrypt" ? "将密文设为输入并切换为解密" : "将明文设为输入并切换为加密"}
+                        >
+                          <ArrowLeftRight className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                          反向{operation === "encrypt" ? t("decrypt") : t("encrypt")}
+                        </Button>
                         <Button variant="outline" size="sm" onClick={clearOutput}>
                           {t("clearOutput")}
                         </Button>
+                        <SendToMenu
+                          compact
+                          value={output}
+                          source={currentAlgorithm.name}
+                          disabled={!output}
+                        />
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
