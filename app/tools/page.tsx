@@ -1371,8 +1371,8 @@ export default function ToolsPage() {
       <div
         ref={tabContentRef}
         className={tabs.length > 0 ? "mt-3 sm:mt-4" : "hidden"}
-        {...(isCompact ? swipeHandlers : {})}
-        style={isCompact && isSwiping ? {
+        {...(isCompact && tabs.length > 1 ? swipeHandlers : {})}
+        style={isCompact && tabs.length > 1 && isSwiping && swipeOffset !== 0 ? {
           transform: `translateX(${swipeOffset * 0.3}px)`,
           transition: 'none',
         } : undefined}

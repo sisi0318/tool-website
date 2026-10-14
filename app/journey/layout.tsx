@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
+import Header from "@/components/header"
 
 export const metadata: Metadata = {
   title: "数据旅程",
@@ -16,5 +17,10 @@ export const metadata: Metadata = {
 }
 
 export default function JourneyLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return (
+    <div>
+      <Header />
+      <div className="tools-surface">{children}</div>
+    </div>
+  )
 }

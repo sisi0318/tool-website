@@ -688,7 +688,7 @@ export default function JourneyPage() {
     <div className="mx-auto w-full max-w-3xl space-y-4 px-4 pb-24 pt-6">
       <h1 className="sr-only">{t("title")}</h1>
 
-      <header className="flex flex-wrap items-center gap-1">
+      <header className="flex flex-wrap items-center justify-between gap-2">
         <Input
           value={journey.name}
           disabled={running}
@@ -697,7 +697,7 @@ export default function JourneyPage() {
           placeholder={t("namePlaceholder")}
           className="h-10 w-full min-w-0 flex-1 basis-full rounded-full bg-transparent px-3 text-base font-semibold text-[var(--md-sys-color-on-surface)] sm:basis-0"
         />
-        <div className="flex items-center">
+        <div className="flex max-w-full flex-wrap items-center gap-0.5">
           {headerActions.map((action) => {
             const Icon = action.icon
             return (

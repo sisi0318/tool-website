@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { ReactFlowProvider } from "@xyflow/react"
-import { Plus } from "lucide-react"
+import { ArrowLeft, Plus } from "lucide-react"
 import { Canvas } from "@/components/canvas/Canvas"
 import { NodePalette } from "@/components/canvas/NodePalette"
 import { PropertyPanel } from "@/components/canvas/PropertyPanel"
@@ -21,6 +22,7 @@ if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_E2E === "true") {
 
 export default function CanvasContent() {
   const t = useTranslations("canvas", zhCanvas)
+  const tCommon = useTranslations("common")
   const loadFromLocalStorage = useCanvasStore((s) => s.loadFromLocalStorage)
   const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
@@ -61,9 +63,19 @@ export default function CanvasContent() {
         </div>
         <div className="relative min-w-0 flex-1">
           {!showPalette && selectedNodeIds.length < 2 && (
-            <div className={`absolute left-14 z-50 flex gap-1 lg:hidden ${
-              showPropertyPanel ? "top-16" : "bottom-3"
+            <div className={`absolute z-50 flex items-center gap-1.5 lg:hidden ${
+              showPropertyPanel
+                ? "left-3 top-16"
+                : "bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-14"
             }`}>
+              <Link
+                href="/tools"
+                aria-label={tCommon("backToTools")}
+                className="flex min-h-11 items-center gap-1.5 rounded-full border border-md-outline-variant bg-md-surface-container/95 px-3.5 text-xs font-semibold text-md-on-surface shadow-lg backdrop-blur transition-transform active:scale-95"
+              >
+                <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                <span className="hidden sm:inline">{tCommon("backToTools")}</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setShowPalette(true)}
