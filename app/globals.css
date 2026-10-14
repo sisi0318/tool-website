@@ -724,11 +724,11 @@
  * ============================================ */
 @media (max-width: 640px) {
 
-  .tools-surface button {
+  .tools-surface button:not([data-compact="true"]):not(.h-5):not(.h-6):not(.h-7) {
     min-height: 40px;
   }
 
-  .tools-surface button[aria-label] {
+  .tools-surface button[aria-label]:not([data-compact="true"]):not(.w-5):not(.w-6):not(.w-7) {
     min-width: 40px;
   }
 

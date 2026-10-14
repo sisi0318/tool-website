@@ -132,33 +132,73 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
       }
     }, [open]);
 
+    const isDraggingSheet = React.useRef<boolean>(false);
+
+    const hasScrolledAncestor = React.useCallback(
+      (target: EventTarget | null) => {
+        let node = target instanceof HTMLElement ? target : null;
+        while (node && node !== sheetRef.current) {
+          if (node.scrollTop > 0) {
+            return true;
+          }
+          node = node.parentElement;
+        }
+        return false;
+      },
+      []
+    );
+
     // Handle touch start for drag gesture
-    const handleTouchStart = React.useCallback((e: React.TouchEvent) => {
-      startY.current = e.touches[0].clientY;
-      currentY.current = 0;
-    }, []);
+    const handleTouchStart = React.useCallback(
+      (e: React.TouchEvent) => {
+        if (hasScrolledAncestor(e.target)) {
+          isDraggingSheet.current = false;
+          return;
+        }
+        isDraggingSheet.current = true;
+        startY.current = e.touches[0].clientY;
+        currentY.current = 0;
+      },
+      [hasScrolledAncestor]
+    );
 
     // Handle touch move for drag gesture
-    const handleTouchMove = React.useCallback((e: React.TouchEvent) => {
-      const deltaY = e.touches[0].clientY - startY.current;
-      currentY.current = Math.max(0, deltaY); // Only allow dragging down
-      
-      if (sheetRef.current) {
-        sheetRef.current.style.transform = `translateY(${currentY.current}px)`;
-      }
-    }, []);
+    const handleTouchMove = React.useCallback(
+      (e: React.TouchEvent) => {
+        if (!isDraggingSheet.current) return;
+        if (hasScrolledAncestor(e.target)) {
+          isDraggingSheet.current = false;
+          currentY.current = 0;
+          if (sheetRef.current) {
+            sheetRef.current.style.transform = '';
+          }
+          return;
+        }
+
+        const deltaY = e.touches[0].clientY - startY.current;
+        currentY.current = Math.max(0, deltaY); // Only allow dragging down
+
+        if (sheetRef.current && currentY.current > 0) {
+          sheetRef.current.style.transform = `translateY(${currentY.current}px)`;
+        }
+      },
+      [hasScrolledAncestor]
+    );
 
     // Handle touch end for drag gesture
     const handleTouchEnd = React.useCallback(() => {
+      if (!isDraggingSheet.current) return;
+      isDraggingSheet.current = false;
+
       if (sheetRef.current) {
         sheetRef.current.style.transform = '';
       }
-      
+
       // If dragged more than 100px, close the sheet
       if (currentY.current > 100) {
         onClose();
       }
-      
+
       currentY.current = 0;
     }, [onClose]);
 
