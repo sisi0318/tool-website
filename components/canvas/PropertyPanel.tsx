@@ -5,12 +5,13 @@ import { canDownloadValue, downloadValue, isOpaqueValue } from "@/lib/value-down
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
+import { createClipboardPayload, instantiateClipboardPayload } from "@/lib/canvas/clipboard"
 import { formatCanvasValue, previewCanvasValue } from "@/lib/canvas/format-value"
 import { useTranslations } from "@/hooks/use-translations"
 import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { copyTextToClipboard } from "@/lib/clipboard"
-import { Check, CircleSlash2, Copy, LoaderCircle, Play, Power, RotateCcw, Trash2, X, Download } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, CircleSlash2, Copy, CopyPlus, LoaderCircle, Play, Power, RotateCcw, Trash2, X, Download } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { ConfigInput } from "./nodes/ConfigInput"
 import { ConfirmDialog } from "./workflow/ConfirmDialog"
@@ -21,12 +22,14 @@ const PANEL_PREVIEW_CHARS = 20_000
 function OutputField({ label, value, nodeName }: { label: string; value: unknown; nodeName: string }) {
   const t = useTranslations("canvas", zhCanvas)
   const [copied, setCopied] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   // 只展示前一段;完整文本在点击复制时才序列化
   const preview = useMemo(() => previewCanvasValue(value, PANEL_PREVIEW_CHARS, true), [value])
   // 文件只能下载：复制出来只是“文件名 (大小)”；图片再给一张缩略图
   const opaque = isOpaqueValue(value)
   const image = typeof Blob !== "undefined" && value instanceof Blob && value.type.startsWith("image/") ? value : null
   const imageUrl = useObjectUrl(image)
+  const isLongPreview = !opaque && (preview.text.length > 180 || preview.text.split("\n").length > 6)
 
   const handleCopy = async () => {
     try {
@@ -43,15 +46,26 @@ function OutputField({ label, value, nodeName }: { label: string; value: unknown
       <div className="flex items-center justify-between">
         <Label className="text-xs text-md-on-surface-variant">{label}</Label>
         <span className="flex items-center gap-0.5">
+        {isLongPreview && (
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            aria-label={expanded ? "收起输出预览" : "展开输出预览"}
+            title={expanded ? "收起输出预览" : "展开输出预览"}
+            className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+        )}
         {canDownloadValue(value) && (
           <button
             type="button"
             onClick={() => downloadValue(value, `${nodeName}-${label}`.replace(/\s+/g, "-"))}
             aria-label={`${t("downloadOutput")}: ${label}`}
             title={t("downloadOutput")}
-            className="rounded p-0.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+            className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
           >
-            <Download className="h-3 w-3" />
+            <Download className="h-3.5 w-3.5" />
           </button>
         )}
         {!opaque && (
@@ -60,17 +74,17 @@ function OutputField({ label, value, nodeName }: { label: string; value: unknown
           onClick={handleCopy}
           aria-label={copied ? t("copied") : t("copyOutput")}
           title={copied ? t("copied") : t("copyOutput")}
-          className="rounded p-0.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+          className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
         >
           {copied
-            ? <Check className="h-3 w-3 text-md-success" />
-            : <Copy className="h-3 w-3" />}
+            ? <Check className="h-3.5 w-3.5 text-md-success" />
+            : <Copy className="h-3.5 w-3.5" />}
         </button>
         )}
         </span>
       </div>
       {imageUrl && <img src={imageUrl} alt={label} className="max-h-32 w-full rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container-high object-contain" />}
-      <div className="max-h-40 overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container-high px-2 py-1.5 font-mono text-xs text-md-on-surface break-all">
+      <div className={`${expanded ? "max-h-96" : "max-h-40"} overflow-auto rounded-[var(--md-sys-shape-corner-extra-small)] bg-md-surface-container-high px-2 py-1.5 font-mono text-xs text-md-on-surface break-all transition-[max-height]`}>
         {preview.text}
       </div>
       {preview.truncated && (
@@ -99,6 +113,8 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
   const executeToNode = useCanvasStore((s) => s.executeToNode)
   const setNodeDisabled = useCanvasStore((s) => s.setNodeDisabled)
   const removeNode = useCanvasStore((s) => s.removeNode)
+  const addSubgraph = useCanvasStore((s) => s.addSubgraph)
+  const selectNodes = useCanvasStore((s) => s.selectNodes)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const selectedNode = useMemo(
@@ -134,7 +150,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
       aria-label={nodeLabel(definition)}
       className="flex h-full max-h-[72dvh] w-full flex-col rounded-t-2xl border-t border-md-outline-variant bg-md-surface-container-low shadow-2xl outline-none lg:max-h-none lg:w-72 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none"
     >
-      <div className="flex min-h-12 items-center gap-2 border-b border-md-outline-variant p-2 pl-3">
+      <div className="flex min-h-12 items-center gap-1 border-b border-md-outline-variant p-2 pl-3">
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-md-on-surface">
           {nodeLabel(definition)}
         </h3>
@@ -153,6 +169,22 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           ) : (
             <Play className="h-4 w-4" />
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const payload = createClipboardPayload(nodes, edges, new Set([selectedNode.id]))
+            const pasted = instantiateClipboardPayload(payload, { x: 40, y: 40 })
+            if (pasted.nodes.length > 0) {
+              addSubgraph(pasted)
+              selectNodes(pasted.nodes.map((node) => node.id))
+            }
+          }}
+          aria-label={t("duplicateNodes")}
+          title={t("duplicateNodes")}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+        >
+          <CopyPlus className="h-4 w-4" />
         </button>
         <button
           type="button"

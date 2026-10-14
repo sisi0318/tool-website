@@ -134,6 +134,17 @@ export function CompatibleNodePicker({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && visibleOptions.length > 0) {
+                    event.preventDefault()
+                    const first = visibleOptions[0]
+                    const configured = selectedPorts[first.definition.type]
+                    const targetPortId = configured && first.compatibleInputs.some((i) => i.id === configured)
+                      ? configured
+                      : first.defaultTargetPortId
+                    onSelect({ nodeType: first.definition.type, targetPortId })
+                  }
+                }}
                 aria-label={t("compatibleNodeSearchPlaceholder")}
                 placeholder={t("compatibleNodeSearchPlaceholder")}
                 className="h-11 rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant bg-md-surface-container-lowest pl-9 text-sm text-md-on-surface placeholder:text-md-on-surface-variant sm:h-10"
