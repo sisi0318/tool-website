@@ -673,13 +673,13 @@ test.describe("Canvas Page", () => {
 
     await expect(palette).not.toBeVisible()
     await expect(page.locator(".react-flow__node")).toHaveCount(1, { timeout: 5000 })
-    // 手机上选中节点不会自己弹出属性抽屉：它盖住大半屏，会挡着节点旁边的工具条和“+”
+    // 手机上选中节点不会自己弹出属性抽屉：它盖住大半屏，会挡着节点、它的工具条和端口
     const sheet = page.locator("section[aria-label='哈希计算']")
     await expect(page.locator(".react-flow__node.selected")).toHaveCount(1)
     await expect(sheet).toHaveCount(0)
     const toolbar = page.getByRole("toolbar", { name: "节点操作" })
     await expect(toolbar).toBeInViewport()
-    await expect(page.getByRole("button", { name: "添加下一步节点", exact: true })).toBeInViewport()
+    await expect(page.locator('.react-flow__node .react-flow__handle[data-handleid="hash"]')).toBeInViewport()
 
     // 从工具条上点开；关掉以后节点仍然选中
     await toolbar.getByRole("button", { name: "属性", exact: true }).click()
@@ -834,7 +834,7 @@ test.describe("Canvas interactions", () => {
     await expect(page.locator(".react-flow__node")).toHaveCount(2)
   })
 
-  test("the + beside a node adds the next step, wired to its result", async ({ page }) => {
+  test("clicking an output port adds the next step from that port", async ({ page }) => {
     await page.evaluate(() => {
       const store = (window as any).__ZUSTAND_STORE__.getState()
       store.setAutoRun(false)
@@ -844,28 +844,28 @@ test.describe("Canvas interactions", () => {
     await expect(encode).toBeVisible()
     await pinViewport(page)
 
-    // 每个有输出的节点右侧都有一个“+”，所以要指明是哪个节点的
-    const append = encode.getByRole("button", { name: "添加下一步节点", exact: true })
-    await append.click()
+    // 端口就是按钮：名字说的是点它会发生什么
+    const output = encode.getByRole("button", { name: "添加下一步节点: Output", exact: true })
+    await expect(output).toHaveAttribute("data-handleid", "output")
+    await output.click()
     const picker = page.getByTestId("compatible-node-picker")
-    await expect(picker).toBeVisible()
+    await expect(picker.getByRole("heading", { name: "选择下一步节点" })).toBeVisible()
     await picker.getByRole("button", { name: "添加并连接: 哈希计算", exact: true }).click()
 
     await expect(page.locator(".react-flow__node")).toHaveCount(2)
     const first = await state(page)
     const hash = first.nodes.find((node) => node.type === "hash")!
-    // 连的是运算结果 output，不是能往外连的参数 encoding / mode
+    // 点的是 output 这个端口，连出去的就是它；编码方式、模式那两个端口各管各的
     expect(first.edges).toEqual([
       expect.objectContaining({ source: "encode", sourcePort: "output", target: hash.id, targetPort: "data" }),
     ])
     expect(hash.position.y).toBe(200)
     expect(hash.position.x).toBeGreaterThan(200 + 280)
-    // 新节点成了选中的那个，可以接着往下加
+    // 新节点成了选中的那个
     expect(first.selected).toEqual([hash.id])
 
-    // 同一个节点再分一支：排在已有下游的下面，不叠在一起
-    await page.evaluate(() => (window as any).__ZUSTAND_STORE__.getState().selectNodes(["encode"]))
-    await append.click()
+    // 同一个端口再分一支：排在已有下游的下面，不叠在一起
+    await output.click()
     await picker.getByRole("button", { name: "添加并连接: 文本统计", exact: true }).click()
     await expect(page.locator(".react-flow__node")).toHaveCount(3)
     const second = await state(page)
@@ -875,95 +875,121 @@ test.describe("Canvas interactions", () => {
     expect(second.edges).toHaveLength(2)
   })
 
-  test("the + comes to the pointer anywhere along the node's right edge", async ({ page }) => {
+  test("clicking an input port adds the node that feeds it, on the left", async ({ page }) => {
     await page.evaluate(() => {
       const store = (window as any).__ZUSTAND_STORE__.getState()
       store.setAutoRun(false)
-      store.addNode({ id: "encode", type: "encoding", position: { x: 220, y: 220 }, config: { encoding: "base64", mode: "encode" } })
+      store.addNode({ id: "encode", type: "encoding", position: { x: 620, y: 200 }, config: { encoding: "base64", mode: "encode" } })
+      store.selectNodes([])
+    })
+    const encode = page.locator('.react-flow__node[data-id="encode"]')
+    await expect(encode).toBeVisible()
+    await pinViewport(page)
+
+    const input = encode.getByRole("button", { name: "添加上一步节点: Input", exact: true })
+    await expect(input).toHaveAttribute("data-handlepos", "left")
+    await input.click()
+    const picker = page.getByTestId("compatible-node-picker")
+    await expect(picker.getByRole("heading", { name: "选择上一步节点" })).toBeVisible()
+    // 只有输入、没有输出的节点接不到前面
+    await expect(picker.getByRole("button", { name: "添加并连接: 文本", exact: true })).toBeVisible()
+    await expect(picker.getByRole("button", { name: /^添加并连接: (JSON 预览|文本预览)$/ })).toHaveCount(0)
+    await picker.getByRole("button", { name: "添加并连接: 文本", exact: true }).click()
+
+    await expect(page.locator(".react-flow__node")).toHaveCount(2)
+    const graph = await state(page)
+    const text = graph.nodes.find((node) => node.type === "string")!
+    // 连线方向是 新节点 → 这个输入
+    expect(graph.edges).toEqual([
+      expect.objectContaining({ source: text.id, sourcePort: "value", target: "encode", targetPort: "input" }),
+    ])
+    expect(text.position.y).toBe(200)
+    expect(text.position.x).toBeLessThan(620 - 280)
+    expect(graph.selected).toEqual([text.id])
+
+    // 两个节点没有叠在一起
+    const textBox = (await page.locator(`.react-flow__node[data-id="${text.id}"]`).boundingBox())!
+    const encodeBox = (await encode.boundingBox())!
+    expect(textBox.x + textBox.width).toBeLessThan(encodeBox.x)
+  })
+
+  test("a port grows into a + under the pointer, on either side, and leans toward it", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__.getState()
+      store.setAutoRun(false)
+      store.addNode({ id: "encode", type: "encoding", position: { x: 420, y: 220 }, config: { encoding: "base64", mode: "encode" } })
       store.selectNodes([])
     })
     const node = page.locator('.react-flow__node[data-id="encode"]')
     await expect(node).toBeVisible()
     await pinViewport(page)
 
-    const zone = node.getByRole("button", { name: "添加下一步节点", exact: true })
-    const glyph = zone.locator(".canvas-append-glyph")
-    const centre = async () => {
-      const box = (await glyph.boundingBox())!
-      return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    for (const [handleId, side] of [["output", "right"], ["input", "left"]] as const) {
+      const port = node.locator(`.react-flow__handle[data-handleid="${handleId}"][data-handlepos="${side}"]`)
+      const dot = port.locator(".canvas-port-dot")
+      const anchor = (await port.boundingBox())!
+      const centre = { x: anchor.x + anchor.width / 2, y: anchor.y + anchor.height / 2 }
+      const dotCentre = async () => {
+        const box = (await dot.boundingBox())!
+        return { x: box.x + box.width / 2, y: box.y + box.height / 2, width: box.width }
+      }
+
+      // 平时是压在卡片边线上的小圆点（圆心离边线不到一个半径），连线就接在这个位置
+      await page.mouse.move(640, 650)
+      await expect.poll(async () => Math.round((await dotCentre()).width)).toBe(12)
+      const card = (await node.boundingBox())!
+      const edge = side === "right" ? card.x + card.width : card.x
+      expect(Math.abs(centre.x - edge)).toBeLessThan(6)
+
+      // 鼠标到它旁边（不用压在圆点上）：原地长成“+”
+      const outward = side === "right" ? 9 : -9
+      await page.mouse.move(centre.x + outward, centre.y + 6, { steps: 3 })
+      await expect.poll(async () => Math.round((await dotCentre()).width)).toBe(22)
+      await expect(dot.locator("svg")).toHaveCSS("opacity", "1")
+      // 朝鼠标偏过去一半，没有离开端口的位置
+      await expect.poll(async () => Math.abs((await dotCentre()).x - (centre.x + outward / 2))).toBeLessThan(1)
+      await expect.poll(async () => Math.abs((await dotCentre()).y - (centre.y + 3))).toBeLessThan(1)
+
+      await page.mouse.move(640, 650, { steps: 3 })
+      await expect.poll(async () => Math.round((await dotCentre()).width)).toBe(12)
+      await expect.poll(async () => Math.abs((await dotCentre()).x - centre.x)).toBeLessThan(0.6)
     }
-    const card = (await node.boundingBox())!
-    const strip = (await zone.boundingBox())!
 
-    // 没选中、鼠标也不在节点上：看不见
-    await page.mouse.move(640, 650)
-    await expect(glyph).toHaveCSS("opacity", "0")
-
-    // 鼠标移到节点上：出现在右侧中间
-    await page.mouse.move(card.x + 60, card.y + 14)
-    await expect(glyph).toHaveCSS("opacity", "1")
-    await expect.poll(async () => Math.round((await centre()).y)).toBe(Math.round(card.y + card.height / 2))
-
-    // 进到右边这一条里：跟到鼠标所在的高度，不用去对准中点
-    for (const offset of [22, 70, card.height - 22]) {
-      const y = strip.y + offset
-      await page.mouse.move(strip.x + strip.width / 2, y, { steps: 3 })
-      await expect.poll(async () => Math.abs((await centre()).y - y)).toBeLessThan(1.5)
-    }
-
-    // 贴到最上面：整个圆仍然留在节点的高度以内
-    await page.mouse.move(strip.x + strip.width / 2, strip.y + 2, { steps: 3 })
-    await expect.poll(async () => Math.round((await glyph.boundingBox())!.y)).toBe(Math.round(strip.y))
-
-    // 离开节点：回到中间并隐去
-    await page.mouse.move(640, 650, { steps: 3 })
-    await expect(glyph).toHaveCSS("opacity", "0")
-    await expect.poll(async () => Math.round((await centre()).y)).toBe(Math.round(card.y + card.height / 2))
-
-    // 画布缩小放大，它在屏幕上一样大
-    for (const zoom of [0.5, 2]) {
-      await page.evaluate((value) => (window as any).__REACT_FLOW_INSTANCE__.setViewport({ x: 0, y: 0, zoom: value }), zoom)
-      await expect.poll(async () => Math.round((await glyph.boundingBox())!.width)).toBe(32)
-      expect(Math.round((await zone.boundingBox())!.width)).toBe(40)
-    }
+    // 画布缩到一半，端口的感应区在屏幕上没有跟着变小
+    await page.evaluate(() => (window as any).__REACT_FLOW_INSTANCE__.setViewport({ x: 0, y: 0, zoom: 0.5 }))
+    const zone = node.locator('.react-flow__handle[data-handleid="output"] .canvas-port-zone')
+    await expect.poll(async () => Math.round((await zone.boundingBox())!.width)).toBe(28)
   })
 
-  test("dragging from the + pulls a connection out of the node's result", async ({ page }) => {
+  test("dragging from an input port to empty canvas asks what should feed it", async ({ page }) => {
     await page.evaluate(() => {
       const store = (window as any).__ZUSTAND_STORE__.getState()
       store.setAutoRun(false)
-      store.addNode({ id: "encode", type: "encoding", position: { x: 220, y: 220 }, config: { encoding: "base64", mode: "encode" } })
-      store.addNode({ id: "hash", type: "hash", position: { x: 720, y: 240 }, config: {} })
+      store.addNode({ id: "encode", type: "encoding", position: { x: 620, y: 200 }, config: { encoding: "base64", mode: "encode" } })
       store.selectNodes([])
     })
-    await expect(page.locator('.react-flow__node[data-id="hash"]')).toBeVisible()
+    const encode = page.locator('.react-flow__node[data-id="encode"]')
+    await expect(encode).toBeVisible()
     await pinViewport(page)
 
-    const strip = (await page.locator('.react-flow__node[data-id="encode"]').getByRole("button", { name: "添加下一步节点", exact: true }).boundingBox())!
-    const target = (await page.locator('.react-flow__node[data-id="hash"] .react-flow__handle[data-handleid="data"]').boundingBox())!
-
-    // 在“+”所在的这一条里随便哪个高度按下，拖到另一个节点的输入端口上
-    await page.mouse.move(strip.x + strip.width / 2, strip.y + 30, { steps: 3 })
+    const port = (await encode.locator('.react-flow__handle[data-handleid="input"]').boundingBox())!
+    await page.mouse.move(port.x + port.width / 2, port.y + port.height / 2, { steps: 3 })
     await page.mouse.down()
-    await page.mouse.move(strip.x + strip.width / 2 + 40, strip.y + 50, { steps: 4 })
+    await page.mouse.move(380, 520, { steps: 10 })
     await expect(page.locator(".react-flow__connection")).toBeAttached()
-    await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 })
     await page.mouse.up()
 
-    await expect(page.locator(".react-flow__edge")).toHaveCount(1)
-    // 连的是运算结果 output：编码方式、模式这两个参数也能往外连，但“+”不用它们
-    expect((await state(page)).edges).toEqual([
-      expect.objectContaining({ source: "encode", sourcePort: "output", target: "hash", targetPort: "data" }),
+    const picker = page.getByTestId("compatible-node-picker")
+    await expect(picker.getByRole("heading", { name: "选择上一步节点" })).toBeVisible()
+    await picker.getByRole("button", { name: "添加并连接: 文本", exact: true }).click()
+    const graph = await state(page)
+    const text = graph.nodes.find((node) => node.type === "string")!
+    expect(graph.edges).toEqual([
+      expect.objectContaining({ source: text.id, sourcePort: "value", target: "encode", targetPort: "input" }),
     ])
-    // 拖线不算点击，没有顺带弹出节点列表
-    await expect(page.getByTestId("compatible-node-picker")).toHaveCount(0)
-
-    // 拖到空白处松手：和从端口拖出来一样，问接什么
-    await page.mouse.move(strip.x + strip.width / 2, strip.y + 30, { steps: 3 })
-    await page.mouse.down()
-    await page.mouse.move(600, 620, { steps: 10 })
-    await page.mouse.up()
-    await expect(page.getByTestId("compatible-node-picker")).toBeVisible()
+    // 松手的地方是新节点的右边：它整个在松手点的左侧
+    expect(text.position.x).toBeLessThanOrEqual(380 - 280)
+    expect(text.position.y).toBe(520)
   })
 
   test("a node hidden behind the properties card is moved clear of it when selected", async ({ page }) => {
@@ -979,7 +1005,9 @@ test.describe("Canvas interactions", () => {
       const card = (await inspector.boundingBox())!
       return node.x + node.width < card.x
     }).toBe(true)
-    await expect(page.getByRole("button", { name: "添加下一步节点", exact: true })).toBeInViewport()
+    // 右边那个端口也露出来了，放大成“+”时不会被卡片压住
+    const port = (await page.locator('.react-flow__node[data-id="tucked"] .react-flow__handle[data-handlepos="right"]').boundingBox())!
+    expect(port.x + port.width + 10).toBeLessThan((await inspector.boundingBox())!.x)
     // 挪的是镜头，不是节点
     expect((await state(page)).nodes[0].position).toEqual({ x: viewport.width - 300, y: 140 })
   })

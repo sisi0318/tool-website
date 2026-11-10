@@ -1,7 +1,6 @@
 "use client"
 
 import { memo, useCallback, useEffect, useMemo, useRef } from "react"
-import { Handle, Position } from "@xyflow/react"
 import { useObjectUrl } from "@/hooks/use-object-url"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { useTranslations } from "@/hooks/use-translations"
@@ -9,7 +8,6 @@ import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { useNodeLabel } from "@/hooks/use-node-label"
 import { useShallow } from "zustand/react/shallow"
 import { isBlockingNodeError, useCanvasStore } from "@/lib/canvas/store"
-import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import { previewCanvasValue } from "@/lib/canvas/format-value"
 import type { ConfigField } from "@/lib/canvas/types"
 import { ConfigInput } from "./ConfigInput"
@@ -18,8 +16,7 @@ import { NodeRunButton } from "./NodeRunButton"
 import { NodeStatusMessage } from "./NodeStatusMessage"
 import { NODE_INTERACTIVE_CLASS } from "./interactive"
 import { NodeBypassButton } from "./NodeBypassButton"
-import { NodeAppendZone } from "./NodeAppendZone"
-import { getPrimaryOutput } from "../use-flow-elements"
+import { NodePort } from "./NodePort"
 
 /** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
 const NODE_PREVIEW_CHARS = 160
@@ -93,7 +90,6 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   }
 
   const Icon = definition.icon
-  const primaryOutput = getPrimaryOutput(definition)
 
   return (
     <div
@@ -134,20 +130,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
               {/* Input Port */}
               <div className="w-3 flex justify-center">
                 {field.hasInput && (
-                  <Handle
-                    type="target"
-                    position={Position.Left}
-                    id={field.id}
-                    style={{
-                      background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
-                      width: 12,
-                      height: 12,
-                      border: "2px solid var(--md-sys-color-surface)",
-                      position: "relative",
-                      left: -12,
-                      transform: "none",
-                    }}
-                  />
+                  <NodePort nodeId={data.id} side="target" port={field} />
                 )}
               </div>
 
@@ -174,20 +157,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
               {/* Output Port */}
               <div className="w-3 flex justify-center">
                 {field.hasOutput && (
-                  <Handle
-                    type="source"
-                    position={Position.Right}
-                    id={field.id}
-                    style={{
-                      background: TYPE_COLORS[field.dataType] ?? "#94a3b8",
-                      width: 12,
-                      height: 12,
-                      border: "2px solid var(--md-sys-color-surface)",
-                      position: "relative",
-                      right: -12,
-                      transform: "none",
-                    }}
-                  />
+                  <NodePort nodeId={data.id} side="source" port={field} />
                 )}
               </div>
             </div>
@@ -213,20 +183,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
                     </span>
                   </div>
                   <div className="w-3 flex justify-center">
-                    <Handle
-                      type="source"
-                      position={Position.Right}
-                      id={output.id}
-                      style={{
-                        background: TYPE_COLORS[output.dataType] ?? "#94a3b8",
-                        width: 12,
-                        height: 12,
-                        border: "2px solid var(--md-sys-color-surface)",
-                        position: "relative",
-                        right: -12,
-                        transform: "none",
-                      }}
-                    />
+                    <NodePort nodeId={data.id} side="source" port={output} />
                   </div>
                 </div>
               )
@@ -268,7 +225,6 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       )}
 
       {nodeErrors && <NodeStatusMessage error={nodeErrors} />}
-      {primaryOutput && <NodeAppendZone nodeId={data.id} portId={primaryOutput.id} pinned={isPrimarySelected} />}
     </div>
   )
 }

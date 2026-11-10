@@ -10,21 +10,41 @@ import { useNodeLabel } from "@/hooks/use-node-label"
 import {
   filterCompatibleNodeOptions,
   getCompatibleNodeOptions,
+  getCompatibleSourceOptions,
+  type ConnectDirection,
 } from "@/lib/canvas/compatible-nodes"
 import type { DataType } from "@/lib/canvas/types"
 import { CATEGORY_KEYS } from "./node-categories"
 
 export interface CompatibleNodeSelection {
   nodeType: string
-  targetPortId: string
+  /** 新节点上用来连接的端口：往后接时是它的输入，往前接时是它的输出 */
+  portId: string
 }
 
 export interface CompatibleNodePickerProps {
-  sourceDataType: DataType
+  /** 手上那个端口的数据类型 */
+  dataType: DataType
+  /** downstream：手上是一个输出，挑接在后面的节点；upstream：手上是一个输入，挑接在前面的节点 */
+  direction?: ConnectDirection
   position: { x: number; y: number }
   onSelect: (selection: CompatibleNodeSelection) => void
   onClose: () => void
 }
+
+/** 两个方向各自的文案键 */
+const COPY = {
+  downstream: {
+    title: "compatibleNodePickerTitle",
+    description: "compatibleNodePickerDescription",
+    port: "targetInput",
+  },
+  upstream: {
+    title: "sourceNodePickerTitle",
+    description: "sourceNodePickerDescription",
+    port: "sourceOutput",
+  },
+} as const
 
 type PickerPositionStyle = CSSProperties & {
   "--compatible-picker-left": string
@@ -32,11 +52,13 @@ type PickerPositionStyle = CSSProperties & {
 }
 
 export function CompatibleNodePicker({
-  sourceDataType,
+  dataType,
+  direction = "downstream",
   position,
   onSelect,
   onClose,
 }: CompatibleNodePickerProps) {
+  const copy = COPY[direction]
   const t = useTranslations("canvas", zhCanvas)
   const nodeLabel = useNodeLabel()
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -51,8 +73,8 @@ export function CompatibleNodePicker({
   }
 
   const options = useMemo(
-    () => getCompatibleNodeOptions(sourceDataType),
-    [sourceDataType]
+    () => (direction === "upstream" ? getCompatibleSourceOptions(dataType) : getCompatibleNodeOptions(dataType)),
+    [dataType, direction]
   )
   const visibleOptions = useMemo(
     () => filterCompatibleNodeOptions(
@@ -66,8 +88,10 @@ export function CompatibleNodePicker({
 
   const safeX = Number.isFinite(position.x) ? position.x : 12
   const safeY = Number.isFinite(position.y) ? position.y : 12
+  // 往后接时面板在落点右侧；往前接时在左侧，免得盖住手上这个节点
+  const panelLeft = direction === "upstream" ? safeX - 364 : safeX + 12
   const panelStyle: PickerPositionStyle = {
-    "--compatible-picker-left": `max(12px, min(${safeX + 12}px, calc(100vw - 364px)))`,
+    "--compatible-picker-left": `max(12px, min(${panelLeft}px, calc(100vw - 364px)))`,
     "--compatible-picker-top": `max(12px, min(${safeY + 12}px, calc(100dvh - 500px)))`,
   }
 
@@ -98,14 +122,14 @@ export function CompatibleNodePicker({
           <header className="border-b border-md-outline-variant pb-3 pl-4 pr-12 pt-4">
             <div className="flex items-center gap-2">
               <DialogPrimitive.Title className="text-base font-semibold text-md-on-surface">
-                {t("compatibleNodePickerTitle")}
+                {t(copy.title)}
               </DialogPrimitive.Title>
               <span className="rounded-full bg-md-secondary-container px-2 py-0.5 font-mono text-[11px] text-md-on-secondary-container">
-                {sourceDataType}
+                {dataType}
               </span>
             </div>
             <DialogPrimitive.Description className="mt-1 text-xs leading-5 text-md-on-surface-variant">
-              {t("compatibleNodePickerDescription").replace("{type}", sourceDataType)}
+              {t(copy.description).replace("{type}", dataType)}
             </DialogPrimitive.Description>
           </header>
 
@@ -129,10 +153,10 @@ export function CompatibleNodePicker({
                     event.preventDefault()
                     const first = visibleOptions[0]
                     const configured = selectedPorts[first.definition.type]
-                    const targetPortId = configured && first.compatibleInputs.some((i) => i.id === configured)
+                    const portId = configured && first.ports.some((port) => port.id === configured)
                       ? configured
-                      : first.defaultTargetPortId
-                    onSelect({ nodeType: first.definition.type, targetPortId })
+                      : first.defaultPortId
+                    onSelect({ nodeType: first.definition.type, portId })
                   }
                 }}
                 aria-label={t("compatibleNodeSearchPlaceholder")}
@@ -151,17 +175,13 @@ export function CompatibleNodePicker({
 
             <div className="space-y-2">
               {visibleOptions.map((option) => {
-                const { definition, compatibleInputs, defaultTargetPortId } = option
+                const { definition, ports, defaultPortId } = option
                 const Icon = definition.icon
                 const configuredPortId = selectedPorts[definition.type]
-                const targetPortId = configuredPortId && compatibleInputs.some(
-                  (input) => input.id === configuredPortId
-                )
+                const portId = configuredPortId && ports.some((port) => port.id === configuredPortId)
                   ? configuredPortId
-                  : defaultTargetPortId
-                const selectedInput = compatibleInputs.find(
-                  (input) => input.id === targetPortId
-                )!
+                  : defaultPortId
+                const selectedPort = ports.find((port) => port.id === portId)!
                 const targetDescriptionId = `compatible-node-${definition.type}-target`
 
                 return (
@@ -172,10 +192,7 @@ export function CompatibleNodePicker({
                   >
                     <button
                       type="button"
-                      onClick={() => onSelect({
-                        nodeType: definition.type,
-                        targetPortId,
-                      })}
+                      onClick={() => onSelect({ nodeType: definition.type, portId })}
                       aria-label={`${t("addAndConnect")}: ${nodeLabel(definition)}`}
                       aria-describedby={targetDescriptionId}
                       className="flex min-h-14 w-full touch-manipulation items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-md-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary active:bg-md-pressed"
@@ -198,28 +215,28 @@ export function CompatibleNodePicker({
                       id={targetDescriptionId}
                       className="border-t border-md-outline-variant bg-md-surface-container px-3 py-2"
                     >
-                      {compatibleInputs.length > 1 ? (
+                      {ports.length > 1 ? (
                         <label className="flex min-h-10 items-center gap-2 text-xs text-md-on-surface-variant">
-                          <span className="shrink-0">{t("targetInput")}</span>
+                          <span className="shrink-0">{t(copy.port)}</span>
                           <select
-                            value={targetPortId}
+                            value={portId}
                             onChange={(event) => setSelectedPorts((current) => ({
                               ...current,
                               [definition.type]: event.target.value,
                             }))}
-                            aria-label={`${t("targetInput")}: ${nodeLabel(definition)}`}
+                            aria-label={`${t(copy.port)}: ${nodeLabel(definition)}`}
                             className="h-11 min-w-0 flex-1 rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant bg-md-surface-container-lowest px-2 text-xs text-md-on-surface outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-9"
                           >
-                            {compatibleInputs.map((input) => (
-                              <option key={input.id} value={input.id}>
-                                {input.name} · {input.dataType}
+                            {ports.map((port) => (
+                              <option key={port.id} value={port.id}>
+                                {port.name} · {port.dataType}
                               </option>
                             ))}
                           </select>
                         </label>
                       ) : (
                         <p className="truncate text-xs text-md-on-surface-variant">
-                          {t("targetInput")} · {selectedInput.name} · {selectedInput.dataType}
+                          {t(copy.port)} · {selectedPort.name} · {selectedPort.dataType}
                         </p>
                       )}
                     </div>
