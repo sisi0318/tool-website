@@ -8,6 +8,10 @@ import { AppShell } from "@/components/app-shell"
 import { Toaster } from "@/components/ui/toaster"
 import { ClipboardFailureNotifier } from "@/components/clipboard-failure-notifier"
 import { getSiteUrl } from "@/lib/site-url"
+import { TOOL_CATALOG } from "@/lib/tools/catalog"
+
+/** 分享卡片里的工具数量从目录取：以前写死成“40+”，目录长到 60 个也没人记得回来改 */
+const SHARE_DESCRIPTION = `${TOOL_CATALOG.length} 个开发、文本、图片与编码工具，无需安装，打开即用。`
 
 /**
  * Configure Roboto font family as per M3 specifications
@@ -44,7 +48,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   openGraph: {
     title: "工具站 — 顺手完成每一件小事",
-    description: "40+ 个开发、文本、图片与编码工具，无需安装，打开即用。",
+    description: SHARE_DESCRIPTION,
     type: "website",
     locale: "zh_CN",
     images: [
@@ -52,14 +56,14 @@ export const metadata: Metadata = {
         url: "/og.jpg",
         width: 1200,
         height: 630,
-        alt: "工具站 — 40+ 个无需安装、打开即用的实用工具",
+        alt: `工具站 — ${TOOL_CATALOG.length} 个无需安装、打开即用的实用工具`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "工具站 — 顺手完成每一件小事",
-    description: "40+ 个开发、文本、图片与编码工具，无需安装，打开即用。",
+    description: SHARE_DESCRIPTION,
     images: ["/og.jpg"],
   },
   appleWebApp: {

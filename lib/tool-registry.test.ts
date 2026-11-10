@@ -7,6 +7,7 @@ import { TOOL_SEO, toolPageMetadata } from "@/lib/tool-metadata"
 import { TOOL_CATALOG, TOOL_IDS, getToolEntry, isKnownToolId } from "@/lib/tools/catalog"
 import { en } from "@/lib/translations/en"
 import { zh } from "@/lib/translations/zh"
+import { zhHome } from "@/lib/translations/zh-namespaces/home"
 
 /**
  * lib/tools/catalog.ts 是工具清单的单一事实来源，SEO、搜索索引、路由栏都由它派生。
@@ -17,6 +18,14 @@ describe("工具目录", () => {
   it("覆盖 60 个工具且 id 无重复", () => {
     expect(TOOL_CATALOG).toHaveLength(60)
     expect(new Set(TOOL_IDS).size).toBe(TOOL_IDS.length)
+  })
+
+  // 首页是客户端组件，为了一个数字把整份目录打进首屏不划算，所以文案里仍是写死的数字，由这里盯着。
+  // 以前目录长到 60 个，英文首页和分享卡片还停在“40+”。分享卡片的描述已在 app/layout.tsx 里从目录取。
+  it("首页写的工具数量和目录一致", () => {
+    const count = String(TOOL_CATALOG.length)
+    expect(zhHome.eyebrow, "中文首页 home.eyebrow").toContain(count)
+    expect(en.home.eyebrow, "英文首页 home.eyebrow").toContain(count)
   })
 
   it("id 只用小写、数字与连字符（要作为路由片段）", () => {

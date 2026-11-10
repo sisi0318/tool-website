@@ -357,7 +357,7 @@ home: {
   mascotName: "Stacky",
   mascotDescription: "Your local tool companion",
   mascotAlt: "Stacky, the tool companion: fluffy cream-white bobbed hair, a chip hair clip and a matcha-green hoodie, holding a terminal tablet and raising a stylus, drawn with deep forest-green outlines and flat colors.",
-  eyebrow: "40+ practical tools, ready when you are",
+  eyebrow: "60 practical tools, ready when you are",
   titlePrefix: "Less busywork.",
   titleHighlight: "More time for you.",
   description: "Format JSON, compress images, and convert files with tools ready when you need them. Connect repeat tasks into a workflow, build it once, and use it again.",
