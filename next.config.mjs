@@ -1,16 +1,26 @@
 /**
- * 内容安全策略。
+ * 内容安全策略，分两份下发。
  *
- * 先以 Report-Only 上线观察，确认无误报后把 header 名改成 Content-Security-Policy。
- * script-src 必须放开 'unsafe-inline'（Next App Router 的 RSC 内联脚本与
- * next-themes 的主题引导脚本）与 'unsafe-eval'（ajv、protobufjs 运行时生成代码），
- * 'wasm-unsafe-eval' 供 brotli-wasm 使用。即便如此，object-src / base-uri /
- * form-action / frame-ancestors 仍能挡住相当一部分注入后的利用手法。
+ * 强制的一份只含四条不会误伤功能的指令：站内没有 <object> / <embed> / <base>，也没有提交到
+ * 站外的表单，它们拦的是注入之后的利用手法。此前整份策略都在 Report-Only 里，又没有配上报
+ * 地址，等于一条也没生效。
  *
- * connect-src 暂时只能放宽到 https:：whois 工具直接从浏览器访问任意 RDAP 服务器。
- * 若后续把 whois 全部改走 /api/whois，这里可以收紧成显式白名单。
+ * 其余指令继续 Report-Only，违规只在浏览器控制台里提示：
+ * - script-src 必须放开 'unsafe-inline'（Next App Router 的 RSC 内联脚本与 next-themes 的
+ *   主题引导脚本）与 'unsafe-eval'（ajv、protobufjs 运行时生成代码），'wasm-unsafe-eval' 供
+ *   brotli-wasm 使用。放开到这个程度，强制它也挡不住内联脚本，收益很小。
+ * - connect-src 写的是 https:，而画布的 HTTP 节点会从浏览器直连用户填的地址（包括
+ *   http://localhost 这类），whois 也直接访问任意 RDAP 服务器；强制就会弄坏它们。
+ * 要让这一份也能强制，得先给脚本上 nonce（意味着放弃静态预渲染），再把直连请求收进白名单。
  */
-const CONTENT_SECURITY_POLICY = [
+const ENFORCED_CONTENT_SECURITY_POLICY = [
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ')
+
+const REPORT_ONLY_CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
@@ -52,7 +62,8 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
           // 自托管时补上 HSTS(Vercel 会自行注入,重复设置无副作用)。
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
-          { key: 'Content-Security-Policy-Report-Only', value: CONTENT_SECURITY_POLICY },
+          { key: 'Content-Security-Policy', value: ENFORCED_CONTENT_SECURITY_POLICY },
+          { key: 'Content-Security-Policy-Report-Only', value: REPORT_ONLY_CONTENT_SECURITY_POLICY },
         ],
       },
       {
