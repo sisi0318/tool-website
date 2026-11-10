@@ -17,6 +17,11 @@ export function getSourcePorts(definition: NodeDefinition) {
   ]
 }
 
+/** “+”和右键菜单里“添加下一步”用的输出：有运算结果就用结果，基础节点用它的值 */
+export function getPrimaryOutput(definition: NodeDefinition) {
+  return definition.outputs[0] ?? definition.config.find((field) => field.hasOutput)
+}
+
 interface FlowElementsInput {
   nodes: NodeInstance[]
   edges: CanvasEdge[]

@@ -15,6 +15,8 @@ import { ConfigInput } from "./ConfigInput"
 import { NodeRunButton } from "./NodeRunButton"
 import { NodeStatusMessage } from "./NodeStatusMessage"
 import { NodeBypassButton } from "./NodeBypassButton"
+import { NodeAppendZone } from "./NodeAppendZone"
+import { getPrimaryOutput } from "../use-flow-elements"
 
 /** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
 const NODE_PREVIEW_CHARS = 160
@@ -53,6 +55,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
   }
 
   const Icon = definition.icon
+  const primaryOutput = getPrimaryOutput(definition)
 
   const getInputValue = (portId: string): unknown => {
     const edge = connectedPorts.get(portId)
@@ -199,6 +202,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
       </div>
 
       {nodeErrors && <NodeStatusMessage error={nodeErrors} />}
+      {primaryOutput && <NodeAppendZone nodeId={node.id} portId={primaryOutput.id} pinned={isPrimarySelected} />}
     </div>
   )
 }

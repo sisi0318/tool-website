@@ -1403,6 +1403,70 @@
     0 10px 20px -4px rgb(0 0 0 / 0.16);
 }
 
+/*
+ * The + beside a node, for adding the next step.
+ * The zone is a strip along the node's right edge; the glyph inside it is shown while the
+ * node is hovered, focused or the selected one, and is moved to the pointer by
+ * components/canvas/nodes/NodeAppendZone.tsx (--append-x / --append-y).
+ * The node scales with the canvas. --canvas-counter-scale is 1 / zoom, kept on the canvas
+ * wrapper, so the strip's width and the glyph stay the same size on screen.
+ * The strip starts 8px out, in canvas units, to stay clear of the port dots on the edge.
+ */
+.canvas-append-zone {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  width: calc(40px * var(--canvas-counter-scale, 1));
+  height: 100%;
+  cursor: pointer;
+  outline: none;
+}
+
+.canvas-append-glyph {
+  position: absolute;
+  left: var(--append-x, 50%);
+  top: var(--append-y, 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  translate: -50% -50%;
+  scale: var(--canvas-counter-scale, 1);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 9999px;
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-primary);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 120ms,
+    left 90ms ease-out,
+    top 90ms ease-out,
+    background-color 120ms,
+    border-color 120ms,
+    color 120ms;
+}
+
+.react-flow__node:hover .canvas-append-glyph,
+.canvas-append-zone:focus-visible .canvas-append-glyph,
+.canvas-append-zone[data-pinned="true"] .canvas-append-glyph {
+  opacity: 1;
+}
+
+.canvas-append-zone:hover .canvas-append-glyph,
+.canvas-append-zone:focus-visible .canvas-append-glyph {
+  border-color: var(--md-sys-color-primary);
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.canvas-append-zone:focus-visible .canvas-append-glyph {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
 /* Edge selection highlight (edges carry an inline stroke, hence !important) */
 .react-flow .react-flow__edge.selected .react-flow__edge-path {
   stroke: var(--md-sys-color-primary) !important;
