@@ -196,14 +196,18 @@ export function searchNodeDefinitions(
  * Chooses a deterministic connection for the explicit "add after" action.
  * Exact data types win, followed by adapter port order so primary ports remain
  * the natural default.
+ *
+ * Results come before settings: a tool node's parameters can be wired onward too
+ * (Encoding's "encoding" and "mode"), and with those listed first "add after" sent
+ * the literal "base64" downstream instead of the encoded text.
  */
 export function getAutoConnectPlan(
   sourceDefinition: NodeDefinition,
   targetDefinition: NodeDefinition
 ): AutoConnectPlan | null {
   const sourcePorts: ConfigField[] = [
-    ...sourceDefinition.config.filter((field) => field.hasOutput),
     ...sourceDefinition.outputs,
+    ...sourceDefinition.config.filter((field) => field.hasOutput),
   ]
   const targetPorts = targetDefinition.config.filter((field) => field.hasInput)
 

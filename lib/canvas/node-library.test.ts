@@ -113,4 +113,35 @@ describe("canvas node library", () => {
       targetPortId: "as-json",
     })
   })
+
+  it("connects a tool's result, not one of the settings it passes through", () => {
+    // 编码解码这类节点：参数（编码方式、模式）也能往外连，排在运算结果前面
+    const encoder: NodeDefinition = {
+      ...definition("encoding", "Encoding", ""),
+      config: [
+        { id: "input", name: "Input", dataType: "string", hasInput: true },
+        { id: "encoding", name: "Encoding", dataType: "string", hasInput: true, hasOutput: true },
+        { id: "mode", name: "Mode", dataType: "string", hasInput: true, hasOutput: true },
+      ],
+      outputs: [{ id: "output", name: "Output", dataType: "string" }],
+    }
+
+    expect(getAutoConnectPlan(encoder, definition("hash", "Hash", ""))).toEqual({
+      sourcePortId: "output",
+      targetPortId: "input",
+    })
+  })
+
+  it("still connects from a value node, whose only output is its own setting", () => {
+    const text: NodeDefinition = {
+      ...definition("string", "Text", ""),
+      config: [{ id: "value", name: "Value", dataType: "string", hasOutput: true }],
+      outputs: [],
+    }
+
+    expect(getAutoConnectPlan(text, definition("hash", "Hash", ""))).toEqual({
+      sourcePortId: "value",
+      targetPortId: "input",
+    })
+  })
 })
