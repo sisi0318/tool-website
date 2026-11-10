@@ -167,7 +167,8 @@ export default function HashPage() {
   const [autoCalculate, setAutoCalculate] = useToolPref("hash", "autoCalculate", false)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
   const [outputFormat, setOutputFormat] = useToolPref("hash", "outputFormat", "hex", (value) => value === "hex" || value === "base64")
-  const [uppercase, setUppercase] = useState(false)
+  // 和输出格式一样记住选择：核对别处给的大写摘要时，不必每次进来再点一遍
+  const [uppercase, setUppercase] = useToolPref("hash", "uppercase", false)
   const [size, setSize] = useState<number>(256)
   const [calculationError, setCalculationError] = useState("")
   const formatDisplayHash = (value: string) => (outputFormat === "hex" && uppercase ? value.toUpperCase() : value)
@@ -1083,6 +1084,7 @@ export default function HashPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setUppercase((prev) => !prev)}
+                  aria-pressed={uppercase}
                   className="h-8 px-2.5 font-mono text-xs"
                 >
                   {uppercase ? "AA → aa" : "aa → AA"}
@@ -1146,6 +1148,7 @@ export default function HashPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setUppercase((prev) => !prev)}
+                  aria-pressed={uppercase}
                   className="h-8 px-2.5 font-mono text-xs"
                 >
                   {uppercase ? "AA → aa" : "aa → AA"}
