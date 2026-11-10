@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     locale: "zh_CN",
     images: [
       {
-        url: "/og.jpg",
+        url: "/og.png",
         width: 1200,
         height: 630,
         alt: `工具站 — ${TOOL_CATALOG.length} 个无需安装、打开即用的实用工具`,
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "工具站 — 顺手完成每一件小事",
     description: SHARE_DESCRIPTION,
-    images: ["/og.jpg"],
+    images: ["/og.png"],
   },
   appleWebApp: {
     capable: true,

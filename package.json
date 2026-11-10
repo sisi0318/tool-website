@@ -16,7 +16,8 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit --incremental false",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "og": "node scripts/generate-og.mjs"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
