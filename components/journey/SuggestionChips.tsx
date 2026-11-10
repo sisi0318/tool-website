@@ -57,7 +57,7 @@ export function SuggestionChips({ node, running, onApply, onMoreTools }: Suggest
                 {suggestion.detectionType}
               </span>
             ) : (
-              <span className="text-[10px] font-normal text-[var(--md-sys-color-on-secondary-container)]/70">
+              <span className="text-[10px] font-normal text-[var(--md-sys-color-on-secondary-container)]">
                 {t("compatibleReason")}
               </span>
             )}

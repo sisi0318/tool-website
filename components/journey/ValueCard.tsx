@@ -221,7 +221,8 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
                 }`}
               >
                 {match.label}
-                <span className="opacity-70">
+                {/* 不用降透明度来弱化:12px 的字淡到 70% 就过不了 4.5:1 的对比度,靠字重区分就够了 */}
+                <span className="font-normal">
                   {t("confidencePercent").replace("{percent}", String(Math.round(match.confidence * 100)))}
                 </span>
               </span>
