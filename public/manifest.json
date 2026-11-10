@@ -10,6 +10,26 @@
     "theme_color": "#4A8135",
     "lang": "zh-CN",
     "categories": ["utilities", "productivity", "developer"],
+    "shortcuts": [
+        {
+            "name": "所有工具",
+            "short_name": "工具",
+            "url": "/tools",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+        },
+        {
+            "name": "数据旅程",
+            "short_name": "旅程",
+            "url": "/journey",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+        },
+        {
+            "name": "工具画布",
+            "short_name": "画布",
+            "url": "/canvas",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+        }
+    ],
     "icons": [
         {
             "src": "/icons/icon-192.png",
