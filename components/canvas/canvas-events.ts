@@ -10,17 +10,20 @@ export function requestCanvasFit() {
 }
 
 /**
- * 点了节点右侧的“+”：请画布打开“接在它后面”的节点列表。
- * “+”画在节点卡片里（它要跟着节点的高度和鼠标走），列表和落点在画布组件手里。
+ * 点了节点上的一个端口：请画布打开能接到这个端口上的节点列表。
+ * 端口画在节点卡片里，列表和新节点的落点在画布组件手里。
  */
-export const APPEND_NODE_EVENT = "canvas:append-node"
+export const PORT_PICKER_EVENT = "canvas:port-picker"
 
-export interface AppendNodeRequest {
+export interface PortPickerRequest {
   nodeId: string
+  portId: string
+  /** source：输出端口，往后接；target：输入端口，往前接 */
+  side: "source" | "target"
   /** 列表贴着哪儿弹出（屏幕坐标） */
   anchor: { x: number; y: number }
 }
 
-export function requestAppendNode(nodeId: string, anchor: { x: number; y: number }) {
-  window.dispatchEvent(new CustomEvent<AppendNodeRequest>(APPEND_NODE_EVENT, { detail: { nodeId, anchor } }))
+export function requestPortPicker(request: PortPickerRequest) {
+  window.dispatchEvent(new CustomEvent<PortPickerRequest>(PORT_PICKER_EVENT, { detail: request }))
 }

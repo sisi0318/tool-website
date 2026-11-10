@@ -16,6 +16,9 @@ vi.mock("@/hooks/use-translations", () => ({
       compatibleNodeSearchPlaceholder: "Search compatible nodes…",
       noCompatibleNodes: "No compatible nodes found.",
       targetInput: "Connect to input",
+      sourceNodePickerTitle: "Choose the previous node",
+      sourceNodePickerDescription: "Only nodes that can output {type} are shown.",
+      sourceOutput: "Use output",
       addAndConnect: "Add and connect",
       categoryBasic: "Basic",
       categoryCrypto: "Crypto",
@@ -47,6 +50,21 @@ const DEFINITIONS: NodeDefinition[] = [
     execute: vi.fn(),
   },
   {
+    type: "parser",
+    category: "data",
+    label: "Parser",
+    icon: TestIcon,
+    config: [
+      { id: "raw", name: "Raw", dataType: "bytes", hasInput: true },
+      { id: "strict", name: "Strict", dataType: "boolean", hasOutput: true },
+    ],
+    outputs: [
+      { id: "text", name: "Text", dataType: "string" },
+      { id: "size", name: "Size", dataType: "number" },
+    ],
+    execute: vi.fn(),
+  },
+  {
     type: "bytes-only",
     category: "data",
     label: "Bytes only",
@@ -67,7 +85,7 @@ describe("CompatibleNodePicker", () => {
   it("shows only compatible nodes and prefers the exact input type", async () => {
     render(
       <CompatibleNodePicker
-        sourceDataType="number"
+        dataType="number"
         position={{ x: 400, y: 240 }}
         onSelect={vi.fn()}
         onClose={vi.fn()}
@@ -88,7 +106,7 @@ describe("CompatibleNodePicker", () => {
     const onSelect = vi.fn()
     render(
       <CompatibleNodePicker
-        sourceDataType="number"
+        dataType="number"
         position={{ x: 400, y: 240 }}
         onSelect={onSelect}
         onClose={vi.fn()}
@@ -103,14 +121,14 @@ describe("CompatibleNodePicker", () => {
 
     expect(onSelect).toHaveBeenCalledWith({
       nodeType: "converter",
-      targetPortId: "label",
+      portId: "label",
     })
   })
 
   it("searches by node type and localized category and reports empty results", () => {
     render(
       <CompatibleNodePicker
-        sourceDataType="number"
+        dataType="number"
         position={{ x: 400, y: 240 }}
         onSelect={vi.fn()}
         onClose={vi.fn()}
@@ -128,11 +146,38 @@ describe("CompatibleNodePicker", () => {
     expect(screen.getByRole("status")).toHaveTextContent("No compatible nodes found.")
   })
 
+  it("lists the nodes that can feed an input when asked for the previous step", () => {
+    const onSelect = vi.fn()
+    render(
+      <CompatibleNodePicker
+        dataType="number"
+        direction="upstream"
+        position={{ x: 400, y: 240 }}
+        onSelect={onSelect}
+        onClose={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole("heading", { name: "Choose the previous node" })).toBeInTheDocument()
+    expect(screen.getByText("Only nodes that can output number are shown.")).toBeInTheDocument()
+    // 只有 Parser 有输出；Converter、Bytes only 只有输入
+    expect(screen.getAllByRole("button", { name: /^Add and connect:/ }).map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Add and connect: Parser",
+    ])
+    // 默认用类型一致的那个输出，也可以换成别的
+    const output = screen.getByRole("combobox", { name: "Use output: Parser" })
+    expect(output).toHaveValue("size")
+    fireEvent.change(output, { target: { value: "text" } })
+    fireEvent.click(screen.getByRole("button", { name: "Add and connect: Parser" }))
+
+    expect(onSelect).toHaveBeenCalledWith({ nodeType: "parser", portId: "text" })
+  })
+
   it("closes with Escape or the close button", () => {
     const onClose = vi.fn()
     const firstRender = render(
       <CompatibleNodePicker
-        sourceDataType="number"
+        dataType="number"
         position={{ x: 400, y: 240 }}
         onSelect={vi.fn()}
         onClose={onClose}
@@ -146,7 +191,7 @@ describe("CompatibleNodePicker", () => {
     onClose.mockClear()
     render(
       <CompatibleNodePicker
-        sourceDataType="number"
+        dataType="number"
         position={{ x: 400, y: 240 }}
         onSelect={vi.fn()}
         onClose={onClose}
@@ -160,7 +205,7 @@ describe("CompatibleNodePicker", () => {
     const onClose = vi.fn()
     render(
       <CompatibleNodePicker
-        sourceDataType="number"
+        dataType="number"
         position={{ x: 400, y: 240 }}
         onSelect={vi.fn()}
         onClose={onClose}

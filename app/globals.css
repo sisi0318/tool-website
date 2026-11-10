@@ -1404,67 +1404,91 @@
 }
 
 /*
- * The + beside a node, for adding the next step.
- * The zone is a strip along the node's right edge; the glyph inside it is shown while the
- * node is hovered, focused or the selected one, and is moved to the pointer by
- * components/canvas/nodes/NodeAppendZone.tsx (--append-x / --append-y).
+ * Ports. Each one is a React Flow handle: a 12px anchor on the card's edge, which is what
+ * edges attach to. What is drawn and what reacts to the pointer are its children
+ * (components/canvas/nodes/NodePort.tsx):
+ *   .canvas-port-zone  the area around the anchor that the pointer can enter
+ *   .canvas-port-dot   the dot, coloured by data type. While the pointer is in the zone it
+ *                      grows into a + and leans toward the pointer (--port-x / --port-y).
  * The node scales with the canvas. --canvas-counter-scale is 1 / zoom, kept on the canvas
- * wrapper, so the strip's width and the glyph stay the same size on screen.
- * The strip starts 8px out, in canvas units, to stay clear of the port dots on the edge.
+ * wrapper; zoomed out, the zone and the + are scaled back up so a port can still be hit.
  */
-.canvas-append-zone {
-  position: absolute;
-  top: 0;
-  left: calc(100% + 8px);
-  width: calc(40px * var(--canvas-counter-scale, 1));
-  height: 100%;
+.react-flow .react-flow__handle.canvas-port {
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
-  outline: none;
 }
 
-.canvas-append-glyph {
+.canvas-port-zone {
   position: absolute;
-  left: var(--append-x, 50%);
-  top: var(--append-y, 50%);
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 26px;
+  translate: -50% -50%;
+  scale: max(1, var(--canvas-counter-scale, 1));
+}
+
+.canvas-port-dot {
+  position: absolute;
+  left: calc(50% + var(--port-x, 0%));
+  top: calc(50% + var(--port-y, 0%));
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 12px;
+  height: 12px;
   translate: -50% -50%;
-  scale: var(--canvas-counter-scale, 1);
-  border: 1px solid var(--md-sys-color-outline-variant);
+  border: 2px solid var(--md-sys-color-surface);
   border-radius: 9999px;
-  background-color: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-primary);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.16);
-  opacity: 0;
-  pointer-events: none;
+  background-color: var(--port-color);
+  color: var(--md-sys-color-on-surface);
   transition:
-    opacity 120ms,
+    width 120ms,
+    height 120ms,
     left 90ms ease-out,
     top 90ms ease-out,
     background-color 120ms,
     border-color 120ms,
-    color 120ms;
+    box-shadow 120ms;
 }
 
-.react-flow__node:hover .canvas-append-glyph,
-.canvas-append-zone:focus-visible .canvas-append-glyph,
-.canvas-append-zone[data-pinned="true"] .canvas-append-glyph {
+.canvas-port-dot svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  stroke-width: 2.5;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+/* Under the pointer, or the port a connection is being dragged out of */
+.canvas-port:hover .canvas-port-dot,
+.canvas-port.connectingfrom .canvas-port-dot {
+  width: 22px;
+  height: 22px;
+  border-color: var(--port-color);
+  background-color: var(--md-sys-color-surface-container-lowest);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
+}
+
+.canvas-port:hover .canvas-port-dot svg {
   opacity: 1;
 }
 
-.canvas-append-zone:hover .canvas-append-glyph,
-.canvas-append-zone:focus-visible .canvas-append-glyph {
-  border-color: var(--md-sys-color-primary);
-  background-color: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
+/* The port a dragged connection would land on */
+.canvas-port.connectingto .canvas-port-dot {
+  width: 18px;
+  height: 18px;
 }
 
-.canvas-append-zone:focus-visible .canvas-append-glyph {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
+.canvas-port.connectingto.valid .canvas-port-dot {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--port-color) 30%, transparent);
 }
 
 /* Edge selection highlight (edges carry an inline stroke, hence !important) */

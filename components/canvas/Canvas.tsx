@@ -43,7 +43,8 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { createCanvasNode } from "@/lib/canvas/node-factory"
 import { autoLayoutNodes } from "@/lib/canvas/auto-layout"
 import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
-import type { DataType } from "@/lib/canvas/types"
+import type { ConnectDirection } from "@/lib/canvas/compatible-nodes"
+import type { DataType, NodeDefinition } from "@/lib/canvas/types"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useTranslations } from "@/hooks/use-translations"
 import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
@@ -63,7 +64,7 @@ import { QuickAddMenu } from "./QuickAddMenu"
 import { RunBar } from "./RunBar"
 import { SelectionToolbar } from "./SelectionToolbar"
 import { ViewBar } from "./ViewBar"
-import { APPEND_NODE_EVENT, FIT_CANVAS_EVENT, type AppendNodeRequest } from "./canvas-events"
+import { FIT_CANVAS_EVENT, PORT_PICKER_EVENT, type PortPickerRequest } from "./canvas-events"
 import { formatShortcut } from "./chrome"
 import { useCanvasClipboard } from "./use-canvas-clipboard"
 import { useCanvasConnect } from "./use-canvas-connect"
@@ -80,10 +81,14 @@ interface Point {
   y: number
 }
 
+/** 正在给一个端口挑要接上的节点 */
 interface PendingNodeInsert {
-  sourceNodeId: string
-  sourcePortId: string
-  sourceDataType: DataType
+  /** 手上的这个端口 */
+  nodeId: string
+  portId: string
+  dataType: DataType
+  /** downstream：它是输出，新节点接在后面；upstream：它是输入，新节点接在前面 */
+  direction: ConnectDirection
   screenPosition: Point
   flowPosition: Point
 }
@@ -96,12 +101,21 @@ type ContextMenuState =
 
 /** “+”接着往下加节点时，新节点离来源节点的距离 */
 const APPEND_GAP = 80
-/** 选中的节点和右侧属性卡片之间至少留这么宽，放得下节点右边的“+” */
-const INSPECTOR_CLEARANCE = 72
+/** 往前接一个节点时，从这个节点的左边往左让出这么宽：新节点最宽 400，窄的会离得远一点，但不会压上来 */
+const UPSTREAM_ROOM = 420
+/** 选中的节点和右侧属性卡片之间至少留这么宽：右边的端口放大成“+”时不被卡片盖住 */
+const INSPECTOR_CLEARANCE = 32
 const FIT_MAX_ZOOM = 1
 /** 已在 lib/storage/app-storage.ts 登记 */
 const CANVAS_MINIMAP_KEY = "canvas-minimap"
 const NODE_WIDTH_ESTIMATE = 280
+
+/** 节点上的一个端口：往后接时在输出里找，往前接时在输入里找 */
+function findPort(definition: NodeDefinition, portId: string, direction: ConnectDirection) {
+  return direction === "downstream"
+    ? getSourcePorts(definition).find((port) => port.id === portId)
+    : definition.config.find((field) => field.id === portId && field.hasInput)
+}
 
 function getEventClientPosition(event: MouseEvent | TouchEvent) {
   if ("changedTouches" in event) {
@@ -176,8 +190,8 @@ export function Canvas() {
   const inspectorRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef(false)
 
-  // 节点右侧的“+”画在节点里，会跟着画布一起缩放。把 1 / 缩放比例 放在外层的 CSS 变量上，
-  // 样式里乘回去，它在屏幕上就一直一样大；直接写样式，缩放时不用重渲染任何节点
+  // 端口画在节点里，会跟着画布一起缩放，缩小以后就点不准了。把 1 / 缩放比例 放在外层的
+  // CSS 变量上，样式里用它把端口的感应区放回去；直接写样式，缩放时不用重渲染任何节点
   const counterScaleRef = useRef(1)
   const applyCounterScale = useCallback((zoom: number) => {
     if (!(zoom > 0) || counterScaleRef.current === zoom) return
@@ -268,7 +282,6 @@ export function Canvas() {
         const cardRect = card.getBoundingClientRect()
         const nodeRect = nodeElement.getBoundingClientRect()
         const besideCard = nodeRect.bottom > cardRect.top && nodeRect.top < cardRect.bottom
-        // 节点右边还有“+”按钮，一并留出来
         const overlap = nodeRect.right + INSPECTOR_CLEARANCE - cardRect.left
         if (!besideCard || overlap <= 0) return
 
@@ -537,97 +550,103 @@ export function Canvas() {
     [removeEdge]
   )
 
+  // 拖着连线在空白处松手：问接什么。从输出端口拖出来的往后接，从输入端口拖出来的往前接
   const handleConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent, connectionState: FinalConnectionState) => {
-      if (
-        connectionState.toNode ||
-        !connectionState.fromNode ||
-        !connectionState.fromHandle ||
-        connectionState.fromHandle.type !== "source" ||
-        !connectionState.fromHandle.id
-      ) {
-        return
-      }
+      const { fromNode, fromHandle } = connectionState
+      if (connectionState.toNode || !fromNode || !fromHandle?.id) return
 
-      const sourceNode = storeNodes.find(
-        (node) => node.id === connectionState.fromNode?.id
-      )
-      const sourceDefinition = sourceNode
-        ? getNodeDefinition(sourceNode.type)
-        : undefined
-      const sourcePort = sourceDefinition
-        ? getSourcePorts(sourceDefinition).find((port) => port.id === connectionState.fromHandle?.id)
-        : undefined
+      const node = storeNodes.find((candidate) => candidate.id === fromNode.id)
+      const definition = node ? getNodeDefinition(node.type) : undefined
+      const direction: ConnectDirection = fromHandle.type === "source" ? "downstream" : "upstream"
+      const port = definition ? findPort(definition, fromHandle.id, direction) : undefined
       const screenPosition = getEventClientPosition(event)
-      if (!sourceNode || !sourcePort || !screenPosition) return
+      if (!node || !port || !screenPosition) return
 
+      const drop = screenToFlowPosition(screenPosition)
       setPendingNodeInsert({
-        sourceNodeId: sourceNode.id,
-        sourcePortId: connectionState.fromHandle.id,
-        sourceDataType: sourcePort.dataType,
+        nodeId: node.id,
+        portId: port.id,
+        dataType: port.dataType,
+        direction,
         screenPosition,
-        flowPosition: screenToFlowPosition(screenPosition),
+        // 往前接时，松手的地方该是新节点的右边（它的输出在右侧），所以往左让出一个节点的宽度
+        flowPosition: direction === "upstream" ? { x: drop.x - NODE_WIDTH_ESTIMATE, y: drop.y } : drop,
       })
     },
     [screenToFlowPosition, storeNodes]
   )
 
   /**
-   * 从节点右侧的“+”（或右键菜单）接着往下加：用这个节点的主输出去挑能接上的节点。
-   * 新节点放在它右边；它已经连着别的下游时，排到最下面那个的下方，不叠在一起。
+   * 点了一个端口（或右键菜单里的“添加下一步节点”，那时用节点的主输出）：挑一个能接上的节点。
+   * 往后接的放在这个节点右边，往前接的放在左边；那一侧已经连着别的节点时，
+   * 排到最下面那个的下方，不叠在一起。
    */
-  const openAppendPicker = useCallback(
-    (nodeId: string, screenPosition: Point) => {
-      const sourceNode = storeNodes.find((node) => node.id === nodeId)
-      const definition = sourceNode ? getNodeDefinition(sourceNode.type) : undefined
-      const port = definition ? getPrimaryOutput(definition) : undefined
-      if (!sourceNode || !port) return
+  const openPortPicker = useCallback(
+    (request: { nodeId: string; portId?: string; direction: ConnectDirection; screenPosition: Point }) => {
+      const { nodeId, direction, screenPosition } = request
+      const node = storeNodes.find((candidate) => candidate.id === nodeId)
+      const definition = node ? getNodeDefinition(node.type) : undefined
+      const port = !definition
+        ? undefined
+        : request.portId
+          ? findPort(definition, request.portId, direction)
+          : getPrimaryOutput(definition)
+      if (!node || !port) return
 
-      const measured = new Map(getNodes().map((node) => [node.id, node.measured]))
-      const downstreamIds = new Set(
-        storeEdges.filter((edge) => edge.source === nodeId).map((edge) => edge.target)
+      const measured = new Map(getNodes().map((item) => [item.id, item.measured]))
+      const neighbourIds = new Set(
+        direction === "downstream"
+          ? storeEdges.filter((edge) => edge.source === nodeId).map((edge) => edge.target)
+          : storeEdges.filter((edge) => edge.target === nodeId).map((edge) => edge.source)
       )
       const lowestBottom = storeNodes
-        .filter((node) => downstreamIds.has(node.id))
-        .reduce<number | null>((bottom, node) => {
-          const nodeBottom = node.position.y + (measured.get(node.id)?.height ?? 120)
-          return bottom === null ? nodeBottom : Math.max(bottom, nodeBottom)
+        .filter((item) => neighbourIds.has(item.id))
+        .reduce<number | null>((bottom, item) => {
+          const itemBottom = item.position.y + (measured.get(item.id)?.height ?? 120)
+          return bottom === null ? itemBottom : Math.max(bottom, itemBottom)
         }, null)
 
       setPendingNodeInsert({
-        sourceNodeId: nodeId,
-        sourcePortId: port.id,
-        sourceDataType: port.dataType,
+        nodeId,
+        portId: port.id,
+        dataType: port.dataType,
+        direction,
         screenPosition,
         flowPosition: {
-          x: sourceNode.position.x + (measured.get(nodeId)?.width ?? NODE_WIDTH_ESTIMATE) + APPEND_GAP,
-          y: lowestBottom === null ? sourceNode.position.y : lowestBottom + 24,
+          x: direction === "downstream"
+            ? node.position.x + (measured.get(nodeId)?.width ?? NODE_WIDTH_ESTIMATE) + APPEND_GAP
+            : node.position.x - UPSTREAM_ROOM,
+          y: lowestBottom === null ? node.position.y : lowestBottom + 24,
         },
       })
     },
     [getNodes, storeEdges, storeNodes]
   )
 
-  // 节点右侧的“+”画在节点卡片里，点了以后通过事件找到这里
+  // 端口画在节点卡片里，点了以后通过事件找到这里
   useEffect(() => {
-    const onAppend = (event: Event) => {
-      const { nodeId, anchor } = (event as CustomEvent<AppendNodeRequest>).detail
-      openAppendPicker(nodeId, anchor)
+    const onRequest = (event: Event) => {
+      const { nodeId, portId, side, anchor } = (event as CustomEvent<PortPickerRequest>).detail
+      openPortPicker({ nodeId, portId, direction: side === "source" ? "downstream" : "upstream", screenPosition: anchor })
     }
-    window.addEventListener(APPEND_NODE_EVENT, onAppend)
-    return () => window.removeEventListener(APPEND_NODE_EVENT, onAppend)
-  }, [openAppendPicker])
+    window.addEventListener(PORT_PICKER_EVENT, onRequest)
+    return () => window.removeEventListener(PORT_PICKER_EVENT, onRequest)
+  }, [openPortPicker])
 
   const insertCompatibleNode = useCallback(
-    ({ nodeType, targetPortId }: CompatibleNodeSelection) => {
+    ({ nodeType, portId }: CompatibleNodeSelection) => {
       if (!pendingNodeInsert) return
       const newNode = createCanvasNode(nodeType, pendingNodeInsert.flowPosition)
+      const held = { node: pendingNodeInsert.nodeId, port: pendingNodeInsert.portId }
+      const added = { node: newNode.id, port: portId }
+      const [from, to] = pendingNodeInsert.direction === "downstream" ? [held, added] : [added, held]
       const newEdge = {
-        id: `edge-${pendingNodeInsert.sourceNodeId}-${pendingNodeInsert.sourcePortId}-${newNode.id}-${targetPortId}`,
-        source: pendingNodeInsert.sourceNodeId,
-        sourcePort: pendingNodeInsert.sourcePortId,
-        target: newNode.id,
-        targetPort: targetPortId,
+        id: `edge-${from.node}-${from.port}-${to.node}-${to.port}`,
+        source: from.node,
+        sourcePort: from.port,
+        target: to.node,
+        targetPort: to.port,
       }
 
       addSubgraph({ nodes: [newNode], edges: [newEdge] })
@@ -799,7 +818,7 @@ export function Canvas() {
       { id: "run", label: t("runToNode"), icon: Play, disabled: Boolean(nodeRunning[menu.nodeId]), onSelect: () => { void executeToNode(menu.nodeId, true) } },
     ]
     if (definition && getPrimaryOutput(definition)) {
-      items.push({ id: "append", label: t("appendNextNode"), icon: GitBranchPlus, onSelect: () => openAppendPicker(menu.nodeId, menu.screen) })
+      items.push({ id: "append", label: t("appendNextNode"), icon: GitBranchPlus, onSelect: () => openPortPicker({ nodeId: menu.nodeId, direction: "downstream", screenPosition: menu.screen }) })
     }
     items.push(
       "separator",
@@ -983,7 +1002,8 @@ export function Canvas() {
       )}
       {pendingNodeInsert && (
         <CompatibleNodePicker
-          sourceDataType={pendingNodeInsert.sourceDataType}
+          dataType={pendingNodeInsert.dataType}
+          direction={pendingNodeInsert.direction}
           position={pendingNodeInsert.screenPosition}
           onSelect={insertCompatibleNode}
           onClose={() => setPendingNodeInsert(null)}
