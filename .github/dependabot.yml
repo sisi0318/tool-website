@@ -1,0 +1,41 @@
+# 依赖更新提醒。
+#
+# 起因:2026-10 运行时依赖里攒出 2 个 critical、3 个 high 的安全公告,CI 的审计门槛自己变红,
+# 而仓库里没有任何东西会提醒去升级。现在每周把补丁和小版本合成一个 PR,跑完 CI 再决定合不合。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+        # 这几个和仓库里的适配代码、拷到 public/ 的运行文件绑在一起,升级容易单独出问题。
+        # 让它们各开各的 PR,免得一个失败拖住整组。
+        exclude-patterns:
+          - pdfjs-dist
+          - "@sqlite.org/sqlite-wasm"
+          - "@visioncortex/vtracer"
+          - pptx-preview
+    ignore:
+      # scripts/copy-ocr-assets.mjs 钉死了这两个包的版本并校验入口文件的 SHA-256,
+      # 升级要连同 Worker 适配一起做,不能只改版本号。
+      - dependency-name: "@paddleocr/paddleocr-js"
+      - dependency-name: onnxruntime-web
+      # 大版本(Next 16、React 19、Tailwind 4、ESLint 10、TypeScript 7 等)各自要迁移,由人来排期。
+      # 安全更新不受这条限制。
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
