@@ -10,14 +10,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Runner 固定在 24.04:ubuntu-latest 换代时,Playwright 的 --with-deps 要等新版本才认得新系统,
+# 那几周 e2e 会在装依赖这一步莫名失败。要升级时连同 @playwright/test 一起改。
 jobs:
   check:
     name: 类型 / 规范 / 单元测试
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -40,16 +42,25 @@ jobs:
 
   e2e:
     name: 端到端测试
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - run: npm ci
+
+      # 构建前要下两个 OCR 模型(共约 31 MB,只有一个地域的源站),跨洲拉取偶尔不通。
+      # 脚本把校验过的模型留在 node_modules/.cache 下,这里按清单内容缓存;放在 npm ci 之后,
+      # 因为 npm ci 会先清空 node_modules。
+      - name: 缓存 OCR 模型
+        uses: actions/cache@v6
+        with:
+          path: node_modules/.cache/ocr-models
+          key: ocr-models-${{ hashFiles('vendor/ocr/models.json') }}
 
       - name: 安装 Playwright 浏览器
         run: npx playwright install --with-deps chromium
@@ -68,7 +79,7 @@ jobs:
           DISABLE_PWA: "true"
           NEXT_PUBLIC_E2E: "true"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
