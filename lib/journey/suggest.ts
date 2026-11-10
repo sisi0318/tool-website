@@ -150,6 +150,32 @@ export function getCompatibleTools(valueType: DataType): NodeDefinition[] {
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
+/**
+ * “更多工具”里的顺序。以前是把类型兼容的工具按名字全排出来:手里是一段 JSON,
+ * 列表里先看到的却是汇率、温度、密码生成。现在分两段:
+ * recommended —— 针对这份数据的建议(按建议的分数),接着是这条路上用过的工具(最近的在前);
+ * others —— 其余兼容的工具,顺序由界面按当前语言的名字排。
+ */
+export function rankCompatibleTools(
+  value: unknown,
+  valueType: DataType,
+  usedTools: readonly string[] = [],
+): { recommended: NodeDefinition[]; others: NodeDefinition[] } {
+  const compatible = new Map(getCompatibleTools(valueType).map((definition) => [definition.type, definition]))
+  const order: string[] = []
+  const push = (tool: string) => {
+    if (compatible.has(tool) && !order.includes(tool)) order.push(tool)
+  }
+  suggestNext(value, valueType, Number.MAX_SAFE_INTEGER)
+    .filter((suggestion) => suggestion.reason === "detection")
+    .forEach((suggestion) => push(suggestion.tool))
+  ;[...usedTools].reverse().forEach(push)
+
+  const recommended = order.map((tool) => compatible.get(tool)!)
+  const others = [...compatible.values()].filter((definition) => !order.includes(definition.type))
+  return { recommended, others }
+}
+
 /** 建议 = 识别驱动精选(高分) + 类型兼容兜底(低分),按分数排序去重 */
 export function suggestNext(value: unknown, valueType: DataType, limit = 6): JourneySuggestion[] {
   const suggestions = new Map<string, JourneySuggestion>()
