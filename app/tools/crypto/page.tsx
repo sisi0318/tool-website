@@ -1044,10 +1044,10 @@ export default function CryptoPage() {
                           size="sm"
                           onClick={reverseWithOutput}
                           disabled={!output || processing}
-                          title={operation === "encrypt" ? "将密文设为输入并切换为解密" : "将明文设为输入并切换为加密"}
+                          title={operation === "encrypt" ? t("reverseToDecryptHint") : t("reverseToEncryptHint")}
                         >
                           <ArrowLeftRight className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                          反向{operation === "encrypt" ? t("decrypt") : t("encrypt")}
+                          {operation === "encrypt" ? t("reverseToDecrypt") : t("reverseToEncrypt")}
                         </Button>
                         <Button variant="outline" size="sm" onClick={clearOutput}>
                           {t("clearOutput")}
@@ -1178,7 +1178,13 @@ export default function CryptoPage() {
           </div>
         )}
 
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        {/* 窄屏的文本模式下，执行按钮在输入框正下方（上面那个 md:hidden 的按钮），不必滚过输出区才点得到；
+            这里就不再放第二个同名按钮，只在处理中留下“取消”。文件模式和宽屏不受影响 */}
+        <div
+          className={`grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] ${
+            inputMode === "text" && !processing ? "max-md:hidden" : ""
+          }`}
+        >
           <Button
             onClick={() =>
               void (inputMode === "text" ? processText() : processFile())
@@ -1186,7 +1192,7 @@ export default function CryptoPage() {
             disabled={
               processing || (inputMode === "text" ? !input : !fileInfo)
             }
-            className="min-h-11 w-full"
+            className={`min-h-11 w-full ${inputMode === "text" ? "max-md:hidden" : ""}`}
           >
             {processing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
