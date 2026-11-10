@@ -26,7 +26,15 @@ export interface Journey {
   version: 1
   name: string
   rootId: string
+  /** 选中的节点:详情显示它,下一步也接在它后面 */
   activeId: string
+  /**
+   * 当前这条路的末端。只在“回头看前面的步骤”时才写:此时 activeId 停在路中间,
+   * 靠它记住后面还有哪些步骤,界面上才不会一回头就把后半条路藏起来。
+   * 选中的就是末端时不写,所以大多数旅程存下来的样子和加这个字段之前一样。
+   * 读的时候一律走 getTipId:它会校验这个值,失效时按最近走过的分支推出来。
+   */
+  tipId?: string
   nodes: Record<string, JourneyNode>
 }
 

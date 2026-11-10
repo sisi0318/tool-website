@@ -43,9 +43,11 @@ export function appendNode(
     label,
     createdAt: Date.now(),
   }
+  // 新节点是叶子,它自己就是这条路的末端;原来记着的末端属于被留在身后的那条路
+  const { tipId: _previousTip, ...rest } = journey
   return {
     journey: {
-      ...journey,
+      ...rest,
       activeId: nodeId,
       nodes: { ...journey.nodes, [nodeId]: node },
     },
@@ -106,6 +108,43 @@ export function getChildren(journey: Journey, nodeId: string): JourneyNode[] {
   return Object.values(journey.nodes)
     .filter((node) => node.parentId === nodeId)
     .sort((a, b) => a.createdAt - b.createdAt)
+}
+
+/**
+ * 当前这条路的末端。journey.tipId 有效(节点还在,且选中的节点在通往它的路上)就用它;
+ * 否则从选中的节点往下,每次走最近创建的那个子节点,走到叶子为止。
+ * 后一种覆盖了没有 tipId 的旧存档,也覆盖了末端所在的子树被删掉之后的情形。
+ */
+export function getTipId(journey: Journey): string {
+  const pinned = journey.tipId ? journey.nodes[journey.tipId] : undefined
+  if (pinned && getPath(journey, pinned.id).some((node) => node.id === journey.activeId)) return pinned.id
+
+  const visited = new Set<string>()
+  let currentId = journey.nodes[journey.activeId] ? journey.activeId : journey.rootId
+  while (!visited.has(currentId)) {
+    visited.add(currentId)
+    const children = getChildren(journey, currentId)
+    if (children.length === 0) break
+    currentId = children[children.length - 1].id
+  }
+  return currentId
+}
+
+/** 界面上展示的那条路:根 → 末端 */
+export function getTrail(journey: Journey): JourneyNode[] {
+  return getPath(journey, getTipId(journey))
+}
+
+/**
+ * 选中一个节点。它在当前这条路上时,路不变,只是换了看的位置;
+ * 它在别的分支上时,换到那条分支,末端重新按“最近走过的”推出来。
+ */
+export function selectNode(journey: Journey, nodeId: string): Journey {
+  if (!journey.nodes[nodeId]) return journey
+  const tipId = getTipId(journey)
+  const { tipId: _previousTip, ...rest } = journey
+  const onTrail = getPath(journey, tipId).some((node) => node.id === nodeId)
+  return onTrail && nodeId !== tipId ? { ...rest, activeId: nodeId, tipId } : { ...rest, activeId: nodeId }
 }
 
 /** 删除节点及其整棵子树;根不可删。active 落在被删子树时回退到被删节点的父节点 */
