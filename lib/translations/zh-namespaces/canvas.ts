@@ -81,6 +81,8 @@ export const zhCanvas = {
   deleteNodeTitle: "删除这个节点？",
   deleteNodeMessage: "会同时移除与这个节点相连的连线，删除后仍可撤销。",
   copyOutput: "复制输出",
+  expandOutputPreview: "展开输出预览",
+  collapseOutputPreview: "收起输出预览",
   outputTruncated: "输出过长，仅显示前 {shown} 个字符；复制可得到完整内容",
   copied: "已复制",
   selectionToolbar: "批量节点操作",

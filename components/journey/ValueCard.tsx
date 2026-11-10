@@ -87,22 +87,23 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
             {text}
           </pre>
           <div className="flex items-center justify-between px-1 text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-            <span className="font-mono">{text.length.toLocaleString()} chars</span>
+            <span className="font-mono">{t("charCount").replace("{count}", text.length.toLocaleString())}</span>
             {isLongText && (
               <button
                 type="button"
                 onClick={() => setExpanded((prev) => !prev)}
+                aria-expanded={expanded}
                 className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-medium text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10"
               >
                 {expanded ? (
                   <>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                    收起
+                    <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+                    {t("collapsePreview")}
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    展开预览
+                    <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                    {t("expandPreview")}
                   </>
                 )}
               </button>

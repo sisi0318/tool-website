@@ -50,8 +50,9 @@ function OutputField({ label, value, nodeName }: { label: string; value: unknown
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
-            aria-label={expanded ? "收起输出预览" : "展开输出预览"}
-            title={expanded ? "收起输出预览" : "展开输出预览"}
+            aria-label={`${expanded ? t("collapseOutputPreview") : t("expandOutputPreview")}: ${label}`}
+            aria-expanded={expanded}
+            title={expanded ? t("collapseOutputPreview") : t("expandOutputPreview")}
             className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
           >
             {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}

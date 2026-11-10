@@ -90,6 +90,7 @@ export const zhQrcode = {
   encodedContent: "编码内容",
   contentLength: "内容长度：{count} 字符",
   downloadQRCode: "下载二维码",
+  copy: "复制",
   copied: "已复制",
   geolocationUnavailable: "当前浏览器不支持定位功能。",
   geolocationFailed: "无法获取当前位置，请检查浏览器定位权限。",

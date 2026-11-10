@@ -11,5 +11,6 @@ export const zhCompressionFiles = {
   zipFilename: "ZIP 文件名", level: "压缩级别", storeOnly: "仅打包（0）", fast: "快速（1）", balanced: "均衡（6）", smallest: "高压缩（9）", packing: "正在打包", archivePath: "压缩包内路径", removeFile: "移除",
   fileCodecHelp: "文件直接以二进制处理。支持 GZip、Zlib、Deflate 和 Brotli，输入最大 64 MB，输出最大 128 MB。", chooseSourceFile: "选择源文件", operation: "操作", format: "格式", compress: "压缩", decompress: "解压",
   processing: "正在处理…", cancel: "取消", clear: "清空", downloadFile: "下载文件", previewMode: "预览格式", loading: "正在读取预览…", emptyFile: "空文件", notText: "这段数据不是可打印的 UTF-8 文本，可切换到 Hex 查看。", previewHelp: "文本预览前 64 KB，Hex 预览前 512 字节；下载和继续处理使用完整文件。",
+  previousPage: "上一页", nextPage: "下一页",
   errors: { invalidZip: "无法读取 ZIP 目录，文件可能不完整或已损坏。", unsupportedZip: "暂不支持分卷或加密目录的 ZIP。", encrypted: "此项已加密，暂不支持提取。", unsupportedMethod: "此项的压缩方法暂不支持。", unsafePath: "此路径不安全、过长，或目录项包含文件内容。", duplicatePath: "压缩包中存在重复路径或文件与目录冲突，请修改路径。", notFound: "没有找到指定 ZIP 文件。", inputLimit: "超出输入限制：单文件或归档最大 64 MB，打包总输入最大 128 MB。", outputLimit: "解压数据超过限制：单项最大 64 MB，单次合计最大 128 MB。", entryLimit: "文件项数量超过 2,000。", corrupt: "数据或校验值不匹配，文件可能已损坏。", nameEncoding: "无法按此编码读取文件名，请选择其他编码。", cancelled: "已取消处理。", invalidInput: "请提供有效文件和处理参数。", formatRequired: "无法识别压缩格式，请手动选择。", entryRequired: "ZIP 包含多个文件，请指定条目路径或序号。" },
 }
