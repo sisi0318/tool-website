@@ -84,6 +84,36 @@ const GENERIC_BYTES: CuratedEntry[] = [
   { tool: "file-to-string", key: "fileToText", label: "File to text", score: 55 },
 ]
 
+/**
+ * 看数据的样子才给出的建议(文件类型、文本特征)。随数据变化的配置(如按扩展名定格式)在用到时再补。
+ * 单独列出来而不是写在 suggestNext 里,是因为步骤列表也要靠它们给步骤起名(见 STEP_LABEL_ENTRIES)。
+ */
+const SITUATIONAL = {
+  inspectPdfPages: { tool: "pdf", key: "inspectPdfPages", label: "Inspect PDF pages", config: { operation: "inspect" }, outputPort: "info", score: 110 },
+  imageToPdf: { tool: "images-to-pdf", key: "imageToPdf", label: "Image to PDF", outputPort: "file", score: 65 },
+  recognizeImageText: { tool: "ocr", key: "recognizeImageText", label: "Recognize image text", outputPort: "text", score: 95 },
+  traceImageToSvg: { tool: "image-to-svg", key: "traceImageToSvg", label: "Trace image to SVG", outputPort: "file", score: 75 },
+  inspectSqlite: { tool: "sqlite", key: "inspectSqlite", label: "Inspect SQLite database", config: { operation: "inspect" }, outputPort: "result", score: 110 },
+  decodeBinaryFile: { tool: "binary-codec-file", key: "decodeBinaryFile", label: "Decode MessagePack / CBOR file", outputPort: "value", score: 110 },
+  queryTabularFile: { tool: "tabular-file", key: "queryTabularFile", label: "Query CSV / JSONL file", outputPort: "rows", score: 110 },
+  browseZip: { tool: "zip-directory", key: "browseZip", label: "Browse ZIP directory", outputPort: "entries", score: 110 },
+  decompressFile: { tool: "compression-file", key: "decompressFile", label: "Decompress file", config: { operation: "decompress", format: "auto" }, outputPort: "file", score: 100 },
+  inspectUrl: { tool: "url", key: "inspectUrl", label: "Inspect URL parameters", outputPort: "components", score: 2000 },
+  processTextLines: { tool: "text-lines", key: "processTextLines", label: "Process text lines", config: { operation: "dedupe" }, outputPort: "output", score: 65 },
+  inspectUnicode: { tool: "unicode", key: "inspectUnicode", label: "Inspect Unicode characters", config: { operation: "inspect" }, outputPort: "report", score: 70 },
+  queryJsonlLogs: { tool: "tabular", key: "queryJsonlLogs", label: "Query JSONL logs", config: { format: "jsonl" }, outputPort: "rows", score: 2000 },
+} satisfies Record<string, CuratedEntry>
+
+/**
+ * 所有带动作短语的条目:步骤的工具和配置对得上其中一条时,步骤列表就显示那条的短语
+ * (“Base64 解码”),而不是工具名(“编码解码”)。匹配规则见 lib/journey/describe.ts。
+ */
+export const STEP_LABEL_ENTRIES: ReadonlyArray<{ tool: string; key: string; config?: Record<string, unknown> }> = [
+  ...Object.values(CURATED).flat(),
+  ...BYTES_CURATED,
+  ...Object.values(SITUATIONAL),
+]
+
 /** 供测试遍历:每条精选建议都应能在真实注册表下通过校验并成功执行。 */
 export const CURATED_MATRIX = { byDetection: CURATED, imageBytes: BYTES_CURATED, genericBytes: GENERIC_BYTES }
 
@@ -136,34 +166,34 @@ export function suggestNext(value: unknown, valueType: DataType, limit = 6): Jou
   if (valueType === "bytes") {
     const mime = typeof Blob !== "undefined" && value instanceof Blob ? value.type : ""
     const filename = typeof File !== "undefined" && value instanceof File ? value.name : ""
-    if (/\.pdf$/i.test(filename) || mime === "application/pdf") pushEntry({ tool: "pdf", key: "inspectPdfPages", label: "Inspect PDF pages", config: { operation: "inspect" }, outputPort: "info", score: 110 })
-    if (["image/png", "image/jpeg"].includes(mime)) pushEntry({ tool: "images-to-pdf", key: "imageToPdf", label: "Image to PDF", outputPort: "file", score: 65 })
-    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry({ tool: "ocr", key: "recognizeImageText", label: "Recognize image text", outputPort: "text", score: 95 })
-    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry({ tool: "image-to-svg", key: "traceImageToSvg", label: "Trace image to SVG", outputPort: "file", score: 75 })
-    if (/\.(sqlite|sqlite3|db|db3|s3db)$/i.test(filename) || mime === "application/vnd.sqlite3") pushEntry({ tool: "sqlite", key: "inspectSqlite", label: "Inspect SQLite database", config: { operation: "inspect" }, outputPort: "result", score: 110 })
+    if (/\.pdf$/i.test(filename) || mime === "application/pdf") pushEntry(SITUATIONAL.inspectPdfPages)
+    if (["image/png", "image/jpeg"].includes(mime)) pushEntry(SITUATIONAL.imageToPdf)
+    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry(SITUATIONAL.recognizeImageText)
+    if (["image/png", "image/jpeg", "image/webp"].includes(mime) || /\.(png|jpe?g|webp)$/i.test(filename)) pushEntry(SITUATIONAL.traceImageToSvg)
+    if (/\.(sqlite|sqlite3|db|db3|s3db)$/i.test(filename) || mime === "application/vnd.sqlite3") pushEntry(SITUATIONAL.inspectSqlite)
     if (/\.(cbor|msgpack|mpk)$/i.test(filename) || ["application/cbor", "application/msgpack", "application/x-msgpack"].includes(mime)) {
-      pushEntry({ tool: "binary-codec-file", key: "decodeBinaryFile", label: "Decode MessagePack / CBOR file", config: { format: /\.cbor$/i.test(filename) || mime === "application/cbor" ? "cbor" : "msgpack" }, outputPort: "value", score: 110 })
+      pushEntry({ ...SITUATIONAL.decodeBinaryFile, config: { format: /\.cbor$/i.test(filename) || mime === "application/cbor" ? "cbor" : "msgpack" } })
     }
     if (/\.(csv|tsv|jsonl|ndjson)$/i.test(filename) || ["text/csv", "text/tab-separated-values", "application/x-ndjson"].includes(mime)) {
-      pushEntry({ tool: "tabular-file", key: "queryTabularFile", label: "Query CSV / JSONL file", config: { format: /\.(jsonl|ndjson)$/i.test(filename) || mime === "application/x-ndjson" ? "jsonl" : "csv" }, outputPort: "rows", score: 110 })
+      pushEntry({ ...SITUATIONAL.queryTabularFile, config: { format: /\.(jsonl|ndjson)$/i.test(filename) || mime === "application/x-ndjson" ? "jsonl" : "csv" } })
     }
     if (mime === "application/zip" || /\.(zip|jar|apk|docx|xlsx|pptx)$/i.test(filename)) {
-      pushEntry({ tool: "zip-directory", key: "browseZip", label: "Browse ZIP directory", outputPort: "entries", score: 110 })
+      pushEntry(SITUATIONAL.browseZip)
     }
     if (["application/gzip", "application/zip"].includes(mime) || /\.(gz|zip|br|zlib|deflate)$/i.test(filename)) {
-      pushEntry({ tool: "compression-file", key: "decompressFile", label: "Decompress file", config: { operation: "decompress", format: "auto" }, outputPort: "file", score: 100 })
+      pushEntry(SITUATIONAL.decompressFile)
     }
     const curated = mime.startsWith("image/") ? BYTES_CURATED : GENERIC_BYTES
     curated.forEach((entry) => pushEntry(entry))
   } else if (typeof value === "string" && value.trim().length > 0) {
-    if (/^(?:https?|wss?|ftp|file):\/\//i.test(value.trim())) pushEntry({ tool: "url", key: "inspectUrl", label: "Inspect URL parameters", outputPort: "components", score: 2000 })
-    if (/[\r\n]/.test(value)) pushEntry({ tool: "text-lines", key: "processTextLines", label: "Process text lines", config: { operation: "dedupe" }, outputPort: "output", score: 65 })
+    if (/^(?:https?|wss?|ftp|file):\/\//i.test(value.trim())) pushEntry(SITUATIONAL.inspectUrl)
+    if (/[\r\n]/.test(value)) pushEntry(SITUATIONAL.processTextLines)
     if (/[\u00a0\u0300-\u036f\u2000-\u200f\u2028-\u202f\u2060-\u206f\ufeff]/.test(value)) {
-      pushEntry({ tool: "unicode", key: "inspectUnicode", label: "Inspect Unicode characters", config: { operation: "inspect" }, outputPort: "report", score: 70 })
+      pushEntry(SITUATIONAL.inspectUnicode)
     }
     const sampleLines = value.slice(0, 8192).trim().split(/\r?\n/)
     if (sampleLines.length >= 2 && sampleLines.slice(0, 2).every((line) => { try { const row: unknown = JSON.parse(line); return row !== null && typeof row === "object" && !Array.isArray(row) } catch { return false } })) {
-      pushEntry({ tool: "tabular", key: "queryJsonlLogs", label: "Query JSONL logs", config: { format: "jsonl" }, outputPort: "rows", score: 2000 })
+      pushEntry(SITUATIONAL.queryJsonlLogs)
     }
     const detection = detectData(value)
     // 按识别置信度加权:同一识别矩阵内保持相对分,不同识别按 confidence 排先后
