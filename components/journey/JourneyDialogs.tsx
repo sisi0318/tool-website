@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { FolderOpen, LoaderCircle, Play, Trash2 } from "lucide-react"
 import type { Journey } from "@/lib/journey/types"
-import { getPathSteps } from "@/lib/journey/tree"
+import { getPathSteps, getTipId } from "@/lib/journey/tree"
 import { encodeSharedPath, listSavedJourneys, restoreSavedJourney, takeSavedJourney } from "@/lib/journey/serialize"
 import { ToastAction } from "@/components/ui/toast"
 import { copyTextToClipboard } from "@/lib/clipboard"
@@ -178,7 +178,8 @@ export function ShareDialog({ open, onOpenChange, journey }: DialogBaseProps & {
   const rootValue = journey.nodes[journey.rootId]?.value
   const canIncludeInput =
     typeof rootValue === "string" && rootValue.length > 0 && rootValue.length <= MAX_SHARED_INPUT_CHARS
-  const steps = getPathSteps(journey, journey.activeId)
+  // 分享的是屏幕上这条路（根 → 末端）。回头看着中间某一步时点分享，不该只带走前半条
+  const steps = getPathSteps(journey, getTipId(journey))
 
   useEffect(() => {
     if (!open) setIncludeInput(false)

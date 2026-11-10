@@ -1,4 +1,4 @@
-import React from "react"
+import React, { type ReactNode } from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import JourneyPage from "./page"
@@ -13,7 +13,10 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: calls.toast }) }))
 vi.mock("@/hooks/use-translations", () => { const t = (key: string) => key; return { useTranslations: () => t } })
 vi.mock("@/components/journey/BranchDrawer", () => ({ BranchDrawer: () => null }))
-vi.mock("@/components/journey/JourneyTrail", () => ({ JourneyTrail: () => null }))
+// jsdom 里没有 matchMedia，页面走窄屏布局：详情交给步骤列表就地展开
+vi.mock("@/components/journey/StepList", () => ({ StepList: ({ inlineDetail }: { inlineDetail?: ReactNode }) => <>{inlineDetail}</> }))
+vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
+vi.mock("@/components/journey/StepSettings", () => ({ StepSettings: () => null }))
 vi.mock("@/components/journey/SuggestionChips", () => ({ SuggestionChips: () => null }))
 vi.mock("@/components/journey/ToolPickerSheet", () => ({ ToolPickerSheet: () => null }))
 vi.mock("@/components/journey/StepSheet", () => ({ StepSheet: () => null }))
@@ -55,7 +58,8 @@ describe("applying a journey to new data", () => {
     expect(screen.getByTestId("value")).toHaveTextContent("abc!")
 
     fireEvent.click(screen.getByRole("button", { name: "replayTitle" }))
-    expect(screen.getByRole("dialog", { name: "replayTitle" })).toHaveTextContent("replayHint")
+    // 对话框是按需加载的
+    expect(await screen.findByRole("dialog", { name: "replayTitle" })).toHaveTextContent("replayHint")
     fireEvent.change(screen.getByRole("textbox", { name: "replayTitle" }), { target: { value: "xyz" } })
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "replayRun" })) })
 
@@ -76,12 +80,12 @@ describe("applying a journey to new data", () => {
     expect(screen.getByTestId("value")).toHaveTextContent("abc!")
   })
 
-  it("lets the input be edited from the root card, prefilled with the current input", () => {
+  it("lets the input be edited from the root card, prefilled with the current input", async () => {
     const { journey } = branchedJourney()
     saveDraft({ ...journey, activeId: journey.rootId })
     render(<JourneyPage />)
 
     fireEvent.click(screen.getByRole("button", { name: "editInput" }))
-    expect(screen.getByRole("textbox", { name: "editInput" })).toHaveValue("abc")
+    expect(await screen.findByRole("textbox", { name: "editInput" })).toHaveValue("abc")
   })
 })

@@ -14,9 +14,11 @@ interface SuggestionChipsProps {
   running: boolean
   onApply: (suggestion: JourneySuggestion) => void
   onMoreTools: () => void
+  /** 标题下面的一句说明，例如从路中间继续会另开一条路 */
+  hint?: string
 }
 
-export function SuggestionChips({ node, running, onApply, onMoreTools }: SuggestionChipsProps) {
+export function SuggestionChips({ node, running, onApply, onMoreTools, hint }: SuggestionChipsProps) {
   const t = useTranslations("journey", zhJourney)
   const st = useTranslations("journeySuggestions", zhJourneySuggestions)
   const nodeLabel = useNodeLabel()
@@ -42,6 +44,7 @@ export function SuggestionChips({ node, running, onApply, onMoreTools }: Suggest
           </span>
         )}
       </div>
+      {hint && <p className="mt-1.5 text-xs leading-relaxed text-[var(--md-sys-color-on-surface-variant)]">{hint}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         {suggestions.map((suggestion) => (
           <button

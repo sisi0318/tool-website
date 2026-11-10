@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { JOURNEY_DIALOG_CLASS } from "./dialog-style"
 import { useTranslations } from "@/hooks/use-translations"
 import { zhJourney } from "@/lib/translations/zh-namespaces/journey"
-import { useNodeLabel } from "@/hooks/use-node-label"
+import { useStepTitle } from "./use-step-title"
 
 interface BranchDrawerProps {
   open: boolean
@@ -21,7 +21,8 @@ interface BranchDrawerProps {
 
 export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }: BranchDrawerProps) {
   const t = useTranslations("journey", zhJourney)
-  const nodeLabel = useNodeLabel()
+  // 和步骤列表用同一套叫法：做了什么，而不是工具名
+  const stepTitle = useStepTitle()
   const root = journey.nodes[journey.rootId]
 
   const renderNode = (node: JourneyNode, depth: number): ReactNode => {
@@ -48,7 +49,7 @@ export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }
                   : "text-[var(--md-sys-color-on-surface)]"
               }`}
             >
-              {isRoot ? t("trailInput") : node.via ? nodeLabel({ type: node.via.tool, label: node.label }) : node.label}
+              {stepTitle(node)}
             </span>
             {isActive && (
               <span className="shrink-0 rounded-full bg-[var(--md-sys-color-primary)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--md-sys-color-on-primary)]">

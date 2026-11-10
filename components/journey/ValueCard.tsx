@@ -27,7 +27,8 @@ function formatBytes(size: number): string {
 interface ValueCardProps {
   node: JourneyNode
   running: boolean
-  onOpenStepSheet: () => void
+  /** 打开这一步的参数。参数就在详情区里改的地方不传，卡片上就不出现这个按钮 */
+  onOpenStepSheet?: () => void
   onRerunFromRoot: () => void
   /** 根节点上的“编辑输入”：换掉输入并按原来的步骤重算所有分支 */
   onEditInput?: () => void
@@ -190,7 +191,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
               <PencilLine className="h-4 w-4" />
             </button>
           )}
-          {!isRoot && (
+          {!isRoot && onOpenStepSheet && (
             <button
               type="button"
               onClick={onOpenStepSheet}

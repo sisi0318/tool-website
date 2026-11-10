@@ -1,10 +1,10 @@
-import React, { type ReactElement } from "react"
+import React, { type ReactElement, type ReactNode } from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import JourneyPage from "./page"
 import { clearRegistry, registerNode } from "@/lib/canvas/registry"
 import { createJourney } from "@/lib/journey/tree"
-import { loadDraft, loadJourney, saveDraft } from "@/lib/journey/serialize"
+import { loadJourney, saveDraft } from "@/lib/journey/serialize"
 import { toolTransfers, toolTransferUrl } from "@/lib/tool-transfer"
 import type { JourneyNode } from "@/lib/journey/types"
 
@@ -13,14 +13,23 @@ vi.mock("@/lib/adapters", () => ({ registerAllAdapters: () => undefined }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: calls.navigate }) }))
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: calls.toast }) }))
 vi.mock("@/hooks/use-translations", () => { const t = (key: string) => key; return { useTranslations: () => t } })
+vi.mock("@/components/tools/send-to-menu", () => ({ SendToMenu: () => null }))
 vi.mock("@/components/journey/BranchDrawer", () => ({ BranchDrawer: () => null }))
 vi.mock("@/components/journey/InputStage", () => ({ InputStage: () => <div data-testid="input-stage" /> }))
-vi.mock("@/components/journey/JourneyTrail", () => ({ JourneyTrail: () => null }))
+// jsdom 里没有 matchMedia，页面走窄屏布局：详情交给步骤列表就地展开
+vi.mock("@/components/journey/StepList", () => ({ StepList: ({ inlineDetail }: { inlineDetail?: ReactNode }) => <>{inlineDetail}</> }))
+vi.mock("@/components/journey/StepSettings", () => ({ StepSettings: () => null }))
 vi.mock("@/components/journey/SuggestionChips", () => ({ SuggestionChips: () => null }))
 vi.mock("@/components/journey/ToolPickerSheet", () => ({ ToolPickerSheet: () => null }))
 vi.mock("@/components/journey/JourneyDialogs", () => ({ ConfirmNewDialog: () => null, ConfirmOverwriteDialog: () => null, OpenJourneyDialog: () => null, ReplayDialog: () => null, RestoreInputDialog: () => null, ShareDialog: () => null }))
 vi.mock("@/components/journey/ValueCard", () => ({ ValueCard: ({ node }: { node: JourneyNode }) => <div data-testid="current-value">{node.valueType === "bytes" ? `bytes:${(node.value as File).size}` : JSON.stringify(node.value)}</div> }))
-vi.mock("@/components/journey/StepSheet", () => ({ StepSheet: ({ open, creating, onRerun }: { open: boolean; creating: boolean; onRerun: (config: Record<string, unknown>, port: string) => void }) => open ? <button onClick={() => onRerun({}, "output")}>{creating ? "Run new step" : "Rerun"}</button> : null }))
+vi.mock("@/components/journey/StepSheet", () => ({ StepSheet: ({ open, onRun }: { open: boolean; onRun: (config: Record<string, unknown>, port: string) => void }) => open ? <button onClick={() => onRun({}, "output")}>Run new step</button> : null }))
+
+/** “在画布中打开”收在标题栏的“更多操作”菜单里 */
+function chooseAction(name: string) {
+  fireEvent.pointerDown(screen.getByRole("button", { name: "moreActions" }), { button: 0, ctrlKey: false })
+  fireEvent.click(screen.getByRole("menuitem", { name }))
+}
 
 beforeEach(() => {
   toolTransfers.clear()
@@ -40,13 +49,13 @@ describe("journey tool transfer intake", () => {
     const original = JSON.stringify({ nodes: [{ id: "original", type: "string", position: { x: 0, y: 0 }, config: { value: "keep me" } }], edges: [] })
     localStorage.setItem("canvas-state", original)
     render(<JourneyPage />)
-    fireEvent.click(screen.getByRole("button", { name: "openInCanvas" }))
+    chooseAction("openInCanvas")
     expect(screen.getByRole("alertdialog")).toHaveTextContent("canvasReplaceDescription")
     expect(calls.navigate).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole("button", { name: "cancel" }))
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
     expect(localStorage.getItem("canvas-state")).toBe(original)
-    fireEvent.click(screen.getByRole("button", { name: "openInCanvas" }))
+    chooseAction("openInCanvas")
     fireEvent.click(screen.getByRole("button", { name: "canvasReplaceConfirm" }))
     expect(calls.navigate).toHaveBeenCalledWith("/canvas")
     expect(JSON.parse(localStorage.getItem("canvas-state")!).nodes[0].config.value).toBe("replacement")
@@ -55,7 +64,7 @@ describe("journey tool transfer intake", () => {
     saveDraft(createJourney("Journey", "replacement", "Input"))
     localStorage.setItem("canvas-state", JSON.stringify({ nodes: [], edges: [] }))
     render(<JourneyPage />)
-    fireEvent.click(screen.getByRole("button", { name: "openInCanvas" }))
+    chooseAction("openInCanvas")
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
     expect(calls.navigate).toHaveBeenCalledWith("/canvas")
   })
@@ -65,9 +74,12 @@ describe("journey tool transfer intake", () => {
     render(<JourneyPage />)
     expect(screen.getByTestId("current-value")).toHaveTextContent('{"name":"Ada"}')
     expect(window.location.hash).toBe("")
+    // 指定了目标工具：它的参数面板直接打开，但运行要用户自己点（面板是按需加载的）
+    const run = await screen.findByRole("button", { name: "Run new step" })
     expect(calls.execute).not.toHaveBeenCalled()
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Run new step" })))
+    await act(async () => fireEvent.click(run))
     expect(calls.execute).toHaveBeenCalledWith({ input: '{"name":"Ada"}' }, {}, { signal: expect.any(AbortSignal) })
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Run new step" })).not.toBeInTheDocument())
   })
   it("keeps binary values as files", () => {
     window.history.replaceState(null, "", toolTransferUrl(toolTransfers.put(new Uint8Array([0, 255, 1]), "Wire payload")))
