@@ -28,7 +28,7 @@ export function NodeBypassButton({ nodeId, disabled }: NodeBypassButtonProps) {
       className={`nodrag nopan ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary ${
         disabled
           ? "bg-md-tertiary-container text-md-on-tertiary-container"
-          : "text-md-on-surface-variant hover:bg-md-tertiary-container/60 hover:text-md-on-tertiary-container"
+          : "text-md-on-surface-variant hover:bg-md-tertiary-container hover:text-md-on-tertiary-container"
       }`}
     >
       {disabled

@@ -121,7 +121,7 @@ export function CompatibleNodePicker({
 
           <DialogPrimitive.Close
             aria-label={t("close")}
-            className="absolute right-2 top-2 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-10 sm:w-10"
+            className="absolute right-2 top-2 flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-10 sm:w-10"
           >
             <X aria-hidden="true" className="h-4 w-4" />
           </DialogPrimitive.Close>
@@ -188,7 +188,7 @@ export function CompatibleNodePicker({
                       })}
                       aria-label={`${t("addAndConnect")}: ${nodeLabel(definition)}`}
                       aria-describedby={targetDescriptionId}
-                      className="flex min-h-14 w-full touch-manipulation items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary active:bg-[var(--md-sys-color-on-surface)]/[0.1]"
+                      className="flex min-h-14 w-full touch-manipulation items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-md-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary active:bg-md-pressed"
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--md-sys-shape-corner-small)] bg-md-secondary-container text-md-on-secondary-container">
                         <Icon aria-hidden="true" className="h-4 w-4" />

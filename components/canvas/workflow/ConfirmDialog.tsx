@@ -19,7 +19,7 @@ export function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabe
   return (
     <AlertDialogPrimitive.Root open>
       <AlertDialogPrimitive.Portal>
-        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[var(--md-sys-color-scrim)]/50" />
+        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <AlertDialogPrimitive.Content
           onEscapeKeyDown={onCancel}
           className="fixed left-1/2 top-1/2 z-[51] w-80 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container-high p-4 text-md-on-surface shadow-2xl outline-none"

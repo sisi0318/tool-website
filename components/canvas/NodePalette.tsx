@@ -283,7 +283,7 @@ export function NodePalette({
   }, [focusSearch])
 
   const sectionButtonClass =
-    "flex min-h-11 w-full items-center gap-2 border-b border-md-outline-variant p-3 text-md-on-surface transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary"
+    "flex min-h-11 w-full items-center gap-2 border-b border-md-outline-variant p-3 text-md-on-surface transition-colors hover:bg-md-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-md-primary"
 
   return (
     <aside
@@ -298,7 +298,7 @@ export function NodePalette({
           type="button"
           onClick={onRequestClose}
           aria-label={t("close")}
-          className="absolute right-2 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary lg:hidden"
+          className="absolute right-2 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary lg:hidden"
         >
           <X aria-hidden="true" className="h-4 w-4" />
         </button>
@@ -307,7 +307,7 @@ export function NodePalette({
       <div className="border-b border-md-outline-variant p-2 pr-12 lg:pr-2">
         <Link
           href="/tools"
-          className="flex min-h-10 items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 text-sm font-medium text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+          className="flex min-h-10 items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 text-sm font-medium text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
         >
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
           {tCommon("backToTools")}
@@ -390,7 +390,7 @@ export function NodePalette({
                     type="button"
                     onClick={() => setSearchQuery("")}
                     aria-label={t("clearNodeSearch")}
-                    className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[var(--md-sys-shape-corner-small)] text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+                    className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[var(--md-sys-shape-corner-small)] text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
                   >
                     <X aria-hidden="true" className="h-4 w-4" />
                   </button>
@@ -433,7 +433,7 @@ export function NodePalette({
                         return (
                           <div
                             key={`${group.id}-${node.type}`}
-                            className="group flex min-h-12 items-stretch overflow-hidden rounded-[var(--md-sys-shape-corner-small)] transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-within:ring-2 focus-within:ring-md-primary"
+                            className="group flex min-h-12 items-stretch overflow-hidden rounded-[var(--md-sys-shape-corner-small)] transition-colors hover:bg-md-hover focus-within:ring-2 focus-within:ring-md-primary"
                           >
                             <button
                               type="button"
@@ -443,7 +443,7 @@ export function NodePalette({
                               onClick={() => handleNodeClick(node.type)}
                               aria-label={`${t("addNode")}: ${nodeLabel(node)}`}
                               title={node.description ?? t("nodeAddHint")}
-                              className="flex min-w-0 flex-1 cursor-grab touch-manipulation items-center gap-2 px-2 py-2 text-left active:cursor-grabbing active:bg-[var(--md-sys-color-on-surface)]/[0.12] focus-visible:outline-none"
+                              className="flex min-w-0 flex-1 cursor-grab touch-manipulation items-center gap-2 px-2 py-2 text-left active:cursor-grabbing active:bg-md-pressed focus-visible:outline-none"
                             >
                               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--md-sys-shape-corner-small)] bg-md-secondary-container text-md-on-secondary-container">
                                 <Icon aria-hidden="true" className="h-4 w-4" />

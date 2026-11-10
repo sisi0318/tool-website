@@ -53,7 +53,7 @@ function OutputField({ label, value, nodeName }: { label: string; value: unknown
             aria-label={`${expanded ? t("collapseOutputPreview") : t("expandOutputPreview")}: ${label}`}
             aria-expanded={expanded}
             title={expanded ? t("collapseOutputPreview") : t("expandOutputPreview")}
-            className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+            className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
           >
             {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
@@ -64,7 +64,7 @@ function OutputField({ label, value, nodeName }: { label: string; value: unknown
             onClick={() => downloadValue(value, `${nodeName}-${label}`.replace(/\s+/g, "-"))}
             aria-label={`${t("downloadOutput")}: ${label}`}
             title={t("downloadOutput")}
-            className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+            className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
           >
             <Download className="h-3.5 w-3.5" />
           </button>
@@ -75,7 +75,7 @@ function OutputField({ label, value, nodeName }: { label: string; value: unknown
           onClick={handleCopy}
           aria-label={copied ? t("copied") : t("copyOutput")}
           title={copied ? t("copied") : t("copyOutput")}
-          className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+          className="rounded p-1.5 text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
         >
           {copied
             ? <Check className="h-3.5 w-3.5 text-md-success" />
@@ -161,7 +161,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           disabled={running}
           aria-label={error ? t("retryToNode") : t("runToNode")}
           title={error ? t("retryToNode") : t("runToNode")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-50"
         >
           {running ? (
             <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -183,7 +183,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           }}
           aria-label={t("duplicateNodes")}
           title={t("duplicateNodes")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
         >
           <CopyPlus className="h-4 w-4" />
         </button>
@@ -196,7 +196,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary ${
             selectedNode.disabled
               ? "bg-md-tertiary-container text-md-on-tertiary-container"
-              : "text-md-on-surface-variant hover:bg-md-tertiary-container/60 hover:text-md-on-tertiary-container"
+              : "text-md-on-surface-variant hover:bg-md-tertiary-container hover:text-md-on-tertiary-container"
           }`}
         >
           {selectedNode.disabled
@@ -208,7 +208,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
           onClick={() => setConfirmDelete(true)}
           aria-label={t("deleteNode")}
           title={t("deleteNode")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-error-container/60 hover:text-md-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-error"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-error-container hover:text-md-on-error-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-error"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -218,7 +218,7 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
             onClick={onClose}
             aria-label={t("close")}
             title={t("close")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary lg:hidden"
           >
             <X className="h-4 w-4" />
           </button>

@@ -78,7 +78,7 @@ export function ExecutionLogPanel({
           onClose()
         }
       }}
-      className="absolute bottom-[max(.75rem,env(safe-area-inset-bottom))] right-3 z-30 flex max-h-[min(28rem,55%)] w-[min(28rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-[var(--md-sys-shape-corner-medium)] border border-md-outline-variant bg-md-surface-container/95 shadow-2xl outline-none backdrop-blur focus-visible:ring-2 focus-visible:ring-md-primary"
+      className="absolute bottom-[max(.75rem,env(safe-area-inset-bottom))] right-3 z-30 flex max-h-[min(28rem,55%)] w-[min(28rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-[var(--md-sys-shape-corner-medium)] border border-md-outline-variant bg-md-surface-container shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
     >
       <div className="flex min-h-12 items-center gap-2 border-b border-md-outline-variant px-3">
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-md-on-surface">
@@ -93,7 +93,7 @@ export function ExecutionLogPanel({
           disabled={entries.length === 0}
           aria-label={t("clearExecutionLog")}
           title={t("clearExecutionLog")}
-          className="flex h-11 w-11 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-error-container/60 hover:text-md-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-40 sm:h-9 sm:w-9"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-error-container hover:text-md-on-error-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:opacity-40 sm:h-9 sm:w-9"
         >
           <Trash2 className="size-4" />
         </button>
@@ -102,7 +102,7 @@ export function ExecutionLogPanel({
           onClick={onClose}
           aria-label={t("close")}
           title={t("close")}
-          className="flex h-11 w-11 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-9 sm:w-9"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary sm:h-9 sm:w-9"
         >
           <X className="size-4" />
         </button>
@@ -126,7 +126,7 @@ export function ExecutionLogPanel({
                     type="button"
                     disabled={!canSelect}
                     onClick={() => onSelectNode?.(entry.nodeId)}
-                    className="w-full rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant/60 p-2.5 text-left transition-colors enabled:hover:border-md-primary/50 enabled:hover:bg-md-primary/[0.06] disabled:cursor-default"
+                    className="w-full rounded-[var(--md-sys-shape-corner-small)] border border-md-outline-variant p-2.5 text-left transition-colors enabled:hover:border-md-primary enabled:hover:bg-md-hover disabled:cursor-default"
                   >
                     <span className="flex items-start gap-2">
                       <span className="mt-0.5 shrink-0" aria-hidden="true">

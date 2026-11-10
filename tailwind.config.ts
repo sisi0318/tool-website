@@ -107,6 +107,13 @@ const config = {
         "md-surface-container": "var(--md-sys-color-surface-container)",
         "md-surface-container-high": "var(--md-sys-color-surface-container-high)",
         "md-surface-container-highest": "var(--md-sys-color-surface-container-highest)",
+
+        // M3 state layers: `hover:bg-md-hover`, `active:bg-md-pressed`.
+        // The tokens above are bare var() references, which Tailwind cannot apply an opacity
+        // modifier to: `bg-md-on-surface/10` and `bg-[var(--md-sys-color-on-surface)]/[0.08]`
+        // compile to nothing at all, with no warning. Spell translucent colours out instead.
+        "md-hover": "color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent)",
+        "md-pressed": "color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent)",
         
         // M3 Outline colors
         "md-outline": "var(--md-sys-color-outline)",

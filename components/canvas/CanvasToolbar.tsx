@@ -60,10 +60,10 @@ function ToolbarButton({
       title={label}
       className={`inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--md-sys-shape-corner-small)] px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:min-w-9 ${
         active
-          ? "bg-md-primary text-md-on-primary hover:bg-md-primary/90"
+          ? "bg-md-primary text-md-on-primary hover:opacity-90"
           : danger
-            ? "text-md-error hover:bg-md-error-container/60"
-            : "text-md-on-surface-variant hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-md-on-surface"
+            ? "text-md-error hover:bg-md-error-container"
+            : "text-md-on-surface-variant hover:bg-md-hover hover:text-md-on-surface"
       }`}
     >
       {children}
@@ -123,7 +123,7 @@ export function CanvasToolbar({
     <>
       <Panel position="top-center" className="!m-2 max-w-[calc(100%-1rem)]">
         <div
-          className="scrollbar-hide flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[var(--md-sys-shape-corner-medium)] border border-md-outline-variant bg-md-surface-container/95 p-1 shadow-lg backdrop-blur"
+          className="scrollbar-hide flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[var(--md-sys-shape-corner-medium)] border border-md-outline-variant bg-md-surface-container p-1 shadow-lg"
           role="toolbar"
           aria-label={t("canvasToolbar")}
         >

@@ -71,7 +71,7 @@ export default function CanvasContent() {
               <Link
                 href="/tools"
                 aria-label={tCommon("backToTools")}
-                className="flex min-h-11 items-center gap-1.5 rounded-full border border-md-outline-variant bg-md-surface-container/95 px-3.5 text-xs font-semibold text-md-on-surface shadow-lg backdrop-blur transition-transform active:scale-95"
+                className="flex min-h-11 items-center gap-1.5 rounded-full border border-md-outline-variant bg-md-surface-container px-3.5 text-xs font-semibold text-md-on-surface shadow-lg transition-transform active:scale-95"
               >
                 <ArrowLeft aria-hidden="true" className="h-4 w-4" />
                 <span className="hidden sm:inline">{tCommon("backToTools")}</span>

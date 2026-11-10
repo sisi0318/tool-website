@@ -34,7 +34,7 @@ function NewCanvasConfirm({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--md-sys-color-scrim)]/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel()
       }}
@@ -140,7 +140,7 @@ export function WorkflowNewButton() {
     <button
       type="button"
       onClick={handleClick}
-      className="flex min-h-11 w-full items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 py-1.5 text-left text-sm text-md-on-surface transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+      className="flex min-h-11 w-full items-center gap-2 rounded-[var(--md-sys-shape-corner-small)] px-2 py-1.5 text-left text-sm text-md-on-surface transition-colors hover:bg-md-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
     >
       <FilePlus aria-hidden="true" className="h-4 w-4 text-md-on-surface-variant" />
       {t("newCanvas")}

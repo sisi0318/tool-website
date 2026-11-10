@@ -770,8 +770,8 @@ export function Canvas() {
               role={connectionFeedback.tone === "error" ? "alert" : "status"}
               className={`rounded-[var(--md-sys-shape-corner-medium)] border px-3 py-2 text-sm shadow-lg ${
                 connectionFeedback.tone === "success"
-                  ? "border-md-success/40 bg-md-success-container text-md-on-success-container"
-                  : "border-md-error/40 bg-md-error-container text-md-on-error-container"
+                  ? "border-md-success bg-md-success-container text-md-on-success-container"
+                  : "border-md-error bg-md-error-container text-md-on-error-container"
               }`}
             >
               {connectionFeedback.tone === "error" && (

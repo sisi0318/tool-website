@@ -23,7 +23,7 @@ export function NodeStatusMessage({ error }: { error: string }) {
   return (
     <div
       className={`rounded-b-[calc(var(--md-sys-shape-corner-medium)-2px)] border-t px-3 py-2 ${
-        pending ? "border-md-outline-variant bg-md-surface-container-high" : "border-md-error/40 bg-md-error-container/60"
+        pending ? "border-md-outline-variant bg-md-surface-container-high" : "border-md-error bg-md-error-container"
       }`}
     >
       <p className={`${NODE_INTERACTIVE_CLASS} max-h-24 overflow-auto whitespace-pre-wrap break-words text-xs ${pending ? "text-md-on-surface-variant" : "text-md-on-error-container"}`}>

@@ -53,7 +53,7 @@ export function SaveDialog({ onSave, onCancel, existingNames, initialName = "" }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--md-sys-color-scrim)]/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel()
       }}

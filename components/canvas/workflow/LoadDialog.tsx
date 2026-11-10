@@ -29,7 +29,7 @@ export function LoadDialog({ workflows, onLoad, onDelete, onClose }: LoadDialogP
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--md-sys-color-scrim)]/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -50,7 +50,7 @@ export function LoadDialog({ workflows, onLoad, onDelete, onClose }: LoadDialogP
             workflows.map((name) => (
               <div
                 key={name}
-                className="flex items-center justify-between border-b border-md-outline-variant px-3 py-1.5 last:border-b-0 hover:bg-[var(--md-sys-color-on-surface)]/[0.04]"
+                className="flex items-center justify-between border-b border-md-outline-variant px-3 py-1.5 last:border-b-0 hover:bg-md-hover"
               >
                 <button
                   type="button"
@@ -63,7 +63,7 @@ export function LoadDialog({ workflows, onLoad, onDelete, onClose }: LoadDialogP
                   type="button"
                   onClick={(event) => { event.stopPropagation(); onDelete(name) }}
                   aria-label={`${t("deleteWorkflow")}: ${name}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-md-on-surface-variant outline-none transition-colors hover:bg-md-error-container/60 hover:text-md-error focus-visible:ring-2 focus-visible:ring-md-primary"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-md-on-surface-variant outline-none transition-colors hover:bg-md-error-container hover:text-md-on-error-container focus-visible:ring-2 focus-visible:ring-md-primary"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

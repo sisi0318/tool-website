@@ -155,7 +155,7 @@ function BaseNodeComponent({ data }: BaseNodeProps) {
 
         {/* Derived Outputs */}
         {definition.outputs.length > 0 && (
-          <div className="mt-1 border-t border-md-outline-variant/60 pt-1">
+          <div className="mt-1 border-t border-md-outline-variant pt-1">
             {definition.outputs.map((output) => {
               const outputValue = nodeOutputs?.[output.id]
               const preview = previewCanvasValue(outputValue, NODE_PREVIEW_CHARS)
