@@ -6,9 +6,19 @@ test.use({
   isMobile: true,
 })
 
+/**
+ * The site scrolls smoothly and, on a phone, has a sticky header, a sticky route bar and a floating
+ * bottom bar. When one of them covers a click target, Playwright scrolls again with another
+ * alignment, but it measures while the smooth scroll is still moving, so it bounces between "under
+ * the header" and "under the bottom bar" until the test times out. The JSON test failed that way in
+ * CI and in 9 of 24 local repeats. Scrolling instantly makes its retries land where they aim.
+ */
+const INSTANT_SCROLL = "html { scroll-behavior: auto !important; }"
+
 async function openChineseTool(page: Page, path: string) {
   await page.addInitScript(() => window.localStorage.setItem("locale", "zh"))
   await page.goto(path, { waitUntil: "domcontentloaded" })
+  await page.addStyleTag({ content: INSTANT_SCROLL })
   await expect(page.locator("h1, h2").first()).toBeVisible({ timeout: 30_000 })
 }
 
