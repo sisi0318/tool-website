@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync } from "node:fs"
-import { join } from "node:path"
+import { join, relative, sep } from "node:path"
 import { beforeAll, describe, expect, it } from "vitest"
 
 import { en } from "./en"
@@ -32,6 +32,34 @@ function flatten(value: unknown, prefix = ""): string[] {
   return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
     flatten(child, prefix ? `${prefix}.${key}` : key),
   )
+}
+
+/** app、components、hooks、lib 下的非测试源码；lib/translations 里只有文案本身（注释里写着调用示例），不是调用处 */
+function sourceFiles(): { full: string; source: string }[] {
+  const files: { full: string; source: string }[] = []
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name)
+      if (statSync(full).isDirectory()) {
+        if (!["node_modules", ".next"].includes(name) && full !== join(process.cwd(), "lib", "translations")) walk(full)
+        continue
+      }
+      if (!/\.tsx?$/.test(name) || /\.test\.tsx?$/.test(name)) continue
+      files.push({ full, source: readFileSync(full, "utf8") })
+    }
+  }
+  ;["app", "components", "hooks", "lib"].forEach((root) => walk(join(process.cwd(), root)))
+  return files
+}
+
+/** 这条路径上是不是一条文案（取到对象不算：那是一组键，不能直接显示） */
+function hasString(dictionary: unknown, path: string): boolean {
+  let current: unknown = dictionary
+  for (const part of path.split(".")) {
+    if (current === null || typeof current !== "object" || !(part in current)) return false
+    current = (current as Record<string, unknown>)[part]
+  }
+  return typeof current === "string"
 }
 
 describe("中英文案", () => {
@@ -80,32 +108,55 @@ describe("页面自己的中文文案", () => {
    */
   it("每个 useTranslations 都拿得到自己的文案", () => {
     const problems: string[] = []
-    const walk = (dir: string) => {
-      for (const name of readdirSync(dir)) {
-        const full = join(dir, name)
-        if (statSync(full).isDirectory()) {
-          // lib/translations 里只有文案本身（注释里写着调用示例），不是调用处
-          if (!["node_modules", ".next"].includes(name) && full !== join(process.cwd(), "lib", "translations")) walk(full)
+    for (const { full, source } of sourceFiles()) {
+      for (const match of source.matchAll(/useTranslations\(\s*"([A-Za-z0-9_]+)"\s*(?:,\s*([A-Za-z0-9_]+)\s*)?\)/g)) {
+        const [, namespace, strings] = match
+        if (!strings) {
+          if (!(namespace in zh)) problems.push(`${full}: useTranslations("${namespace}") 没有传文案`)
           continue
         }
-        if (!/\.tsx?$/.test(name) || /\.test\.tsx?$/.test(name)) continue
-        const source = readFileSync(full, "utf8")
-        for (const match of source.matchAll(/useTranslations\(\s*"([A-Za-z0-9_]+)"\s*(?:,\s*([A-Za-z0-9_]+)\s*)?\)/g)) {
-          const [, namespace, strings] = match
-          if (!strings) {
-            if (!(namespace in zh)) problems.push(`${full}: useTranslations("${namespace}") 没有传文案`)
-            continue
-          }
-          if (strings !== exportName(namespace) || !(namespace in zhNamespaceModules)) {
-            problems.push(`${full}: useTranslations("${namespace}", ${strings}) 对不上`)
-          } else if (!source.includes(`import { ${strings} } from "@/lib/translations/zh-namespaces/${namespace}"`)) {
-            problems.push(`${full}: 没有从 zh-namespaces/${namespace} 引入 ${strings}`)
-          }
+        if (strings !== exportName(namespace) || !(namespace in zhNamespaceModules)) {
+          problems.push(`${full}: useTranslations("${namespace}", ${strings}) 对不上`)
+        } else if (!source.includes(`import { ${strings} } from "@/lib/translations/zh-namespaces/${namespace}"`)) {
+          problems.push(`${full}: 没有从 zh-namespaces/${namespace} 引入 ${strings}`)
         }
       }
     }
-    ;["app", "components", "hooks", "lib"].forEach((root) => walk(join(process.cwd(), root)))
     expect(problems).toEqual([])
+  })
+
+  /**
+   * 命名空间对了，键写错或忘了加，界面上同样显示成键名：JSON 页的工具栏就把
+   * “common.paste”“common.loadSample” 原样显示出来上过线，另有三处 aria-label 让读屏念键名。
+   * 这里把每个 `const t = useTranslations("ns")` 之后写成字面量的 t("key") 都对一遍。
+   * 中英的键已由上面的用例对齐，对着英文那一份查就够了；拼出来的键（t(`errors.${code}`)）查不了，跳过。
+   */
+  it("调用处写死的键都有文案", () => {
+    const problems: string[] = []
+    let checked = 0
+    for (const { full, source } of sourceFiles()) {
+      const translators = new Map<string, Set<string>>()
+      for (const match of source.matchAll(/(?:const|let)\s+(\w+)\s*=\s*useTranslations\(\s*"([A-Za-z0-9_]+)"/g)) {
+        translators.set(match[1], (translators.get(match[1]) ?? new Set<string>()).add(match[2]))
+      }
+      if (translators.size === 0) continue
+      const lines = source.split(/\r?\n/)
+      for (const [name, namespaces] of translators) {
+        // 同一个文件里不同组件可能都把翻译函数叫 t，却各用各的命名空间：任何一个取得到就算有
+        const call = new RegExp(String.raw`(?<![\w.$])${name}\(\s*["']([\w.]+)["']\s*\)`, "g")
+        lines.forEach((line, index) => {
+          for (const match of line.matchAll(call)) {
+            checked += 1
+            if ([...namespaces].some((namespace) => hasString(en, `${namespace}.${match[1]}`))) continue
+            const file = relative(process.cwd(), full).split(sep).join("/")
+            problems.push(`${file}:${index + 1} ${[...namespaces].join(" | ")}.${match[1]}`)
+          }
+        })
+      }
+    }
+    expect(problems).toEqual([])
+    // 正则万一失效（比如调用写法整体变了），零命中也会“通过”；全站现在有三千多处
+    expect(checked).toBeGreaterThan(1000)
   })
 
   it("登记之后按命名空间取得到", () => {
