@@ -35,16 +35,33 @@ await build({
   } }],
 })
 for (const name of ["ort.bundle.min.mjs", "ort-wasm-simd-threaded.jsep.mjs", "ort-wasm-simd-threaded.jsep.wasm"]) await cp(path.join(ortRoot, "dist", name), path.join(destination, "ort", name))
+// The models are served from a single region. A CI runner on another continent sometimes cannot
+// reach it at all (ENETUNREACH) and one failed request used to fail the whole build, so retry with
+// a growing pause. Every attempt is checked against the pinned size and SHA-256, which also covers
+// a truncated response.
+const DOWNLOAD_ATTEMPTS = 4
+async function downloadModel(model) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const response = await fetch(model.url, { signal: AbortSignal.timeout(180000) })
+      if (!response.ok) throw new Error(`OCR model download failed: ${response.status}`)
+      const bytes = Buffer.from(await response.arrayBuffer())
+      if (bytes.length !== model.bytes || sha256(bytes) !== model.sha256) throw new Error(`OCR model integrity check failed: ${model.name}`)
+      return bytes
+    } catch (error) {
+      if (attempt >= DOWNLOAD_ATTEMPTS) throw error
+      console.warn(`OCR model download attempt ${attempt}/${DOWNLOAD_ATTEMPTS} failed (${error?.cause?.code ?? error?.message}); retrying`)
+      await new Promise((resolve) => setTimeout(resolve, attempt * 5000))
+    }
+  }
+}
 for (const model of manifest.models) {
   const filename = `${model.name}.tar`, cached = path.join(cache, filename)
   let bytes
   try { bytes = await readFile(cached) } catch { /* first build */ }
   if (!bytes || bytes.length !== model.bytes || sha256(bytes) !== model.sha256) {
     console.log(`Downloading verified OCR model: ${model.name}`)
-    const response = await fetch(model.url, { signal: AbortSignal.timeout(180000) })
-    if (!response.ok) throw new Error(`OCR model download failed: ${response.status}`)
-    bytes = Buffer.from(await response.arrayBuffer())
-    if (bytes.length !== model.bytes || sha256(bytes) !== model.sha256) throw new Error(`OCR model integrity check failed: ${model.name}`)
+    bytes = await downloadModel(model)
     const temporary = `${cached}.${process.pid}.tmp`
     await writeFile(temporary, bytes)
     await rename(temporary, cached)
