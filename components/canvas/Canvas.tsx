@@ -41,9 +41,10 @@ import { useShallow } from "zustand/react/shallow"
 import { getNodeDefinition } from "@/lib/canvas/registry"
 import { createCanvasNode } from "@/lib/canvas/node-factory"
 import { autoLayoutNodes } from "@/lib/canvas/auto-layout"
+import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
 import type { DataType, NodeDefinition } from "@/lib/canvas/types"
-import { useTranslations } from "@/hooks/use-translations"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { useTranslations } from "@/hooks/use-translations"
 import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { BaseNode } from "./nodes/BaseNode"
 import { ToolNode } from "./nodes/ToolNode"
@@ -97,6 +98,8 @@ const APPEND_GAP = 80
 /** 选中的节点和右侧属性卡片之间至少留这么宽，放得下节点右边的“+” */
 const INSPECTOR_CLEARANCE = 72
 const FIT_MAX_ZOOM = 1
+/** 已在 lib/storage/app-storage.ts 登记 */
+const CANVAS_MINIMAP_KEY = "canvas-minimap"
 const NODE_WIDTH_ESTIMATE = 280
 
 function getEventClientPosition(event: MouseEvent | TouchEvent) {
@@ -184,7 +187,8 @@ export function Canvas() {
 
   const [pendingNodeInsert, setPendingNodeInsert] = useState<PendingNodeInsert | null>(null)
   const [executionLogOpen, setExecutionLogOpen] = useState(false)
-  const [minimapOpen, setMinimapOpen] = useState(false)
+  // 小地图默认收着；打开过就记住（这个组件只在浏览器里渲染，可以直接读）
+  const [minimapOpen, setMinimapOpen] = useState(() => readLocalStorage(CANVAS_MINIMAP_KEY) === "1")
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [quickAdd, setQuickAdd] = useState<{ screen: Point; flow: Point } | null>(null)
   const isDesktop = useMediaQuery("(min-width: 1024px)")
@@ -217,6 +221,13 @@ export function Canvas() {
   useEffect(() => {
     setInspectorChoice(null)
   }, [selectedNodeId])
+
+  const toggleMinimap = useCallback(() => {
+    const next = !minimapOpen
+    setMinimapOpen(next)
+    if (next) writeLocalStorage(CANVAS_MINIMAP_KEY, "1")
+    else removeLocalStorage(CANVAS_MINIMAP_KEY)
+  }, [minimapOpen])
 
   useEffect(() => {
     const press = () => { pointerDownRef.current = true }
@@ -892,7 +903,7 @@ export function Canvas() {
       <div className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 z-20 flex">
         <ViewBar
           minimapOpen={minimapOpen}
-          onToggleMinimap={() => setMinimapOpen((open) => !open)}
+          onToggleMinimap={toggleMinimap}
           onAutoLayout={applyAutoLayout}
           onFitView={fitAll}
           onZoomToSelection={zoomToSelection}

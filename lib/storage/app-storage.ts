@@ -52,6 +52,7 @@ export const STORAGE_ENTRIES: readonly StorageEntry[] = [
   },
   { key: "canvas-favorite-nodes", group: "canvas", descriptionKey: "storageCanvasNodePrefs" },
   { key: "canvas-recent-nodes", group: "canvas", descriptionKey: "storageCanvasNodePrefs" },
+  { key: "canvas-minimap", group: "canvas", descriptionKey: "storageCanvasView" },
 
   // 数据旅程
   { key: "journey-draft", group: "journey", descriptionKey: "storageJourneyDraft", sensitive: true },

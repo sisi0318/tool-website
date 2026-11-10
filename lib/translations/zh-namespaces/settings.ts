@@ -28,6 +28,7 @@ export const zhSettings = {
   storageCanvasState: "当前画布的节点与连线（含各节点填写的参数）",
   storageCanvasWorkflows: "已保存的工作流",
   storageCanvasNodePrefs: "节点面板的收藏与最近使用",
+  storageCanvasView: "画布的小地图是否打开",
   storageJourneyDraft: "数据旅程草稿",
   storageJourneySaves: "已保存的数据旅程",
   storageTotp: "TOTP 账户与种子",

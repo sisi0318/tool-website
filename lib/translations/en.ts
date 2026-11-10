@@ -212,6 +212,7 @@ settings: {
   storageCanvasState: "Current canvas nodes and edges, including values typed into nodes",
   storageCanvasWorkflows: "Saved workflows",
   storageCanvasNodePrefs: "Node palette favourites and recents",
+  storageCanvasView: "Whether the canvas minimap is shown",
   storageJourneyDraft: "Data journey draft",
   storageJourneySaves: "Saved data journeys",
   storageTotp: "TOTP accounts and secrets",

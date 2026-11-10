@@ -77,8 +77,14 @@ test.describe("Canvas Page", () => {
     await expect(page.locator(".react-flow__minimap")).toHaveCount(0)
     await page.getByRole("button", { name: "小地图", exact: true }).click()
     await expect(page.locator(".react-flow__minimap")).toBeVisible()
+    // 打开过就记住，下次进来还开着
+    await page.reload()
+    await page.waitForSelector(".react-flow", { timeout: 30000 })
+    await expect(page.locator(".react-flow__minimap")).toBeVisible()
+    await expect(page.getByRole("button", { name: "小地图", exact: true })).toHaveAttribute("aria-pressed", "true")
     await page.getByRole("button", { name: "小地图", exact: true }).click()
     await expect(page.locator(".react-flow__minimap")).toHaveCount(0)
+    expect(await page.evaluate(() => localStorage.getItem("canvas-minimap"))).toBeNull()
 
     await page.evaluate(() => {
       (window as any).__ZUSTAND_STORE__.getState().addNode({ id: "zoom-node", type: "string", position: { x: 300, y: 200 }, config: { value: "x" } })
