@@ -10,6 +10,7 @@ import {
   SelectionMode,
   useNodesState,
   useEdgesState,
+  useOnViewportChange,
   useReactFlow,
   type Edge as FlowEdge,
   type FitViewOptions,
@@ -42,7 +43,7 @@ import { getNodeDefinition } from "@/lib/canvas/registry"
 import { createCanvasNode } from "@/lib/canvas/node-factory"
 import { autoLayoutNodes } from "@/lib/canvas/auto-layout"
 import { readLocalStorage, removeLocalStorage, writeLocalStorage } from "@/lib/safe-storage"
-import type { DataType, NodeDefinition } from "@/lib/canvas/types"
+import type { DataType } from "@/lib/canvas/types"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useTranslations } from "@/hooks/use-translations"
 import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
@@ -62,11 +63,11 @@ import { QuickAddMenu } from "./QuickAddMenu"
 import { RunBar } from "./RunBar"
 import { SelectionToolbar } from "./SelectionToolbar"
 import { ViewBar } from "./ViewBar"
-import { FIT_CANVAS_EVENT } from "./canvas-events"
+import { APPEND_NODE_EVENT, FIT_CANVAS_EVENT, type AppendNodeRequest } from "./canvas-events"
 import { formatShortcut } from "./chrome"
 import { useCanvasClipboard } from "./use-canvas-clipboard"
 import { useCanvasConnect } from "./use-canvas-connect"
-import { getSourcePorts, useFlowElements } from "./use-flow-elements"
+import { getPrimaryOutput, getSourcePorts, useFlowElements } from "./use-flow-elements"
 import { useNodeLibrary } from "./use-node-library"
 
 const nodeTypes: NodeTypes = {
@@ -108,11 +109,6 @@ function getEventClientPosition(event: MouseEvent | TouchEvent) {
     return touch ? { x: touch.clientX, y: touch.clientY } : null
   }
   return { x: event.clientX, y: event.clientY }
-}
-
-/** “+”和右键菜单里“接着处理”用的输出：有运算结果就用结果，基础节点用它的值 */
-function getPrimaryOutput(definition: NodeDefinition) {
-  return definition.outputs[0] ?? definition.config.find((field) => field.hasOutput)
 }
 
 /**
@@ -176,8 +172,23 @@ export function Canvas() {
   const { screenToFlowPosition, fitView, getNodes, getViewport, setViewport } = useReactFlow()
   const reactFlowInstance = useReactFlow()
   const library = useNodeLibrary()
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const inspectorRef = useRef<HTMLDivElement>(null)
   const pointerDownRef = useRef(false)
+
+  // 节点右侧的“+”画在节点里，会跟着画布一起缩放。把 1 / 缩放比例 放在外层的 CSS 变量上，
+  // 样式里乘回去，它在屏幕上就一直一样大；直接写样式，缩放时不用重渲染任何节点
+  const counterScaleRef = useRef(1)
+  const applyCounterScale = useCallback((zoom: number) => {
+    if (!(zoom > 0) || counterScaleRef.current === zoom) return
+    counterScaleRef.current = zoom
+    wrapperRef.current?.style.setProperty("--canvas-counter-scale", String(1 / zoom))
+  }, [])
+  useOnViewportChange({ onChange: (viewport) => applyCounterScale(viewport.zoom) })
+  useEffect(() => {
+    counterScaleRef.current = 0
+    applyCounterScale(getViewport().zoom)
+  }, [applyCounterScale, getViewport])
 
   // Exposed for e2e tests (same pattern as window.__ZUSTAND_STORE__)
   useEffect(() => {
@@ -597,6 +608,16 @@ export function Canvas() {
     [getNodes, storeEdges, storeNodes]
   )
 
+  // 节点右侧的“+”画在节点卡片里，点了以后通过事件找到这里
+  useEffect(() => {
+    const onAppend = (event: Event) => {
+      const { nodeId, anchor } = (event as CustomEvent<AppendNodeRequest>).detail
+      openAppendPicker(nodeId, anchor)
+    }
+    window.addEventListener(APPEND_NODE_EVENT, onAppend)
+    return () => window.removeEventListener(APPEND_NODE_EVENT, onAppend)
+  }, [openAppendPicker])
+
   const insertCompatibleNode = useCallback(
     ({ nodeType, targetPortId }: CompatibleNodeSelection) => {
       if (!pendingNodeInsert) return
@@ -724,12 +745,6 @@ export function Canvas() {
     setContextMenu({ kind: "selection", screen: { x: event.clientX, y: event.clientY } })
   }, [])
 
-  const selectedNode = inspectorNodeId
-    ? storeNodes.find((node) => node.id === inspectorNodeId)
-    : undefined
-  const selectedDefinition = selectedNode ? getNodeDefinition(selectedNode.type) : undefined
-  const selectedCanAppend = Boolean(selectedDefinition && getPrimaryOutput(selectedDefinition))
-
   const buildContextMenu = (menu: ContextMenuState): CanvasMenuEntry[] => {
     const copyItem = {
       id: "copy",
@@ -803,7 +818,7 @@ export function Canvas() {
   const multiSelected = selectedNodeIds.length > 1
 
   return (
-    <div className="relative h-full w-full" data-testid="canvas-drop-zone">
+    <div ref={wrapperRef} className="relative h-full w-full" data-testid="canvas-drop-zone">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -865,12 +880,10 @@ export function Canvas() {
         {inspectorNodeId && (
           <NodeActionsToolbar
             nodeId={inspectorNodeId}
-            canAppend={selectedCanAppend}
             inspectorOpen={inspectorOpen}
             onToggleInspector={() => setInspectorOpen(inspectorNodeId, !inspectorOpen)}
             onDuplicate={() => { duplicateSelection() }}
             onDelete={() => { deleteSelection() }}
-            onAppend={(anchor) => openAppendPicker(inspectorNodeId, { x: anchor.right, y: anchor.top })}
           />
         )}
       </ReactFlow>

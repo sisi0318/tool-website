@@ -18,6 +18,8 @@ import { NodeRunButton } from "./NodeRunButton"
 import { NodeStatusMessage } from "./NodeStatusMessage"
 import { NODE_INTERACTIVE_CLASS } from "./interactive"
 import { NodeBypassButton } from "./NodeBypassButton"
+import { NodeAppendZone } from "./NodeAppendZone"
+import { getPrimaryOutput } from "../use-flow-elements"
 
 /** 卡片上的输出只放一小段;完整内容在属性面板里看、复制 */
 const NODE_PREVIEW_CHARS = 160
@@ -91,6 +93,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   }
 
   const Icon = definition.icon
+  const primaryOutput = getPrimaryOutput(definition)
 
   return (
     <div
@@ -265,6 +268,7 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
       )}
 
       {nodeErrors && <NodeStatusMessage error={nodeErrors} />}
+      {primaryOutput && <NodeAppendZone nodeId={data.id} portId={primaryOutput.id} pinned={isPrimarySelected} />}
     </div>
   )
 }

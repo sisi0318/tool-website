@@ -840,10 +840,13 @@ test.describe("Canvas interactions", () => {
       store.setAutoRun(false)
       store.addNode({ id: "encode", type: "encoding", position: { x: 200, y: 200 }, config: { encoding: "base64", mode: "encode" } })
     })
-    await expect(page.locator('.react-flow__node[data-id="encode"]')).toBeVisible()
+    const encode = page.locator('.react-flow__node[data-id="encode"]')
+    await expect(encode).toBeVisible()
     await pinViewport(page)
 
-    await page.getByRole("button", { name: "添加下一步节点", exact: true }).click()
+    // 每个有输出的节点右侧都有一个“+”，所以要指明是哪个节点的
+    const append = encode.getByRole("button", { name: "添加下一步节点", exact: true })
+    await append.click()
     const picker = page.getByTestId("compatible-node-picker")
     await expect(picker).toBeVisible()
     await picker.getByRole("button", { name: "添加并连接: 哈希计算", exact: true }).click()
@@ -862,7 +865,7 @@ test.describe("Canvas interactions", () => {
 
     // 同一个节点再分一支：排在已有下游的下面，不叠在一起
     await page.evaluate(() => (window as any).__ZUSTAND_STORE__.getState().selectNodes(["encode"]))
-    await page.getByRole("button", { name: "添加下一步节点", exact: true }).click()
+    await append.click()
     await picker.getByRole("button", { name: "添加并连接: 文本统计", exact: true }).click()
     await expect(page.locator(".react-flow__node")).toHaveCount(3)
     const second = await state(page)
@@ -870,6 +873,97 @@ test.describe("Canvas interactions", () => {
     expect(stats.position.x).toBe(hash.position.x)
     expect(stats.position.y).toBeGreaterThan(hash.position.y + 100)
     expect(second.edges).toHaveLength(2)
+  })
+
+  test("the + comes to the pointer anywhere along the node's right edge", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__.getState()
+      store.setAutoRun(false)
+      store.addNode({ id: "encode", type: "encoding", position: { x: 220, y: 220 }, config: { encoding: "base64", mode: "encode" } })
+      store.selectNodes([])
+    })
+    const node = page.locator('.react-flow__node[data-id="encode"]')
+    await expect(node).toBeVisible()
+    await pinViewport(page)
+
+    const zone = node.getByRole("button", { name: "添加下一步节点", exact: true })
+    const glyph = zone.locator(".canvas-append-glyph")
+    const centre = async () => {
+      const box = (await glyph.boundingBox())!
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    }
+    const card = (await node.boundingBox())!
+    const strip = (await zone.boundingBox())!
+
+    // 没选中、鼠标也不在节点上：看不见
+    await page.mouse.move(640, 650)
+    await expect(glyph).toHaveCSS("opacity", "0")
+
+    // 鼠标移到节点上：出现在右侧中间
+    await page.mouse.move(card.x + 60, card.y + 14)
+    await expect(glyph).toHaveCSS("opacity", "1")
+    await expect.poll(async () => Math.round((await centre()).y)).toBe(Math.round(card.y + card.height / 2))
+
+    // 进到右边这一条里：跟到鼠标所在的高度，不用去对准中点
+    for (const offset of [22, 70, card.height - 22]) {
+      const y = strip.y + offset
+      await page.mouse.move(strip.x + strip.width / 2, y, { steps: 3 })
+      await expect.poll(async () => Math.abs((await centre()).y - y)).toBeLessThan(1.5)
+    }
+
+    // 贴到最上面：整个圆仍然留在节点的高度以内
+    await page.mouse.move(strip.x + strip.width / 2, strip.y + 2, { steps: 3 })
+    await expect.poll(async () => Math.round((await glyph.boundingBox())!.y)).toBe(Math.round(strip.y))
+
+    // 离开节点：回到中间并隐去
+    await page.mouse.move(640, 650, { steps: 3 })
+    await expect(glyph).toHaveCSS("opacity", "0")
+    await expect.poll(async () => Math.round((await centre()).y)).toBe(Math.round(card.y + card.height / 2))
+
+    // 画布缩小放大，它在屏幕上一样大
+    for (const zoom of [0.5, 2]) {
+      await page.evaluate((value) => (window as any).__REACT_FLOW_INSTANCE__.setViewport({ x: 0, y: 0, zoom: value }), zoom)
+      await expect.poll(async () => Math.round((await glyph.boundingBox())!.width)).toBe(32)
+      expect(Math.round((await zone.boundingBox())!.width)).toBe(40)
+    }
+  })
+
+  test("dragging from the + pulls a connection out of the node's result", async ({ page }) => {
+    await page.evaluate(() => {
+      const store = (window as any).__ZUSTAND_STORE__.getState()
+      store.setAutoRun(false)
+      store.addNode({ id: "encode", type: "encoding", position: { x: 220, y: 220 }, config: { encoding: "base64", mode: "encode" } })
+      store.addNode({ id: "hash", type: "hash", position: { x: 720, y: 240 }, config: {} })
+      store.selectNodes([])
+    })
+    await expect(page.locator('.react-flow__node[data-id="hash"]')).toBeVisible()
+    await pinViewport(page)
+
+    const strip = (await page.locator('.react-flow__node[data-id="encode"]').getByRole("button", { name: "添加下一步节点", exact: true }).boundingBox())!
+    const target = (await page.locator('.react-flow__node[data-id="hash"] .react-flow__handle[data-handleid="data"]').boundingBox())!
+
+    // 在“+”所在的这一条里随便哪个高度按下，拖到另一个节点的输入端口上
+    await page.mouse.move(strip.x + strip.width / 2, strip.y + 30, { steps: 3 })
+    await page.mouse.down()
+    await page.mouse.move(strip.x + strip.width / 2 + 40, strip.y + 50, { steps: 4 })
+    await expect(page.locator(".react-flow__connection")).toBeAttached()
+    await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 })
+    await page.mouse.up()
+
+    await expect(page.locator(".react-flow__edge")).toHaveCount(1)
+    // 连的是运算结果 output：编码方式、模式这两个参数也能往外连，但“+”不用它们
+    expect((await state(page)).edges).toEqual([
+      expect.objectContaining({ source: "encode", sourcePort: "output", target: "hash", targetPort: "data" }),
+    ])
+    // 拖线不算点击，没有顺带弹出节点列表
+    await expect(page.getByTestId("compatible-node-picker")).toHaveCount(0)
+
+    // 拖到空白处松手：和从端口拖出来一样，问接什么
+    await page.mouse.move(strip.x + strip.width / 2, strip.y + 30, { steps: 3 })
+    await page.mouse.down()
+    await page.mouse.move(600, 620, { steps: 10 })
+    await page.mouse.up()
+    await expect(page.getByTestId("compatible-node-picker")).toBeVisible()
   })
 
   test("a node hidden behind the properties card is moved clear of it when selected", async ({ page }) => {
