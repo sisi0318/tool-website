@@ -67,7 +67,7 @@
     "onnxruntime-web": "1.29.0",
     "papaparse": "^5.5.4",
     "pdf-lib": "1.17.1",
-    "pdfjs-dist": "6.3.289",
+    "pdfjs-dist": "6.5.438",
     "pptx-preview": "^0.0.5",
     "protobufjs": "^8.7.0",
     "punycode": "^2.3.1",
