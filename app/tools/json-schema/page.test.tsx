@@ -19,7 +19,8 @@ describe("JSON Schema validation", () => {
     await waitFor(() => expect(screen.getByText("invalid")).toBeInTheDocument(), { timeout: 5000 })
 
     fireEvent.change(screen.getByLabelText("schema"), { target: { value: "{" } })
-    fireEvent.click(screen.getByRole("button", { name: "run" }))
+    // 结果先写出来，按钮随后才从“处理中”变回“运行”；结果一出现就去找“运行”偶尔会扑空（CI 上挂过）
+    fireEvent.click(await screen.findByRole("button", { name: "run" }))
     const alert = await screen.findByRole("alert")
     expect(alert).toHaveTextContent("failed")
     fireEvent.click(await screen.findByRole("button", { name: "revealError" }))

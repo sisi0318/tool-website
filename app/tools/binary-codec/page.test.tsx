@@ -20,7 +20,8 @@ describe("binary codec page", () => {
     expect(await screen.findByTestId("decoded-json")).toHaveTextContent('"a": 1')
     fireEvent.click(screen.getByRole("button", { name: "reverse" }))
     expect(screen.getByRole("textbox", { name: "input" })).toHaveValue(JSON.stringify({ a: 1, b: [2, 3] }, null, 2))
-    fireEvent.click(screen.getByRole("button", { name: "run" }))
+    // 上一次运行的结果先出现，按钮随后才变回“运行”：等它回来再点，免得偶尔扑空
+    fireEvent.click(await screen.findByRole("button", { name: "run" }))
     expect(await screen.findByRole("link", { name: "downloadBinary" })).toHaveAttribute("download", "data.msgpack")
     expect(screen.getByText("82a16101a162920203")).toBeInTheDocument()
   })
