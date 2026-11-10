@@ -43,6 +43,7 @@ import { createCanvasNode } from "@/lib/canvas/node-factory"
 import { autoLayoutNodes } from "@/lib/canvas/auto-layout"
 import type { DataType, NodeDefinition } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { BaseNode } from "./nodes/BaseNode"
 import { ToolNode } from "./nodes/ToolNode"
@@ -186,8 +187,10 @@ export function Canvas() {
   const [minimapOpen, setMinimapOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [quickAdd, setQuickAdd] = useState<{ screen: Point; flow: Point } | null>(null)
-  // 属性卡片可以关掉而不取消选中；换一个节点选中时它会再出现
-  const [inspectorDismissedFor, setInspectorDismissedFor] = useState<string | null>(null)
+  const isDesktop = useMediaQuery("(min-width: 1024px)")
+  // 用户对“当前选中的这个节点”的属性卡片做的选择：关掉了，或者点开了。
+  // 换一个节点选中就回到默认，所以关掉一次不会让它从此不再出现。
+  const [inspectorChoice, setInspectorChoice] = useState<{ nodeId: string; open: boolean } | null>(null)
   const layoutFitPendingRef = useRef(false)
   const layoutFitFrameRef = useRef<number | null>(null)
   const [fitRequests, setFitRequests] = useState(0)
@@ -203,10 +206,16 @@ export function Canvas() {
   const initialFitOptions = useMemo<FitViewOptions>(() => ({ padding: getFitPadding(), maxZoom: FIT_MAX_ZOOM }), [])
 
   const inspectorNodeId = selectedNodeIds.length === 1 ? selectedNodeId : null
-  const inspectorOpen = inspectorNodeId !== null && inspectorDismissedFor !== inspectorNodeId
+  // 默认：桌面上卡片跟着选中出现。手机上它是盖住大半屏的抽屉，每选中一次就弹出来
+  // 会挡住节点旁边的工具条和“+”，所以要从工具条上的「属性」点开。
+  const inspectorOpen = inspectorNodeId !== null
+    && (inspectorChoice?.nodeId === inspectorNodeId ? inspectorChoice.open : isDesktop)
+  const setInspectorOpen = useCallback((nodeId: string, open: boolean) => {
+    setInspectorChoice({ nodeId, open })
+  }, [])
 
   useEffect(() => {
-    setInspectorDismissedFor(null)
+    setInspectorChoice(null)
   }, [selectedNodeId])
 
   useEffect(() => {
@@ -773,7 +782,7 @@ export function Canvas() {
       node?.disabled
         ? { id: "enable", label: t("enableNode"), icon: Power, onSelect: () => setNodeDisabled(menu.nodeId, false) }
         : { id: "disable", label: t("disableNode"), icon: CircleSlash2, onSelect: () => setNodeDisabled(menu.nodeId, true) },
-      { id: "properties", label: t("nodeProperties"), icon: SlidersHorizontal, onSelect: () => setInspectorDismissedFor(null) },
+      { id: "properties", label: t("nodeProperties"), icon: SlidersHorizontal, onSelect: () => setInspectorOpen(menu.nodeId, true) },
       "separator",
       deleteItem,
     )
@@ -847,7 +856,7 @@ export function Canvas() {
             nodeId={inspectorNodeId}
             canAppend={selectedCanAppend}
             inspectorOpen={inspectorOpen}
-            onToggleInspector={() => setInspectorDismissedFor(inspectorOpen ? inspectorNodeId : null)}
+            onToggleInspector={() => setInspectorOpen(inspectorNodeId, !inspectorOpen)}
             onDuplicate={() => { duplicateSelection() }}
             onDelete={() => { deleteSelection() }}
             onAppend={(anchor) => openAppendPicker(inspectorNodeId, { x: anchor.right, y: anchor.top })}
@@ -905,14 +914,14 @@ export function Canvas() {
             type="button"
             aria-label={t("close")}
             tabIndex={-1}
-            onClick={() => setInspectorDismissedFor(inspectorNodeId)}
+            onClick={() => setInspectorOpen(inspectorNodeId, false)}
             className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[1px] lg:hidden"
           />
           <div
             ref={inspectorRef}
             className="fixed inset-x-0 bottom-0 z-40 flex max-h-[72dvh] flex-col lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-3 lg:top-[4.25rem] lg:z-20 lg:max-h-[calc(100%-5rem)] lg:w-80"
           >
-            <PropertyPanel onClose={() => setInspectorDismissedFor(inspectorNodeId)} />
+            <PropertyPanel onClose={() => setInspectorOpen(inspectorNodeId, false)} />
           </div>
         </>
       )}

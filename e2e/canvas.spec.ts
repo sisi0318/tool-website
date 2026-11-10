@@ -667,8 +667,16 @@ test.describe("Canvas Page", () => {
 
     await expect(palette).not.toBeVisible()
     await expect(page.locator(".react-flow__node")).toHaveCount(1, { timeout: 5000 })
-    // 新节点的属性从底部滑出来；关掉它节点仍然选中
+    // 手机上选中节点不会自己弹出属性抽屉：它盖住大半屏，会挡着节点旁边的工具条和“+”
     const sheet = page.locator("section[aria-label='哈希计算']")
+    await expect(page.locator(".react-flow__node.selected")).toHaveCount(1)
+    await expect(sheet).toHaveCount(0)
+    const toolbar = page.getByRole("toolbar", { name: "节点操作" })
+    await expect(toolbar).toBeInViewport()
+    await expect(page.getByRole("button", { name: "添加下一步节点", exact: true })).toBeInViewport()
+
+    // 从工具条上点开；关掉以后节点仍然选中
+    await toolbar.getByRole("button", { name: "属性", exact: true }).click()
     await expect(sheet.getByRole("heading", { name: "哈希计算", exact: true })).toBeVisible()
     await sheet.getByRole("button", { name: "关闭", exact: true }).click()
     await expect(sheet).toHaveCount(0)
