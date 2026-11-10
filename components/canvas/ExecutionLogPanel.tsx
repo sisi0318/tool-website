@@ -19,6 +19,8 @@ import type { ExecutionLogEntry } from "@/lib/canvas/types"
 
 interface ExecutionLogPanelProps {
   open: boolean
+  /** 右侧的属性卡片开着：日志往左挪，不叠在它上面 */
+  besideInspector?: boolean
   onClose: () => void
   onSelectNode?: (nodeId: string) => void
 }
@@ -46,6 +48,7 @@ function formatDuration(durationMs: number): string {
 
 export function ExecutionLogPanel({
   open,
+  besideInspector = false,
   onClose,
   onSelectNode,
 }: ExecutionLogPanelProps) {
@@ -78,7 +81,7 @@ export function ExecutionLogPanel({
           onClose()
         }
       }}
-      className="absolute bottom-[max(.75rem,env(safe-area-inset-bottom))] right-3 z-30 flex max-h-[min(28rem,55%)] w-[min(28rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-[var(--md-sys-shape-corner-medium)] border border-md-outline-variant bg-md-surface-container shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
+      className={`absolute right-3 top-[4.25rem] z-30 flex max-h-[min(28rem,calc(100%-5rem))] w-[min(26rem,calc(100%-1.5rem))] flex-col overflow-hidden rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-md-primary ${besideInspector ? "lg:right-[21.5rem]" : ""}`}
     >
       <div className="flex min-h-12 items-center gap-2 border-b border-md-outline-variant px-3">
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-md-on-surface">

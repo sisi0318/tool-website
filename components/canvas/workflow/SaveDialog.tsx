@@ -62,7 +62,8 @@ export function SaveDialog({ onSave, onCancel, existingNames, initialName = "" }
         role="dialog"
         aria-modal="true"
         aria-labelledby="canvas-save-dialog-title"
-        className="w-80 max-w-full rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container-high p-4 text-md-on-surface shadow-2xl"
+        tabIndex={-1}
+        className="outline-none w-80 max-w-full rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container-high p-4 text-md-on-surface shadow-2xl"
       >
         {showOverwrite ? (
           <>
@@ -88,6 +89,7 @@ export function SaveDialog({ onSave, onCancel, existingNames, initialName = "" }
             </h3>
             <input
               ref={inputRef}
+              data-autofocus
               type="text"
               value={name}
               onChange={(event) => { setName(event.target.value); setError("") }}

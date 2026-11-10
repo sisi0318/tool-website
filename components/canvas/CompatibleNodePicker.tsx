@@ -11,18 +11,8 @@ import {
   filterCompatibleNodeOptions,
   getCompatibleNodeOptions,
 } from "@/lib/canvas/compatible-nodes"
-import type { DataType, NodeDefinition } from "@/lib/canvas/types"
-
-const CATEGORY_KEYS: Record<NodeDefinition["category"], string> = {
-  basic: "categoryBasic",
-  crypto: "categoryCrypto",
-  data: "categoryData",
-  image: "categoryImage",
-  text: "categoryText",
-  dev: "categoryDev",
-  utility: "categoryUtility",
-  viewer: "categoryViewer",
-}
+import type { DataType } from "@/lib/canvas/types"
+import { CATEGORY_KEYS } from "./node-categories"
 
 export interface CompatibleNodeSelection {
   nodeType: string

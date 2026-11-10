@@ -95,12 +95,16 @@ function ToolNodeComponent({ data }: ToolNodeProps) {
   return (
     <div
       data-node-disabled={data.disabled ? "true" : undefined}
-      className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-md-surface-container-low text-md-on-surface shadow-md transition-opacity sm:max-w-[400px] ${
+      data-node-error={isBlockingNodeError(nodeErrors) ? "true" : undefined}
+      className={`min-w-[280px] max-w-[calc(100vw-2rem)] rounded-[var(--md-sys-shape-corner-medium)] border-2 bg-md-surface-container-low text-md-on-surface transition-[opacity,box-shadow] sm:max-w-[400px] ${
         isBlockingNodeError(nodeErrors)
           ? "border-md-error"
           : isSelected
           ? "border-md-primary"
           : "border-md-outline-variant"
+      } ${
+        // 选中的节点多一圈光晕、阴影抬高（app/globals.css 的 .canvas-node-selected），在一排节点里一眼能找到
+        isSelected ? "canvas-node-selected" : "shadow-md"
       } ${data.disabled ? "border-dashed opacity-70" : ""}`}
     >
       {/* Header */}

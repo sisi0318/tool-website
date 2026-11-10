@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { NodePalette } from "./NodePalette"
+import { NodeDock } from "./NodeDock"
+import { useNodeLibrary } from "./use-node-library"
 
-const { addNode, addSubgraph, getAllNodes, getNodeDefinition, screenToFlowPosition, storeState } = vi.hoisted(() => ({
+const { addNode, addSubgraph, getAllNodes, getNodeDefinition, screenToFlowPosition, storeState, viewport } = vi.hoisted(() => ({
   addNode: vi.fn(),
   addSubgraph: vi.fn(),
   getAllNodes: vi.fn(),
@@ -14,6 +15,7 @@ const { addNode, addSubgraph, getAllNodes, getNodeDefinition, screenToFlowPositi
     nodes: [] as Array<{ id: string; type: string; position: { x: number; y: number }; config: Record<string, unknown> }>,
     selectedNodeId: null as string | null,
   },
+  viewport: { desktop: true },
 }))
 
 storeState.addNode = addNode
@@ -28,15 +30,18 @@ vi.mock("@/lib/canvas/registry", () => ({ getAllNodes, getNodeDefinition }))
 vi.mock("@/lib/canvas/store", () => ({
   useCanvasStore: (selector: (state: typeof storeState) => unknown) =>
     selector(storeState),
-  hasUnsavedCanvasChanges: () => false,
 }))
 
-vi.mock("@/hooks/use-translations", () => ({
-  useTranslations: () => (key: string) =>
+vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: () => viewport.desktop }))
+
+vi.mock("@/hooks/use-translations", () => {
+  const translate = (key: string) =>
     ({
       palette: "Palette",
-      workflow: "Workflow",
-      nodes: "Nodes",
+      close: "Close",
+      dockSearch: "Search",
+      dockFrequent: "Frequent",
+      frequentEmpty: "Nothing here yet.",
       nodeSearchPlaceholder: "Search nodes…",
       clearNodeSearch: "Clear node search",
       noMatchingNodes: "No matching nodes.",
@@ -57,17 +62,9 @@ vi.mock("@/hooks/use-translations", () => ({
       categoryDev: "Dev",
       categoryUtility: "Utility",
       categoryViewer: "Viewer",
-    })[key] ?? key,
-}))
-
-vi.mock("@/components/ui/scroll-area", () => ({
-  ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock("./workflow/WorkflowNewButton", () => ({ WorkflowNewButton: () => null }))
-vi.mock("./workflow/WorkflowSaveButton", () => ({ WorkflowSaveButton: () => null }))
-vi.mock("./workflow/WorkflowLoadButton", () => ({ WorkflowLoadButton: () => null }))
-vi.mock("./workflow/WorkflowTransferButtons", () => ({ WorkflowTransferButtons: () => null }))
+    })[key] ?? key
+  return { useTranslations: () => translate }
+})
 
 function TestIcon() {
   return <svg aria-hidden="true" />
@@ -96,7 +93,16 @@ const NODE_DEFINITIONS = [
   },
 ]
 
-describe("NodePalette", () => {
+/** 节点库的数据在画布那一层，这里照样从外面传进来 */
+function Dock() {
+  return <NodeDock library={useNodeLibrary()} />
+}
+
+/** 点竖栏上的一格（测试环境没有样式，竖栏和手机上的「节点库」按钮同时都在） */
+const openPanel = (name: string) => fireEvent.click(screen.getByRole("button", { name }))
+const addButtons = () => screen.queryAllByRole("button", { name: /^Add node:/ })
+
+describe("NodeDock", () => {
   beforeEach(() => {
     localStorage.clear()
     addNode.mockReset()
@@ -106,6 +112,30 @@ describe("NodePalette", () => {
     storeState.nodes = []
     storeState.selectedNodeId = null
     screenToFlowPosition.mockClear()
+    viewport.desktop = true
+  })
+
+  it("stays out of the way until a rail entry is opened, then lists only that category", () => {
+    render(<Dock />)
+    expect(screen.queryByRole("complementary", { name: "Palette" })).not.toBeInTheDocument()
+    expect(addButtons()).toHaveLength(0)
+
+    openPanel("Crypto")
+    expect(screen.getByRole("complementary", { name: "Palette" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /Crypto/ })).toBeInTheDocument()
+    expect(addButtons().map((button) => button.getAttribute("aria-label"))).toEqual(["Add node: Hash"])
+
+    // 再点一次同一格就收起来；换一格则直接换内容
+    openPanel("Data")
+    expect(addButtons().map((button) => button.getAttribute("aria-label"))).toEqual(["Add node: JSON Format"])
+    openPanel("Data")
+    expect(screen.queryByRole("complementary", { name: "Palette" })).not.toBeInTheDocument()
+  })
+
+  it("leaves out categories that have no nodes", () => {
+    render(<Dock />)
+    expect(screen.queryByRole("button", { name: "Image" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Data" })).toBeInTheDocument()
   })
 
   it.each([
@@ -114,18 +144,20 @@ describe("NodePalette", () => {
     ["Crypto", "Add node: Hash"],
     ["json-format", "Add node: JSON Format"],
   ])("searches node metadata with %s", (query, expectedNode) => {
-    render(<NodePalette />)
+    render(<Dock />)
+    openPanel("Search")
 
     fireEvent.change(screen.getByRole("searchbox", { name: "Search nodes…" }), {
       target: { value: query },
     })
 
     expect(screen.getByRole("button", { name: expectedNode })).toBeInTheDocument()
-    expect(screen.getAllByRole("button", { name: /^Add node:/ })).toHaveLength(1)
+    expect(addButtons()).toHaveLength(1)
   })
 
   it("shows an empty result and lets the user clear the search", () => {
-    render(<NodePalette />)
+    render(<Dock />)
+    openPanel("Search")
     const searchInput = screen.getByRole("searchbox", { name: "Search nodes…" })
 
     fireEvent.change(searchInput, { target: { value: "not-a-node" } })
@@ -133,7 +165,21 @@ describe("NodePalette", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Clear node search" }))
     expect(searchInput).toHaveValue("")
-    expect(screen.getAllByRole("button", { name: /^Add node:/ })).toHaveLength(2)
+    expect(addButtons()).toHaveLength(2)
+  })
+
+  it("opens the search from the keyboard, and Escape clears the query before closing", () => {
+    render(<Dock />)
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true })
+    const searchInput = screen.getByRole("searchbox", { name: "Search nodes…" })
+
+    fireEvent.change(searchInput, { target: { value: "hash" } })
+    fireEvent.keyDown(searchInput, { key: "Escape" })
+    expect(searchInput).toHaveValue("")
+    expect(screen.getByRole("complementary", { name: "Palette" })).toBeInTheDocument()
+
+    fireEvent.keyDown(searchInput, { key: "Escape" })
+    expect(screen.queryByRole("complementary", { name: "Palette" })).not.toBeInTheDocument()
   })
 
   it("adds clicked nodes near the visible canvas center with a cascade offset", () => {
@@ -152,8 +198,10 @@ describe("NodePalette", () => {
     })
     document.body.appendChild(canvas)
 
-    render(<NodePalette />)
+    render(<Dock />)
+    openPanel("Search")
     screen.getByRole("button", { name: "Add node: Hash" }).click()
+    // 桌面上列表留着，可以接着加下一个
     screen.getByRole("button", { name: "Add node: JSON Format" }).click()
 
     expect(screenToFlowPosition).toHaveBeenNthCalledWith(1, { x: 460, y: 340 })
@@ -166,11 +214,25 @@ describe("NodePalette", () => {
       2,
       expect.objectContaining({ type: "json-format", position: { x: 484, y: 364 }, config: {} })
     )
+    canvas.remove()
+  })
+
+  it("closes the list after adding on a phone, where it covers the canvas", () => {
+    viewport.desktop = false
+    render(<Dock />)
+    fireEvent.click(screen.getByRole("button", { name: "Palette" }))
+    fireEvent.click(screen.getByRole("button", { name: "Add node: Hash" }))
+
+    expect(addNode).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("complementary", { name: "Palette" })).not.toBeInTheDocument()
   })
 
   it("persists favorites and records recently used nodes", () => {
-    render(<NodePalette />)
+    render(<Dock />)
+    openPanel("Frequent")
+    expect(screen.getByText("Nothing here yet.")).toBeInTheDocument()
 
+    openPanel("Search")
     fireEvent.click(screen.getByRole("button", { name: "Add node to favorites: Hash" }))
     expect(screen.getByRole("heading", { name: /Favorites/ })).toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem("canvas-favorite-nodes") ?? "[]")).toEqual([
@@ -181,6 +243,14 @@ describe("NodePalette", () => {
     expect(screen.getByRole("heading", { name: /Recently used/ })).toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem("canvas-recent-nodes") ?? "[]")).toEqual([
       "hash-text",
+    ])
+
+    // “常用”那一格只列这两组
+    openPanel("Frequent")
+    expect(screen.queryByText("Nothing here yet.")).not.toBeInTheDocument()
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "Favorites1",
+      "Recently used1",
     ])
   })
 
@@ -203,7 +273,9 @@ describe("NodePalette", () => {
     storeState.selectedNodeId = "source-node"
     getNodeDefinition.mockReturnValue(sourceDefinition)
 
-    render(<NodePalette />)
+    render(<Dock />)
+    openPanel("Crypto")
+    expect(screen.getByText("Continue from Source")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", {
       name: "Add after selected node and connect: Hash",
     }))

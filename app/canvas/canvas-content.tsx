@@ -1,16 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { ReactFlowProvider } from "@xyflow/react"
-import { ArrowLeft, Plus } from "lucide-react"
 import { Canvas } from "@/components/canvas/Canvas"
-import { NodePalette } from "@/components/canvas/NodePalette"
-import { PropertyPanel } from "@/components/canvas/PropertyPanel"
 import { WorkflowSaveController } from "@/components/canvas/workflow/WorkflowSaveController"
 import { stopPendingCanvasWork, useCanvasStore } from "@/lib/canvas/store"
-import { useTranslations } from "@/hooks/use-translations"
-import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { registerAllAdapters } from "@/lib/adapters"
 
 registerAllAdapters()
@@ -20,79 +14,28 @@ if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_E2E === "true") {
   (window as any).__ZUSTAND_STORE__ = useCanvasStore
 }
 
+/**
+ * 画布页：画布铺满整屏，工具条、节点库、属性卡片都浮在它上面（见 components/canvas/Canvas.tsx）。
+ * 以前左右各有一条 288px 的固定面板，选中节点时 1280 宽的屏幕上画布只剩 704px。
+ */
 export default function CanvasContent() {
-  const t = useTranslations("canvas", zhCanvas)
-  const tCommon = useTranslations("common")
   const loadFromLocalStorage = useCanvasStore((s) => s.loadFromLocalStorage)
-  const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
-  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
-  const selectNode = useCanvasStore((s) => s.selectNode)
-  const [showPalette, setShowPalette] = useState(false)
-  const showPropertyPanel = Boolean(
-    !showPalette && selectedNodeId && selectedNodeIds.length === 1
-  )
+  // 先读回上次的画布再挂画布组件：它挂上的那一刻要知道画布上有没有节点（决定要不要适应视野）
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     loadFromLocalStorage()
+    setLoaded(true)
     // 防抖的自动执行与自动保存挂在模块作用域,卸载时必须清掉,
     // 否则离开画布后仍会触发执行(含网络请求)并写回 store。
     return () => stopPendingCanvasWork()
   }, [loadFromLocalStorage])
 
   return (
-    <div className="canvas-shell flex h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)]">
+    <div className="canvas-shell relative h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)]">
       <ReactFlowProvider>
         <WorkflowSaveController />
-        {(showPalette || showPropertyPanel) && (
-          <button
-            type="button"
-            aria-label={t("close")}
-            onClick={() => {
-              if (showPalette) setShowPalette(false)
-              else selectNode(null)
-            }}
-            className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[1px] lg:hidden"
-          />
-        )}
-        <div className={`${showPalette ? "fixed" : "hidden"} inset-y-0 left-0 z-40 h-full shadow-2xl lg:static lg:z-auto lg:flex lg:shadow-none`}>
-          <NodePalette
-            onNodeAdded={() => setShowPalette(false)}
-            onRequestClose={() => setShowPalette(false)}
-            onRequestOpen={() => setShowPalette(true)}
-          />
-        </div>
-        <div className="relative min-w-0 flex-1">
-          {!showPalette && selectedNodeIds.length < 2 && (
-            <div className={`absolute z-50 flex items-center gap-1.5 lg:hidden ${
-              showPropertyPanel
-                ? "left-3 top-16"
-                : "bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-14"
-            }`}>
-              <Link
-                href="/tools"
-                aria-label={tCommon("backToTools")}
-                className="flex min-h-11 items-center gap-1.5 rounded-full border border-md-outline-variant bg-md-surface-container px-3.5 text-xs font-semibold text-md-on-surface shadow-lg transition-transform active:scale-95"
-              >
-                <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-                <span className="hidden sm:inline">{tCommon("backToTools")}</span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowPalette(true)}
-                aria-expanded={showPalette}
-                aria-controls="canvas-node-palette"
-                className="flex min-h-11 items-center gap-1.5 rounded-full bg-md-inverse-surface px-4 text-xs font-semibold text-md-inverse-on-surface shadow-lg transition-transform active:scale-95"
-              >
-                <Plus aria-hidden="true" className="h-4 w-4" />
-                {t("palette")}
-              </button>
-            </div>
-          )}
-          <Canvas />
-        </div>
-        <div className={`${showPropertyPanel ? "fixed" : "hidden"} inset-x-0 bottom-0 z-40 max-h-[72dvh] lg:static lg:z-auto lg:flex lg:h-full lg:max-h-none`}>
-          <PropertyPanel onClose={() => selectNode(null)} />
-        </div>
+        {loaded && <Canvas />}
       </ReactFlowProvider>
     </div>
   )

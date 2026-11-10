@@ -38,7 +38,9 @@ export function LoadDialog({ workflows, onLoad, onDelete, onClose }: LoadDialogP
         role="dialog"
         aria-modal="true"
         aria-labelledby="canvas-load-dialog-title"
-        className="w-80 max-w-full rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container-high p-4 text-md-on-surface shadow-2xl"
+        // 没有输入框可以聚焦：焦点落在对话框本身，Tab 从第一个工作流开始
+        tabIndex={-1}
+        className="outline-none w-80 max-w-full rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container-high p-4 text-md-on-surface shadow-2xl"
       >
         <h3 id="canvas-load-dialog-title" className="mb-2 text-sm font-semibold">
           {t("loadWorkflow")}

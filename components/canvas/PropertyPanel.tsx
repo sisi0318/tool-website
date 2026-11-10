@@ -128,13 +128,8 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
     [selectedNode]
   )
 
-  if (!selectedNode || !definition) {
-    return (
-      <div className="flex h-full w-full items-center justify-center border-t border-md-outline-variant bg-md-surface-container-low p-4 lg:w-72 lg:border-l lg:border-t-0">
-        <p className="text-center text-sm leading-6 text-md-on-surface-variant">{t("selectNodeToEdit")}</p>
-      </div>
-    )
-  }
+  // 卡片只在选中一个节点时出现，没有“请先选择节点”的占位
+  if (!selectedNode || !definition) return null
 
   const outputs = nodeOutputs[selectedNode.id]
   const error = isBlockingNodeError(nodeErrors[selectedNode.id])
@@ -149,12 +144,14 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
       tabIndex={-1}
       data-canvas-shortcuts="off"
       aria-label={nodeLabel(definition)}
-      className="flex h-full max-h-[72dvh] w-full flex-col rounded-t-2xl border-t border-md-outline-variant bg-md-surface-container-low shadow-2xl outline-none lg:max-h-none lg:w-72 lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none"
+      className="flex min-h-0 w-full flex-col overflow-hidden rounded-t-2xl border-t border-md-outline-variant bg-md-surface-container-low shadow-2xl outline-none lg:rounded-[var(--md-sys-shape-corner-large)] lg:border lg:shadow-lg"
     >
       <div className="flex min-h-12 items-center gap-1 border-b border-md-outline-variant p-2 pl-3">
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-md-on-surface">
           {nodeLabel(definition)}
         </h3>
+        {/* 桌面上这四个操作在节点上方的浮动工具条里；手机上卡片是底部抽屉，可能把节点盖住，所以这里也留一份 */}
+        <div className="flex items-center gap-1 lg:hidden">
         <button
           type="button"
           onClick={() => executeToNode(selectedNode.id, true)}
@@ -212,19 +209,20 @@ export function PropertyPanel({ onClose }: PropertyPanelProps = {}) {
         >
           <Trash2 className="h-4 w-4" />
         </button>
+        </div>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
             aria-label={t("close")}
             title={t("close")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-md-on-surface-variant transition-colors hover:bg-md-hover hover:text-md-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary"
           >
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
-      <div className="flex-1 space-y-4 overflow-auto p-3">
+      <div className="min-h-0 flex-1 space-y-4 overflow-auto overscroll-contain p-3">
         {selectedNode.disabled && (
           <div className="rounded-[var(--md-sys-shape-corner-small)] bg-md-tertiary-container px-3 py-2 text-xs leading-5 text-md-on-tertiary-container">
             {t("nodeDisabledHint")}

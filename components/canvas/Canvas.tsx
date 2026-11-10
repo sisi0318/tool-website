@@ -1,63 +1,102 @@
 "use client"
 
-import { useCallback, useMemo, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   Panel,
   SelectionMode,
   useNodesState,
   useEdgesState,
   useReactFlow,
-  type Connection,
   type Edge as FlowEdge,
+  type FitViewOptions,
   type Node as FlowNode,
   type FinalConnectionState,
   type NodeTypes,
 } from "@xyflow/react"
+import {
+  BoxSelect,
+  CircleSlash2,
+  ClipboardPaste,
+  Copy,
+  CopyPlus,
+  GitBranchPlus,
+  Maximize2,
+  MousePointerClick,
+  Network,
+  Play,
+  Plus,
+  Power,
+  Redo2,
+  Scan,
+  SlidersHorizontal,
+  Trash2,
+  Undo2,
+} from "lucide-react"
 import { useCanvasStore } from "@/lib/canvas/store"
 import { useShallow } from "zustand/react/shallow"
 import { getNodeDefinition } from "@/lib/canvas/registry"
-import {
-  validateConnection,
-  type ConnectionValidationResult,
-} from "@/lib/canvas/validation"
-import { TYPE_COLORS } from "@/lib/canvas/types/primitives"
 import { createCanvasNode } from "@/lib/canvas/node-factory"
 import { autoLayoutNodes } from "@/lib/canvas/auto-layout"
-import {
-  createClipboardPayload,
-  instantiateClipboardPayload,
-  type CanvasClipboardPayload,
-} from "@/lib/canvas/clipboard"
-import type { DataType, Edge as CanvasEdge, NodeInstance } from "@/lib/canvas/types"
+import type { DataType, NodeDefinition } from "@/lib/canvas/types"
 import { useTranslations } from "@/hooks/use-translations"
 import { zhCanvas } from "@/lib/translations/zh-namespaces/canvas"
 import { BaseNode } from "./nodes/BaseNode"
 import { ToolNode } from "./nodes/ToolNode"
-import { CanvasToolbar } from "./CanvasToolbar"
+import { CanvasContextMenu, type CanvasMenuEntry } from "./CanvasContextMenu"
+import { CanvasHeader } from "./CanvasHeader"
 import {
   CompatibleNodePicker,
   type CompatibleNodeSelection,
 } from "./CompatibleNodePicker"
 import { ExecutionLogPanel } from "./ExecutionLogPanel"
+import { NodeActionsToolbar } from "./NodeActionsToolbar"
+import { NodeDock } from "./NodeDock"
+import { PropertyPanel } from "./PropertyPanel"
+import { QuickAddMenu } from "./QuickAddMenu"
+import { RunBar } from "./RunBar"
 import { SelectionToolbar } from "./SelectionToolbar"
+import { ViewBar } from "./ViewBar"
+import { FIT_CANVAS_EVENT } from "./canvas-events"
+import { formatShortcut } from "./chrome"
+import { useCanvasClipboard } from "./use-canvas-clipboard"
+import { useCanvasConnect } from "./use-canvas-connect"
+import { getSourcePorts, useFlowElements } from "./use-flow-elements"
+import { useNodeLibrary } from "./use-node-library"
 
 const nodeTypes: NodeTypes = {
   base: BaseNode,
   tool: ToolNode,
 }
 
+interface Point {
+  x: number
+  y: number
+}
+
 interface PendingNodeInsert {
   sourceNodeId: string
   sourcePortId: string
   sourceDataType: DataType
-  screenPosition: { x: number; y: number }
-  flowPosition: { x: number; y: number }
+  screenPosition: Point
+  flowPosition: Point
 }
+
+/** 右键点在哪儿：空白处、一个节点上、还是一组选中的节点上 */
+type ContextMenuState =
+  | { kind: "pane"; screen: Point; flow: Point }
+  | { kind: "node"; screen: Point; nodeId: string }
+  | { kind: "selection"; screen: Point }
+
+/** “+”接着往下加节点时，新节点离来源节点的距离 */
+const APPEND_GAP = 80
+/** 选中的节点和右侧属性卡片之间至少留这么宽，放得下节点右边的“+” */
+const INSPECTOR_CLEARANCE = 72
+const FIT_MAX_ZOOM = 1
+const NODE_WIDTH_ESTIMATE = 280
 
 function getEventClientPosition(event: MouseEvent | TouchEvent) {
   if ("changedTouches" in event) {
@@ -65,6 +104,24 @@ function getEventClientPosition(event: MouseEvent | TouchEvent) {
     return touch ? { x: touch.clientX, y: touch.clientY } : null
   }
   return { x: event.clientX, y: event.clientY }
+}
+
+/** “+”和右键菜单里“接着处理”用的输出：有运算结果就用结果，基础节点用它的值 */
+function getPrimaryOutput(definition: NodeDefinition) {
+  return definition.outputs[0] ?? definition.config.find((field) => field.hasOutput)
+}
+
+/**
+ * “适应画布”时四周留出的空：上下左右都有浮动的工具条，贴边的节点会被盖住。
+ * 手机上左侧没有节点栏，留得少一些。
+ */
+function getFitPadding(): FitViewOptions["padding"] {
+  const wide = typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(min-width: 1024px)").matches
+  return wide
+    ? { top: "84px", right: "40px", bottom: "84px", left: "104px" }
+    : { top: "76px", right: "20px", bottom: "76px", left: "20px" }
 }
 
 export function Canvas() {
@@ -76,36 +133,47 @@ export function Canvas() {
     edges: storeEdges,
     addNode,
     addSubgraph,
-    addEdge: addStoreEdge,
     updateNodePosition,
     updateNodePositions,
     removeNodes,
     removeEdge,
+    selectedNodeId,
     selectedNodeIds,
     nodeRunning,
     selectNodes,
+    executeToNode,
+    setNodeDisabled,
     undo,
     redo,
+    canUndo,
+    canRedo,
   } = useCanvasStore(
     useShallow((s) => ({
       nodes: s.nodes,
       edges: s.edges,
       addNode: s.addNode,
       addSubgraph: s.addSubgraph,
-      addEdge: s.addEdge,
       updateNodePosition: s.updateNodePosition,
       updateNodePositions: s.updateNodePositions,
       removeNodes: s.removeNodes,
       removeEdge: s.removeEdge,
+      selectedNodeId: s.selectedNodeId,
       selectedNodeIds: s.selectedNodeIds,
       nodeRunning: s.nodeRunning,
       selectNodes: s.selectNodes,
+      executeToNode: s.executeToNode,
+      setNodeDisabled: s.setNodeDisabled,
       undo: s.undo,
       redo: s.redo,
+      canUndo: s.canUndo,
+      canRedo: s.canRedo,
     })),
   )
-  const { screenToFlowPosition, fitView, getNodes } = useReactFlow()
+  const { screenToFlowPosition, fitView, getNodes, getViewport, setViewport } = useReactFlow()
   const reactFlowInstance = useReactFlow()
+  const library = useNodeLibrary()
+  const inspectorRef = useRef<HTMLDivElement>(null)
+  const pointerDownRef = useRef(false)
 
   // Exposed for e2e tests (same pattern as window.__ZUSTAND_STORE__)
   useEffect(() => {
@@ -115,23 +183,85 @@ export function Canvas() {
 
   const [pendingNodeInsert, setPendingNodeInsert] = useState<PendingNodeInsert | null>(null)
   const [executionLogOpen, setExecutionLogOpen] = useState(false)
-  const clipboardRef = useRef<CanvasClipboardPayload | null>(null)
-  const pasteSequenceRef = useRef(0)
-  const lastPasteOffsetRef = useRef<{ x: number; y: number } | null>(null)
+  const [minimapOpen, setMinimapOpen] = useState(false)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [quickAdd, setQuickAdd] = useState<{ screen: Point; flow: Point } | null>(null)
+  // 属性卡片可以关掉而不取消选中；换一个节点选中时它会再出现
+  const [inspectorDismissedFor, setInspectorDismissedFor] = useState<string | null>(null)
   const layoutFitPendingRef = useRef(false)
   const layoutFitFrameRef = useRef<number | null>(null)
+  const [fitRequests, setFitRequests] = useState(0)
+  // 只有进入页面时画布上已经有节点（上次留下的、从旅程带过来的），才自动适应一次视野。
+  // 空画布不排这次适应：React Flow 会把它留到第一个节点出现时才做，
+  // 于是双击或拖进来的第一个节点刚落下，镜头就把它挪到了屏幕中间。
+  const [fitOnLoad] = useState(() => useCanvasStore.getState().nodes.length > 0)
   const [connectionFeedback, setConnectionFeedback] = useState<{
     message: string
     tone: "error" | "success"
   } | null>(null)
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const initialFitOptions = useMemo<FitViewOptions>(() => ({ padding: getFitPadding(), maxZoom: FIT_MAX_ZOOM }), [])
+
+  const inspectorNodeId = selectedNodeIds.length === 1 ? selectedNodeId : null
+  const inspectorOpen = inspectorNodeId !== null && inspectorDismissedFor !== inspectorNodeId
+
+  useEffect(() => {
+    setInspectorDismissedFor(null)
+  }, [selectedNodeId])
+
+  useEffect(() => {
+    const press = () => { pointerDownRef.current = true }
+    const release = () => { pointerDownRef.current = false }
+    window.addEventListener("pointerdown", press, true)
+    window.addEventListener("pointerup", release, true)
+    window.addEventListener("pointercancel", release, true)
+    return () => {
+      window.removeEventListener("pointerdown", press, true)
+      window.removeEventListener("pointerup", release, true)
+      window.removeEventListener("pointercancel", release, true)
+    }
+  }, [])
+
+  // 属性卡片浮在画布右侧：选中的节点正好在它底下时，把画布往左挪一点让节点露出来。
+  // 手机上卡片是底部抽屉，后面的画布本来就不能操作，不用挪。
+  useEffect(() => {
+    if (!inspectorOpen || !inspectorNodeId) return
+    let frame = 0
+    const reveal = () => {
+      frame = requestAnimationFrame(() => {
+        const card = inspectorRef.current
+        const nodeElement = Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node"))
+          .find((element) => element.dataset.id === inspectorNodeId)
+        if (!card || !nodeElement || getComputedStyle(card).position === "fixed") return
+
+        const cardRect = card.getBoundingClientRect()
+        const nodeRect = nodeElement.getBoundingClientRect()
+        const besideCard = nodeRect.bottom > cardRect.top && nodeRect.top < cardRect.bottom
+        // 节点右边还有“+”按钮，一并留出来
+        const overlap = nodeRect.right + INSPECTOR_CLEARANCE - cardRect.left
+        if (!besideCard || overlap <= 0) return
+
+        const viewport = getViewport()
+        void setViewport({ ...viewport, x: viewport.x - overlap }, { duration: 200 })
+      })
+    }
+
+    // 鼠标还按着（点选的同时多半就在拖这个节点）：等松手再看，免得拖到一半画布自己动
+    if (pointerDownRef.current) {
+      window.addEventListener("pointerup", reveal, { once: true })
+      return () => {
+        window.removeEventListener("pointerup", reveal)
+        cancelAnimationFrame(frame)
+      }
+    }
+    reveal()
+    return () => cancelAnimationFrame(frame)
+  }, [getViewport, inspectorNodeId, inspectorOpen, setViewport])
 
   const closeExecutionLog = useCallback(() => {
     setExecutionLogOpen(false)
     requestAnimationFrame(() => {
-      document.querySelector<HTMLButtonElement>(
-        '[aria-controls="canvas-execution-log"]'
-      )?.focus()
+      document.querySelector<HTMLButtonElement>("[data-execution-log-toggle]")?.focus()
     })
   }, [])
 
@@ -148,107 +278,15 @@ export function Canvas() {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current)
   }, [])
 
-  const getConnectionMessage = useCallback(
-    (
-      result: ConnectionValidationResult,
-      sourceType?: string,
-      targetType?: string
-    ) => {
-      switch (result.code) {
-        case "self-connection":
-          return t("connectionSelf")
-        case "duplicate-connection":
-          return t("connectionDuplicate")
-        case "target-port-occupied":
-          return t("connectionOccupied")
-        case "cycle":
-          return t("connectionCycle")
-        case "incompatible-types":
-          return t("connectionIncompatible")
-            .replace("{source}", sourceType ?? "?")
-            .replace("{target}", targetType ?? "?")
-        default:
-          return result.message ?? t("connectionIncomplete")
-      }
-    },
-    [t]
-  )
+  const { copySelection, pasteSelection, duplicateSelection, hasClipboard } = useCanvasClipboard(showConnectionFeedback, t)
+  const onConnect = useCanvasConnect(showConnectionFeedback, t)
 
-  // 按节点缓存：存储里的节点对象和选中状态都没变，就沿用上一次的对象，data 的引用不变，
-  // 已 memo 的节点组件不必重渲染。以前任何一个节点有变化（比如拖动）都会给所有节点新建 data
-  const flowNodeCache = useRef(new Map<string, { source: NodeInstance; selected: boolean; flow: FlowNode }>())
-  const flowNodes = useMemo(() => {
-    const previous = flowNodeCache.current
-    const next = new Map<string, { source: NodeInstance; selected: boolean; flow: FlowNode }>()
-    const selectedIds = new Set(selectedNodeIds)
-    const result = storeNodes.map((node) => {
-      const selected = selectedIds.has(node.id)
-      const cached = previous.get(node.id)
-      if (cached && cached.source === node && cached.selected === selected) {
-        next.set(node.id, cached)
-        return cached.flow
-      }
-      const definition = getNodeDefinition(node.type)
-      // 用注册表的类别判断,新增基础节点不必再来这里补名单
-      const isBasic = definition?.category === "basic"
-      const flow: FlowNode = {
-        id: node.id,
-        type: isBasic ? "base" : "tool",
-        position: node.position,
-        selected,
-        data: {
-          ...node,
-          definition,
-          selected,
-        },
-      }
-      next.set(node.id, { source: node, selected, flow })
-      return flow
-    })
-    flowNodeCache.current = next
-    return result
-  }, [storeNodes, selectedNodeIds])
-
-  // 边也按同样的办法缓存；运行状态只影响两端在跑的那几条
-  const flowEdgeCache = useRef(new Map<string, { source: CanvasEdge; animated: boolean; stroke: string; flow: FlowEdge }>())
-  const flowEdges = useMemo(() => {
-    const previous = flowEdgeCache.current
-    const next = new Map<string, { source: CanvasEdge; animated: boolean; stroke: string; flow: FlowEdge }>()
-    const nodesById = new Map(storeNodes.map((node) => [node.id, node]))
-    const result = storeEdges.map((edge) => {
-      const sourceNode = nodesById.get(edge.source)
-      const definition = sourceNode ? getNodeDefinition(sourceNode.type) : undefined
-      const sourcePort = definition
-        ? [
-            ...definition.config.filter((field) => field.hasOutput),
-            ...definition.outputs,
-          ].find((port) => port.id === edge.sourcePort)
-        : undefined
-      const animated = Boolean(nodeRunning[edge.source] || nodeRunning[edge.target])
-      const stroke = TYPE_COLORS[sourcePort?.dataType ?? "string"]
-      const cached = previous.get(edge.id)
-      if (cached && cached.source === edge && cached.animated === animated && cached.stroke === stroke) {
-        next.set(edge.id, cached)
-        return cached.flow
-      }
-      const flow: FlowEdge = {
-        id: edge.id,
-        source: edge.source,
-        sourceHandle: edge.sourcePort,
-        target: edge.target,
-        targetHandle: edge.targetPort,
-        animated,
-        style: {
-          stroke,
-          strokeWidth: 2,
-        },
-      }
-      next.set(edge.id, { source: edge, animated, stroke, flow })
-      return flow
-    })
-    flowEdgeCache.current = next
-    return result
-  }, [storeEdges, storeNodes, nodeRunning])
+  const { flowNodes, flowEdges } = useFlowElements({
+    nodes: storeNodes,
+    edges: storeEdges,
+    selectedNodeIds,
+    nodeRunning,
+  })
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flowNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(flowEdges)
@@ -277,6 +315,31 @@ export function Canvas() {
     })
   }, [flowEdges, setEdges])
 
+  // “适应”只负责把内容都收进视野：节点少的时候不为了铺满而放大过 100%
+  const fitAll = useCallback(() => {
+    void fitView({ padding: getFitPadding(), maxZoom: FIT_MAX_ZOOM, duration: 250 })
+  }, [fitView])
+
+  const zoomToSelection = useCallback(() => {
+    if (selectedNodeIds.length === 0) return
+    void fitView({
+      nodes: selectedNodeIds.map((id) => ({ id })),
+      padding: getFitPadding(),
+      maxZoom: 1.5,
+      duration: 250,
+    })
+  }, [fitView, selectedNodeIds])
+
+  // 读取、导入换了一整张图：等新节点画出来以后适应一次（和自动排列走同一条路）
+  useEffect(() => {
+    const requestFit = () => {
+      layoutFitPendingRef.current = true
+      setFitRequests((count) => count + 1)
+    }
+    window.addEventListener(FIT_CANVAS_EVENT, requestFit)
+    return () => window.removeEventListener(FIT_CANVAS_EVENT, requestFit)
+  }, [])
+
   useEffect(() => {
     if (!layoutFitPendingRef.current) return
     const renderedPositions = new Map(
@@ -291,7 +354,7 @@ export function Canvas() {
     layoutFitPendingRef.current = false
     layoutFitFrameRef.current = requestAnimationFrame(() => {
       layoutFitFrameRef.current = null
-      void fitView({ padding: 0.15, duration: 300 })
+      void fitView({ padding: getFitPadding(), maxZoom: FIT_MAX_ZOOM, duration: 300 })
     })
 
     return () => {
@@ -300,107 +363,7 @@ export function Canvas() {
         layoutFitFrameRef.current = null
       }
     }
-  }, [fitView, nodes, storeNodes])
-
-  const getSelectedIds = useCallback(() => {
-    return selectedNodeIds
-  }, [selectedNodeIds])
-
-  const insertClipboardPayload = useCallback(
-    (payload: CanvasClipboardPayload, offset: { x: number; y: number }) => {
-      const pasted = instantiateClipboardPayload(payload, offset)
-      if (pasted.nodes.length === 0) return []
-
-      addSubgraph(pasted)
-      const pastedIds = pasted.nodes.map((node) => node.id)
-      selectNodes(pastedIds)
-      return pastedIds
-    },
-    [addSubgraph, selectNodes]
-  )
-
-  // First paste lands at the current viewport center; subsequent pastes cascade.
-  const getViewportCenterOffset = useCallback(
-    (payload: CanvasClipboardPayload) => {
-      if (payload.nodes.length === 0) return { x: 0, y: 0 }
-      let minX = Infinity
-      let minY = Infinity
-      let maxX = -Infinity
-      let maxY = -Infinity
-      for (const node of payload.nodes) {
-        minX = Math.min(minX, node.position.x)
-        minY = Math.min(minY, node.position.y)
-        maxX = Math.max(maxX, node.position.x)
-        maxY = Math.max(maxY, node.position.y)
-      }
-      const center = screenToFlowPosition({
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-      })
-      return {
-        x: center.x - (minX + maxX) / 2,
-        y: center.y - (minY + maxY) / 2,
-      }
-    },
-    [screenToFlowPosition]
-  )
-
-  const copySelection = useCallback(() => {
-    const ids = getSelectedIds()
-    if (ids.length === 0) return false
-
-    const payload = createClipboardPayload(
-      storeNodes,
-      storeEdges,
-      new Set(ids)
-    )
-    if (payload.nodes.length === 0) return false
-
-    clipboardRef.current = payload
-    pasteSequenceRef.current = 0
-    lastPasteOffsetRef.current = null
-    showConnectionFeedback(
-      t("nodesCopied").replace("{count}", String(payload.nodes.length)),
-      "success"
-    )
-    return true
-  }, [getSelectedIds, showConnectionFeedback, storeEdges, storeNodes, t])
-
-  const pasteSelection = useCallback(() => {
-    const payload = clipboardRef.current
-    if (!payload) return false
-    const offset =
-      pasteSequenceRef.current === 0 || !lastPasteOffsetRef.current
-        ? getViewportCenterOffset(payload)
-        : {
-            x: lastPasteOffsetRef.current.x + 40,
-            y: lastPasteOffsetRef.current.y + 40,
-          }
-    pasteSequenceRef.current += 1
-    lastPasteOffsetRef.current = offset
-    const pastedIds = insertClipboardPayload(payload, offset)
-    if (pastedIds.length === 0) return false
-
-    showConnectionFeedback(
-      t("nodesPasted").replace("{count}", String(pastedIds.length)),
-      "success"
-    )
-    return true
-  }, [getViewportCenterOffset, insertClipboardPayload, showConnectionFeedback, t])
-
-  const duplicateSelection = useCallback(() => {
-    const ids = getSelectedIds()
-    if (ids.length === 0) return false
-    const payload = createClipboardPayload(storeNodes, storeEdges, new Set(ids))
-    const pastedIds = insertClipboardPayload(payload, { x: 40, y: 40 })
-    if (pastedIds.length === 0) return false
-
-    showConnectionFeedback(
-      t("nodesDuplicated").replace("{count}", String(pastedIds.length)),
-      "success"
-    )
-    return true
-  }, [getSelectedIds, insertClipboardPayload, showConnectionFeedback, storeEdges, storeNodes, t])
+  }, [fitRequests, fitView, nodes, storeNodes])
 
   const selectedEdgeIds = useMemo(
     () => edges.filter((edge) => edge.selected).map((edge) => edge.id),
@@ -408,10 +371,9 @@ export function Canvas() {
   )
 
   const deleteSelection = useCallback(() => {
-    const ids = getSelectedIds()
     let handled = false
-    if (ids.length > 0) {
-      removeNodes(ids)
+    if (selectedNodeIds.length > 0) {
+      removeNodes(selectedNodeIds)
       selectNodes([])
       handled = true
     }
@@ -424,7 +386,11 @@ export function Canvas() {
       handled = true
     }
     return handled
-  }, [getSelectedIds, removeNodes, selectNodes, selectedEdgeIds, removeEdge])
+  }, [removeNodes, selectNodes, selectedEdgeIds, selectedNodeIds, removeEdge])
+
+  const selectAll = useCallback(() => {
+    selectNodes(storeNodes.map((node) => node.id))
+  }, [selectNodes, storeNodes])
 
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Array<{ id: string }> }) => {
@@ -436,15 +402,16 @@ export function Canvas() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement
-      const tagName = target.tagName
+      // 事件也可能直接派发在 window / document 上，那时没有 tagName 和 closest
+      const target = event.target instanceof HTMLElement ? event.target : null
+      const tagName = target?.tagName
       const isTextEntry =
         tagName === "INPUT" ||
         tagName === "TEXTAREA" ||
         tagName === "SELECT" ||
-        target.isContentEditable
+        Boolean(target?.isContentEditable)
       if (isTextEntry) return
-      if (target.closest('[role="dialog"], [role="alertdialog"], [data-canvas-shortcuts="off"]')) return
+      if (target?.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [data-canvas-shortcuts="off"]')) return
       const isButton = tagName === "BUTTON"
 
       const modifier = event.ctrlKey || event.metaKey
@@ -462,8 +429,7 @@ export function Canvas() {
       if (modifier && key === "a") {
         if (storeNodes.length > 0) {
           event.preventDefault()
-          const ids = storeNodes.map((node) => node.id)
-          selectNodes(ids)
+          selectAll()
         }
         return
       }
@@ -497,6 +463,19 @@ export function Canvas() {
         return
       }
 
+      // Shift+1 / Shift+2 打出来的是 ! 和 @（各键盘布局还不一样），所以认按键位置
+      if (event.shiftKey && !modifier && !event.altKey && event.code === "Digit1") {
+        event.preventDefault()
+        fitAll()
+        return
+      }
+
+      if (event.shiftKey && !modifier && !event.altKey && event.code === "Digit2") {
+        event.preventDefault()
+        zoomToSelection()
+        return
+      }
+
       if (event.key === "Escape") {
         selectNodes([])
       }
@@ -508,11 +487,14 @@ export function Canvas() {
     copySelection,
     deleteSelection,
     duplicateSelection,
+    fitAll,
     pasteSelection,
     redo,
+    selectAll,
     selectNodes,
     storeNodes,
     undo,
+    zoomToSelection,
   ])
 
   const onEdgesDelete = useCallback(
@@ -522,94 +504,6 @@ export function Canvas() {
       }
     },
     [removeEdge]
-  )
-
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      if (
-        !connection.source ||
-        !connection.target ||
-        !connection.sourceHandle ||
-        !connection.targetHandle
-      ) {
-        showConnectionFeedback(t("connectionIncomplete"))
-        return
-      }
-
-      const sourceNode = storeNodes.find((n) => n.id === connection.source)
-      const targetNode = storeNodes.find((n) => n.id === connection.target)
-      if (!sourceNode || !targetNode) {
-        showConnectionFeedback(t("connectionMissingNode"))
-        return
-      }
-
-      const sourceDef = getNodeDefinition(sourceNode.type)
-      const targetDef = getNodeDefinition(targetNode.type)
-      if (!sourceDef || !targetDef) {
-        showConnectionFeedback(t("connectionMissingNode"))
-        return
-      }
-
-      // Find source config field (has hasOutput=true) or derived output
-      const sourceField = sourceDef.config.find(
-        (f) => f.id === connection.sourceHandle && f.hasOutput
-      )
-      const sourceOutput = sourceDef.outputs.find(
-        (o) => o.id === connection.sourceHandle
-      )
-      const targetField = targetDef.config.find(
-        (f) => f.id === connection.targetHandle && f.hasInput
-      )
-
-      if ((!sourceField && !sourceOutput) || !targetField) {
-        showConnectionFeedback(t("connectionMissingPort"))
-        return
-      }
-
-      // Create the source field-like object for validation
-      const sourceForValidation = sourceField ?? {
-        id: sourceOutput!.id,
-        name: sourceOutput!.name,
-        dataType: sourceOutput!.dataType,
-      }
-
-      const result = validateConnection(sourceForValidation, targetField, {
-        existingEdges: storeEdges,
-        connection: {
-          source: connection.source,
-          sourcePort: connection.sourceHandle,
-          target: connection.target,
-          targetPort: connection.targetHandle,
-        },
-      })
-      const replacesExistingInput = result.code === "target-port-occupied"
-      if (!result.valid && !replacesExistingInput) {
-        showConnectionFeedback(
-          getConnectionMessage(result, sourceForValidation.dataType, targetField.dataType)
-        )
-        return
-      }
-
-      const newEdge = {
-        id: `edge-${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}`,
-        source: connection.source,
-        sourcePort: connection.sourceHandle,
-        target: connection.target,
-        targetPort: connection.targetHandle,
-      }
-      addStoreEdge(newEdge)
-      if (replacesExistingInput) {
-        showConnectionFeedback(t("connectionReplaced"), "success")
-      }
-    },
-    [
-      storeNodes,
-      storeEdges,
-      addStoreEdge,
-      getConnectionMessage,
-      showConnectionFeedback,
-      t,
-    ]
   )
 
   const handleConnectEnd = useCallback(
@@ -631,10 +525,7 @@ export function Canvas() {
         ? getNodeDefinition(sourceNode.type)
         : undefined
       const sourcePort = sourceDefinition
-        ? [
-            ...sourceDefinition.config.filter((field) => field.hasOutput),
-            ...sourceDefinition.outputs,
-          ].find((port) => port.id === connectionState.fromHandle?.id)
+        ? getSourcePorts(sourceDefinition).find((port) => port.id === connectionState.fromHandle?.id)
         : undefined
       const screenPosition = getEventClientPosition(event)
       if (!sourceNode || !sourcePort || !screenPosition) return
@@ -648,6 +539,42 @@ export function Canvas() {
       })
     },
     [screenToFlowPosition, storeNodes]
+  )
+
+  /**
+   * 从节点右侧的“+”（或右键菜单）接着往下加：用这个节点的主输出去挑能接上的节点。
+   * 新节点放在它右边；它已经连着别的下游时，排到最下面那个的下方，不叠在一起。
+   */
+  const openAppendPicker = useCallback(
+    (nodeId: string, screenPosition: Point) => {
+      const sourceNode = storeNodes.find((node) => node.id === nodeId)
+      const definition = sourceNode ? getNodeDefinition(sourceNode.type) : undefined
+      const port = definition ? getPrimaryOutput(definition) : undefined
+      if (!sourceNode || !port) return
+
+      const measured = new Map(getNodes().map((node) => [node.id, node.measured]))
+      const downstreamIds = new Set(
+        storeEdges.filter((edge) => edge.source === nodeId).map((edge) => edge.target)
+      )
+      const lowestBottom = storeNodes
+        .filter((node) => downstreamIds.has(node.id))
+        .reduce<number | null>((bottom, node) => {
+          const nodeBottom = node.position.y + (measured.get(node.id)?.height ?? 120)
+          return bottom === null ? nodeBottom : Math.max(bottom, nodeBottom)
+        }, null)
+
+      setPendingNodeInsert({
+        sourceNodeId: nodeId,
+        sourcePortId: port.id,
+        sourceDataType: port.dataType,
+        screenPosition,
+        flowPosition: {
+          x: sourceNode.position.x + (measured.get(nodeId)?.width ?? NODE_WIDTH_ESTIMATE) + APPEND_GAP,
+          y: lowestBottom === null ? sourceNode.position.y : lowestBottom + 24,
+        },
+      })
+    },
+    [getNodes, storeEdges, storeNodes]
   )
 
   const insertCompatibleNode = useCallback(
@@ -664,10 +591,11 @@ export function Canvas() {
 
       addSubgraph({ nodes: [newNode], edges: [newEdge] })
       selectNodes([newNode.id])
+      library.recordUse(nodeType)
       setPendingNodeInsert(null)
       showConnectionFeedback(t("nodeInsertedAndConnected"), "success")
     },
-    [addSubgraph, pendingNodeInsert, selectNodes, showConnectionFeedback, t]
+    [addSubgraph, library, pendingNodeInsert, selectNodes, showConnectionFeedback, t]
   )
 
   const applyAutoLayout = useCallback(() => {
@@ -731,6 +659,129 @@ export function Canvas() {
     [screenToFlowPosition, addNode]
   )
 
+  const openQuickAdd = useCallback(
+    (screen: Point) => {
+      setQuickAdd({ screen, flow: screenToFlowPosition(screen) })
+    },
+    [screenToFlowPosition]
+  )
+
+  // React Flow 没有“双击空白处”的回调：挂在最外层，只认落在画布底板上的双击
+  const handleDoubleClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (!(event.target as HTMLElement).classList.contains("react-flow__pane")) return
+      openQuickAdd({ x: event.clientX, y: event.clientY })
+    },
+    [openQuickAdd]
+  )
+
+  const handlePaneContextMenu = useCallback(
+    (event: React.MouseEvent | MouseEvent) => {
+      event.preventDefault()
+      const screen = { x: event.clientX, y: event.clientY }
+      setContextMenu({ kind: "pane", screen, flow: screenToFlowPosition(screen) })
+    },
+    [screenToFlowPosition]
+  )
+
+  const handleNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: FlowNode) => {
+      event.preventDefault()
+      const screen = { x: event.clientX, y: event.clientY }
+      // 右键点在一组选中的节点里：菜单对整组生效；点在别的节点上：先改选它
+      if (selectedNodeIds.length > 1 && selectedNodeIds.includes(node.id)) {
+        setContextMenu({ kind: "selection", screen })
+        return
+      }
+      selectNodes([node.id])
+      setContextMenu({ kind: "node", screen, nodeId: node.id })
+    },
+    [selectNodes, selectedNodeIds]
+  )
+
+  const handleSelectionContextMenu = useCallback((event: React.MouseEvent) => {
+    event.preventDefault()
+    setContextMenu({ kind: "selection", screen: { x: event.clientX, y: event.clientY } })
+  }, [])
+
+  const selectedNode = inspectorNodeId
+    ? storeNodes.find((node) => node.id === inspectorNodeId)
+    : undefined
+  const selectedDefinition = selectedNode ? getNodeDefinition(selectedNode.type) : undefined
+  const selectedCanAppend = Boolean(selectedDefinition && getPrimaryOutput(selectedDefinition))
+
+  const buildContextMenu = (menu: ContextMenuState): CanvasMenuEntry[] => {
+    const copyItem = {
+      id: "copy",
+      label: t("copyNodes"),
+      icon: Copy,
+      shortcut: formatShortcut("mod+c"),
+      onSelect: () => { copySelection() },
+    }
+    const duplicateItem = {
+      id: "duplicate",
+      label: t("duplicateNodes"),
+      icon: CopyPlus,
+      shortcut: formatShortcut("mod+d"),
+      onSelect: () => { duplicateSelection() },
+    }
+    const deleteItem = {
+      id: "delete",
+      label: t("deleteSelectedNodes"),
+      icon: Trash2,
+      shortcut: "Delete",
+      danger: true,
+      onSelect: () => { deleteSelection() },
+    }
+
+    if (menu.kind === "pane") {
+      return [
+        { id: "add", label: t("addNode"), icon: Plus, onSelect: () => setQuickAdd({ screen: menu.screen, flow: menu.flow }) },
+        { id: "paste", label: t("pasteNodes"), icon: ClipboardPaste, shortcut: formatShortcut("mod+v"), disabled: !hasClipboard, onSelect: () => { pasteSelection(menu.flow) } },
+        { id: "select-all", label: t("selectAllNodes"), icon: BoxSelect, shortcut: formatShortcut("mod+a"), disabled: storeNodes.length === 0, onSelect: selectAll },
+        "separator",
+        { id: "undo", label: t("undo"), icon: Undo2, shortcut: formatShortcut("mod+z"), disabled: !canUndo, onSelect: undo },
+        { id: "redo", label: t("redo"), icon: Redo2, shortcut: formatShortcut("mod+shift+z"), disabled: !canRedo, onSelect: redo },
+        "separator",
+        { id: "layout", label: t("autoLayout"), icon: Network, disabled: storeNodes.length < 2, onSelect: applyAutoLayout },
+        { id: "fit", label: t("fitView"), icon: Maximize2, shortcut: formatShortcut("shift+1"), disabled: storeNodes.length === 0, onSelect: fitAll },
+      ]
+    }
+
+    if (menu.kind === "selection") {
+      return [
+        copyItem,
+        duplicateItem,
+        { id: "zoom", label: t("zoomToSelection"), icon: Scan, shortcut: formatShortcut("shift+2"), onSelect: zoomToSelection },
+        "separator",
+        deleteItem,
+      ]
+    }
+
+    const node = storeNodes.find((candidate) => candidate.id === menu.nodeId)
+    const definition = node ? getNodeDefinition(node.type) : undefined
+    const items: CanvasMenuEntry[] = [
+      { id: "run", label: t("runToNode"), icon: Play, disabled: Boolean(nodeRunning[menu.nodeId]), onSelect: () => { void executeToNode(menu.nodeId, true) } },
+    ]
+    if (definition && getPrimaryOutput(definition)) {
+      items.push({ id: "append", label: t("appendNextNode"), icon: GitBranchPlus, onSelect: () => openAppendPicker(menu.nodeId, menu.screen) })
+    }
+    items.push(
+      "separator",
+      copyItem,
+      duplicateItem,
+      node?.disabled
+        ? { id: "enable", label: t("enableNode"), icon: Power, onSelect: () => setNodeDisabled(menu.nodeId, false) }
+        : { id: "disable", label: t("disableNode"), icon: CircleSlash2, onSelect: () => setNodeDisabled(menu.nodeId, true) },
+      { id: "properties", label: t("nodeProperties"), icon: SlidersHorizontal, onSelect: () => setInspectorDismissedFor(null) },
+      "separator",
+      deleteItem,
+    )
+    return items
+  }
+
+  const multiSelected = selectedNodeIds.length > 1
+
   return (
     <div className="relative h-full w-full" data-testid="canvas-drop-zone">
       <ReactFlow
@@ -747,24 +798,25 @@ export function Canvas() {
         onPaneClick={() => {
           selectNodes([])
         }}
+        onDoubleClick={handleDoubleClick}
+        onPaneContextMenu={handlePaneContextMenu}
+        onNodeContextMenu={handleNodeContextMenu}
+        onSelectionContextMenu={handleSelectionContextMenu}
         nodeTypes={nodeTypes}
         deleteKeyCode={null}
         selectionOnDrag
         selectionMode={SelectionMode.Partial}
         panOnDrag={[1, 2]}
         panActivationKeyCode=" "
-        fitView
+        zoomOnDoubleClick={false}
+        fitView={fitOnLoad}
+        fitViewOptions={initialFitOptions}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
-        <CanvasToolbar
-          onAutoLayout={applyAutoLayout}
-          onToggleExecutionLog={() => setExecutionLogOpen((open) => !open)}
-          executionLogOpen={executionLogOpen}
-        />
         {connectionFeedback && (
           <Panel
             position="bottom-center"
-            className={`${selectedNodeIds.length > 1 ? "!mb-20" : "!mb-5"} max-w-[calc(100%-1rem)]`}
+            className={`${multiSelected ? "!mb-[8.5rem] lg:!mb-20" : "!mb-[4.5rem] lg:!mb-5"} max-w-[calc(100%-1rem)]`}
           >
             <div
               role={connectionFeedback.tone === "error" ? "alert" : "status"}
@@ -781,9 +833,63 @@ export function Canvas() {
             </div>
           </Panel>
         )}
-        <Controls />
-        <MiniMap className="!hidden lg:!block" pannable />
+        {minimapOpen && (
+          <MiniMap
+            position="bottom-left"
+            className="!bottom-[4.25rem] !left-3 !m-0 max-sm:!hidden"
+            ariaLabel={t("minimap")}
+            pannable
+            zoomable
+          />
+        )}
+        {inspectorNodeId && (
+          <NodeActionsToolbar
+            nodeId={inspectorNodeId}
+            canAppend={selectedCanAppend}
+            inspectorOpen={inspectorOpen}
+            onToggleInspector={() => setInspectorDismissedFor(inspectorOpen ? inspectorNodeId : null)}
+            onDuplicate={() => { duplicateSelection() }}
+            onDelete={() => { deleteSelection() }}
+            onAppend={(anchor) => openAppendPicker(inspectorNodeId, { x: anchor.right, y: anchor.top })}
+          />
+        )}
       </ReactFlow>
+
+      {storeNodes.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
+          <div className="max-w-xs text-center">
+            <MousePointerClick aria-hidden="true" className="mx-auto mb-3 h-8 w-8 text-md-on-surface-variant" />
+            <p className="text-base font-medium text-md-on-surface">
+              <span className="max-lg:hidden">{t("emptyCanvasTitle")}</span>
+              <span className="lg:hidden">{t("emptyCanvasTitleTouch")}</span>
+            </p>
+            <p className="mt-1.5 text-sm leading-6 text-md-on-surface-variant max-lg:hidden">
+              {t("emptyCanvasHint")}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2">
+        <CanvasHeader />
+        <RunBar
+          executionLogOpen={executionLogOpen}
+          onToggleExecutionLog={() => setExecutionLogOpen((open) => !open)}
+        />
+      </div>
+
+      <NodeDock library={library} />
+
+      <div className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 z-20 flex">
+        <ViewBar
+          minimapOpen={minimapOpen}
+          onToggleMinimap={() => setMinimapOpen((open) => !open)}
+          onAutoLayout={applyAutoLayout}
+          onFitView={fitAll}
+          onZoomToSelection={zoomToSelection}
+        />
+      </div>
+
       {!executionLogOpen && (
         <SelectionToolbar
           count={selectedNodeIds.length}
@@ -792,14 +898,56 @@ export function Canvas() {
           onDelete={() => { deleteSelection() }}
         />
       )}
+
+      {inspectorOpen && (
+        <>
+          <button
+            type="button"
+            aria-label={t("close")}
+            tabIndex={-1}
+            onClick={() => setInspectorDismissedFor(inspectorNodeId)}
+            className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[1px] lg:hidden"
+          />
+          <div
+            ref={inspectorRef}
+            className="fixed inset-x-0 bottom-0 z-40 flex max-h-[72dvh] flex-col lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-3 lg:top-[4.25rem] lg:z-20 lg:max-h-[calc(100%-5rem)] lg:w-80"
+          >
+            <PropertyPanel onClose={() => setInspectorDismissedFor(inspectorNodeId)} />
+          </div>
+        </>
+      )}
+
       <ExecutionLogPanel
         open={executionLogOpen}
+        besideInspector={inspectorOpen}
         onClose={closeExecutionLog}
         onSelectNode={(nodeId) => {
           selectNodes([nodeId])
           closeExecutionLog()
         }}
       />
+
+      {contextMenu && (
+        <CanvasContextMenu
+          key={`${contextMenu.kind}-${contextMenu.screen.x}-${contextMenu.screen.y}`}
+          label={contextMenu.kind === "pane" ? t("canvasMenu") : t("nodeMenu")}
+          position={contextMenu.screen}
+          items={buildContextMenu(contextMenu)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+      {quickAdd && (
+        <QuickAddMenu
+          library={library}
+          position={quickAdd.screen}
+          onPick={(nodeType) => {
+            addNode(createCanvasNode(nodeType, quickAdd.flow))
+            library.recordUse(nodeType)
+            setQuickAdd(null)
+          }}
+          onClose={() => setQuickAdd(null)}
+        />
+      )}
       {pendingNodeInsert && (
         <CompatibleNodePicker
           sourceDataType={pendingNodeInsert.sourceDataType}

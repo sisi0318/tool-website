@@ -1347,51 +1347,6 @@
   fill: var(--md-sys-color-outline-variant);
 }
 
-/* Controls (zoom / fit / lock) */
-.react-flow__controls {
-  overflow: hidden;
-  border-radius: var(--md-sys-shape-corner-medium);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  background-color: var(--md-sys-color-surface-container);
-  box-shadow: var(--md-sys-elevation-level2, 0 2px 6px rgb(0 0 0 / 0.15));
-}
-
-.react-flow__controls > button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-bottom: 1px solid var(--md-sys-color-outline-variant);
-  background-color: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
-  transition: background-color 150ms, color 150ms;
-}
-
-.react-flow__controls > button:last-child {
-  border-bottom: none;
-}
-
-.react-flow__controls > button:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
-  color: var(--md-sys-color-on-surface);
-}
-
-.react-flow__controls > button:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: -2px;
-}
-
-.react-flow__controls > button:disabled {
-  opacity: 0.38;
-  cursor: default;
-}
-
-.react-flow__controls > button svg {
-  fill: currentColor;
-}
-
 /* MiniMap — xyflow's stylesheet loads later and wins equal-specificity
  * rules, so theme it through its own CSS variables instead */
 .react-flow {
@@ -1402,8 +1357,9 @@
 
 .react-flow__minimap {
   overflow: hidden;
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--md-sys-shape-corner-large);
   border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
 }
 
 /* Attribution badge stays subtle */
@@ -1415,14 +1371,43 @@
   color: var(--md-sys-color-on-surface-variant);
 }
 
-/* Edge selection highlight (edges carry an inline stroke, hence !important) */
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--md-sys-color-primary) !important;
-  stroke-width: 3;
+/*
+ * Edges stay faint until they matter: the ones attached to a selected node
+ * (.canvas-edge-active, set in components/canvas/use-flow-elements.ts), the ones
+ * carrying data right now (.animated), and the one under the pointer or selected.
+ * The extra .react-flow keeps these ahead of xyflow's later-loaded stylesheet.
+ */
+.react-flow .react-flow__edge .react-flow__edge-path {
+  stroke-width: 1.75;
+  stroke-opacity: 0.55;
+  transition: stroke-opacity 150ms, stroke-width 150ms;
 }
 
-.react-flow__edge:hover .react-flow__edge-path {
+.react-flow .react-flow__edge.canvas-edge-active .react-flow__edge-path,
+.react-flow .react-flow__edge.animated .react-flow__edge-path,
+.react-flow .react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 2.5;
+  stroke-opacity: 1;
+}
+
+/* Selected node card: a soft halo in the border colour, under a lifted shadow */
+.canvas-node-selected {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent),
+    0 10px 20px -4px rgb(0 0 0 / 0.16);
+}
+
+.canvas-node-selected[data-node-error="true"] {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--md-sys-color-error) 22%, transparent),
+    0 10px 20px -4px rgb(0 0 0 / 0.16);
+}
+
+/* Edge selection highlight (edges carry an inline stroke, hence !important) */
+.react-flow .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--md-sys-color-primary) !important;
   stroke-width: 3;
+  stroke-opacity: 1;
 }
 
 /* Connection line while dragging */

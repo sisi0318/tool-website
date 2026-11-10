@@ -28,7 +28,8 @@ export function SelectionToolbar({
     <div
       role="toolbar"
       aria-label={t("selectionToolbar")}
-      className="scrollbar-hide absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-[var(--md-sys-shape-corner-medium)] border border-md-outline-variant bg-md-surface-container p-1 shadow-xl"
+      // 手机上底边是视图工具条和「节点库」按钮，这一条排在它们上面
+      className="scrollbar-hide absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+3.75rem)] left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-[var(--md-sys-shape-corner-large)] border border-md-outline-variant bg-md-surface-container p-1 shadow-xl lg:bottom-3"
     >
       <span className="shrink-0 px-2 text-xs font-medium text-md-on-surface-variant">
         {t("selectedNodes").replace("{count}", String(count))}
