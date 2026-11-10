@@ -9,7 +9,7 @@
 | 文档 | 领域 | 覆盖内容 |
 |------|------|----------|
 | [[01-design-system]] | 设计系统 | M3 Expressive 主题系统、颜色/字体/形状/动效 Token |
-| [[02-frontend-architecture]] | 前端架构 | Next.js 15 App Router、目录结构、数据流、状态管理 |
+| [[02-frontend-architecture]] | 前端架构 | Next.js 16 App Router、目录结构、数据流、状态管理 |
 | [[03-tool-system]] | 工具系统 | 标签页架构、动态导入、URL 状态同步、localStorage 持久化 |
 | [[04-i18n]] | 国际化 | 双语翻译系统、Context 设计、命名空间 |
 | [[05-pwa-offline]] | PWA 离线 | next-pwa 配置、Service Worker、离线能力 |

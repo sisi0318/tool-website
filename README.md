@@ -31,7 +31,7 @@ TOTP 账户以明文保存，请勿在共享设备上录入长期凭据。分享
 
 ## 技术栈
 
-Next.js 15 (App Router) · React 18 · TypeScript (strict) · Tailwind CSS + M3 design tokens · Zustand · @xyflow/react · Vitest + Playwright · ESLint 9
+Next.js 16 (App Router，webpack 构建) · React 19 · TypeScript (strict) · Tailwind CSS + M3 design tokens · Zustand · @xyflow/react · Vitest + Playwright · ESLint 9
 
 ## 开发
 
@@ -41,7 +41,7 @@ npm run dev        # 开发服务器
 npm run test       # 单元测试（vitest）
 npm run e2e        # 端到端测试（playwright）
 npm run lint       # ESLint
-npm run typecheck  # tsc --noEmit
+npm run typecheck  # next typegen + tsc --noEmit
 npm run build      # 生产构建（含 lint 与类型检查）
 ```
 

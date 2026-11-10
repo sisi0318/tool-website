@@ -9,7 +9,7 @@ type: Permanent
 
 | 范畴 | 选用 | 禁用 |
 |------|------|------|
-| 框架 | Next.js 15 App Router | 禁止 Pages Router |
+| 框架 | Next.js 16 App Router | 禁止 Pages Router |
 | 语言 | TypeScript 5 strict mode | 禁止 `any`（除非 `params: any` 等 Next.js 类型无法覆盖场景） |
 | 样式 | Tailwind CSS + CSS 变量 | 禁止内联 `style`、禁止 CSS Modules |
 | 设计系统 | M3 Token 变量 (`var(--md-sys-*)`) + `cn()` | 禁止硬编码色值/字号 |

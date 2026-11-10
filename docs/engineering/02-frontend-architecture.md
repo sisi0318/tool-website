@@ -1,5 +1,5 @@
 ---
-description: Next.js 15 App Router 架构、目录结构、数据流、状态管理方案
+description: Next.js 16 App Router 架构、目录结构、数据流、状态管理方案
 type: Permanent
 ---
 
@@ -9,7 +9,7 @@ type: Permanent
 
 | 层面 | 选型 |
 |------|------|
-| 框架 | Next.js 15 (App Router, React 18) |
+| 框架 | Next.js 16 (App Router, React 19；构建与开发都用 `--webpack`，见 [[14-upgrade-next16-react19]]) |
 | 语言 | TypeScript 5 (strict mode) |
 | 样式 | Tailwind CSS 3 + CSS 自定义变量 |
 | 设计系统 | M3 Expressive (手搓) |

@@ -34,6 +34,9 @@ coverage/
 .nyc_output/
 .vitest/
 tsconfig.tsbuildinfo
+# Next.js 每次 dev / build 都会改写这个文件(两者引用的类型目录不同),按官方文档不入库;
+# 类型检查前由 next typegen 生成
+next-env.d.ts
 .claude/screenshots/*
 .next-e2e/*
 # 只忽略仓库根目录的临时笔记类 markdown，docs/ 等目录的文档正常纳入版本控制
