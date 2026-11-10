@@ -297,7 +297,7 @@ export default function BaseConverterPage() {
           )}
 
           {error && (
-            <div role="alert" className="mt-4 rounded-xl border border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
+            <div role="alert" className="mt-4 rounded-xl border border-md-error/30 bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
               {error}
             </div>
           )}

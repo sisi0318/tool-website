@@ -84,7 +84,7 @@ export function ToolRouteBar() {
   }
 
   return (
-    <div className="sticky top-16 z-40 border-b border-[var(--md-sys-color-outline-variant)]/60 bg-[var(--md-sys-color-surface)]/92 backdrop-blur-xl">
+    <div className="sticky top-16 z-40 border-b border-md-outline-variant/60 bg-md-surface/[0.92] backdrop-blur-xl">
       <div className="container mx-auto flex min-h-12 max-w-7xl items-center gap-1 px-2 sm:min-h-14 sm:gap-2 sm:px-6 lg:px-8">
         <Link
           href="/tools"

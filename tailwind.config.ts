@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss"
+import { tokenColor } from "./lib/m3/tailwind-color"
 
 const config = {
   darkMode: ["class"],
@@ -58,73 +59,73 @@ const config = {
         // ============================================
         // Material You 3 EXPRESSIVE Color Tokens
         // ============================================
+        // Declared through tokenColor() so that opacity modifiers work on them
+        // (`bg-md-primary/90`). See lib/m3/tailwind-color.ts.
         
         // M3 Primary colors
-        "md-primary": "var(--md-sys-color-primary)",
-        "md-on-primary": "var(--md-sys-color-on-primary)",
-        "md-primary-container": "var(--md-sys-color-primary-container)",
-        "md-on-primary-container": "var(--md-sys-color-on-primary-container)",
+        "md-primary": tokenColor("primary"),
+        "md-on-primary": tokenColor("on-primary"),
+        "md-primary-container": tokenColor("primary-container"),
+        "md-on-primary-container": tokenColor("on-primary-container"),
         
         // M3 Secondary colors
-        "md-secondary": "var(--md-sys-color-secondary)",
-        "md-on-secondary": "var(--md-sys-color-on-secondary)",
-        "md-secondary-container": "var(--md-sys-color-secondary-container)",
-        "md-on-secondary-container": "var(--md-sys-color-on-secondary-container)",
+        "md-secondary": tokenColor("secondary"),
+        "md-on-secondary": tokenColor("on-secondary"),
+        "md-secondary-container": tokenColor("secondary-container"),
+        "md-on-secondary-container": tokenColor("on-secondary-container"),
         
         // M3 Tertiary colors
-        "md-tertiary": "var(--md-sys-color-tertiary)",
-        "md-on-tertiary": "var(--md-sys-color-on-tertiary)",
-        "md-tertiary-container": "var(--md-sys-color-tertiary-container)",
-        "md-on-tertiary-container": "var(--md-sys-color-on-tertiary-container)",
+        "md-tertiary": tokenColor("tertiary"),
+        "md-on-tertiary": tokenColor("on-tertiary"),
+        "md-tertiary-container": tokenColor("tertiary-container"),
+        "md-on-tertiary-container": tokenColor("on-tertiary-container"),
         
         // M3 Error colors
-        "md-error": "var(--md-sys-color-error)",
-        "md-on-error": "var(--md-sys-color-on-error)",
-        "md-error-container": "var(--md-sys-color-error-container)",
-        "md-on-error-container": "var(--md-sys-color-on-error-container)",
+        "md-error": tokenColor("error"),
+        "md-on-error": tokenColor("on-error"),
+        "md-error-container": tokenColor("error-container"),
+        "md-on-error-container": tokenColor("on-error-container"),
 
         // M3 Success colors (Expressive)
-        "md-success": "var(--md-sys-color-success)",
-        "md-on-success": "var(--md-sys-color-on-success)",
-        "md-success-container": "var(--md-sys-color-success-container)",
-        "md-on-success-container": "var(--md-sys-color-on-success-container)",
+        "md-success": tokenColor("success"),
+        "md-on-success": tokenColor("on-success"),
+        "md-success-container": tokenColor("success-container"),
+        "md-on-success-container": tokenColor("on-success-container"),
 
         // M3 Warning colors (Expressive)
-        "md-warning": "var(--md-sys-color-warning)",
-        "md-on-warning": "var(--md-sys-color-on-warning)",
-        "md-warning-container": "var(--md-sys-color-warning-container)",
-        "md-on-warning-container": "var(--md-sys-color-on-warning-container)",
+        "md-warning": tokenColor("warning"),
+        "md-on-warning": tokenColor("on-warning"),
+        "md-warning-container": tokenColor("warning-container"),
+        "md-on-warning-container": tokenColor("on-warning-container"),
         
         // M3 Surface colors
-        "md-surface": "var(--md-sys-color-surface)",
-        "md-on-surface": "var(--md-sys-color-on-surface)",
-        "md-surface-variant": "var(--md-sys-color-surface-variant)",
-        "md-on-surface-variant": "var(--md-sys-color-on-surface-variant)",
-        "md-surface-dim": "var(--md-sys-color-surface-dim)",
-        "md-surface-bright": "var(--md-sys-color-surface-bright)",
-        "md-surface-container-lowest": "var(--md-sys-color-surface-container-lowest)",
-        "md-surface-container-low": "var(--md-sys-color-surface-container-low)",
-        "md-surface-container": "var(--md-sys-color-surface-container)",
-        "md-surface-container-high": "var(--md-sys-color-surface-container-high)",
-        "md-surface-container-highest": "var(--md-sys-color-surface-container-highest)",
+        "md-surface": tokenColor("surface"),
+        "md-on-surface": tokenColor("on-surface"),
+        "md-surface-variant": tokenColor("surface-variant"),
+        "md-on-surface-variant": tokenColor("on-surface-variant"),
+        "md-surface-dim": tokenColor("surface-dim"),
+        "md-surface-bright": tokenColor("surface-bright"),
+        "md-surface-container-lowest": tokenColor("surface-container-lowest"),
+        "md-surface-container-low": tokenColor("surface-container-low"),
+        "md-surface-container": tokenColor("surface-container"),
+        "md-surface-container-high": tokenColor("surface-container-high"),
+        "md-surface-container-highest": tokenColor("surface-container-highest"),
 
-        // M3 state layers: `hover:bg-md-hover`, `active:bg-md-pressed`.
-        // The tokens above are bare var() references, which Tailwind cannot apply an opacity
-        // modifier to: `bg-md-on-surface/10` and `bg-[var(--md-sys-color-on-surface)]/[0.08]`
-        // compile to nothing at all, with no warning. Spell translucent colours out instead.
+        // M3 state layers, named so the two opacities live in one place:
+        // `hover:bg-md-hover`, `active:bg-md-pressed`.
         "md-hover": "color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent)",
         "md-pressed": "color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent)",
         
         // M3 Outline colors
-        "md-outline": "var(--md-sys-color-outline)",
-        "md-outline-variant": "var(--md-sys-color-outline-variant)",
+        "md-outline": tokenColor("outline"),
+        "md-outline-variant": tokenColor("outline-variant"),
         
         // M3 Other colors
-        "md-shadow": "var(--md-sys-color-shadow)",
-        "md-scrim": "var(--md-sys-color-scrim)",
-        "md-inverse-surface": "var(--md-sys-color-inverse-surface)",
-        "md-inverse-on-surface": "var(--md-sys-color-inverse-on-surface)",
-        "md-inverse-primary": "var(--md-sys-color-inverse-primary)",
+        "md-shadow": tokenColor("shadow"),
+        "md-scrim": tokenColor("scrim"),
+        "md-inverse-surface": tokenColor("inverse-surface"),
+        "md-inverse-on-surface": tokenColor("inverse-on-surface"),
+        "md-inverse-primary": tokenColor("inverse-primary"),
       },
       borderRadius: {
         // Legacy shadcn/ui compatibility

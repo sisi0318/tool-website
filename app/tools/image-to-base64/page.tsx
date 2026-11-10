@@ -611,7 +611,7 @@ export default function ImageToBase64() {
                 <div
                   className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                     isDragging
-                      ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/20"
+                      ? "border-[var(--md-sys-color-primary)] bg-md-primary-container/20"
                       : "border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-outline)]"
                   }`}
                   onDragOver={handleDragOver}
@@ -687,7 +687,7 @@ export default function ImageToBase64() {
                           key={image.id}
                           className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                             selectedImageId === image.id
-                              ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/20"
+                              ? "border-[var(--md-sys-color-primary)] bg-md-primary-container/20"
                               : "border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-outline)]"
                           }`}
                           onClick={() => {

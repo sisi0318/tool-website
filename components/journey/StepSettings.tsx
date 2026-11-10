@@ -100,7 +100,7 @@ export function StepSettings({ step, input, busy, onChange }: StepSettingsProps)
             size="sm"
             onClick={() => void submit(draft, { live: false })}
             disabled={busy || pending}
-            className="ml-auto rounded-full bg-[var(--md-sys-color-primary)] px-4 text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
+            className="ml-auto rounded-full bg-[var(--md-sys-color-primary)] px-4 text-[var(--md-sys-color-on-primary)] hover:bg-md-primary/90"
           >
             {pending ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <RotateCw className="h-3.5 w-3.5" aria-hidden />}
             {t("rerunStep")}

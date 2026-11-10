@@ -147,14 +147,14 @@ export default function PasswordGeneratorPage() {
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
+        <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-md-outline-variant/70">
           <CardHeader>
             <CardTitle>{t("settings")}</CardTitle>
             <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[var(--md-sys-color-surface-container)] p-1.5">
-              <button type="button" onClick={() => setMode("password")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${mode === "password" ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm" : "text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-on-surface)]/[0.08]"}`}>
+              <button type="button" onClick={() => setMode("password")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${mode === "password" ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm" : "text-[var(--md-sys-color-on-surface-variant)] hover:bg-md-hover"}`}>
                 {t("passwordMode")}
               </button>
-              <button type="button" onClick={() => setMode("passphrase")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${mode === "passphrase" ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm" : "text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-on-surface)]/[0.08]"}`}>
+              <button type="button" onClick={() => setMode("passphrase")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition ${mode === "passphrase" ? "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm" : "text-[var(--md-sys-color-on-surface-variant)] hover:bg-md-hover"}`}>
                 {t("passphraseMode")}
               </button>
             </div>
@@ -237,7 +237,7 @@ export default function PasswordGeneratorPage() {
             </Card>
           )}
 
-          <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
+          <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-md-outline-variant/70">
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle>{t("results")}</CardTitle>
@@ -255,10 +255,10 @@ export default function PasswordGeneratorPage() {
               ) : (
                 <div className="space-y-2">
                   {results.map((result, index) => (
-                    <div key={`${result.value}-${index}`} className="flex items-center gap-3 rounded-2xl border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-low)] p-3">
+                    <div key={`${result.value}-${index}`} className="flex items-center gap-3 rounded-2xl border border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-low)] p-3">
                       <Dices className="h-5 w-5 shrink-0 text-[var(--md-sys-color-primary)]" />
                       <code className="min-w-0 flex-1 break-all text-sm font-semibold text-[var(--md-sys-color-on-surface)] sm:text-base">{result.value}</code>
-                      <button type="button" onClick={() => copy(result.value, String(index))} aria-label={t("copy")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-[var(--md-sys-color-primary)]/[0.08]">
+                      <button type="button" onClick={() => copy(result.value, String(index))} aria-label={t("copy")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-md-primary/[0.08]">
                         {copied === String(index) ? <Check className="h-4 w-4 text-[var(--md-sys-color-success)]" /> : <Copy className="h-4 w-4" />}
                       </button>
                     </div>

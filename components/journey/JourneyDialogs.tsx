@@ -27,7 +27,7 @@ import type { TemplateRunProgress } from "./TemplateStage"
 
 const DIALOG_CLASS = `max-w-md ${JOURNEY_DIALOG_CLASS}`
 const PRIMARY_BUTTON =
-  "rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
+  "rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-md-primary/90"
 
 interface DialogBaseProps {
   open: boolean
@@ -93,7 +93,7 @@ function InputDialog({
             placeholder={placeholder}
             aria-label={title}
             rows={6}
-            className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60"
+            className="rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-md-on-surface-variant/60"
           />
         )}
         {running && progress && onCancel && <RunStatus progress={progress} onCancel={onCancel} />}
@@ -151,7 +151,7 @@ function ReplaceCurrentConfirm({
 
   return (
     <div role="alert" className="space-y-4">
-      <p className="rounded-2xl bg-[var(--md-sys-color-error-container)]/50 p-3 text-sm leading-relaxed text-[var(--md-sys-color-on-error-container)]">
+      <p className="rounded-2xl bg-md-error-container/50 p-3 text-sm leading-relaxed text-[var(--md-sys-color-on-error-container)]">
         {description}
       </p>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -309,7 +309,7 @@ export function OpenJourneyDialog({
                   onClick={() => handleDelete(name)}
                   aria-label={t("deleteSaved")}
                   title={t("deleteSaved")}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-error-container)]/60 hover:text-[var(--md-sys-color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-error)]"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-error-container/60 hover:text-[var(--md-sys-color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-error)]"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

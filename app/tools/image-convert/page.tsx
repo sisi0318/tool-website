@@ -213,7 +213,7 @@ export default function ImageConvertPage() {
 
       <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-5">
-          <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
+          <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-md-outline-variant/70">
             <CardHeader><CardTitle>{t("settings")}</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div>
@@ -255,7 +255,7 @@ export default function ImageConvertPage() {
           </Card>
         </div>
 
-        <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
+        <Card className="rounded-[var(--md-sys-shape-corner-extra-large)] border-md-outline-variant/70">
           <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
             <div><CardTitle>{t("images")}</CardTitle><p className="mt-1 text-sm text-[var(--md-sys-color-on-surface-variant)]">{items.length}/{MAX_FILES} {t("files")}</p></div>
             {completed.length > 0 && <Button variant="outline" onClick={downloadAll} className="gap-2">{completed.length > 1 ? <FileArchive className="h-4 w-4" /> : <Download className="h-4 w-4" />}{completed.length > 1 ? t("downloadZip") : t("download")}</Button>}
@@ -267,7 +267,7 @@ export default function ImageConvertPage() {
               onDragOver={(event) => { event.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
               onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(Array.from(event.dataTransfer.files)) }}
-              className={`flex min-h-40 w-full flex-col items-center justify-center rounded-[var(--md-sys-shape-corner-large)] border-2 border-dashed p-6 text-center transition-colors ${dragging ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary)]/[0.08]" : "border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container-low)]"}`}
+              className={`flex min-h-40 w-full flex-col items-center justify-center rounded-[var(--md-sys-shape-corner-large)] border-2 border-dashed p-6 text-center transition-colors ${dragging ? "border-[var(--md-sys-color-primary)] bg-md-primary/[0.08]" : "border-[var(--md-sys-color-outline-variant)] hover:bg-[var(--md-sys-color-surface-container-low)]"}`}
             >
               <Upload className="h-8 w-8 text-[var(--md-sys-color-primary)]" />
               <span className="mt-3 font-bold text-[var(--md-sys-color-on-surface)]">{t("dropTitle")}</span>

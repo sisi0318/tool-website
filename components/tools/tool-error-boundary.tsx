@@ -21,7 +21,7 @@ function ToolErrorFallback({ error, toolTitle, standaloneHref, onRetry, onClose 
   const t = useTranslations("tools")
   const chunk = isChunkLoadError(error)
   return (
-    <div role="alert" className="mx-auto my-8 max-w-xl space-y-4 rounded-3xl border border-[var(--md-sys-color-error)]/40 bg-[var(--md-sys-color-error-container)]/40 p-6 text-[var(--md-sys-color-on-surface)]">
+    <div role="alert" className="mx-auto my-8 max-w-xl space-y-4 rounded-3xl border border-md-error/40 bg-md-error-container/40 p-6 text-[var(--md-sys-color-on-surface)]">
       <div className="flex items-center gap-2 font-semibold">
         <AlertTriangle className="h-5 w-5 text-[var(--md-sys-color-error)]" aria-hidden="true" />
         {t("toolCrashedTitle").replace("{name}", toolTitle)}

@@ -722,7 +722,7 @@ export default function JsonTool() {
                   tabSize: indentSize,
                 }}
               />
-              <div className="grid grid-cols-2 gap-2 border-t border-[var(--md-sys-color-outline-variant)]/50 p-3 sm:grid-cols-4 lg:hidden">
+              <div className="grid grid-cols-2 gap-2 border-t border-md-outline-variant/50 p-3 sm:grid-cols-4 lg:hidden">
                 <Button onClick={formatJson} variant="outline" size="sm" className="w-full">
                   <Code className="h-4 w-4 mr-1.5" />
                   {t("format")}

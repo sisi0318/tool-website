@@ -287,7 +287,7 @@ export function UtilityWorkbench({
       </section>
 
       <div className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <Card onKeyDown={handleShortcut} className="rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
+        <Card onKeyDown={handleShortcut} className="rounded-[var(--md-sys-shape-corner-extra-large)] border-md-outline-variant/70">
           <CardHeader className="p-4 sm:p-6">
             <CardTitle>{t("inputSettings")}</CardTitle>
           </CardHeader>
@@ -378,7 +378,7 @@ export function UtilityWorkbench({
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70">
+        <Card className="min-w-0 rounded-[var(--md-sys-shape-corner-extra-large)] border-md-outline-variant/70">
           <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-4 sm:p-6">
             <CardTitle>{outputLabel ?? t("output")}</CardTitle>
             <div className="ml-auto flex flex-wrap gap-2">

@@ -44,9 +44,9 @@ const M3IconButton = React.forwardRef<HTMLButtonElement, M3IconButtonProps>(
           "text-[var(--md-sys-color-on-surface-variant)]",
           "bg-transparent",
           // State layers with expressive transitions
-          "hover:bg-[var(--md-sys-color-on-surface)]/[0.08]",
-          "focus-visible:bg-[var(--md-sys-color-on-surface)]/[0.12]",
-          "active:bg-[var(--md-sys-color-on-surface)]/[0.16]",
+          "hover:bg-md-hover",
+          "focus-visible:bg-md-pressed",
+          "active:bg-md-pressed",
           "active:scale-95",
           // Expressive transitions
           "transition-all duration-md-short-4",
@@ -164,19 +164,19 @@ export default function Header() {
         // Height: 64dp standard for Top App Bar
         "h-16",
         // Surface color with gradient effect
-        "bg-[var(--md-sys-color-surface)]/95",
+        "bg-md-surface/95",
         "backdrop-blur-md",
         // Border
-        "border-b border-[var(--md-sys-color-outline-variant)]/50",
+        "border-b border-md-outline-variant/50",
         // Expressive transitions for scroll behavior
         "transition-all duration-md-medium-3",
         "ease-md-expressive",
         // Elevated state on scroll
         isScrolled && [
-          "bg-[var(--md-sys-color-surface-container)]/98",
+          "bg-md-surface-container/[0.98]",
           "backdrop-blur-xl",
-          "shadow-lg shadow-[var(--md-sys-color-shadow)]/10",
-          "border-[var(--md-sys-color-outline-variant)]/30",
+          "shadow-lg shadow-md-shadow/10",
+          "border-md-outline-variant/30",
         ]
       )}
       data-testid="m3-header"
@@ -192,7 +192,7 @@ export default function Header() {
             "min-h-[48px] py-2",
             // Hover state with expressive transition
             "rounded-[var(--md-sys-shape-corner-large)]",
-            "hover:bg-[var(--md-sys-color-on-surface)]/[0.06]",
+            "hover:bg-md-hover",
             "transition-all duration-md-short-4",
             "ease-md-expressive",
             "px-3 -ml-3"
@@ -259,7 +259,7 @@ export default function Header() {
               "inline-flex min-h-[48px] min-w-[48px] items-center justify-center",
               "rounded-[var(--md-sys-shape-corner-full)]",
               "text-[var(--md-sys-color-on-surface-variant)]",
-              "hover:bg-[var(--md-sys-color-on-surface)]/[0.08]",
+              "hover:bg-md-hover",
               "focus-visible:outline-none focus-visible:ring-2",
               "focus-visible:ring-[var(--md-sys-color-primary)]",
               "transition-colors duration-md-short-4",
@@ -310,7 +310,7 @@ function NavLink({ href, active, children }: NavLinkProps) {
             ]
           : [
               "text-[var(--md-sys-color-on-surface-variant)]",
-              "hover:bg-[var(--md-sys-color-on-surface)]/[0.08]",
+              "hover:bg-md-hover",
               "hover:text-[var(--md-sys-color-on-surface)]",
             ],
         // Expressive transitions

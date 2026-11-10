@@ -990,17 +990,17 @@ export default function HTTPTester() {
   const getMethodColor = (method: string) => {
     switch (method) {
       case "GET":
-        return "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
+        return "bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-md-primary/90"
       case "POST":
-        return "bg-[var(--md-sys-color-tertiary)] text-[var(--md-sys-color-on-tertiary)] hover:bg-[var(--md-sys-color-tertiary)]/90"
+        return "bg-[var(--md-sys-color-tertiary)] text-[var(--md-sys-color-on-tertiary)] hover:bg-md-tertiary/90"
       case "PUT":
-        return "bg-[var(--md-sys-color-secondary)] text-[var(--md-sys-color-on-secondary)] hover:bg-[var(--md-sys-color-secondary)]/90"
+        return "bg-[var(--md-sys-color-secondary)] text-[var(--md-sys-color-on-secondary)] hover:bg-md-secondary/90"
       case "DELETE":
-        return "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] hover:bg-[var(--md-sys-color-error)]/90"
+        return "bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] hover:bg-md-error/90"
       case "PATCH":
-        return "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-primary-container)]/90"
+        return "bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] hover:bg-md-primary-container/90"
       default:
-        return "bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-high)]/90"
+        return "bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] hover:bg-md-surface-container-high/90"
     }
   }
 
@@ -1030,7 +1030,7 @@ export default function HTTPTester() {
         <p className="mx-auto max-w-2xl text-sm text-[var(--md-sys-color-on-surface-variant)] sm:text-base">
           {t("description")}
         </p>
-        <Alert className="mx-auto max-w-2xl border-[var(--md-sys-color-tertiary)]/30 bg-[var(--md-sys-color-tertiary-container)] text-left text-[var(--md-sys-color-on-tertiary-container)]">
+        <Alert className="mx-auto max-w-2xl border-md-tertiary/30 bg-[var(--md-sys-color-tertiary-container)] text-left text-[var(--md-sys-color-on-tertiary-container)]">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             {t("proxyDisclosure")}
@@ -1218,7 +1218,7 @@ export default function HTTPTester() {
                           onClick={() => deleteTemplate(template.id)}
                           aria-label={t("deleteTemplate")}
                           title={t("deleteTemplate")}
-                          className="flex w-9 shrink-0 items-center justify-center rounded-lg text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-error-container)]/60 hover:text-[var(--md-sys-color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-error)]"
+                          className="flex w-9 shrink-0 items-center justify-center rounded-lg text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-error-container/60 hover:text-[var(--md-sys-color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-error)]"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

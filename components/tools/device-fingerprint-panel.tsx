@@ -70,7 +70,7 @@ function SignalCard({ id, title, icon, signal, copied, showDetails, onCopy, chil
   return (
     <Card
       data-testid={`fingerprint-signal-${id}`}
-      className="min-w-0 rounded-2xl border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)]"
+      className="min-w-0 rounded-2xl border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-lowest)]"
     >
       <CardHeader className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 p-4 pb-3 sm:p-5 sm:pb-3">
         <span className="row-span-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
@@ -108,7 +108,7 @@ function SignalCard({ id, title, icon, signal, copied, showDetails, onCopy, chil
         <p className="text-xs leading-5 text-[var(--md-sys-color-on-surface-variant)]">{note}</p>
         {children}
         {showDetails && signal.raw && (
-          <details className="rounded-xl border border-[var(--md-sys-color-outline-variant)]/70">
+          <details className="rounded-xl border border-md-outline-variant/70">
             <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)]">
               {t("showRawDetails")}
             </summary>
@@ -137,7 +137,7 @@ export function DeviceFingerprintPanel({ fingerprint, copied, showDetails, onCop
     <div className="min-w-0 space-y-3 sm:space-y-4">
       <Card
         data-testid="fingerprint-summary"
-        className="min-w-0 overflow-hidden rounded-2xl border-[var(--md-sys-color-primary)]/25 bg-[var(--md-sys-color-primary-container)]/30"
+        className="min-w-0 overflow-hidden rounded-2xl border-md-primary/25 bg-md-primary-container/30"
       >
         <CardContent className="space-y-3 p-4 sm:p-5">
           <div className="flex items-center gap-3">

@@ -192,7 +192,7 @@ export default function CaseConverterPage() {
                 <SegmentedControlItem
                   key={option.id}
                   value={option.id}
-                  className="rounded-full border border-[var(--md-sys-color-outline)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-on-surface)]/[0.08] data-[state=checked]:border-transparent data-[state=checked]:bg-[var(--md-sys-color-secondary-container)] data-[state=checked]:text-[var(--md-sys-color-on-secondary-container)] data-[state=checked]:shadow-none"
+                  className="rounded-full border border-[var(--md-sys-color-outline)] px-3 py-1.5 text-sm text-[var(--md-sys-color-on-surface-variant)] hover:bg-md-hover data-[state=checked]:border-transparent data-[state=checked]:bg-[var(--md-sys-color-secondary-container)] data-[state=checked]:text-[var(--md-sys-color-on-secondary-container)] data-[state=checked]:shadow-none"
                 >
                   <span className="flex items-center gap-1">
                     {option.icon}

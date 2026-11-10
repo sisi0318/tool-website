@@ -56,7 +56,8 @@ export function SuggestionChips({ node, running, onApply, onMoreTools, hint }: S
           >
             {labelOf(suggestion)}
             {suggestion.reason === "detection" && suggestion.detectionType ? (
-              <span className="rounded-full bg-[var(--md-sys-color-secondary)]/15 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide">
+              // 这里不垫底色：10px 的字在 secondary-container 上的对比度本来就贴着 4.5，再深一点就不够了
+              <span className="rounded-full px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide">
                 {suggestion.detectionType}
               </span>
             ) : (

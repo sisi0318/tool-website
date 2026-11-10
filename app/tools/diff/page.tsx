@@ -376,7 +376,7 @@ function add(a, b) {
           </div>
 
           {algorithm === "myers" && diffResult.algorithmUsed === "quick" && (
-            <div className="flex items-start gap-2 rounded-lg border border-[var(--md-sys-color-warning)]/40 bg-[var(--md-sys-color-warning-container)] p-3 text-sm text-[var(--md-sys-color-on-warning-container)]">
+            <div className="flex items-start gap-2 rounded-lg border border-md-warning/40 bg-[var(--md-sys-color-warning-container)] p-3 text-sm text-[var(--md-sys-color-on-warning-container)]">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{t("preciseFallback")}</span>
             </div>

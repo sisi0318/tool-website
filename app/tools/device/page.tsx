@@ -716,7 +716,7 @@ export default function DeviceInfoPage() {
     const displayValue = canonicalValues[rawValue] ?? rawValue
 
     return (
-      <div className="grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-x-2 border-b border-[var(--md-sys-color-outline-variant)]/60 py-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_2.5rem]">
+      <div className="grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-x-2 border-b border-md-outline-variant/60 py-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_2.5rem]">
         <div className="min-w-0 self-end text-xs font-medium text-[var(--md-sys-color-on-surface-variant)] sm:self-center">{label}</div>
         <div
           className="col-start-1 row-start-2 min-w-0 break-words text-sm leading-5 text-[var(--md-sys-color-on-surface)] [overflow-wrap:anywhere] sm:col-start-2 sm:row-start-1 sm:text-right"

@@ -102,7 +102,7 @@ export function FileDropZone({ onFiles, title, hint, icon, accept, multiple = fa
 
   return (
     <div
-      className={cn("rounded-[var(--md-sys-shape-corner-large)] transition-colors", dragging && !disabled && "bg-[var(--md-sys-color-primary-container)]/45 ring-2 ring-[var(--md-sys-color-primary)]", className)}
+      className={cn("rounded-[var(--md-sys-shape-corner-large)] transition-colors", dragging && !disabled && "bg-md-primary-container/45 ring-2 ring-[var(--md-sys-color-primary)]", className)}
       data-dragging={dragging || undefined}
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}

@@ -67,13 +67,13 @@ export default function HomePage() {
     <div className="min-h-screen overflow-hidden bg-[var(--md-sys-color-surface)]">
       <Header />
 
-      <section className="home-grid relative border-b border-[var(--md-sys-color-outline-variant)]/60">
-        <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-[var(--md-sys-color-primary-container)]/60 blur-3xl" />
-        <div className="pointer-events-none absolute -right-28 bottom-0 h-80 w-80 rounded-full bg-[var(--md-sys-color-tertiary-container)]/45 blur-3xl" />
+      <section className="home-grid relative border-b border-md-outline-variant/60">
+        <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-md-primary-container/60 blur-3xl" />
+        <div className="pointer-events-none absolute -right-28 bottom-0 h-80 w-80 rounded-full bg-md-tertiary-container/45 blur-3xl" />
 
         <div className="container relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-24">
           <div className="max-w-3xl">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]/85 px-4 py-2 text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)] shadow-sm backdrop-blur">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--md-sys-color-outline-variant)] bg-md-surface-container-lowest/85 px-4 py-2 text-sm font-semibold text-[var(--md-sys-color-on-surface-variant)] shadow-sm backdrop-blur">
               <Sparkles className="h-4 w-4 text-[var(--md-sys-color-primary)]" />
               {t("eyebrow")}
             </div>
@@ -94,7 +94,7 @@ export default function HomePage() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-14 border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-lowest)]/70 px-7 text-base font-semibold backdrop-blur hover:bg-[var(--md-sys-color-surface-container-low)]"
+                className="h-14 border-[var(--md-sys-color-outline-variant)] bg-md-surface-container-lowest/70 px-7 text-base font-semibold backdrop-blur hover:bg-[var(--md-sys-color-surface-container-low)]"
               >
                 <Link href="/canvas">
                   <Workflow className="h-5 w-5" />
@@ -152,7 +152,7 @@ export default function HomePage() {
               <Link
                 key={tool.id}
                 href={`/tools?tool=${tool.id}`}
-                className="group rounded-[1.75rem] border border-[var(--md-sys-color-outline-variant)]/75 bg-[var(--md-sys-color-surface-container-lowest)] p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--md-sys-color-primary)]/40 hover:shadow-xl"
+                className="group rounded-[1.75rem] border border-md-outline-variant/75 bg-[var(--md-sys-color-surface-container-lowest)] p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-md-primary/40 hover:shadow-xl"
               >
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105 ${tool.accent}`}>
                   <Icon className="h-6 w-6" />
@@ -175,7 +175,7 @@ export default function HomePage() {
 
       <section className="container mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8 lg:pb-24">
         <div className="relative overflow-hidden rounded-[2rem] bg-[var(--md-sys-color-inverse-surface)] px-6 py-10 text-[var(--md-sys-color-inverse-on-surface)] sm:px-10 lg:flex lg:items-center lg:justify-between lg:px-14 lg:py-12">
-          <div className="pointer-events-none absolute -right-16 -top-28 h-64 w-64 rounded-full border-[38px] border-[var(--md-sys-color-inverse-primary)]/15" />
+          <div className="pointer-events-none absolute -right-16 -top-28 h-64 w-64 rounded-full border-[38px] border-md-inverse-primary/15" />
           <div className="relative max-w-2xl">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-[var(--md-sys-color-inverse-primary)]">
               <Workflow className="h-6 w-6" />
@@ -183,7 +183,7 @@ export default function HomePage() {
             <h2 className="mt-6 text-3xl font-bold tracking-tight">{t("canvasTitle")}</h2>
             <p className="mt-3 leading-7 opacity-75">{t("canvasDescription")}</p>
           </div>
-          <Button asChild size="lg" className="relative mt-8 h-14 bg-[var(--md-sys-color-inverse-primary)] px-7 font-bold text-[var(--md-sys-color-on-primary-container)] hover:bg-[var(--md-sys-color-inverse-primary)]/90 lg:mt-0">
+          <Button asChild size="lg" className="relative mt-8 h-14 bg-[var(--md-sys-color-inverse-primary)] px-7 font-bold text-[var(--md-sys-color-on-primary-container)] hover:bg-md-inverse-primary/90 lg:mt-0">
             <Link href="/canvas">
               {t("buildWorkflow")}
               <ArrowRight className="h-5 w-5" />

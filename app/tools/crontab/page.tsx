@@ -1208,7 +1208,7 @@ export default function CrontabPage() {
           {(errors.length > 0 || warnings.length > 0) && (
             <div className="space-y-3">
               {errors.length > 0 && (
-                <Alert className="border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
+                <Alert className="border-md-error/30 bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)]">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-1">
@@ -1222,7 +1222,7 @@ export default function CrontabPage() {
               )}
               
               {warnings.length > 0 && (
-                <Alert className="border-[var(--md-sys-color-tertiary)]/30 bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]">
+                <Alert className="border-md-tertiary/30 bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)]">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-1">

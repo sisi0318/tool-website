@@ -125,14 +125,14 @@ export function InputStage({
               ))}
             </ol>
             {draftBehindImport && (
-              <div className="mt-3 flex flex-col gap-2 border-t border-[var(--md-sys-color-on-tertiary-container)]/20 pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-3 flex flex-col gap-2 border-t border-md-on-tertiary-container/20 pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-xs">{t("draftBehindImport")}</span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onRestoreDraft}
                   disabled={starting}
-                  className="shrink-0 rounded-full border-[var(--md-sys-color-on-tertiary-container)]/40 bg-transparent text-[var(--md-sys-color-on-tertiary-container)]"
+                  className="shrink-0 rounded-full border-md-on-tertiary-container/40 bg-transparent text-[var(--md-sys-color-on-tertiary-container)]"
                 >
                   {t("restoreDraftInstead")}
                 </Button>
@@ -147,14 +147,14 @@ export function InputStage({
           placeholder={t("inputPlaceholder")}
           aria-label={t("inputTitle")}
           rows={6}
-          className="mt-5 min-h-36 rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 focus-visible:ring-[var(--md-sys-color-primary)]"
+          className="mt-5 min-h-36 rounded-2xl border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-highest)] font-mono text-sm text-[var(--md-sys-color-on-surface)] placeholder:text-md-on-surface-variant/60 focus-visible:ring-[var(--md-sys-color-primary)]"
         />
 
         <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
           <Button
             onClick={() => onStart(text)}
             disabled={!text.trim() || starting}
-            className="rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
+            className="rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-md-primary/90"
           >
             {starting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {starting ? t("applying") : t("startExploring")}

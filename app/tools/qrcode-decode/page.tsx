@@ -682,9 +682,9 @@ export default function QRCodeDecoder() {
                     onDrop={handleDrop}
                     className={`cursor-pointer rounded-2xl border-2 border-dashed p-5 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] sm:p-8 ${
                       isDragging
-                        ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/45"
+                        ? "border-[var(--md-sys-color-primary)] bg-md-primary-container/45"
                         : files.length > 0
-                          ? "border-[var(--md-sys-color-primary)]/50 bg-[var(--md-sys-color-primary-container)]/25"
+                          ? "border-md-primary/50 bg-md-primary-container/25"
                           : "border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]"
                     }`}
                   >
@@ -734,7 +734,7 @@ export default function QRCodeDecoder() {
                             onClick={() => selectFile(index)}
                             className={`flex min-h-11 w-full min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
                               index === selectedFileIndex
-                                ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/35"
+                                ? "border-[var(--md-sys-color-primary)] bg-md-primary-container/35"
                                 : "border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]"
                             }`}
                           >

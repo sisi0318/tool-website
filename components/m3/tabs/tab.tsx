@@ -202,7 +202,7 @@ const M3Tab = React.forwardRef<HTMLButtonElement, M3TabProps>(
             tabIndex={-1}
             className={cn(
               'relative z-10 ml-1 p-1 rounded-full',
-              'hover:bg-[var(--md-sys-color-on-surface)]/[0.08]',
+              'hover:bg-md-hover',
               'focus-visible:outline-none focus-visible:ring-2',
               'transition-colors duration-md-short-2',
               'cursor-pointer'

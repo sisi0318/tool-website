@@ -28,7 +28,7 @@ export function LanguageSwitcher() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-11 min-w-11 rounded-full border-0 bg-transparent px-3 hover:bg-[var(--md-sys-color-on-surface)]/[0.08]"
+          className="h-11 min-w-11 rounded-full border-0 bg-transparent px-3 hover:bg-md-hover"
           aria-label={locale === "zh" ? "切换语言" : "Switch language"}
         >
           <Globe className="h-4 w-4" />

@@ -713,7 +713,7 @@ export default function ProtobufTool() {
                 </Tabs>
 
                 {error && (
-                  <div role="alert" className="mt-3 rounded-xl border border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
+                  <div role="alert" className="mt-3 rounded-xl border border-md-error/30 bg-[var(--md-sys-color-error-container)] p-3 text-sm text-[var(--md-sys-color-on-error-container)]">
                     {error}
                     {protoError?.message === error && (
                       <div className="mt-1 space-y-1 text-xs">
@@ -861,7 +861,7 @@ export default function ProtobufTool() {
                   </div>
 
                   {error && (
-                    <div role="alert" className="rounded-xl border border-[var(--md-sys-color-error)]/30 bg-[var(--md-sys-color-error-container)] p-3">
+                    <div role="alert" className="rounded-xl border border-md-error/30 bg-[var(--md-sys-color-error-container)] p-3">
                       <div className="text-sm text-[var(--md-sys-color-on-error-container)]">
                         {error}
                         {protoError?.message === error && (

@@ -965,7 +965,7 @@ export default function JceTool() {
                   </div>
 
                   {error && (
-                    <div className="p-3 bg-[var(--md-sys-color-error-container)] border border-[var(--md-sys-color-error)]/30 rounded-lg">
+                    <div className="p-3 bg-[var(--md-sys-color-error-container)] border border-md-error/30 rounded-lg">
                       <div className="text-sm text-[var(--md-sys-color-on-error-container)]">{error}</div>
                     </div>
                   )}

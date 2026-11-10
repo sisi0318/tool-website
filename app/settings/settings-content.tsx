@@ -102,7 +102,7 @@ export function SettingsContent() {
               {(usage ?? []).map((item) => (
                 <li
                   key={item.group}
-                  className="rounded-2xl border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] p-5"
+                  className="rounded-2xl border border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-lowest)] p-5"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -149,7 +149,7 @@ export function SettingsContent() {
               variant="outline"
               onClick={() => setPending("all")}
               disabled={clearing}
-              className="mt-6 rounded-full border-[var(--md-sys-color-error)] text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-error-container)]/40"
+              className="mt-6 rounded-full border-[var(--md-sys-color-error)] text-[var(--md-sys-color-error)] hover:bg-md-error-container/40"
             >
               <Trash2 className="h-4 w-4" />
               {t("clearAll")}
@@ -177,7 +177,7 @@ export function SettingsContent() {
             <Button
               onClick={() => void handleClear()}
               disabled={clearing}
-              className="rounded-full bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] hover:bg-[var(--md-sys-color-error)]/90"
+              className="rounded-full bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] hover:bg-md-error/90"
             >
               {t("confirm")}
             </Button>

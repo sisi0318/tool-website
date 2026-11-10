@@ -18,9 +18,9 @@ export function HomeMascot({ alt, name, description }: HomeMascotProps) {
         className="home-mascot-art h-auto w-full select-none"
         draggable={false}
       />
-      <figcaption className="relative mx-auto -mt-3 flex w-fit max-w-full items-center gap-3 rounded-full border border-[var(--md-sys-color-outline-variant)]/60 bg-[var(--md-sys-color-surface-container-lowest)]/80 px-5 py-2.5 text-sm backdrop-blur-sm sm:-mt-1">
+      <figcaption className="relative mx-auto -mt-3 flex w-fit max-w-full items-center gap-3 rounded-full border border-md-outline-variant/60 bg-md-surface-container-lowest/80 px-5 py-2.5 text-sm backdrop-blur-sm sm:-mt-1">
         <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
-          <span className="absolute inset-0 rounded-full bg-[var(--md-sys-color-primary)]/20 ring-4 ring-[var(--md-sys-color-primary)]/10" />
+          <span className="absolute inset-0 rounded-full bg-md-primary/20 ring-4 ring-md-primary/10" />
           <span className="relative h-2 w-2 rounded-full bg-[var(--md-sys-color-primary)]" />
         </span>
         <span className="font-bold text-[var(--md-sys-color-on-surface)]">{name}</span>

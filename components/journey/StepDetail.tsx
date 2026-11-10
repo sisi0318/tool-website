@@ -47,7 +47,7 @@ export function StepDetail({ journey, busy, onChangeStep, onDeleteStep, onEditIn
             disabled={busy}
             aria-label={t("deleteStep")}
             title={t("deleteStep")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-error-container)]/60 hover:text-[var(--md-sys-color-on-error-container)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-error-container/60 hover:text-[var(--md-sys-color-on-error-container)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" aria-hidden />
           </button>

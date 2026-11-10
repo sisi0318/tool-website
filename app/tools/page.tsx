@@ -183,7 +183,7 @@ const ToolCard = memo(function ToolCard({
   onToggleFavorite: (id: string) => void
 }) {
   return (
-    <Card className="group relative h-full min-h-[104px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[var(--md-sys-color-primary)]/40 hover:shadow-xl sm:min-h-[128px]">
+    <Card className="group relative h-full min-h-[104px] overflow-hidden rounded-[var(--md-sys-shape-corner-extra-large)] border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-lowest)] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-md-primary/40 hover:shadow-xl sm:min-h-[128px]">
       <button
         type="button"
         onClick={() => onClick(id)}
@@ -210,7 +210,7 @@ const ToolCard = memo(function ToolCard({
         onClick={() => onToggleFavorite(id)}
         aria-label={favoriteLabel}
         aria-pressed={isFavorite}
-        className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-primary)]/[0.08] hover:text-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+        className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-primary/[0.08] hover:text-[var(--md-sys-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
       >
         <Star className={`h-5 w-5 ${isFavorite ? "fill-current text-[var(--md-sys-color-primary)]" : ""}`} />
       </button>
@@ -971,7 +971,7 @@ export default function ToolsPage() {
                     aria-label={t("clearSearch")}
                     className="
                       p-1 rounded-full ml-2
-                      hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
+                      hover:bg-md-hover
                       transition-colors duration-md-short-2
                     "
                   >
@@ -1024,7 +1024,7 @@ export default function ToolsPage() {
                     <button
                       key={tool.id}
                       type="button"
-                      className="flex w-full items-center gap-3 rounded-[var(--md-sys-shape-corner-medium)] p-3 text-left transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08]"
+                      className="flex w-full items-center gap-3 rounded-[var(--md-sys-shape-corner-medium)] p-3 text-left transition-colors hover:bg-md-hover"
                       onClick={() => addTab(tool.id)}
                     >
                       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]">
@@ -1042,8 +1042,8 @@ export default function ToolsPage() {
                   className="
                     w-full p-3 text-left
                     rounded-[var(--md-sys-shape-corner-medium)]
-                    hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                    active:bg-[var(--md-sys-color-on-surface)]/[0.12]
+                    hover:bg-md-hover
+                    active:bg-md-pressed
                     transition-colors duration-md-short-2
                     flex items-start gap-3
                   "
@@ -1095,7 +1095,7 @@ export default function ToolsPage() {
               bg-[var(--md-sys-color-surface-container)]
               rounded-[var(--md-sys-shape-corner-extra-large)]
               shadow-sm
-              border border-[var(--md-sys-color-outline-variant)]/50
+              border border-md-outline-variant/50
             ">
               {/* M3 Tabs Component */}
               <div className="flex-1 min-w-0">
@@ -1122,8 +1122,8 @@ export default function ToolsPage() {
                     onClick={() => toggleFavorite(activeToolId)}
                     className="
                       p-2 rounded-full
-                      hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                      active:bg-[var(--md-sys-color-on-surface)]/[0.12]
+                      hover:bg-md-hover
+                      active:bg-md-pressed
                       transition-colors duration-md-short-2
                       text-[var(--md-sys-color-on-surface-variant)]
                     "
@@ -1142,8 +1142,8 @@ export default function ToolsPage() {
                           aria-label={t("copyLink")}
                           className="
                             p-2 rounded-full
-                            hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                            active:bg-[var(--md-sys-color-on-surface)]/[0.12]
+                            hover:bg-md-hover
+                            active:bg-md-pressed
                             transition-colors duration-md-short-2
                             text-[var(--md-sys-color-on-surface-variant)]
                           "
@@ -1165,8 +1165,8 @@ export default function ToolsPage() {
                     aria-label={t("addTool")}
                     className="
                       p-2 rounded-full
-                      hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                      active:bg-[var(--md-sys-color-on-surface)]/[0.12]
+                      hover:bg-md-hover
+                      active:bg-md-pressed
                       transition-colors duration-md-short-2
                       text-[var(--md-sys-color-on-surface-variant)]
                     "
@@ -1195,7 +1195,7 @@ export default function ToolsPage() {
                         shadow-xl
                         p-3
                         max-h-96 overflow-y-auto
-                        border border-[var(--md-sys-color-outline-variant)]/50
+                        border border-md-outline-variant/50
                         animate-in fade-in-0 slide-in-from-top-3
                         duration-md-medium-2
                       "
@@ -1206,8 +1206,8 @@ export default function ToolsPage() {
                           className="
                             w-full flex items-center gap-3 px-4 py-3
                             rounded-[var(--md-sys-shape-corner-medium)]
-                            hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                            active:bg-[var(--md-sys-color-on-surface)]/[0.16]
+                            hover:bg-md-hover
+                            active:bg-md-pressed
                             active:scale-[0.98]
                             transition-all duration-md-short-4
                             ease-md-expressive
@@ -1242,7 +1242,7 @@ export default function ToolsPage() {
           {(favoriteTools.length > 0 || recentTools.length > 0) && (
             <div className="mb-8 grid gap-4 lg:grid-cols-2">
               {favoriteTools.length > 0 && (
-                <section className="rounded-[var(--md-sys-shape-corner-extra-large)] border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-low)] p-5">
+                <section className="rounded-[var(--md-sys-shape-corner-extra-large)] border border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-low)] p-5">
                   <div className="mb-4 flex items-center gap-2">
                     <Star className="h-5 w-5 fill-current text-[var(--md-sys-color-primary)]" />
                     <h2 className="font-bold text-[var(--md-sys-color-on-surface)]">{t("favorites")}</h2>
@@ -1257,7 +1257,7 @@ export default function ToolsPage() {
                 </section>
               )}
               {recentTools.length > 0 && (
-                <section className="rounded-[var(--md-sys-shape-corner-extra-large)] border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-low)] p-5">
+                <section className="rounded-[var(--md-sys-shape-corner-extra-large)] border border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-low)] p-5">
                   <div className="mb-4 flex items-center gap-2">
                     <Clock className="h-5 w-5 text-[var(--md-sys-color-primary)]" />
                     <h2 className="font-bold text-[var(--md-sys-color-on-surface)]">{t("recentTools")}</h2>
@@ -1287,7 +1287,7 @@ export default function ToolsPage() {
               className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all duration-md-short-4 ease-md-expressive active:scale-95 ${
                 activeCategory === "all"
                   ? "bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] shadow-sm"
-                  : "border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
+                  : "border border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
               }`}
             >
               {t("categories.all")}
@@ -1302,7 +1302,7 @@ export default function ToolsPage() {
                 className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-all duration-md-short-4 ease-md-expressive active:scale-95 ${
                   activeCategory === category.id
                     ? "bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] shadow-sm"
-                    : "border border-[var(--md-sys-color-outline-variant)]/70 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
+                    : "border border-md-outline-variant/70 bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)]"
                 }`}
               >
                 <span className={`h-2 w-2 rounded-full ${category.dot}`} />
@@ -1414,8 +1414,8 @@ export default function ToolsPage() {
                 flex flex-col items-center gap-2 p-4
                 rounded-[var(--md-sys-shape-corner-large)]
                 bg-[var(--md-sys-color-surface-container-high)]
-                hover:bg-[var(--md-sys-color-on-surface)]/[0.08]
-                active:bg-[var(--md-sys-color-on-surface)]/[0.12]
+                hover:bg-[var(--md-sys-color-surface-container-highest)]
+                active:bg-[var(--md-sys-color-surface-container-highest)]
                 transition-colors duration-md-short-2
               "
               onClick={() => {

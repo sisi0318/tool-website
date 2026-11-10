@@ -32,14 +32,14 @@ export default function ErrorPage({
           {t("errorDescription")}
         </p>
         {error.digest && (
-          <p className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]/70">
+          <p className="mt-2 text-xs text-[var(--md-sys-color-on-surface-variant)]">
             digest: {error.digest}
           </p>
         )}
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <Button
             onClick={reset}
-            className="rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
+            className="rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-md-primary/90"
           >
             <RotateCcw className="h-4 w-4" />
             {t("errorRetry")}

@@ -61,7 +61,7 @@ export function StepSheet({ open, onOpenChange, step, running, progress, onCance
           <Button
             onClick={() => onRun(draft.config, draft.outputPort)}
             disabled={running || !definition}
-            className="rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-[var(--md-sys-color-primary)]/90"
+            className="rounded-full bg-[var(--md-sys-color-primary)] px-6 text-[var(--md-sys-color-on-primary)] hover:bg-md-primary/90"
           >
             {running && <LoaderCircle className="h-4 w-4 animate-spin" />}
             {t("runNewStep")}

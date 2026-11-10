@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { JsonTreeView } from "@/components/json-tree-view"
 
 const ICON_BUTTON =
-  "flex h-9 w-9 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-[var(--md-sys-color-on-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
+  "flex h-9 w-9 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-hover hover:text-[var(--md-sys-color-on-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] disabled:opacity-50"
 
 function formatBytes(size: number): string {
   if (size < 1024) return `${size} B`
@@ -94,7 +94,7 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
                 type="button"
                 onClick={() => setExpanded((prev) => !prev)}
                 aria-expanded={expanded}
-                className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-medium text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-primary)]/10"
+                className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 font-medium text-[var(--md-sys-color-primary)] hover:bg-md-primary/10"
               >
                 {expanded ? (
                   <>
@@ -239,14 +239,14 @@ export function ValueCard({ node, running, onOpenStepSheet, onRerunFromRoot, onE
               <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
               {inputMissing ? t("inputMissingTitle") : t("valueMissingTitle")}
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-[var(--md-sys-color-on-error-container)]/80">
+            <p className="mt-1 text-xs leading-relaxed text-[var(--md-sys-color-on-error-container)]">
               {inputMissing ? t("inputMissingDescription") : t("valueMissingDescription")}
             </p>
             <Button
               size="sm"
               onClick={onRerunFromRoot}
               disabled={running}
-              className="mt-3 rounded-full bg-[var(--md-sys-color-error)] px-4 text-[var(--md-sys-color-on-error)] hover:bg-[var(--md-sys-color-error)]/90"
+              className="mt-3 rounded-full bg-[var(--md-sys-color-error)] px-4 text-[var(--md-sys-color-on-error)] hover:bg-md-error/90"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               {inputMissing ? t("restoreInput") : t("rerunFromRoot")}

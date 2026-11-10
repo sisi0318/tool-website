@@ -501,7 +501,7 @@ export default function EncodingPage() {
           </Button>
         </div>
 
-        <Card className="min-w-0 flex-1 border border-[var(--md-sys-color-outline-variant)]/50 bg-[var(--md-sys-color-surface-container)] shadow-none">
+        <Card className="min-w-0 flex-1 border border-md-outline-variant/50 bg-[var(--md-sys-color-surface-container)] shadow-none">
           <div className="flex h-full flex-col px-3 pb-3 pt-4 sm:px-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">

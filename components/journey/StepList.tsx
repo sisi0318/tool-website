@@ -93,7 +93,7 @@ export function StepList({ journey, onSelect, onOpenBranches, inlineDetail }: St
           <button
             type="button"
             onClick={onOpenBranches}
-            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08] hover:text-[var(--md-sys-color-on-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-hover hover:text-[var(--md-sys-color-on-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
           >
             <GitBranch className="h-3.5 w-3.5" aria-hidden />
             {t("allBranches")}
@@ -137,7 +137,7 @@ export function StepList({ journey, onSelect, onOpenBranches, inlineDetail }: St
                 <button
                   type="button"
                   onClick={onOpenBranches}
-                  className="ml-12 mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-[var(--md-sys-color-tertiary)] transition-colors hover:bg-[var(--md-sys-color-tertiary-container)]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
+                  className="ml-12 mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-[var(--md-sys-color-tertiary)] transition-colors hover:bg-md-tertiary-container/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]"
                 >
                   <GitBranch className="h-3.5 w-3.5" aria-hidden />
                   {t("forkHere").replace("{count}", String(otherPaths))}

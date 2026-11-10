@@ -58,7 +58,7 @@ const bottomSheetVariants = cva(
 const scrimVariants = cva(
   [
     'fixed inset-0 z-40',
-    'bg-[var(--md-sys-color-scrim)]/[0.32]',
+    'bg-md-scrim/[0.32]',
   ].join(' ')
 );
 
@@ -68,7 +68,7 @@ const scrimVariants = cva(
 const dragHandleVariants = cva(
   [
     'w-8 h-1',
-    'bg-[var(--md-sys-color-on-surface-variant)]/[0.4]',
+    'bg-md-on-surface-variant/[0.4]',
     'rounded-full',
     'mx-auto my-4',
   ].join(' ')
@@ -325,7 +325,7 @@ const M3BottomSheet = React.forwardRef<HTMLDivElement, M3BottomSheetProps>(
                   type="button"
                   onClick={onClose}
                   aria-label={closeLabel}
-                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full text-2xl leading-none text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-on-surface)]/[0.08]"
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full text-2xl leading-none text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-hover"
                 >
                   <span aria-hidden="true">×</span>
                 </button>

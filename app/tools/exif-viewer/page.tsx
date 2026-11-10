@@ -516,7 +516,7 @@ export default function ExifViewerPage() {
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
                   isDragging
-                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/45"
+                    ? "border-[var(--md-sys-color-primary)] bg-md-primary-container/45"
                     : "border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-outline)]"
                 }`}
                 onDragOver={handleDragOver}
@@ -595,7 +595,7 @@ export default function ExifViewerPage() {
                       key={image.id}
                       className={`flex items-center gap-3 p-3 cursor-pointer transition-colors border-b border-[var(--md-sys-color-outline-variant)] last:border-b-0 ${
                         selectedImageId === image.id
-                          ? "bg-[var(--md-sys-color-primary-container)]/45"
+                          ? "bg-md-primary-container/45"
                           : "hover:bg-[var(--md-sys-color-surface-container-low)]"
                       }`}
                       onClick={() => setSelectedImageId(image.id)}

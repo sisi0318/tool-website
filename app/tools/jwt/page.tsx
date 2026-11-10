@@ -251,7 +251,7 @@ export default function JWTPage() {
 
         {/* 错误提示 */}
         {decoded && !decoded.isValid && (
-          <div className="flex items-center gap-2 p-4 bg-[var(--md-sys-color-error-container)] border border-[var(--md-sys-color-error)]/30 rounded-lg text-[var(--md-sys-color-on-error-container)]">
+          <div className="flex items-center gap-2 p-4 bg-[var(--md-sys-color-error-container)] border border-md-error/30 rounded-lg text-[var(--md-sys-color-on-error-container)]">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <span>{decoded.error}</span>
           </div>
@@ -263,14 +263,14 @@ export default function JWTPage() {
             {/* 状态指示器 */}
             <div className="flex flex-wrap gap-4">
               {/* 有效性 */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-[var(--md-sys-color-primary-container)] border border-[var(--md-sys-color-primary)]/30 rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-2 bg-[var(--md-sys-color-primary-container)] border border-md-primary/30 rounded-lg">
                 <CheckCircle className="h-4 w-4 text-[var(--md-sys-color-on-primary-container)]" />
                 <span className="text-sm text-[var(--md-sys-color-on-primary-container)]">{t("validFormat")}</span>
               </div>
 
               {/* 算法 */}
               {decoded.header?.alg && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-[var(--md-sys-color-secondary-container)] border border-[var(--md-sys-color-secondary)]/30 rounded-lg">
+                <div className="flex items-center gap-2 px-3 py-2 bg-[var(--md-sys-color-secondary-container)] border border-md-secondary/30 rounded-lg">
                   <Key className="h-4 w-4 text-[var(--md-sys-color-on-secondary-container)]" />
                   <span className="text-sm text-[var(--md-sys-color-on-secondary-container)]">
                     {t("algorithm")}: {decoded.header.alg}
@@ -283,8 +283,8 @@ export default function JWTPage() {
                 <div
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
                     expiryStatus.status === "expired"
-                      ? "bg-[var(--md-sys-color-error-container)] border-[var(--md-sys-color-error)]/30"
-                      : "bg-[var(--md-sys-color-primary-container)] border-[var(--md-sys-color-primary)]/30"
+                      ? "bg-[var(--md-sys-color-error-container)] border-md-error/30"
+                      : "bg-[var(--md-sys-color-primary-container)] border-md-primary/30"
                   }`}
                 >
                   <Clock

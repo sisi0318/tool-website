@@ -335,7 +335,7 @@ export default function ImageCoordinatesPage() {
                 onDragLeave={() => setIsDragging(false)}
                 className={`cursor-pointer rounded-xl border-2 border-dashed p-5 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)] ${
                   isDragging
-                    ? "border-[var(--md-sys-color-primary)] bg-[var(--md-sys-color-primary-container)]/45"
+                    ? "border-[var(--md-sys-color-primary)] bg-md-primary-container/45"
                     : "border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] hover:border-[var(--md-sys-color-primary)]"
                 }`}
               >
@@ -537,7 +537,7 @@ export default function ImageCoordinatesPage() {
           )}
 
           {currentCoord && (
-            <Card className="min-w-0 rounded-[var(--md-sys-shape-corner-large)] border-[var(--md-sys-color-primary)]/30 bg-[var(--md-sys-color-primary-container)]/35">
+            <Card className="min-w-0 rounded-[var(--md-sys-shape-corner-large)] border-md-primary/30 bg-md-primary-container/35">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <MousePointer2 className={`h-4 w-4 ${COORDINATE_ICON_CLASS}`} />

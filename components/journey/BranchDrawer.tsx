@@ -59,7 +59,7 @@ export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }
             <span
               className={`min-w-0 truncate font-mono text-xs ${
                 isActive
-                  ? "text-[var(--md-sys-color-on-primary-container)]/70"
+                  ? "text-[var(--md-sys-color-on-primary-container)]"
                   : "text-[var(--md-sys-color-on-surface-variant)]"
               }`}
             >
@@ -72,7 +72,7 @@ export function BranchDrawer({ open, onOpenChange, journey, onSelect, onDelete }
               onClick={() => onDelete(node.id)}
               aria-label={t("deleteStep")}
               title={t("deleteStep")}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-[var(--md-sys-color-error-container)]/60 hover:text-[var(--md-sys-color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-error)]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--md-sys-color-on-surface-variant)] transition-colors hover:bg-md-error-container/60 hover:text-[var(--md-sys-color-error)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-error)]"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
