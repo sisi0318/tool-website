@@ -155,6 +155,29 @@ test.describe("mobile tool layouts", () => {
     await expectNoPageOverflow(page)
   })
 
+  test("JSON actions appear once on mobile and the toolbar shows real labels", async ({
+    page,
+  }) => {
+    await openChineseTool(page, "/tools/json")
+    await waitForReactHandler(page, "#json-editor")
+
+    // the row under the editor replaces the "basic actions" card on narrow screens; both used to show
+    for (const name of ["格式化", "压缩", "折叠", "清空"]) {
+      await expect(page.getByRole("button", { name, exact: true })).toHaveCount(1)
+    }
+    // these two once rendered their translation keys ("common.paste", "common.loadSample")
+    await expect(page.getByRole("button", { name: "粘贴", exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "示例", exact: true })).toBeVisible()
+    await expect(page.getByText(/common\.\w+/)).toHaveCount(0)
+
+    await page.locator("#json-editor").fill('{"b":1,"a":2}')
+    await page.getByRole("button", { name: "压缩", exact: true }).click()
+    await expect(page.locator("#json-editor")).toHaveValue('{"b":1,"a":2}')
+    await page.getByRole("button", { name: "格式化", exact: true }).click()
+    await expect(page.locator("#json-editor")).toHaveValue('{\n  "b": 1,\n  "a": 2\n}')
+    await expectNoPageOverflow(page)
+  })
+
   test("small-text inputs use 16px on touch screens so iOS does not zoom on focus", async ({
     page,
   }) => {

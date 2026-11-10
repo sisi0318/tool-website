@@ -22,6 +22,7 @@ import { escapeJsonText, sortJsonKeys, tryRepairCommonJson, unescapeJsonText } f
 import { downloadBlob } from "@/lib/object-url"
 import { useTextHistory } from "@/hooks/use-text-history"
 import { useIncomingInput } from "@/hooks/use-incoming-input"
+import { useToast } from "@/hooks/use-toast"
 import { transferText } from "@/lib/tool-transfer"
 import { ErrorLocation } from "@/components/tools/error-location"
 import { SendToMenu } from "@/components/tools/send-to-menu"
@@ -72,8 +73,9 @@ function yamlErrorLocation(error: unknown): TextLocation | null {
 export default function JsonTool() {
   const t = useTranslations("json", zhJson)
   const tc = useTranslations("common")
+  const { toast } = useToast()
   const params = useToolRuntimeParams()
-  
+
   // 基础状态
   const [showJsonSettings, setShowJsonSettings] = useState(false)
   const [autoFormat, setAutoFormat] = useState(false)
@@ -385,6 +387,18 @@ export default function JsonTool() {
     copyToClipboard(jsonText, "json")
   }
 
+  // 读剪贴板要用户授权，Firefox 还会再弹一次确认；读不到时说明原因，而不是点了没反应
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (!text) return
+      replaceText(text, "json")
+      setRepairSuggestion(null)
+    } catch {
+      toast({ title: tc("pasteFailed"), variant: "destructive" })
+    }
+  }
+
   // 下载：扩展名和类型跟着内容走
   const downloadJson = () => {
     const { extension, mime } = CONTENT_FILES[kind]
@@ -571,17 +585,7 @@ export default function JsonTool() {
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => {
-              try {
-                const text = await navigator.clipboard.readText()
-                if (text) {
-                  replaceText(text, "json")
-                  setRepairSuggestion(null)
-                }
-              } catch {
-                // 剪贴板读取被拒绝或不可用时静默忽略
-              }
-            }}
+            onClick={pasteFromClipboard}
             className="min-w-0 px-2 sm:px-3"
           >
             <Clipboard className="h-4 w-4 mr-1 shrink-0" />
@@ -774,9 +778,9 @@ export default function JsonTool() {
         </div>
 
         {/* 右侧：操作按钮区域 */}
-        <div className="space-y-6">
-          {/* 基础操作 */}
-          <Card className="card-modern">
+        <div className="flex flex-col gap-6">
+          {/* 基础操作：窄屏上这四个按钮在编辑框正下方那一排，这张卡片只在右侧有栏时出现，免得同一组按钮出现两遍 */}
+          <Card className="card-modern hidden lg:block">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Palette className="h-4 w-4 text-[var(--md-sys-color-primary)]" />

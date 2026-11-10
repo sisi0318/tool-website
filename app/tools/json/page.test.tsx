@@ -5,6 +5,9 @@ import JsonTool from "./page"
 
 vi.mock("@/hooks/use-translations", () => { const translate = (key: string) => key; return { useTranslations: () => translate } })
 vi.mock("@/components/json-tree-view", () => ({ JsonTreeView: () => null }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
+const toast = vi.hoisted(() => vi.fn())
+vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
 const download = vi.hoisted(() => vi.fn())
 vi.mock("@/lib/object-url", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/object-url")>()), downloadBlob: download }))
 
@@ -16,11 +19,28 @@ function type(value: string) {
   fireEvent.change(editor(), { target: { value } })
 }
 
+/**
+ * Format, compress, collapse and clear exist twice in the markup: a row under the editor for narrow
+ * screens and the "basic actions" card for wide ones. CSS shows one of them per breakpoint, which
+ * jsdom does not apply, so both are in the document here.
+ */
+function actions(name: string) {
+  return screen.queryAllByRole("button", { name })
+}
+
+function action(name: string) {
+  return actions(name)[0]
+}
+
+function stubClipboardRead(readText: () => Promise<string>) {
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { readText } })
+}
+
 describe("JSON tool history", () => {
   it("undoes and redoes a transform from the toolbar", () => {
     render(<JsonTool />)
     type('{"b":1,"a":[1,2]}')
-    fireEvent.click(screen.getByRole("button", { name: "format" }))
+    fireEvent.click(action("format"))
     expect(editor().value).toBe('{\n  "b": 1,\n  "a": [\n    1,\n    2\n  ]\n}')
 
     fireEvent.click(screen.getByRole("button", { name: "undo" }))
@@ -41,7 +61,7 @@ describe("JSON tool history", () => {
   it("brings back cleared content", () => {
     render(<JsonTool />)
     type('{"keep":true}')
-    fireEvent.click(screen.getByRole("button", { name: "clear" }))
+    fireEvent.click(action("clear"))
     expect(editor().value).toBe("")
     fireEvent.click(screen.getByRole("button", { name: "undo" }))
     expect(editor().value).toBe('{"keep":true}')
@@ -50,17 +70,17 @@ describe("JSON tool history", () => {
   it("does not let expand overwrite edits made after collapsing", () => {
     render(<JsonTool />)
     type('{"a":{"b":1},"c":2}')
-    fireEvent.click(screen.getByRole("button", { name: "collapse" }))
+    fireEvent.click(action("collapse"))
     expect(editor().value).toBe('{\n  "a": "{...}",\n  "c": 2\n}')
-    expect(screen.getByRole("button", { name: "expand" })).toBeInTheDocument()
+    expect(actions("expand")).not.toHaveLength(0)
 
-    fireEvent.click(screen.getByRole("button", { name: "expand" }))
+    fireEvent.click(action("expand"))
     expect(editor().value).toBe('{"a":{"b":1},"c":2}')
 
-    fireEvent.click(screen.getByRole("button", { name: "collapse" }))
+    fireEvent.click(action("collapse"))
     type('{\n  "a": "{...}",\n  "c": 3\n}')
-    expect(screen.queryByRole("button", { name: "expand" })).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "collapse" })).toBeInTheDocument()
+    expect(actions("expand")).toHaveLength(0)
+    expect(actions("collapse")).not.toHaveLength(0)
   })
 
   it("points at the error even when the engine gives no position", async () => {
@@ -69,6 +89,35 @@ describe("JSON tool history", () => {
     fireEvent.click(await screen.findByRole("button", { name: "revealError" }))
     expect(editor()).toHaveFocus()
     expect(editor().selectionStart).toBe(9)
+  })
+})
+
+describe("JSON tool toolbar", () => {
+  it("pastes the clipboard into the editor, and the paste can be undone", async () => {
+    stubClipboardRead(() => Promise.resolve('{"pasted":true}'))
+    render(<JsonTool />)
+    type('{"before":1}')
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "paste" })) })
+    expect(editor().value).toBe('{"pasted":true}')
+    fireEvent.click(screen.getByRole("button", { name: "undo" }))
+    expect(editor().value).toBe('{"before":1}')
+  })
+
+  it("says so when the clipboard cannot be read, and leaves the editor alone", async () => {
+    toast.mockClear()
+    stubClipboardRead(() => Promise.reject(new DOMException("denied", "NotAllowedError")))
+    render(<JsonTool />)
+    type('{"before":1}')
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "paste" })) })
+    expect(editor().value).toBe('{"before":1}')
+    expect(toast).toHaveBeenCalledWith({ title: "pasteFailed", variant: "destructive" })
+  })
+
+  it("loads the sample over whatever is in the editor", () => {
+    render(<JsonTool />)
+    type("not json")
+    fireEvent.click(screen.getByRole("button", { name: "loadSample" }))
+    expect(JSON.parse(editor().value)).toHaveProperty("person.name")
   })
 })
 
