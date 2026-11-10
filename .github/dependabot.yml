@@ -12,6 +12,10 @@ updates:
       time: "09:00"
       timezone: Asia/Shanghai
     open-pull-requests-limit: 5
+    # 新版本发布满 7 天才考虑:刚发布的包偶尔会被撤回,被投毒的版本通常也在几天内被发现。
+    # 安全更新不受这个等待期限制。
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -27,7 +31,7 @@ updates:
       # 升级要连同 Worker 适配一起做,不能只改版本号。
       - dependency-name: "@paddleocr/paddleocr-js"
       - dependency-name: onnxruntime-web
-      # 大版本(Next 16、React 19、Tailwind 4、ESLint 10、TypeScript 7 等)各自要迁移,由人来排期。
+      # 大版本(Tailwind 4、ESLint 10、TypeScript 7 等)各自要迁移,由人来排期。
       # 安全更新不受这条限制。
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
