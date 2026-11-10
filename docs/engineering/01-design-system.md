@@ -60,6 +60,8 @@ lib/m3/
 - 包含状态层 (state layers): hover/focus/pressed/dragged
 - 内置 WCAG AA/AAA 对比度校验
 
+**在 Tailwind 类名里不能给令牌加透明度。** `tailwind.config.ts` 里的 `md-*` 颜色是裸的 `var(--md-sys-color-…)`，Tailwind 3 没法给它套透明度：`bg-md-primary/10`、`bg-[var(--md-sys-color-on-surface)]/[0.08]` 这类写法整条规则都不会生成，也没有警告。悬停和按下的状态层用 `hover:bg-md-hover`、`active:bg-md-pressed`；其他半透明颜色用 `color-mix()` 写全，或者用 Tailwind 自带的颜色（遮罩用 `bg-black/50`）。来龙去脉和全站还没改的地方见 [[16-canvas-floating-chrome]]。
+
 ### 字体
 - 15-style type scale: display/small...body/medium...label/small
 - 使用 CSS 变量注入，支持运行时切换
